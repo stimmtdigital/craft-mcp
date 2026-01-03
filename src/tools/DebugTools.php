@@ -347,7 +347,6 @@ class DebugTools {
             'configPath' => Craft::$app->getPath()->getConfigPath(),
             'storagePath' => Craft::$app->getPath()->getStoragePath(),
             'templatesPath' => Craft::$app->getPath()->getSiteTemplatesPath(),
-            'translationsPath' => Craft::$app->getPath()->getTranslationsPath(),
         ];
 
         return [
