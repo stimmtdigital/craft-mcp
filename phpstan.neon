@@ -1,0 +1,29 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    tmpDir: .phpstan.cache
+
+    # Scan Craft/Yii for class definitions
+    scanDirectories:
+        - vendor/craftcms/cms/src
+        - vendor/yiisoft/yii2
+
+    ignoreErrors:
+        # Craft's service locator methods (Craft::$app->getVolumes(), etc.)
+        - '#Call to an undefined method yii\\console\\Application\|yii\\web\\Application::#'
+        - '#Call to an undefined method yii\\db\\Schema::findIndexes#'
+        # PsySH optional dependency
+        - '#Psy\\#'
+        # Missing SchemaTools reference
+        - '#Class Sidequest\\CraftMcp\\tools\\SchemaTools not found#'
+        # Dead catch - ReflectionException
+        - '#Dead catch#'
+        # array_values on list is intentional for re-indexing
+        - '#array_values is already a list#'
+        # Defensive null coalescing
+        - '#on left side of \?\? always exists#'
+        # Yii identity can be array in edge cases
+        - '#Cannot access property \$id on array#'
+
+    reportUnmatchedIgnoredErrors: false

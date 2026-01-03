@@ -1,0 +1,87 @@
+{
+    "name": "stimmt/craft-mcp",
+    "description": "MCP (Model Context Protocol) server for Craft CMS",
+    "type": "craft-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Max van Essen",
+            "email": "support@stimmt.digital",
+            "homepage": "https://github.com/vanEssenMax"
+        }
+    ],
+    "homepage": "https://stimmt.digital",
+    "support": {
+        "email": "support@stimmt.digital",
+        "issues": "https://github.com/stimmtdigital/craft-mcp/issues",
+        "source": "https://github.com/stimmtdigital/craft-mcp"
+    },
+    "keywords": [
+        "craftcms",
+        "craft-plugin",
+        "mcp",
+        "model-context-protocol",
+        "ai",
+        "claude",
+        "llm",
+        "automation"
+    ],
+    "require": {
+        "php": "^8.3",
+        "craftcms/cms": "^5.0",
+        "mcp/sdk": "^0.2"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.18",
+        "rector/rector": "^2.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-type-coverage": "^4.0",
+        "phpstan/phpstan": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "stimmt\\craft\\Mcp\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "stimmt\\craft\\Mcp\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "handle": "mcp",
+        "name": "Craft MCP",
+        "developer": "Stimmt Digital",
+        "documentationUrl": "https://github.com/stimmtdigital/craft-mcp",
+        "class": "stimmt\\craft\\Mcp\\Mcp"
+    },
+    "bin": ["bin/mcp-server"],
+    "config": {
+        "allow-plugins": {
+            "craftcms/plugin-installer": true,
+            "yiisoft/yii2-composer": true,
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "lint": "pint",
+        "lint:test": "pint --test",
+        "refactor": "rector process",
+        "refactor:dry": "rector process --dry-run",
+        "fix": [
+            "@refactor",
+            "@lint"
+        ],
+        "test": "pest",
+        "test:unit": "pest --testsuite=Unit",
+        "test:coverage": "pest --coverage --min=80",
+        "test:type": "pest --type-coverage --min=90",
+        "test:arch": "pest --filter=Arch",
+        "analyse": "phpstan analyse",
+        "ci": [
+            "@lint:test",
+            "@analyse",
+            "@test"
+        ]
+    }
+}
