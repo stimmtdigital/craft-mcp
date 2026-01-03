@@ -7,12 +7,17 @@ namespace stimmt\craft\Mcp\services;
 use Craft;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\tools\AssetTools;
+use stimmt\craft\Mcp\tools\BackupTools;
 use stimmt\craft\Mcp\tools\CategoryTools;
+use stimmt\craft\Mcp\tools\CommerceTools;
 use stimmt\craft\Mcp\tools\CraftTools;
 use stimmt\craft\Mcp\tools\DatabaseTools;
 use stimmt\craft\Mcp\tools\DebugTools;
 use stimmt\craft\Mcp\tools\EntryTools;
 use stimmt\craft\Mcp\tools\GlobalSetTools;
+use stimmt\craft\Mcp\tools\GraphqlTools;
+use stimmt\craft\Mcp\tools\McpTools;
+use stimmt\craft\Mcp\tools\SiteTools;
 use stimmt\craft\Mcp\tools\SystemTools;
 use stimmt\craft\Mcp\tools\TinkerTools;
 use stimmt\craft\Mcp\tools\UserTools;
@@ -31,12 +36,16 @@ final class ToolRegistry {
      */
     private const array CORE_TOOLS = [
         AssetTools::class,
+        BackupTools::class,
         CategoryTools::class,
         CraftTools::class,
         DatabaseTools::class,
         DebugTools::class,
         EntryTools::class,
         GlobalSetTools::class,
+        GraphqlTools::class,
+        McpTools::class,
+        SiteTools::class,
         SystemTools::class,
         TinkerTools::class,
         UserTools::class,
@@ -162,7 +171,14 @@ final class ToolRegistry {
      * Register core tools bundled with this plugin.
      */
     private function collectCoreTools(): void {
-        $this->tools['mcp'] = self::CORE_TOOLS;
+        $tools = self::CORE_TOOLS;
+
+        // Add Commerce tools if Commerce is installed
+        if (CommerceTools::isAvailable()) {
+            $tools[] = CommerceTools::class;
+        }
+
+        $this->tools['mcp'] = $tools;
 
         // Core plugin discovery path
         $pluginPath = dirname(__DIR__);

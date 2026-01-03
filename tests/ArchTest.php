@@ -25,3 +25,7 @@ arch('events extend yii base Event')
 arch('models extend craft base Model')
     ->expect('stimmt\craft\Mcp\models')
     ->toExtend('craft\base\Model');
+
+arch('tool classes use strict types')
+    ->expect('stimmt\craft\Mcp\tools')
+    ->toUseStrictTypes();

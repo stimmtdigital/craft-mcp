@@ -34,6 +34,8 @@ class Mcp extends BasePlugin {
         'create_entry',
         'update_entry',
         'clear_caches',
+        'create_backup',
+        'execute_graphql',
     ];
 
     public string $schemaVersion = '1.0.0';
