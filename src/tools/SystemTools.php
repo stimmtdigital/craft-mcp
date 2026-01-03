@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\helpers\FileHelper as CraftFileHelper;
 use Mcp\Capability\Attribute\McpTool;
 use stimmt\craft\Mcp\support\FileHelper;
 use Throwable;
@@ -16,9 +17,9 @@ use Throwable;
  */
 class SystemTools {
     /**
-     * Log line format: [timestamp][level][category] message
+     * Log line format: 2026-01-03 04:01:45 [web.INFO] [category] message
      */
-    private const string LOG_PATTERN = '/^\[([^\]]+)\]\[([^\]]+)\]\[([^\]]*)\]\s*(.*)$/s';
+    private const string LOG_PATTERN = '/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([^.\]]+)\.(\w+)\] \[([^\]]*)\] (.*)$/s';
 
     /**
      * Core console commands with descriptions.
@@ -100,10 +101,28 @@ class SystemTools {
     )]
     public function readLogs(int $limit = 50, ?string $level = null): array {
         $logPath = Craft::$app->getPath()->getLogPath();
-        $logFiles = [
-            $logPath . '/web.log',
-            $logPath . '/console.log',
-        ];
+
+        // Find all .log files, prioritizing today's date-based logs
+        $today = date('Y-m-d');
+        $allLogs = glob($logPath . '/*.log') ?: [];
+
+        // Sort: today's logs first, then by modification time descending
+        usort($allLogs, function ($a, $b) use ($today) {
+            $aIsToday = str_contains($a, $today);
+            $bIsToday = str_contains($b, $today);
+
+            if ($aIsToday && !$bIsToday) {
+                return -1;
+            }
+            if (!$aIsToday && $bIsToday) {
+                return 1;
+            }
+
+            return filemtime($b) <=> filemtime($a);
+        });
+
+        // Limit to most recent logs to avoid processing too many files
+        $logFiles = array_slice($allLogs, 0, 5);
 
         $entries = [];
         foreach ($logFiles as $logFile) {
@@ -163,9 +182,10 @@ class SystemTools {
 
         return [
             'timestamp' => $matches[1],
-            'level' => strtolower($matches[2]),
-            'category' => $matches[3],
-            'message' => trim($matches[4]),
+            'channel' => $matches[2],
+            'level' => strtolower($matches[3]),
+            'category' => $matches[4],
+            'message' => trim($matches[5]),
         ];
     }
 
@@ -211,7 +231,7 @@ class SystemTools {
             if ($type === 'all' || $type === 'compiled-templates') {
                 $compiledTemplatesPath = Craft::$app->getPath()->getCompiledTemplatesPath(false);
                 if ($compiledTemplatesPath && is_dir($compiledTemplatesPath)) {
-                    Craft::$app->getFs()->clearDirectory($compiledTemplatesPath);
+                    CraftFileHelper::clearDirectory($compiledTemplatesPath);
                     $cleared[] = 'compiled-templates';
                 }
             }
@@ -219,7 +239,7 @@ class SystemTools {
             if ($type === 'all' || $type === 'temp-files') {
                 $tempPath = Craft::$app->getPath()->getTempPath(false);
                 if ($tempPath && is_dir($tempPath)) {
-                    Craft::$app->getFs()->clearDirectory($tempPath);
+                    CraftFileHelper::clearDirectory($tempPath);
                     $cleared[] = 'temp-files';
                 }
             }
