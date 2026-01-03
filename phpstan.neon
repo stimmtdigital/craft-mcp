@@ -15,8 +15,8 @@ parameters:
         - '#Call to an undefined method yii\\db\\Schema::findIndexes#'
         # PsySH optional dependency
         - '#Psy\\#'
-        # Missing SchemaTools reference
-        - '#Class Sidequest\\CraftMcp\\tools\\SchemaTools not found#'
+        # Missing class reference (if class doesn't exist)
+        - '#Class stimmt\\craft\\Mcp\\tools\\SchemaTools not found#'
         # Dead catch - ReflectionException
         - '#Dead catch#'
         # array_values on list is intentional for re-indexing

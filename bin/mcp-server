@@ -10,10 +10,10 @@ declare(strict_types=1);
  * Craft functionality as tools for AI assistants.
  *
  * Usage (from Craft root):
- *   php plugins/craft-mcp/bin/mcp-server
+ *   php vendor/stimmt/craft-mcp/bin/mcp-server
  *
  * Usage with DDEV:
- *   ddev exec php plugins/craft-mcp/bin/mcp-server
+ *   ddev exec php vendor/stimmt/craft-mcp/bin/mcp-server
  */
 
 // Find Craft's base path by looking for bootstrap.php
