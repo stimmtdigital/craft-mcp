@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\support;
 
 use Craft;
+use craft\config\GeneralConfig;
+use craft\services\Config;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psr\Log\AbstractLogger;
+use Stringable;
+use Throwable;
 
 /**
  * Simple file-based PSR-3 logger for MCP server.
@@ -18,15 +22,10 @@ use Psr\Log\AbstractLogger;
  *   $logger->info('Server started');
  *   $logger->error('Tool execution failed', ['tool' => 'tinker', 'error' => $e->getMessage()]);
  */
-class FileLogger extends AbstractLogger
-{
-    private string $logPath;
-
+class FileLogger extends AbstractLogger {
     private ?DateTimeZone $timezone = null;
 
-    public function __construct(string $logPath)
-    {
-        $this->logPath = $logPath;
+    public function __construct(private readonly string $logPath) {
         $this->ensureDirectoryExists();
         $this->initializeTimezone();
     }
@@ -35,11 +34,9 @@ class FileLogger extends AbstractLogger
      * Logs with an arbitrary level.
      *
      * @param mixed $level
-     * @param string|\Stringable $message
      * @param array<string, mixed> $context
      */
-    public function log($level, string|\Stringable $message, array $context = []): void
-    {
+    public function log($level, string|Stringable $message, array $context = []): void {
         $timestamp = $this->getTimestamp();
         $levelString = is_string($level) ? $level : (is_object($level) && method_exists($level, '__toString') ? (string) $level : 'INFO');
         $levelUpper = strtoupper($levelString);
@@ -50,8 +47,7 @@ class FileLogger extends AbstractLogger
         file_put_contents($this->logPath, $line, FILE_APPEND | LOCK_EX);
     }
 
-    private function ensureDirectoryExists(): void
-    {
+    private function ensureDirectoryExists(): void {
         $dir = dirname($this->logPath);
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -61,21 +57,21 @@ class FileLogger extends AbstractLogger
     /**
      * Initialize timezone from Craft's configuration.
      */
-    private function initializeTimezone(): void
-    {
+    private function initializeTimezone(): void {
         try {
-            /** @var \craft\services\Config $configService */
+            /** @var Config $configService */
             $configService = Craft::$app->getConfig();
 
-            /** @var \craft\config\GeneralConfig $generalConfig */
+            /** @var GeneralConfig $generalConfig */
             $generalConfig = $configService->getGeneral();
             $configTimezone = $generalConfig->timezone;
 
             if (is_string($configTimezone) && $configTimezone !== '') {
                 $this->timezone = new DateTimeZone($configTimezone);
+
                 return;
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Craft not available yet, fall through
         }
 
@@ -86,8 +82,7 @@ class FileLogger extends AbstractLogger
     /**
      * Get formatted timestamp in the configured timezone.
      */
-    private function getTimestamp(): string
-    {
+    private function getTimestamp(): string {
         $now = new DateTimeImmutable('now', $this->timezone);
 
         return $now->format('Y-m-d H:i:s');

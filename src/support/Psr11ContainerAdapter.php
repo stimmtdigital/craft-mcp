@@ -13,8 +13,7 @@ use Psr\Container\ContainerInterface;
  * This allows the MCP SDK to resolve dependencies through Craft's container system.
  * Yii's service locator (Craft::$app) takes precedence over the DI container.
  */
-class Psr11ContainerAdapter implements ContainerInterface
-{
+class Psr11ContainerAdapter implements ContainerInterface {
     /**
      * Finds an entry of the container by its identifier and returns it.
      *
@@ -22,13 +21,13 @@ class Psr11ContainerAdapter implements ContainerInterface
      * @return mixed Entry.
      * @throws ServiceNotFoundException If no entry was found.
      */
-    public function get(string $id): mixed
-    {
+    public function get(string $id): mixed {
         if ($this->has($id)) {
             // Yii's service locator takes precedence
             if (Craft::$app->has($id)) {
                 return Craft::$app->get($id);
             }
+
             return Craft::$container->get($id);
         }
 
@@ -40,8 +39,11 @@ class Psr11ContainerAdapter implements ContainerInterface
      *
      * @param string $id Identifier of the entry to look for.
      */
-    public function has(string $id): bool
-    {
-        return Craft::$app->has($id) || Craft::$container->has($id);
+    public function has(string $id): bool {
+        if (Craft::$app->has($id)) {
+            return true;
+        }
+
+        return (bool) Craft::$container->has($id);
     }
 }

@@ -14,18 +14,28 @@ namespace stimmt\craft\Mcp\support;
 final class Ansi {
     // Colors
     public const string RED = "\033[31m";
+
     public const string GREEN = "\033[32m";
+
     public const string YELLOW = "\033[33m";
+
     public const string BLUE = "\033[34m";
+
     public const string MAGENTA = "\033[35m";
+
     public const string CYAN = "\033[36m";
+
     public const string WHITE = "\033[37m";
+
     public const string GRAY = "\033[90m";
 
     // Styles
     public const string BOLD = "\033[1m";
+
     public const string DIM = "\033[2m";
+
     public const string ITALIC = "\033[3m";
+
     public const string UNDERLINE = "\033[4m";
 
     // Reset
@@ -33,7 +43,9 @@ final class Ansi {
 
     // Symbols
     public const string PROMPT = '>';
+
     public const string RESULT = '=';
+
     public const string ERROR = '!';
 
     /**

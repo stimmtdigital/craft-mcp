@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\services;
 
 use Craft;
 use Mcp\Server;
+use Mcp\Server\Builder;
 use Mcp\Server\Transport\StdioTransport;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
@@ -22,24 +23,14 @@ use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-class McpServerFactory
-{
-    private ContainerInterface $container;
-    private ?LoggerInterface $logger;
-
-    public function __construct(
-        ?ContainerInterface $container = null,
-        ?LoggerInterface $logger = null,
-    ) {
-        $this->container = $container ?? new Psr11ContainerAdapter();
-        $this->logger = $logger;
+class McpServerFactory {
+    public function __construct(private readonly ?ContainerInterface $container = new Psr11ContainerAdapter(), private readonly ?LoggerInterface $logger = null) {
     }
 
     /**
      * Create a configured MCP Server instance.
      */
-    public function create(): Server
-    {
+    public function create(): Server {
         $builder = Server::builder()
             ->setServerInfo(
                 name: 'Craft CMS MCP Server',
@@ -49,7 +40,7 @@ class McpServerFactory
             ->setDiscovery(
                 basePath: dirname(__DIR__),
                 scanDirs: ['tools', 'prompts', 'resources'],
-                excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts']
+                excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts'],
             )
             ->setContainer($this->container);
 
@@ -66,8 +57,7 @@ class McpServerFactory
     /**
      * Create a StdioTransport for the server.
      */
-    public function createTransport(): StdioTransport
-    {
+    public function createTransport(): StdioTransport {
         return new StdioTransport();
     }
 
@@ -75,8 +65,7 @@ class McpServerFactory
      * Create a file logger that writes to storage/logs/mcp-server.log.
      * This is separate from Craft's logging system.
      */
-    public static function createFileLogger(?string $logPath = null): LoggerInterface
-    {
+    public static function createFileLogger(?string $logPath = null): LoggerInterface {
         if ($logPath === null) {
             $resolved = Craft::getAlias('@storage/logs/mcp-server.log');
             $logPath = $resolved !== false ? $resolved : '/tmp/mcp-server.log';
@@ -85,8 +74,7 @@ class McpServerFactory
         return new FileLogger($logPath);
     }
 
-    private function getInstructions(): string
-    {
+    private function getInstructions(): string {
         return <<<'INSTRUCTIONS'
 This MCP server provides access to a Craft CMS installation.
 
@@ -105,52 +93,48 @@ This MCP server provides access to a Craft CMS installation.
 INSTRUCTIONS;
     }
 
-    private function registerExternalElements(Server\Builder $builder): void
-    {
+    private function registerExternalElements(Builder $builder): void {
         $this->registerExternalTools($builder);
         $this->registerExternalPrompts($builder);
         $this->registerExternalResources($builder);
     }
 
-    private function registerExternalTools(Server\Builder $builder): void
-    {
+    private function registerExternalTools(Builder $builder): void {
         foreach (McpRegistry::tools()->getExternalToolDefinitions() as $def) {
             $builder->addTool(
                 handler: [$def->class, $def->method],
                 name: $def->name,
-                description: $def->description
+                description: $def->description,
             );
         }
     }
 
-    private function registerExternalPrompts(Server\Builder $builder): void
-    {
+    private function registerExternalPrompts(Builder $builder): void {
         foreach (McpRegistry::prompts()->getExternalPromptDefinitions() as $def) {
             $builder->addPrompt(
                 handler: [$def->class, $def->method],
                 name: $def->name,
-                description: $def->description
+                description: $def->description,
             );
         }
     }
 
-    private function registerExternalResources(Server\Builder $builder): void
-    {
+    private function registerExternalResources(Builder $builder): void {
         foreach (McpRegistry::resources()->getExternalResourceDefinitions() as $def) {
             $this->registerResource($builder, $def);
         }
     }
 
-    private function registerResource(Server\Builder $builder, ResourceDefinition $def): void
-    {
+    private function registerResource(Builder $builder, ResourceDefinition $def): void {
         if ($def->isTemplate) {
             $builder->addResourceTemplate(
                 handler: [$def->class, $def->method],
                 uriTemplate: $def->uri,
                 name: $def->name,
                 description: $def->description,
-                mimeType: $def->mimeType
+                mimeType: $def->mimeType,
             );
+
             return;
         }
 
@@ -159,7 +143,7 @@ INSTRUCTIONS;
             uri: $def->uri,
             name: $def->name,
             description: $def->description,
-            mimeType: $def->mimeType
+            mimeType: $def->mimeType,
         );
     }
 }

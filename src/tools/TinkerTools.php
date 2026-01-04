@@ -153,11 +153,9 @@ class TinkerTools {
 
         $output = Ansi::red(Ansi::ERROR . ' ' . $shortType . ':') . ' ' . $message;
 
-        if ($e !== null) {
-            $location = $this->getUsefulLocation($e);
-            if ($location !== null) {
-                $output .= "\n" . Ansi::gray('   at ' . $location);
-            }
+        $location = $e !== null ? $this->getUsefulLocation($e) : null;
+        if ($location !== null) {
+            $output .= "\n" . Ansi::gray('   at ' . $location);
         }
 
         return $output;
