@@ -16,6 +16,8 @@ parameters:
         - vendor/yiisoft/yii2
 
     ignoreErrors:
+        # SafeExecution template type inference in closures with complex operations
+        - identifier: argument.unresolvableType
         # Craft's service locator methods (Craft::$app->getVolumes(), etc.)
         - '#Call to an undefined method yii\\console\\Application\|yii\\web\\Application::#'
         - '#Call to an undefined method yii\\db\\Schema::findIndexes#'

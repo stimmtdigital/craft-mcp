@@ -33,57 +33,6 @@ describe('Response::success()', function () {
     });
 });
 
-describe('Response::error()', function () {
-    it('returns error response with message', function () {
-        $result = Response::error('Something went wrong');
-
-        expect($result)->toBeErrorResponse()
-            ->and($result['error'])->toBe('Something went wrong');
-    });
-
-    it('returns error response with context', function () {
-        $result = Response::error('Validation failed', ['field' => 'email', 'code' => 422]);
-
-        expect($result)->toBeErrorResponse()
-            ->and($result)->toBe([
-                'success' => false,
-                'error' => 'Validation failed',
-                'field' => 'email',
-                'code' => 422,
-            ]);
-    });
-});
-
-describe('Response::notFound()', function () {
-    it('returns not found without identifier', function () {
-        $result = Response::notFound('Entry');
-
-        expect($result)->toBeNotFoundResponse()
-            ->and($result['error'])->toBe('Entry not found');
-    });
-
-    it('returns not found with string identifier', function () {
-        $result = Response::notFound('Entry', 'my-slug');
-
-        expect($result)->toBeNotFoundResponse()
-            ->and($result['error'])->toBe("Entry 'my-slug' not found");
-    });
-
-    it('returns not found with integer identifier', function () {
-        $result = Response::notFound('User', 42);
-
-        expect($result)->toBeNotFoundResponse()
-            ->and($result['error'])->toBe("User '42' not found");
-    });
-
-    it('returns not found with null identifier', function () {
-        $result = Response::notFound('Asset', null);
-
-        expect($result)->toBeNotFoundResponse()
-            ->and($result['error'])->toBe('Asset not found');
-    });
-});
-
 describe('Response::found()', function () {
     it('returns found response with data', function () {
         $data = ['id' => 1, 'title' => 'Test'];

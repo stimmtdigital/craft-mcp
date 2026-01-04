@@ -37,24 +37,10 @@ expect()->extend('toBeSuccessResponse', function () {
         ->and($this->value['success'])->toBeTrue();
 });
 
-expect()->extend('toBeErrorResponse', function () {
-    return $this->toBeArray()
-        ->toHaveKey('success')
-        ->toHaveKey('error')
-        ->and($this->value['success'])->toBeFalse();
-});
-
 expect()->extend('toBeFoundResponse', function () {
     return $this->toBeArray()
         ->toHaveKey('found')
         ->and($this->value['found'])->toBeTrue();
-});
-
-expect()->extend('toBeNotFoundResponse', function () {
-    return $this->toBeArray()
-        ->toHaveKey('found')
-        ->toHaveKey('error')
-        ->and($this->value['found'])->toBeFalse();
 });
 
 /*

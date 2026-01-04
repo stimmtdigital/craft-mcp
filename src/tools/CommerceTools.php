@@ -9,10 +9,12 @@ use craft\commerce\elements\Order;
 use craft\commerce\elements\Product;
 use craft\commerce\Plugin as Commerce;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Exception\ToolCallException;
+use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use Throwable;
+use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * Commerce tools for Craft CMS.
@@ -66,12 +68,11 @@ class CommerceTools implements ConditionalToolProvider {
         ?string $type = null,
         int $limit = 20,
         int $offset = 0,
+        ?RequestContext $context = null,
     ): array {
-        if (!self::isAvailable()) {
-            return $this->commerceNotAvailable();
-        }
+        return SafeExecution::run(function () use ($type, $limit, $offset): array {
+            $this->assertCommerceAvailable();
 
-        try {
             $query = Product::find();
 
             if ($type !== null) {
@@ -90,12 +91,7 @@ class CommerceTools implements ConditionalToolProvider {
                 'count' => count($result),
                 'products' => $result,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -106,20 +102,15 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'Get detailed information about a single Commerce product by ID',
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
-    public function getProduct(int $id): array {
-        if (!self::isAvailable()) {
-            return $this->commerceNotAvailable();
-        }
+    public function getProduct(int $id, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($id): array {
+            $this->assertCommerceAvailable();
 
-        try {
             $commerce = Commerce::getInstance();
             $product = $commerce->getProducts()->getProductById($id);
 
             if ($product === null) {
-                return [
-                    'success' => false,
-                    'error' => "Product with ID {$id} not found",
-                ];
+                throw new ToolCallException("Product with ID {$id} not found");
             }
 
             $variants = [];
@@ -158,12 +149,7 @@ class CommerceTools implements ConditionalToolProvider {
                     'expiryDate' => $product->expiryDate?->format('Y-m-d H:i:s'),
                 ],
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -178,12 +164,11 @@ class CommerceTools implements ConditionalToolProvider {
         ?string $status = null,
         int $limit = 20,
         int $offset = 0,
+        ?RequestContext $context = null,
     ): array {
-        if (!self::isAvailable()) {
-            return $this->commerceNotAvailable();
-        }
+        return SafeExecution::run(function () use ($status, $limit, $offset): array {
+            $this->assertCommerceAvailable();
 
-        try {
             $query = Order::find();
 
             // Only completed orders by default
@@ -218,12 +203,7 @@ class CommerceTools implements ConditionalToolProvider {
                 'count' => count($result),
                 'orders' => $result,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -234,19 +214,14 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'Get detailed information about a single Commerce order by ID or order number',
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
-    public function getOrder(?int $id = null, ?string $number = null): array {
-        if (!self::isAvailable()) {
-            return $this->commerceNotAvailable();
-        }
+    public function getOrder(?int $id = null, ?string $number = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($id, $number): array {
+            $this->assertCommerceAvailable();
 
-        if ($id === null && $number === null) {
-            return [
-                'success' => false,
-                'error' => 'Either id or number must be provided',
-            ];
-        }
+            if ($id === null && $number === null) {
+                throw new ToolCallException('Either id or number must be provided');
+            }
 
-        try {
             $commerce = Commerce::getInstance();
 
             $order = $id !== null
@@ -254,12 +229,9 @@ class CommerceTools implements ConditionalToolProvider {
                 : $commerce->getOrders()->getOrderByNumber($number);
 
             if ($order === null) {
-                return [
-                    'success' => false,
-                    'error' => $id !== null
-                        ? "Order with ID {$id} not found"
-                        : "Order with number '{$number}' not found",
-                ];
+                $identifier = $id !== null ? "ID {$id}" : "number '{$number}'";
+
+                throw new ToolCallException("Order with {$identifier} not found");
             }
 
             // Get line items
@@ -316,12 +288,7 @@ class CommerceTools implements ConditionalToolProvider {
                     'dateUpdated' => $order->dateUpdated?->format('Y-m-d H:i:s'),
                 ],
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -332,12 +299,10 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'List all order statuses configured in Craft Commerce',
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
-    public function listOrderStatuses(): array {
-        if (!self::isAvailable()) {
-            return $this->commerceNotAvailable();
-        }
+    public function listOrderStatuses(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $this->assertCommerceAvailable();
 
-        try {
             $commerce = Commerce::getInstance();
             $statuses = $commerce->getOrderStatuses()->getAllOrderStatuses();
 
@@ -359,12 +324,7 @@ class CommerceTools implements ConditionalToolProvider {
                 'count' => count($result),
                 'statuses' => $result,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -375,12 +335,10 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'List all product types configured in Craft Commerce',
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
-    public function listProductTypes(): array {
-        if (!self::isAvailable()) {
-            return $this->commerceNotAvailable();
-        }
+    public function listProductTypes(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $this->assertCommerceAvailable();
 
-        try {
             $commerce = Commerce::getInstance();
             $types = $commerce->getProductTypes()->getAllProductTypes();
 
@@ -401,12 +359,7 @@ class CommerceTools implements ConditionalToolProvider {
                 'count' => count($result),
                 'productTypes' => $result,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -439,12 +392,13 @@ class CommerceTools implements ConditionalToolProvider {
     }
 
     /**
-     * Return error when Commerce is not available.
+     * Assert Commerce is available, throw exception if not.
+     *
+     * @throws ToolCallException
      */
-    private function commerceNotAvailable(): array {
-        return [
-            'success' => false,
-            'error' => 'Craft Commerce is not installed or not enabled',
-        ];
+    private function assertCommerceAvailable(): void {
+        if (!self::isAvailable()) {
+            throw new ToolCallException('Craft Commerce is not installed or not enabled');
+        }
     }
 }

@@ -4,35 +4,35 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\support;
 
-use Mcp\Exception\ToolCallException;
+use Mcp\Exception\ResourceReadException;
 use Throwable;
 
 /**
- * Helper for safe tool execution with detailed error messages.
+ * Helper for safe resource execution with detailed error messages.
  *
- * Wraps execution and converts exceptions to ToolCallException
+ * Wraps execution and converts exceptions to ResourceReadException
  * so the MCP SDK shows the actual error message to users.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class SafeExecution {
+final class SafeResourceExecution {
     use ExceptionFormatterTrait;
 
     /**
-     * Execute a callable and convert any exceptions to ToolCallException.
+     * Execute a callable and convert any exceptions to ResourceReadException.
      *
      * @template T
      * @param callable(): T $callback
      * @return T
-     * @throws ToolCallException
+     * @throws ResourceReadException
      */
     public static function run(callable $callback): mixed {
         try {
             return $callback();
-        } catch (ToolCallException $e) {
+        } catch (ResourceReadException $e) {
             throw $e;
         } catch (Throwable $e) {
-            throw new ToolCallException(
+            throw new ResourceReadException(
                 self::formatErrorMessage($e),
                 (int) $e->getCode(),
                 $e,

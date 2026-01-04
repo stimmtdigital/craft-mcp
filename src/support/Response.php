@@ -18,24 +18,6 @@ final class Response {
     }
 
     /**
-     * Error response.
-     */
-    public static function error(string $message, array $context = []): array {
-        return ['success' => false, 'error' => $message, ...$context];
-    }
-
-    /**
-     * Not found response for single-item lookups.
-     */
-    public static function notFound(string $type, string|int|null $identifier = null): array {
-        $message = $identifier !== null
-            ? "{$type} '{$identifier}' not found"
-            : "{$type} not found";
-
-        return ['found' => false, 'error' => $message];
-    }
-
-    /**
      * Found response for single-item lookups.
      */
     public static function found(string $key, mixed $data): array {

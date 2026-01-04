@@ -11,11 +11,13 @@ use craft\models\Section;
 use craft\services\Entries;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpPrompt;
+use Mcp\Exception\PromptGetException;
 use stimmt\craft\Mcp\attributes\McpPromptMeta;
 use stimmt\craft\Mcp\completions\EntryTypeHandleProvider;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\PromptCategory;
 use stimmt\craft\Mcp\services\SchemaHelper;
+use stimmt\craft\Mcp\support\SafePromptExecution;
 
 /**
  * MCP prompts for working with Craft CMS entries.
@@ -39,24 +41,25 @@ final class EntryPrompts {
         #[CompletionProvider(provider: EntryTypeHandleProvider::class)]
         ?string $entryType = null,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
+        return SafePromptExecution::run(function () use ($section, $entryType): array {
+            /** @var Entries $entriesService */
+            $entriesService = Craft::$app->getEntries();
 
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
+            /** @var Section|null $sectionObj */
+            $sectionObj = $entriesService->getSectionByHandle($section);
 
-        if ($sectionObj === null) {
-            return $this->errorResponse("The section '{$section}' was not found.");
-        }
+            if ($sectionObj === null) {
+                throw new PromptGetException("The section '{$section}' was not found.");
+            }
 
-        $entryTypes = $this->filterEntryTypes($sectionObj, $entryType);
-        if ($entryTypes === null) {
-            return $this->errorResponse("The entry type '{$entryType}' was not found in section '{$section}'.");
-        }
+            $entryTypes = $this->filterEntryTypes($sectionObj, $entryType);
+            if ($entryTypes === null) {
+                throw new PromptGetException("The entry type '{$entryType}' was not found in section '{$section}'.");
+            }
 
-        $guideJson = $this->buildCreateGuideJson($sectionObj, $entryTypes);
+            $guideJson = $this->buildCreateGuideJson($sectionObj, $entryTypes);
 
-        return $this->promptResponse(<<<PROMPT
+            return $this->promptResponse(<<<PROMPT
 I want to create entries in Craft CMS. Here's the section structure:
 
 ```json
@@ -70,6 +73,7 @@ Please provide:
 4. Any validation rules or constraints to be aware of
 5. Common pitfalls to avoid when creating entries
 PROMPT);
+        });
     }
 
     /**
@@ -86,20 +90,21 @@ PROMPT);
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
+        return SafePromptExecution::run(function () use ($section): array {
+            /** @var Entries $entriesService */
+            $entriesService = Craft::$app->getEntries();
 
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
+            /** @var Section|null $sectionObj */
+            $sectionObj = $entriesService->getSectionByHandle($section);
 
-        if ($sectionObj === null) {
-            return $this->errorResponse("The section '{$section}' was not found.");
-        }
+            if ($sectionObj === null) {
+                throw new PromptGetException("The section '{$section}' was not found.");
+            }
 
-        $queryInfo = $this->buildQueryGuideJson($sectionObj);
-        $entryCount = $this->getSectionEntryCount($section);
+            $queryInfo = $this->buildQueryGuideJson($sectionObj);
+            $entryCount = $this->getSectionEntryCount($section);
 
-        return $this->promptResponse(<<<PROMPT
+            return $this->promptResponse(<<<PROMPT
 I need to query entries from this Craft CMS section:
 
 ```json
@@ -113,6 +118,7 @@ Please provide guidance on:
 4. Performance optimization tips
 5. Example queries for common use cases
 PROMPT);
+        });
     }
 
     /**
@@ -129,21 +135,22 @@ PROMPT);
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
+        return SafePromptExecution::run(function () use ($section): array {
+            /** @var Entries $entriesService */
+            $entriesService = Craft::$app->getEntries();
 
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
+            /** @var Section|null $sectionObj */
+            $sectionObj = $entriesService->getSectionByHandle($section);
 
-        if ($sectionObj === null) {
-            return $this->errorResponse("The section '{$section}' was not found.");
-        }
+            if ($sectionObj === null) {
+                throw new PromptGetException("The section '{$section}' was not found.");
+            }
 
-        $entryCount = $this->getSectionEntryCount($section);
-        $entryTypes = $this->getEntryTypeHandles($sectionObj);
-        $sectionName = $sectionObj->name ?? $section;
+            $entryCount = $this->getSectionEntryCount($section);
+            $entryTypes = $this->getEntryTypeHandles($sectionObj);
+            $sectionName = $sectionObj->name ?? $section;
 
-        return $this->promptResponse(<<<PROMPT
+            return $this->promptResponse(<<<PROMPT
 I need to perform bulk operations on entries in the "{$sectionName}" section ({$section}).
 
 Current state:
@@ -159,6 +166,7 @@ Please help me understand:
 
 What kind of bulk operation would you like to perform?
 PROMPT);
+        });
     }
 
     /**
@@ -267,18 +275,6 @@ PROMPT);
         );
 
         return implode(', ', $handles);
-    }
-
-    /**
-     * Create an error response.
-     *
-     * @return array{array{role: string, content: string}}
-     */
-    private function errorResponse(string $message): array {
-        return [[
-            'role' => 'user',
-            'content' => "{$message} Please check the handle and try again.",
-        ]];
     }
 
     /**

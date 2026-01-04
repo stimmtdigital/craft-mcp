@@ -62,11 +62,11 @@ describe('GraphqlTools method signatures', function () {
             ->and($parameters[0]->isOptional())->toBeFalse();
     });
 
-    it('executeGraphql has optional variables, operationName, and schemaId', function () {
+    it('executeGraphql has optional variables, operationName, schemaId and context parameters', function () {
         $reflection = new ReflectionMethod(GraphqlTools::class, 'executeGraphql');
         $parameters = $reflection->getParameters();
 
-        expect($parameters)->toHaveCount(4);
+        expect($parameters)->toHaveCount(5);
 
         // variables, operationName, schemaId should all be optional
         expect($parameters[1]->getName())->toBe('variables')

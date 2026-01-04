@@ -41,11 +41,11 @@ describe('SiteTools class structure', function () {
 });
 
 describe('SiteTools method signatures', function () {
-    it('getSite accepts nullable id and handle parameters', function () {
+    it('getSite accepts nullable id, handle and context parameters', function () {
         $reflection = new ReflectionMethod(SiteTools::class, 'getSite');
         $parameters = $reflection->getParameters();
 
-        expect($parameters)->toHaveCount(2);
+        expect($parameters)->toHaveCount(3);
 
         // Check id parameter
         expect($parameters[0]->getName())->toBe('id')

@@ -1,6 +1,6 @@
 # Tools Reference
 
-Craft MCP provides 43+ tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
+Craft MCP provides 50 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
 
 ## Tool Categories
 

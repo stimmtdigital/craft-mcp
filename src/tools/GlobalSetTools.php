@@ -6,9 +6,11 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\Serializer;
 
 /**
@@ -25,11 +27,13 @@ class GlobalSetTools {
         description: 'List all global sets in Craft CMS with their field values',
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
-    public function listGlobals(): array {
-        $globalSets = Craft::$app->getGlobals()->getAllSets();
-        $results = array_map($this->serializeGlobalSet(...), $globalSets);
+    public function listGlobals(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $globalSets = Craft::$app->getGlobals()->getAllSets();
+            $results = array_map($this->serializeGlobalSet(...), $globalSets);
 
-        return Response::list('globals', $results);
+            return Response::list('globals', $results);
+        });
     }
 
     /**

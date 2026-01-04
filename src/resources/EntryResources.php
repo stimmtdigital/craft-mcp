@@ -15,9 +15,11 @@ use craft\services\Entries;
 use DateTime;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpResourceTemplate;
+use Mcp\Exception\ResourceReadException;
 use stimmt\craft\Mcp\attributes\McpResourceMeta;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\ResourceCategory;
+use stimmt\craft\Mcp\support\SafeResourceExecution;
 
 /**
  * MCP resources for Craft CMS entry content.
@@ -30,7 +32,7 @@ final class EntryResources {
     /**
      * Get entries from a specific section.
      *
-     * @return array{section: string, entries: list<array{id: int, title: string, slug: string, status: string, dateCreated: string|null, dateUpdated: string|null}>, total: int, limit: int}|array{error: string}
+     * @return array{section: string, entries: list<array{id: int, title: string, slug: string, status: string, dateCreated: string|null, dateUpdated: string|null}>, total: int, limit: int}
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://entries/{section}',
@@ -43,25 +45,27 @@ final class EntryResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        if (!$this->sectionExists($section)) {
-            return ['error' => "Section '{$section}' not found"];
-        }
+        return SafeResourceExecution::run(function () use ($section): array {
+            if (!$this->sectionExists($section)) {
+                throw new ResourceReadException("Section '{$section}' not found");
+            }
 
-        $entries = $this->fetchEntries($section);
-        $total = $this->countEntries($section);
+            $entries = $this->fetchEntries($section);
+            $total = $this->countEntries($section);
 
-        return [
-            'section' => $section,
-            'entries' => array_values(array_map($this->buildEntrySummary(...), $entries)),
-            'total' => $total,
-            'limit' => self::DEFAULT_LIMIT,
-        ];
+            return [
+                'section' => $section,
+                'entries' => array_values(array_map($this->buildEntrySummary(...), $entries)),
+                'total' => $total,
+                'limit' => self::DEFAULT_LIMIT,
+            ];
+        });
     }
 
     /**
      * Get a specific entry by section and slug.
      *
-     * @return array{entry: array{id: int, title: string, slug: string, status: string, type: string, url: string|null, dateCreated: string|null, dateUpdated: string|null, fields: array<string, mixed>}}|array{error: string}
+     * @return array{entry: array{id: int, title: string, slug: string, status: string, type: string, url: string|null, dateCreated: string|null, dateUpdated: string|null, fields: array<string, mixed>}}
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://entries/{section}/{slug}',
@@ -75,24 +79,26 @@ final class EntryResources {
         string $section,
         string $slug,
     ): array {
-        if (!$this->sectionExists($section)) {
-            return ['error' => "Section '{$section}' not found"];
-        }
+        return SafeResourceExecution::run(function () use ($section, $slug): array {
+            if (!$this->sectionExists($section)) {
+                throw new ResourceReadException("Section '{$section}' not found");
+            }
 
-        $entry = $this->findEntryBySlug($section, $slug);
-        if ($entry === null) {
-            return ['error' => "Entry with slug '{$slug}' not found in section '{$section}'"];
-        }
+            $entry = $this->findEntryBySlug($section, $slug);
+            if ($entry === null) {
+                throw new ResourceReadException("Entry with slug '{$slug}' not found in section '{$section}'");
+            }
 
-        return [
-            'entry' => $this->buildEntryDetail($entry),
-        ];
+            return [
+                'entry' => $this->buildEntryDetail($entry),
+            ];
+        });
     }
 
     /**
      * Get entry statistics for a section.
      *
-     * @return array{section: string, stats: array{total: int, live: int, disabled: int, pending: int, expired: int, drafts: int, byType: array<string, int>}}|array{error: string}
+     * @return array{section: string, stats: array{total: int, live: int, disabled: int, pending: int, expired: int, drafts: int, byType: array<string, int>}}
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://entries/{section}/stats',
@@ -105,20 +111,22 @@ final class EntryResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
+        return SafeResourceExecution::run(function () use ($section): array {
+            /** @var Entries $entriesService */
+            $entriesService = Craft::$app->getEntries();
 
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
+            /** @var Section|null $sectionObj */
+            $sectionObj = $entriesService->getSectionByHandle($section);
 
-        if ($sectionObj === null) {
-            return ['error' => "Section '{$section}' not found"];
-        }
+            if ($sectionObj === null) {
+                throw new ResourceReadException("Section '{$section}' not found");
+            }
 
-        return [
-            'section' => $section,
-            'stats' => $this->buildSectionStats($sectionObj),
-        ];
+            return [
+                'section' => $section,
+                'stats' => $this->buildSectionStats($sectionObj),
+            ];
+        });
     }
 
     /**

@@ -6,9 +6,11 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Exception\ToolCallException;
+use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use Throwable;
+use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * Multi-site management tools for Craft CMS.
@@ -24,31 +26,33 @@ class SiteTools {
         description: 'List all sites in Craft CMS with their handles, languages, and configuration',
     )]
     #[McpToolMeta(category: ToolCategory::MULTISITE)]
-    public function listSites(): array {
-        $sites = Craft::$app->getSites()->getAllSites();
+    public function listSites(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $sites = Craft::$app->getSites()->getAllSites();
 
-        $result = [];
-        foreach ($sites as $site) {
-            $result[] = [
-                'id' => $site->id,
-                'uid' => $site->uid,
-                'handle' => $site->handle,
-                'name' => $site->getName(),
-                'language' => $site->language,
-                'primary' => $site->primary,
-                'enabled' => $site->enabled,
-                'baseUrl' => $site->getBaseUrl(),
-                'groupId' => $site->groupId,
-                'sortOrder' => $site->sortOrder,
-                'dateCreated' => $site->dateCreated?->format('Y-m-d H:i:s'),
-                'dateUpdated' => $site->dateUpdated?->format('Y-m-d H:i:s'),
+            $result = [];
+            foreach ($sites as $site) {
+                $result[] = [
+                    'id' => $site->id,
+                    'uid' => $site->uid,
+                    'handle' => $site->handle,
+                    'name' => $site->getName(),
+                    'language' => $site->language,
+                    'primary' => $site->primary,
+                    'enabled' => $site->enabled,
+                    'baseUrl' => $site->getBaseUrl(),
+                    'groupId' => $site->groupId,
+                    'sortOrder' => $site->sortOrder,
+                    'dateCreated' => $site->dateCreated?->format('Y-m-d H:i:s'),
+                    'dateUpdated' => $site->dateUpdated?->format('Y-m-d H:i:s'),
+                ];
+            }
+
+            return [
+                'count' => count($result),
+                'sites' => $result,
             ];
-        }
-
-        return [
-            'count' => count($result),
-            'sites' => $result,
-        ];
+        });
     }
 
     /**
@@ -59,15 +63,12 @@ class SiteTools {
         description: 'Get detailed information about a specific site by ID or handle',
     )]
     #[McpToolMeta(category: ToolCategory::MULTISITE)]
-    public function getSite(?int $id = null, ?string $handle = null): array {
-        if ($id === null && $handle === null) {
-            return [
-                'success' => false,
-                'error' => 'Either id or handle must be provided',
-            ];
-        }
+    public function getSite(?int $id = null, ?string $handle = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($id, $handle): array {
+            if ($id === null && $handle === null) {
+                throw new ToolCallException('Either id or handle must be provided');
+            }
 
-        try {
             $sitesService = Craft::$app->getSites();
 
             $site = $id !== null
@@ -75,15 +76,11 @@ class SiteTools {
                 : $sitesService->getSiteByHandle($handle);
 
             if ($site === null) {
-                return [
-                    'success' => false,
-                    'error' => $id !== null
-                        ? "Site with ID {$id} not found"
-                        : "Site with handle '{$handle}' not found",
-                ];
+                $identifier = $id !== null ? "ID {$id}" : "handle '{$handle}'";
+
+                throw new ToolCallException("Site with {$identifier} not found");
             }
 
-            // Get the site group
             $group = $sitesService->getGroupById($site->groupId);
 
             return [
@@ -106,12 +103,7 @@ class SiteTools {
                     'dateUpdated' => $site->dateUpdated?->format('Y-m-d H:i:s'),
                 ],
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -122,27 +114,28 @@ class SiteTools {
         description: 'List all site groups in Craft CMS',
     )]
     #[McpToolMeta(category: ToolCategory::MULTISITE)]
-    public function listSiteGroups(): array {
-        $groups = Craft::$app->getSites()->getAllGroups();
+    public function listSiteGroups(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $groups = Craft::$app->getSites()->getAllGroups();
 
-        $result = [];
-        foreach ($groups as $group) {
-            // Get sites in this group
-            $sites = Craft::$app->getSites()->getSitesByGroupId($group->id);
-            $siteHandles = array_map(fn ($site) => $site->handle, $sites);
+            $result = [];
+            foreach ($groups as $group) {
+                $sites = Craft::$app->getSites()->getSitesByGroupId($group->id);
+                $siteHandles = array_map(fn ($site) => $site->handle, $sites);
 
-            $result[] = [
-                'id' => $group->id,
-                'uid' => $group->uid,
-                'name' => $group->getName(),
-                'siteCount' => count($sites),
-                'siteHandles' => $siteHandles,
+                $result[] = [
+                    'id' => $group->id,
+                    'uid' => $group->uid,
+                    'name' => $group->getName(),
+                    'siteCount' => count($sites),
+                    'siteHandles' => $siteHandles,
+                ];
+            }
+
+            return [
+                'count' => count($result),
+                'groups' => $result,
             ];
-        }
-
-        return [
-            'count' => count($result),
-            'groups' => $result,
-        ];
+        });
     }
 }

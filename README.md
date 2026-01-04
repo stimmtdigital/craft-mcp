@@ -13,7 +13,7 @@
 
 Craft MCP accelerates AI-assisted development by giving your AI assistant direct access to your Craft installation's content architecture, database schema, and configuration.
 
-At its foundation, Craft MCP is an MCP server equipped with 43+ specialized tools designed to streamline AI-assisted workflows in Craft projects. Rather than manually describing your field layouts, Matrix configurations, or entry structures, your AI assistant can query this information directly from your installation, ensuring accurate and context-aware code generation.
+At its foundation, Craft MCP is an MCP server equipped with 50 specialized tools, 9 analysis prompts, and 12 data resources designed to streamline AI-assisted workflows in Craft projects. Rather than manually describing your field layouts, Matrix configurations, or entry structures, your AI assistant can query this information directly from your installation, ensuring accurate and context-aware code generation.
 
 The tools span content management (entries, assets, categories, users), schema inspection (sections, fields, volumes, entry types), system administration (configuration, logs, caches, plugins), database operations (schema inspection, query execution), and debugging utilities (queue jobs, deprecations, project config). For advanced use cases, a Tinker tool allows executing PHP code directly within your Craft application context.
 
@@ -158,6 +158,35 @@ Once Craft MCP has been installed, you're ready to connect Claude Code, Cursor, 
 
 You can find your absolute paths by running `which ddev` or `which php` in your terminal.
 
+#### Remote Server via SSH (Not Recommended)
+
+For development environments on remote servers, you can tunnel through SSH. Note that this approach is not recommended for production use due to security considerations.
+
+<details>
+<summary>SSH tunnel configuration</summary>
+
+```json
+{
+  "mcpServers": {
+    "craft-cms": {
+      "command": "ssh",
+      "args": [
+        "-t",
+        "user@your-server.com",
+        "cd /path/to/craft/project && php vendor/stimmt/craft-mcp/bin/mcp-server"
+      ]
+    }
+  }
+}
+```
+
+Requirements:
+- SSH key authentication must be configured (no password prompts)
+- The remote server must have PHP 8.2+ available
+- The Craft MCP plugin must be installed on the remote installation
+
+</details>
+
 ## Available MCP Tools
 
 ### Content Tools
@@ -260,8 +289,10 @@ See the [Extending Guide](docs/extending.md) for implementation details, code ex
 
 - **[Installation](docs/installation.md)** - Requirements, Composer setup, and detailed installation steps
 - **[Configuration](docs/configuration.md)** - All configuration options, environment variables, and security settings
-- **[Tools Reference](docs/tools/README.md)** - Complete documentation for all 43+ tools with parameters and examples
-- **[Extending](docs/extending.md)** - Guide for plugin and module developers to register custom tools
+- **[Tools Reference](docs/tools/README.md)** - Complete documentation for all 50 tools with parameters and examples
+- **[Prompts](docs/prompts.md)** - Pre-built analysis prompts for content health, audits, and schema exploration
+- **[Resources](docs/resources.md)** - Read-only URI-based access to schema, config, and content data
+- **[Extending](docs/extending.md)** - Guide for plugin and module developers to register custom tools, prompts, and resources
 
 ## Contributing
 

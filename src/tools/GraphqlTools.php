@@ -7,8 +7,11 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use craft\models\GqlSchema;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Exception\ToolCallException;
+use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\SafeExecution;
 use Throwable;
 
 /**
@@ -25,8 +28,8 @@ class GraphqlTools {
         description: 'List all GraphQL schemas in Craft CMS with their scopes and permissions',
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
-    public function listGraphqlSchemas(): array {
-        try {
+    public function listGraphqlSchemas(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
             $gql = Craft::$app->getGql();
             $schemas = $gql->getSchemas();
 
@@ -48,12 +51,7 @@ class GraphqlTools {
                 'count' => count($result),
                 'schemas' => $result,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -64,15 +62,12 @@ class GraphqlTools {
         description: 'Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)',
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
-    public function getGraphqlSchema(?int $id = null, ?string $uid = null): array {
-        if ($id === null && $uid === null) {
-            return [
-                'success' => false,
-                'error' => 'Either id or uid must be provided',
-            ];
-        }
+    public function getGraphqlSchema(?int $id = null, ?string $uid = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($id, $uid): array {
+            if ($id === null && $uid === null) {
+                throw new ToolCallException('Either id or uid must be provided');
+            }
 
-        try {
             $gql = Craft::$app->getGql();
 
             $schema = $id !== null
@@ -80,12 +75,9 @@ class GraphqlTools {
                 : $gql->getSchemaByUid($uid);
 
             if ($schema === null) {
-                return [
-                    'success' => false,
-                    'error' => $id !== null
-                        ? "Schema with ID {$id} not found"
-                        : "Schema with UID '{$uid}' not found",
-                ];
+                $identifier = $id !== null ? "ID {$id}" : "UID '{$uid}'";
+
+                throw new ToolCallException("Schema with {$identifier} not found");
             }
 
             // Get the SDL for this schema
@@ -106,12 +98,7 @@ class GraphqlTools {
                     'sdlLength' => $sdl !== null ? strlen($sdl) : 0,
                 ],
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -127,8 +114,11 @@ class GraphqlTools {
         ?string $variables = null,
         ?string $operationName = null,
         ?int $schemaId = null,
+        ?RequestContext $context = null,
     ): array {
-        try {
+        return SafeExecution::run(function () use ($query, $variables, $operationName, $schemaId, $context): array {
+            $context?->getClientGateway()?->progress(0, 2, 'Executing GraphQL query...');
+
             $gql = Craft::$app->getGql();
 
             // Get the schema to use
@@ -137,21 +127,17 @@ class GraphqlTools {
                 : $gql->getPublicSchema();
 
             if ($schema === null) {
-                return [
-                    'success' => false,
-                    'error' => $schemaId !== null
-                        ? "Schema with ID {$schemaId} not found"
-                        : 'No public schema available. Provide a schemaId.',
-                ];
+                $error = $schemaId !== null
+                    ? "Schema with ID {$schemaId} not found"
+                    : 'No public schema available. Provide a schemaId.';
+
+                throw new ToolCallException($error);
             }
 
             // Parse variables if provided
             $parsedVariables = $this->parseVariables($variables);
             if ($parsedVariables === false) {
-                return [
-                    'success' => false,
-                    'error' => 'Invalid JSON in variables: ' . json_last_error_msg(),
-                ];
+                throw new ToolCallException('Invalid JSON in variables: ' . json_last_error_msg());
             }
 
             // Execute the query
@@ -162,17 +148,14 @@ class GraphqlTools {
                 $operationName,
             );
 
+            $context?->getClientGateway()?->progress(2, 2, 'Query complete');
+
             return [
                 'success' => true,
                 'data' => $result['data'] ?? null,
                 'errors' => $result['errors'] ?? null,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -183,8 +166,8 @@ class GraphqlTools {
         description: 'List all GraphQL tokens (API keys) with their associated schemas',
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
-    public function listGraphqlTokens(): array {
-        try {
+    public function listGraphqlTokens(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
             $gql = Craft::$app->getGql();
             $tokens = $gql->getTokens();
 
@@ -213,12 +196,7 @@ class GraphqlTools {
                 'count' => count($result),
                 'tokens' => $result,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**

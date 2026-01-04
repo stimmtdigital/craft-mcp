@@ -13,11 +13,13 @@ use craft\services\Fields;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpResource;
 use Mcp\Capability\Attribute\McpResourceTemplate;
+use Mcp\Exception\ResourceReadException;
 use stimmt\craft\Mcp\attributes\McpResourceMeta;
 use stimmt\craft\Mcp\completions\FieldHandleProvider;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\ResourceCategory;
 use stimmt\craft\Mcp\services\SchemaHelper;
+use stimmt\craft\Mcp\support\SafeResourceExecution;
 
 /**
  * MCP resources for Craft CMS schema information.
@@ -76,7 +78,7 @@ final class SchemaResources {
     /**
      * Get detailed schema for a specific section.
      *
-     * @return array{section: array{handle: string, name: string, type: string, hasUrls: bool, enableVersioning: bool}, entryTypes: list<array{handle: string, name: string, hasTitleField: bool, fields: list<array{handle: string, name: string, type: string, required: bool}>}>}|array{error: string}
+     * @return array{section: array{handle: string, name: string, type: string, hasUrls: bool, enableVersioning: bool}, entryTypes: list<array{handle: string, name: string, hasTitleField: bool, fields: list<array{handle: string, name: string, type: string, required: bool}>}>}
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://schema/sections/{handle}',
@@ -89,34 +91,36 @@ final class SchemaResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $handle,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
+        return SafeResourceExecution::run(function () use ($handle): array {
+            /** @var Entries $entriesService */
+            $entriesService = Craft::$app->getEntries();
 
-        /** @var Section|null $section */
-        $section = $entriesService->getSectionByHandle($handle);
+            /** @var Section|null $section */
+            $section = $entriesService->getSectionByHandle($handle);
 
-        if ($section === null) {
-            return ['error' => "Section '{$handle}' not found"];
-        }
+            if ($section === null) {
+                throw new ResourceReadException("Section '{$handle}' not found");
+            }
 
-        /** @var EntryType[] $entryTypes */
-        $entryTypes = $section->getEntryTypes();
+            /** @var EntryType[] $entryTypes */
+            $entryTypes = $section->getEntryTypes();
 
-        $entryTypeSchemas = array_values(array_map(
-            SchemaHelper::buildEntryTypeSchema(...),
-            $entryTypes,
-        ));
+            $entryTypeSchemas = array_values(array_map(
+                SchemaHelper::buildEntryTypeSchema(...),
+                $entryTypes,
+            ));
 
-        return [
-            'section' => SchemaHelper::buildSectionSchema($section),
-            'entryTypes' => $entryTypeSchemas,
-        ];
+            return [
+                'section' => SchemaHelper::buildSectionSchema($section),
+                'entryTypes' => $entryTypeSchemas,
+            ];
+        });
     }
 
     /**
      * Get detailed information about a specific field.
      *
-     * @return array{field: array{handle: string, name: string, type: string, instructions: string|null, searchable: bool, translationMethod: string}, usedIn: list<array{section: string, entryType: string}>}|array{error: string}
+     * @return array{field: array{handle: string, name: string, type: string, instructions: string|null, searchable: bool, translationMethod: string}, usedIn: list<array{section: string, entryType: string}>}
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://schema/fields/{handle}',
@@ -129,27 +133,29 @@ final class SchemaResources {
         #[CompletionProvider(provider: FieldHandleProvider::class)]
         string $handle,
     ): array {
-        /** @var Fields $fieldsService */
-        $fieldsService = Craft::$app->getFields();
+        return SafeResourceExecution::run(function () use ($handle): array {
+            /** @var Fields $fieldsService */
+            $fieldsService = Craft::$app->getFields();
 
-        /** @var FieldInterface|null $field */
-        $field = $fieldsService->getFieldByHandle($handle);
+            /** @var FieldInterface|null $field */
+            $field = $fieldsService->getFieldByHandle($handle);
 
-        if ($field === null) {
-            return ['error' => "Field '{$handle}' not found"];
-        }
+            if ($field === null) {
+                throw new ResourceReadException("Field '{$handle}' not found");
+            }
 
-        return [
-            'field' => [
-                'handle' => $field->handle ?? '',
-                'name' => $field->name ?? '',
-                'type' => SchemaHelper::getFieldTypeName($field),
-                'instructions' => $field->instructions !== '' ? $field->instructions : null,
-                'searchable' => $field->searchable,
-                'translationMethod' => $field->translationMethod ?? 'none',
-            ],
-            'usedIn' => SchemaHelper::findFieldUsage($handle),
-        ];
+            return [
+                'field' => [
+                    'handle' => $field->handle ?? '',
+                    'name' => $field->name ?? '',
+                    'type' => SchemaHelper::getFieldTypeName($field),
+                    'instructions' => $field->instructions !== '' ? $field->instructions : null,
+                    'searchable' => $field->searchable,
+                    'translationMethod' => $field->translationMethod ?? 'none',
+                ],
+                'usedIn' => SchemaHelper::findFieldUsage($handle),
+            ];
+        });
     }
 
     /**

@@ -82,11 +82,11 @@ describe('CommerceTools class structure', function () {
 });
 
 describe('CommerceTools method signatures', function () {
-    it('listProducts has optional type, limit and offset parameters', function () {
+    it('listProducts has optional type, limit, offset and context parameters', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'listProducts');
         $parameters = $reflection->getParameters();
 
-        expect($parameters)->toHaveCount(3);
+        expect($parameters)->toHaveCount(4);
 
         // All should be optional
         foreach ($parameters as $param) {
@@ -94,11 +94,11 @@ describe('CommerceTools method signatures', function () {
         }
     });
 
-    it('getOrder accepts nullable id and number parameters', function () {
+    it('getOrder accepts nullable id, number and context parameters', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'getOrder');
         $parameters = $reflection->getParameters();
 
-        expect($parameters)->toHaveCount(2);
+        expect($parameters)->toHaveCount(3);
 
         expect($parameters[0]->getName())->toBe('id')
             ->and($parameters[0]->getType()?->allowsNull())->toBeTrue();

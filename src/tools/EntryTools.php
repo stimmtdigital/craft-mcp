@@ -8,6 +8,8 @@ use Craft;
 use craft\elements\Entry;
 use craft\elements\User;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Exception\ToolCallException;
+use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
@@ -34,6 +36,7 @@ class EntryTools {
         ?string $status = null,
         int $limit = 20,
         int $offset = 0,
+        ?RequestContext $context = null,
     ): array {
         return SafeExecution::run(function () use ($section, $type, $status, $limit, $offset): array {
             $query = Entry::find()
@@ -61,25 +64,27 @@ class EntryTools {
         description: 'Get a single entry by ID or slug. Returns full entry data including all custom fields.',
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
-    public function getEntry(?int $id = null, ?string $slug = null, ?string $section = null): array {
-        if ($id === null && $slug === null) {
-            return Response::notFound('Entry', 'id or slug required');
-        }
+    public function getEntry(?int $id = null, ?string $slug = null, ?string $section = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($id, $slug, $section): array {
+            if ($id === null && $slug === null) {
+                throw new ToolCallException('Either id or slug must be provided');
+            }
 
-        $query = Entry::find()->status(null);
-        $this->applyFilters($query, [
-            'id' => $id,
-            'slug' => $slug,
-            'section' => $section,
-        ]);
+            $query = Entry::find()->status(null);
+            $this->applyFilters($query, [
+                'id' => $id,
+                'slug' => $slug,
+                'section' => $section,
+            ]);
 
-        $entry = $query->one();
+            $entry = $query->one();
 
-        if ($entry === null) {
-            return Response::notFound('Entry');
-        }
+            if ($entry === null) {
+                throw new ToolCallException('Entry not found');
+            }
 
-        return Response::found('entry', $this->serializeEntry($entry));
+            return Response::found('entry', $this->serializeEntry($entry));
+        });
     }
 
     /**
@@ -96,38 +101,41 @@ class EntryTools {
         string $title,
         ?string $slug = null,
         ?string $fields = null,
+        ?RequestContext $context = null,
     ): array {
-        $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section);
-        if ($sectionModel === null) {
-            return Response::error("Section '{$section}' not found");
-        }
+        return SafeExecution::run(function () use ($section, $type, $title, $slug, $fields): array {
+            $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section);
+            if ($sectionModel === null) {
+                throw new ToolCallException("Section '{$section}' not found");
+            }
 
-        $entryType = $this->findEntryType($sectionModel, $type);
-        if ($entryType === null) {
-            return Response::error("Entry type '{$type}' not found in section '{$section}'");
-        }
+            $entryType = $this->findEntryType($sectionModel, $type);
+            if ($entryType === null) {
+                throw new ToolCallException("Entry type '{$type}' not found in section '{$section}'");
+            }
 
-        $fieldValues = $this->parseFieldsJson($fields);
-        if ($fieldValues === false) {
-            return Response::error('Invalid JSON in fields parameter');
-        }
+            $fieldValues = $this->parseFieldsJson($fields);
+            if ($fieldValues === false) {
+                throw new ToolCallException('Invalid JSON in fields parameter');
+            }
 
-        $entry = new Entry();
-        $entry->sectionId = $sectionModel->id;
-        $entry->typeId = $entryType->id;
-        $entry->title = $title;
-        $entry->slug = $slug;
-        $entry->authorId = $this->getAuthorId();
+            $entry = new Entry();
+            $entry->sectionId = $sectionModel->id;
+            $entry->typeId = $entryType->id;
+            $entry->title = $title;
+            $entry->slug = $slug;
+            $entry->authorId = $this->getAuthorId();
 
-        if ($fieldValues !== null) {
-            $entry->setFieldValues($fieldValues);
-        }
+            if ($fieldValues !== null) {
+                $entry->setFieldValues($fieldValues);
+            }
 
-        if (!Craft::$app->getElements()->saveElement($entry)) {
-            return Response::error('Failed to save entry', ['errors' => $entry->getErrors()]);
-        }
+            if (!Craft::$app->getElements()->saveElement($entry)) {
+                throw new ToolCallException('Failed to save entry: ' . json_encode($entry->getErrors()));
+            }
 
-        return Response::success(['entry' => $this->serializeEntry($entry)]);
+            return Response::success(['entry' => $this->serializeEntry($entry)]);
+        });
     }
 
     /**
@@ -144,36 +152,39 @@ class EntryTools {
         ?string $slug = null,
         ?string $status = null,
         ?string $fields = null,
+        ?RequestContext $context = null,
     ): array {
-        $entry = Entry::find()->id($id)->status(null)->one();
+        return SafeExecution::run(function () use ($id, $title, $slug, $status, $fields): array {
+            $entry = Entry::find()->id($id)->status(null)->one();
 
-        if ($entry === null) {
-            return Response::error('Entry not found');
-        }
+            if ($entry === null) {
+                throw new ToolCallException("Entry with ID {$id} not found");
+            }
 
-        $fieldValues = $this->parseFieldsJson($fields);
-        if ($fieldValues === false) {
-            return Response::error('Invalid JSON in fields parameter');
-        }
+            $fieldValues = $this->parseFieldsJson($fields);
+            if ($fieldValues === false) {
+                throw new ToolCallException('Invalid JSON in fields parameter');
+            }
 
-        if ($title !== null) {
-            $entry->title = $title;
-        }
-        if ($slug !== null) {
-            $entry->slug = $slug;
-        }
-        if ($status !== null) {
-            $entry->enabled = ($status === 'live' || $status === 'enabled');
-        }
-        if ($fieldValues !== null) {
-            $entry->setFieldValues($fieldValues);
-        }
+            if ($title !== null) {
+                $entry->title = $title;
+            }
+            if ($slug !== null) {
+                $entry->slug = $slug;
+            }
+            if ($status !== null) {
+                $entry->enabled = ($status === 'live' || $status === 'enabled');
+            }
+            if ($fieldValues !== null) {
+                $entry->setFieldValues($fieldValues);
+            }
 
-        if (!Craft::$app->getElements()->saveElement($entry)) {
-            return Response::error('Failed to save entry', ['errors' => $entry->getErrors()]);
-        }
+            if (!Craft::$app->getElements()->saveElement($entry)) {
+                throw new ToolCallException('Failed to save entry: ' . json_encode($entry->getErrors()));
+            }
 
-        return Response::success(['entry' => $this->serializeEntry($entry)]);
+            return Response::success(['entry' => $this->serializeEntry($entry)]);
+        });
     }
 
     /**

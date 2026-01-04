@@ -8,6 +8,7 @@ use Craft;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\Content\TextContent;
+use Mcp\Server\RequestContext;
 use ParseError;
 use Psy\CodeCleaner;
 use Psy\Exception\ParseErrorException;
@@ -72,7 +73,11 @@ class TinkerTools {
         string $code,
         #[CompletionProvider(enum: OutputMode::class)]
         string $output = 'dump',
+        ?RequestContext $context = null,
     ): TextContent {
+        // Note: SafeExecution is not used here because tinker has its own
+        // formatted error output for the REPL experience. Errors are part
+        // of the expected output, not SDK-level failures.
         $outputMode = OutputMode::tryFrom($output) ?? OutputMode::DUMP;
 
         foreach (self::BLOCKED_PATTERNS as $pattern) {

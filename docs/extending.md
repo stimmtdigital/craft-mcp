@@ -529,3 +529,296 @@ When working with analytics data:
 ````
 
 This approach lets users opt-in to AI guidance for your tools without automatically modifying their project files.
+
+---
+
+## Registering Custom Prompts
+
+Beyond tools, you can register prompts that guide AI assistants through complex analysis workflows. Prompts are conversation starters that gather data and present it with specific analysis instructions.
+
+### Prompt Registration
+
+Listen to the `EVENT_REGISTER_PROMPTS` event to register prompt classes:
+
+```php
+<?php
+
+use stimmt\craft\Mcp\Mcp as McpPlugin;
+use stimmt\craft\Mcp\events\RegisterPromptsEvent;
+use yii\base\Event;
+
+Event::on(
+    McpPlugin::class,
+    McpPlugin::EVENT_REGISTER_PROMPTS,
+    function(RegisterPromptsEvent $event) {
+        $event->addPrompt(MyPluginPrompts::class, 'my-plugin');
+    }
+);
+```
+
+### Writing Prompt Classes
+
+Prompt classes use the `#[McpPrompt]` attribute to define prompts:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace myplugin\mcp\prompts;
+
+use Mcp\Capability\Attribute\McpPrompt;
+use stimmt\craft\Mcp\attributes\McpPromptMeta;
+use stimmt\craft\Mcp\enums\PromptCategory;
+
+class MyPluginPrompts
+{
+    #[McpPrompt(
+        name: 'myplugin_analyze_performance',
+        description: 'Analyze performance metrics from MyPlugin data'
+    )]
+    #[McpPromptMeta(category: PromptCategory::DEBUGGING)]
+    public function analyzePerformance(): array
+    {
+        // Gather data for analysis
+        $metrics = $this->gatherPerformanceMetrics();
+
+        $metricsJson = json_encode($metrics, JSON_PRETTY_PRINT);
+
+        return [[
+            'role' => 'user',
+            'content' => <<<PROMPT
+Analyze these performance metrics from MyPlugin:
+
+```json
+{$metricsJson}
+```
+
+Please provide:
+1. Overall performance assessment
+2. Bottlenecks identified
+3. Optimization recommendations
+PROMPT,
+        ]];
+    }
+}
+```
+
+### Prompt Categories
+
+Use `PromptCategory` to categorize your prompts:
+
+| Category | Use Case |
+|----------|----------|
+| `CONTENT` | Content analysis and management prompts |
+| `SCHEMA` | Schema exploration and documentation prompts |
+| `WORKFLOW` | Operational and workflow guidance prompts |
+| `DEBUGGING` | Troubleshooting and diagnostic prompts |
+| `GENERAL` | Default category for uncategorized prompts |
+
+---
+
+## Registering Custom Resources
+
+Resources provide read-only URI-based access to data. They're useful for exposing plugin data that AI assistants might want to reference.
+
+### Resource Registration
+
+Listen to the `EVENT_REGISTER_RESOURCES` event:
+
+```php
+<?php
+
+use stimmt\craft\Mcp\Mcp as McpPlugin;
+use stimmt\craft\Mcp\events\RegisterResourcesEvent;
+use yii\base\Event;
+
+Event::on(
+    McpPlugin::class,
+    McpPlugin::EVENT_REGISTER_RESOURCES,
+    function(RegisterResourcesEvent $event) {
+        $event->addResource(MyPluginResources::class, 'my-plugin');
+    }
+);
+```
+
+### Static Resources
+
+Static resources have fixed URIs and return consistent data:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace myplugin\mcp\resources;
+
+use Mcp\Capability\Attribute\McpResource;
+use stimmt\craft\Mcp\attributes\McpResourceMeta;
+use stimmt\craft\Mcp\enums\ResourceCategory;
+
+class MyPluginResources
+{
+    #[McpResource(
+        uri: 'myplugin://config',
+        name: 'myplugin-config',
+        description: 'MyPlugin configuration settings',
+        mimeType: 'application/json',
+    )]
+    #[McpResourceMeta(category: ResourceCategory::CONFIG)]
+    public function config(): array
+    {
+        return [
+            'settings' => [
+                'enabled' => true,
+                'cacheTimeout' => 3600,
+            ],
+        ];
+    }
+}
+```
+
+### Resource Templates
+
+Resource templates use URI parameters for dynamic data:
+
+```php
+<?php
+
+use Mcp\Capability\Attribute\McpResourceTemplate;
+use Mcp\Capability\Attribute\CompletionProvider;
+
+class MyPluginResources
+{
+    #[McpResourceTemplate(
+        uriTemplate: 'myplugin://reports/{reportId}',
+        name: 'myplugin-report',
+        description: 'Get a specific report by ID',
+        mimeType: 'application/json',
+    )]
+    #[McpResourceMeta(category: ResourceCategory::CONTENT)]
+    public function report(
+        #[CompletionProvider(provider: ReportIdProvider::class)]
+        string $reportId
+    ): array
+    {
+        $report = $this->findReport($reportId);
+
+        if ($report === null) {
+            return ['error' => "Report '{$reportId}' not found"];
+        }
+
+        return ['report' => $report->toArray()];
+    }
+}
+```
+
+### Resource Categories
+
+| Category | Use Case |
+|----------|----------|
+| `SCHEMA` | Schema and structure information |
+| `CONFIG` | Configuration and settings |
+| `CONTENT` | Content data access |
+| `GENERAL` | Default category |
+
+---
+
+## Creating Completion Providers
+
+Completion providers enable auto-completion for tool, prompt, and resource parameters. When an AI assistant is filling in a parameter, the completion provider suggests valid values.
+
+### Implementing a Provider
+
+Create a class that returns completion values:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace myplugin\completions;
+
+use Mcp\Capability\Completion\CompletionResult;
+use Mcp\Capability\Completion\Values\CompletionValue;
+
+class ReportTypeProvider
+{
+    /**
+     * Provide completions for report type parameter.
+     *
+     * @return CompletionResult
+     */
+    public function complete(string $value): CompletionResult
+    {
+        $types = ['daily', 'weekly', 'monthly', 'annual'];
+
+        // Filter based on partial input
+        $matches = array_filter(
+            $types,
+            fn($type) => str_starts_with($type, $value)
+        );
+
+        $values = array_map(
+            fn($type) => new CompletionValue(value: $type),
+            array_values($matches)
+        );
+
+        return new CompletionResult(values: $values);
+    }
+}
+```
+
+### Using Completion Providers
+
+Apply the `#[CompletionProvider]` attribute to parameters:
+
+```php
+#[McpTool(
+    name: 'myplugin_generate_report',
+    description: 'Generate a report of the specified type'
+)]
+public function generateReport(
+    #[CompletionProvider(provider: ReportTypeProvider::class)]
+    string $type,
+    ?string $dateRange = '30d'
+): array
+{
+    // Implementation
+}
+```
+
+When AI assistants call this tool, they'll receive suggestions for the `type` parameter.
+
+### Dynamic Completions
+
+For completions based on database content, query your data:
+
+```php
+class SectionHandleProvider
+{
+    public function complete(string $value): CompletionResult
+    {
+        $sections = \Craft::$app->getEntries()->getAllSections();
+
+        $handles = array_map(
+            fn($section) => $section->handle,
+            $sections
+        );
+
+        $matches = array_filter(
+            $handles,
+            fn($handle) => str_contains($handle, $value)
+        );
+
+        $values = array_map(
+            fn($handle) => new CompletionValue(value: $handle),
+            array_values($matches)
+        );
+
+        return new CompletionResult(values: $values);
+    }
+}
+```
+
+This enables intelligent auto-completion based on your actual Craft installation's data.
