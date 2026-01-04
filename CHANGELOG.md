@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- 18 new MCP tools expanding the toolset from 32 to 50 tools:
+  - Multi-site tools: `list_sites`, `get_site`, `list_site_groups`
+  - GraphQL tools: `list_graphql_schemas`, `get_graphql_schema`, `execute_graphql`, `list_graphql_tokens`
+  - Backup tools: `list_backups`, `create_backup`
+  - Self-awareness tools: `get_mcp_info`, `list_mcp_tools`, `reload_mcp`
+  - Commerce tools (Craft Commerce): `list_products`, `get_product`, `list_orders`, `get_order`, `list_order_statuses`, `list_product_types`
+- 9 MCP prompts for guided analysis workflows
+  - Content analysis: `content_health_analysis`, `content_audit`, `debug_content_issue`
+  - Entry management: `create_entry_guide`, `query_entries_guide`, `bulk_entry_operations`
+  - Schema exploration: `explore_section_schema`, `field_usage_analysis`, `explore_content_model`
+- 12 MCP resources for read-only URI-based data access
+  - Schema resources: `craft://schema/sections`, `craft://schema/fields`, `craft://schema/sections/{handle}`, `craft://schema/fields/{handle}`
+  - Config resources: `craft://config/general`, `craft://config/routes`, `craft://config/sites`, `craft://config/volumes`, `craft://config/plugins`
+  - Content resources: `craft://entries/{section}`, `craft://entries/{section}/{slug}`, `craft://entries/{section}/stats`
+- 7 completion providers for intelligent parameter auto-completion
+- Extension system for custom prompts via `EVENT_REGISTER_PROMPTS` event
+- Extension system for custom resources via `EVENT_REGISTER_RESOURCES` event
+- SSH tunnel configuration example for remote server access
+- Comprehensive documentation for prompts (`docs/prompts.md`)
+- Comprehensive documentation for resources (`docs/resources.md`)
+- Extended documentation in `docs/extending.md` covering prompts, resources, and completion providers
+- Hot-reload support for newly installed plugins without MCP server restart
+
+### Changed
+- Tool count updated from 32 to 50 tools
+- Documentation updated to reflect all available features
+- Refactored error handling to align with MCP SDK conventions
+- Applied Rector code quality improvements
+- PSR-12 compliance across all files
+- Added unit tests for new tool classes (BackupTools, CommerceTools, GraphqlTools, McpTools, SiteTools)
+
 ## [1.0.1] - 2026-01-03
 
 ### Fixed

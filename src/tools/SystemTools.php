@@ -6,9 +6,14 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\helpers\FileHelper as CraftFileHelper;
+use craft\models\CategoryGroup;
+use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Server\RequestContext;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\FileHelper;
-use Throwable;
+use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * System-related MCP tools for Craft CMS.
@@ -54,12 +59,13 @@ class SystemTools {
         name: 'get_config',
         description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver")',
     )]
-    public function getConfig(string $key): array {
-        $parts = explode('.', $key, 2);
-        $category = $parts[0];
-        $setting = $parts[1] ?? null;
+    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    public function getConfig(string $key, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($key): array {
+            $parts = explode('.', $key, 2);
+            $category = $parts[0];
+            $setting = $parts[1] ?? null;
 
-        try {
             $config = Craft::$app->getConfig();
 
             $value = match ($category) {
@@ -83,13 +89,7 @@ class SystemTools {
                 'key' => $key,
                 'value' => $value,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'key' => $key,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -99,46 +99,49 @@ class SystemTools {
         name: 'read_logs',
         description: 'Read recent log entries from Craft CMS logs. Optionally filter by level (error, warning, info) and limit number of entries.',
     )]
-    public function readLogs(int $limit = 50, ?string $level = null): array {
-        $logPath = Craft::$app->getPath()->getLogPath();
+    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    public function readLogs(int $limit = 50, ?string $level = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($limit, $level): array {
+            $logPath = Craft::$app->getPath()->getLogPath();
 
-        // Find all .log files, prioritizing today's date-based logs
-        $today = date('Y-m-d');
-        $allLogs = glob($logPath . '/*.log') ?: [];
+            // Find all .log files, prioritizing today's date-based logs
+            $today = date('Y-m-d');
+            $allLogs = glob($logPath . '/*.log') ?: [];
 
-        // Sort: today's logs first, then by modification time descending
-        usort($allLogs, function ($a, $b) use ($today) {
-            $aIsToday = str_contains($a, $today);
-            $bIsToday = str_contains($b, $today);
+            // Sort: today's logs first, then by modification time descending
+            usort($allLogs, function ($a, $b) use ($today) {
+                $aIsToday = str_contains($a, $today);
+                $bIsToday = str_contains($b, $today);
 
-            if ($aIsToday && !$bIsToday) {
-                return -1;
+                if ($aIsToday && !$bIsToday) {
+                    return -1;
+                }
+                if (!$aIsToday && $bIsToday) {
+                    return 1;
+                }
+
+                return filemtime($b) <=> filemtime($a);
+            });
+
+            // Limit to most recent logs to avoid processing too many files
+            $logFiles = array_slice($allLogs, 0, 5);
+
+            $entries = [];
+            foreach ($logFiles as $logFile) {
+                $entries = array_merge(
+                    $entries,
+                    $this->parseLogFile($logFile, $level, $limit * 2),
+                );
             }
-            if (!$aIsToday && $bIsToday) {
-                return 1;
-            }
 
-            return filemtime($b) <=> filemtime($a);
+            // Sort by timestamp descending and limit
+            usort($entries, fn ($a, $b) => strcmp((string) $b['timestamp'], (string) $a['timestamp']));
+
+            return [
+                'count' => min(count($entries), $limit),
+                'entries' => array_slice($entries, 0, $limit),
+            ];
         });
-
-        // Limit to most recent logs to avoid processing too many files
-        $logFiles = array_slice($allLogs, 0, 5);
-
-        $entries = [];
-        foreach ($logFiles as $logFile) {
-            $entries = array_merge(
-                $entries,
-                $this->parseLogFile($logFile, $level, $limit * 2),
-            );
-        }
-
-        // Sort by timestamp descending and limit
-        usort($entries, fn ($a, $b) => strcmp((string) $b['timestamp'], (string) $a['timestamp']));
-
-        return [
-            'count' => min(count($entries), $limit),
-            'entries' => array_slice($entries, 0, $limit),
-        ];
     }
 
     /**
@@ -196,20 +199,23 @@ class SystemTools {
         name: 'get_last_error',
         description: 'Get the most recent error from Craft CMS log files',
     )]
-    public function getLastError(): array {
-        $result = $this->readLogs(1, 'error');
+    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    public function getLastError(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $result = $this->readLogs(1, 'error');
 
-        if (empty($result['entries'])) {
+            if (empty($result['entries'])) {
+                return [
+                    'found' => false,
+                    'message' => 'No errors found in recent logs',
+                ];
+            }
+
             return [
-                'found' => false,
-                'message' => 'No errors found in recent logs',
+                'found' => true,
+                'error' => $result['entries'][0],
             ];
-        }
-
-        return [
-            'found' => true,
-            'error' => $result['entries'][0],
-        ];
+        });
     }
 
     /**
@@ -219,42 +225,37 @@ class SystemTools {
         name: 'clear_caches',
         description: 'Clear Craft CMS caches. Specify type: all, data, compiled-templates, compiled-classes, asset-indexing-data, temp-files',
     )]
-    public function clearCaches(string $type = 'all'): array {
-        $cleared = [];
+    #[McpToolMeta(category: ToolCategory::SYSTEM, dangerous: true)]
+    public function clearCaches(string $type = 'all', ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($type): array {
+            $cleared = [];
 
-        try {
             if ($type === 'all' || $type === 'data') {
                 Craft::$app->getCache()->flush();
                 $cleared[] = 'data';
             }
 
             if ($type === 'all' || $type === 'compiled-templates') {
-                $compiledTemplatesPath = Craft::$app->getPath()->getCompiledTemplatesPath(false);
-                if ($compiledTemplatesPath && is_dir($compiledTemplatesPath)) {
-                    CraftFileHelper::clearDirectory($compiledTemplatesPath);
-                    $cleared[] = 'compiled-templates';
-                }
+                $this->clearDirectoryIfExists(
+                    Craft::$app->getPath()->getCompiledTemplatesPath(false),
+                    'compiled-templates',
+                    $cleared,
+                );
             }
 
             if ($type === 'all' || $type === 'temp-files') {
-                $tempPath = Craft::$app->getPath()->getTempPath(false);
-                if ($tempPath && is_dir($tempPath)) {
-                    CraftFileHelper::clearDirectory($tempPath);
-                    $cleared[] = 'temp-files';
-                }
+                $this->clearDirectoryIfExists(
+                    Craft::$app->getPath()->getTempPath(false),
+                    'temp-files',
+                    $cleared,
+                );
             }
 
             return [
                 'success' => true,
                 'cleared' => $cleared,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'cleared' => $cleared,
-            ];
-        }
+        });
     }
 
     /**
@@ -264,27 +265,30 @@ class SystemTools {
         name: 'list_console_commands',
         description: 'List all available Craft CMS console commands (like php craft <command>)',
     )]
-    public function listConsoleCommands(): array {
-        $commands = [];
+    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    public function listConsoleCommands(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $commands = [];
 
-        foreach (Craft::$app->controllerMap as $id => $controller) {
-            $commands[] = [
-                'id' => $id,
-                'controller' => is_array($controller) ? $controller['class'] : $controller,
+            foreach (Craft::$app->controllerMap as $id => $controller) {
+                $commands[] = [
+                    'id' => $id,
+                    'controller' => is_array($controller) ? $controller['class'] : $controller,
+                ];
+            }
+
+            foreach (self::CORE_COMMANDS as $id => $description) {
+                $commands[] = [
+                    'id' => $id,
+                    'description' => $description,
+                ];
+            }
+
+            return [
+                'count' => count($commands),
+                'commands' => $commands,
             ];
-        }
-
-        foreach (self::CORE_COMMANDS as $id => $description) {
-            $commands[] = [
-                'id' => $id,
-                'description' => $description,
-            ];
-        }
-
-        return [
-            'count' => count($commands),
-            'commands' => $commands,
-        ];
+        });
     }
 
     /**
@@ -294,53 +298,104 @@ class SystemTools {
         name: 'list_routes',
         description: 'List all registered routes in Craft CMS',
     )]
-    public function listRoutes(): array {
-        $routes = [];
+    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    public function listRoutes(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $routes = [];
 
-        // Get custom routes from config
-        $configRoutes = Craft::$app->getConfig()->getConfigFromFile('routes') ?: [];
-        foreach ($configRoutes as $pattern => $template) {
-            $routes[] = [
-                'pattern' => $pattern,
-                'template' => is_array($template) ? ($template['template'] ?? json_encode($template)) : $template,
-                'type' => 'config',
+            // Get custom routes from config
+            $configRoutes = Craft::$app->getConfig()->getConfigFromFile('routes') ?: [];
+            foreach ($configRoutes as $pattern => $template) {
+                $routes[] = [
+                    'pattern' => $pattern,
+                    'template' => is_array($template) ? ($template['template'] ?? json_encode($template)) : $template,
+                    'type' => 'config',
+                ];
+            }
+
+            // Get routes from sections (entry URLs)
+            $sectionRoutes = $this->extractSectionRoutes(Craft::$app->getEntries()->getAllSections());
+            $routes = array_merge($routes, $sectionRoutes);
+
+            // Get routes from categories
+            $categoryRoutes = $this->extractCategoryRoutes(Craft::$app->getCategories()->getAllGroups());
+            $routes = array_merge($routes, $categoryRoutes);
+
+            return [
+                'count' => count($routes),
+                'routes' => $routes,
             ];
+        });
+    }
+
+    /**
+     * Clear a directory if it exists.
+     *
+     * @param string[] $cleared Modified in place
+     */
+    private function clearDirectoryIfExists(?string $path, string $name, array &$cleared): void {
+        if ($path === null || !is_dir($path)) {
+            return;
         }
 
-        // Get routes from sections (entry URLs)
-        $sections = Craft::$app->getEntries()->getAllSections();
-        foreach ($sections as $section) {
-            foreach ($section->getSiteSettings() as $siteSettings) {
-                if ($siteSettings->hasUrls && $siteSettings->uriFormat) {
-                    $routes[] = [
-                        'pattern' => $siteSettings->uriFormat,
-                        'template' => $siteSettings->template,
-                        'type' => 'section',
-                        'section' => $section->handle,
-                        'siteId' => $siteSettings->siteId,
-                    ];
-                }
-            }
-        }
+        CraftFileHelper::clearDirectory($path);
+        $cleared[] = $name;
+    }
 
-        // Get routes from categories
-        foreach (Craft::$app->getCategories()->getAllGroups() as $group) {
-            foreach ($group->getSiteSettings() as $siteSettings) {
-                if ($siteSettings->hasUrls && $siteSettings->uriFormat) {
-                    $routes[] = [
-                        'pattern' => $siteSettings->uriFormat,
-                        'template' => $siteSettings->template,
-                        'type' => 'category',
-                        'group' => $group->handle,
-                        'siteId' => $siteSettings->siteId,
-                    ];
-                }
-            }
-        }
+    /**
+     * Extract routes from sections.
+     *
+     * @param Section[] $sections
+     * @return array<array<string, mixed>>
+     */
+    private function extractSectionRoutes(array $sections): array {
+        return array_merge(...array_map(
+            fn ($section) => $this->extractSiteSettingRoutes(
+                $section->getSiteSettings(),
+                'section',
+                ['section' => $section->handle],
+            ),
+            $sections,
+        ));
+    }
 
-        return [
-            'count' => count($routes),
-            'routes' => $routes,
-        ];
+    /**
+     * Extract routes from category groups.
+     *
+     * @param CategoryGroup[] $groups
+     * @return array<array<string, mixed>>
+     */
+    private function extractCategoryRoutes(array $groups): array {
+        return array_merge(...array_map(
+            fn ($group) => $this->extractSiteSettingRoutes(
+                $group->getSiteSettings(),
+                'category',
+                ['group' => $group->handle],
+            ),
+            $groups,
+        ));
+    }
+
+    /**
+     * Extract routes from site settings.
+     *
+     * @param array<string, mixed> $extra
+     * @return array<array<string, mixed>>
+     */
+    private function extractSiteSettingRoutes(array $siteSettings, string $type, array $extra): array {
+        return array_filter(
+            array_map(
+                fn ($settings) => $settings->hasUrls && $settings->uriFormat
+                    ? [
+                        'pattern' => $settings->uriFormat,
+                        'template' => $settings->template,
+                        'type' => $type,
+                        ...$extra,
+                        'siteId' => $settings->siteId,
+                    ]
+                    : null,
+                $siteSettings,
+            ),
+        );
     }
 }

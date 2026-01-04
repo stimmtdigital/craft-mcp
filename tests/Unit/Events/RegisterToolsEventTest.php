@@ -27,7 +27,7 @@ describe('RegisterToolsEvent::addTool()', function () {
 
         $tools = $this->event->getTools();
 
-        expect($tools)->toHaveKey('external');
+        expect($tools)->toHaveKey('plugin');
     });
 
     it('groups tools by source', function () {

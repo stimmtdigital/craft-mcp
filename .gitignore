@@ -4,3 +4,4 @@ DEVELOPMENT.md
 .phpunit.cache/
 .phpunit.result.cache
 .phpstan.cache/
+/dev/

@@ -20,16 +20,25 @@ class Settings extends Model {
     /** @var string[] */
     public array $disabledTools = [];
 
+    /** @var string[] */
+    public array $disabledPrompts = [];
+
+    /** @var string[] */
+    public array $disabledResources = [];
+
     public bool $enableDangerousTools = true;
 
     /** @var string[] */
     public array $allowedIps = [];
 
+    /**
+     * @return array<int, array<int|string, mixed>>
+     */
     #[Override]
     public function defineRules(): array {
         return [
             [['enabled', 'enableDangerousTools'], 'boolean'],
-            [['disabledTools', 'allowedIps'], 'each', 'rule' => ['string']],
+            [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps'], 'each', 'rule' => ['string']],
         ];
     }
 }

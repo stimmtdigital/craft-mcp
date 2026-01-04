@@ -5,11 +5,19 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\Content\TextContent;
+use Mcp\Server\RequestContext;
 use ParseError;
 use Psy\CodeCleaner;
 use Psy\Exception\ParseErrorException;
-use stimmt\craft\Mcp\support\Serializer;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\OutputMode;
+use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Ansi;
+use Symfony\Component\VarDumper\Cloner\VarCloner;
+use Symfony\Component\VarDumper\Dumper\CliDumper;
 use Throwable;
 
 /**
@@ -60,71 +68,136 @@ class TinkerTools {
         name: 'tinker',
         description: 'Execute PHP code within Craft CMS context. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.',
     )]
-    public function tinker(string $code): array {
+    #[McpToolMeta(category: ToolCategory::DEBUGGING, dangerous: true)]
+    public function tinker(
+        string $code,
+        #[CompletionProvider(enum: OutputMode::class)]
+        string $output = 'dump',
+        ?RequestContext $context = null,
+    ): TextContent {
+        // Note: SafeExecution is not used here because tinker has its own
+        // formatted error output for the REPL experience. Errors are part
+        // of the expected output, not SDK-level failures.
+        $outputMode = OutputMode::tryFrom($output) ?? OutputMode::DUMP;
+
         foreach (self::BLOCKED_PATTERNS as $pattern) {
             if (preg_match($pattern, $code)) {
-                return [
-                    'success' => false,
-                    'error' => 'Code contains blocked function for security. Shell commands, file writes, and eval are not allowed.',
-                ];
+                return $this->response(
+                    $code,
+                    $this->formatError('SecurityError', 'Code contains blocked function. Shell commands, file writes, and eval are not allowed.'),
+                );
             }
         }
 
         try {
-            // Use PsySH CodeCleaner for proper parsing and validation
             $cleaner = $this->getCodeCleaner();
             $cleanedCode = $cleaner->clean([$code]);
 
             // Make useful variables available
             $app = Craft::$app;
 
-            // Capture output
             ob_start();
-
-            // Execute the cleaned code
             $result = eval($cleanedCode);
+            $stdout = ob_get_clean();
 
-            $output = ob_get_clean();
-
-            return [
-                'success' => true,
-                'result' => Serializer::serialize($result),
-                'output' => $output ?: null,
-                'type' => gettype($result),
-            ];
-        } catch (ParseErrorException $e) {
+            return $this->response(
+                $code,
+                $this->formatOutput($result, $outputMode),
+                $stdout ?: null,
+            );
+        } catch (ParseErrorException|ParseError $e) {
             ob_end_clean();
 
-            return [
-                'success' => false,
-                'error' => 'Parse error: ' . $e->getMessage(),
-            ];
-        } catch (ParseError $e) {
-            ob_end_clean();
-
-            return [
-                'success' => false,
-                'error' => 'Parse error: ' . $e->getMessage(),
-                'line' => $e->getLine(),
-            ];
+            return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
         } catch (Throwable $e) {
             ob_end_clean();
 
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'exception' => $e::class,
-                'trace' => array_slice(
-                    array_map(fn ($t) => [
-                        'file' => basename($t['file'] ?? ''),
-                        'line' => $t['line'] ?? null,
-                        'function' => $t['function'] ?? null,
-                    ], $e->getTrace()),
-                    0,
-                    5,
-                ),
-            ];
+            return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
         }
+    }
+
+    /**
+     * Build the complete response.
+     */
+    private function response(string $code, string $result, ?string $stdout = null): TextContent {
+        $output = $this->formatInput($code);
+
+        if ($stdout !== null) {
+            $output .= $stdout . "\n";
+        }
+
+        $output .= $result;
+
+        return new TextContent($output);
+    }
+
+    /**
+     * Format the input line.
+     */
+    private function formatInput(string $code): string {
+        return Ansi::dim(Ansi::PROMPT) . ' ' . Ansi::dim($code) . "\n";
+    }
+
+    /**
+     * Format the output line.
+     */
+    private function formatOutput(mixed $value, OutputMode $mode): string {
+        $formatted = trim($this->formatResult($value, $mode));
+
+        return Ansi::dim(Ansi::RESULT) . ' ' . $formatted;
+    }
+
+    /**
+     * Format an error.
+     */
+    private function formatError(string $type, string $message, ?Throwable $e = null): string {
+        $shortType = str_contains($type, '\\') ? substr($type, strrpos($type, '\\') + 1) : $type;
+
+        // Strip internal eval noise from error messages
+        $message = preg_replace('/, called in .+eval\(\)\'d code on line \d+/', '', $message) ?? $message;
+
+        $output = Ansi::red(Ansi::ERROR . ' ' . $shortType . ':') . ' ' . $message;
+
+        $location = $e !== null ? $this->getUsefulLocation($e) : null;
+        if ($location !== null) {
+            $output .= "\n" . Ansi::gray('   at ' . $location);
+        }
+
+        return $output;
+    }
+
+    /**
+     * Get a useful error location, filtering out internal noise.
+     */
+    private function getUsefulLocation(Throwable $e): ?string {
+        // Check exception's own file first
+        $file = $e->getFile();
+        $line = $e->getLine();
+
+        // Skip if it's eval'd code or internal
+        if ($this->isInternalFile($file)) {
+            // Look through trace for first useful entry
+            foreach ($e->getTrace() as $frame) {
+                $frameFile = $frame['file'] ?? '';
+                if ($frameFile !== '' && !$this->isInternalFile($frameFile)) {
+                    return basename($frameFile) . ':' . ($frame['line'] ?? 0);
+                }
+            }
+
+            return null;
+        }
+
+        return basename($file) . ':' . $line;
+    }
+
+    /**
+     * Check if a file path is internal (should be filtered from traces).
+     */
+    private function isInternalFile(string $file): bool {
+        return str_contains($file, 'eval')
+            || str_contains($file, 'TinkerTools')
+            || str_contains($file, 'mcp/sdk')
+            || str_contains($file, 'mcp-server');
     }
 
     /**
@@ -136,5 +209,51 @@ class TinkerTools {
         }
 
         return $this->cleaner;
+    }
+
+    /**
+     * Format a value based on output mode.
+     */
+    private function formatResult(mixed $value, OutputMode $mode): string {
+        return match ($mode) {
+            OutputMode::DUMP => $this->formatDump($value),
+            OutputMode::JSON => $this->formatJson($value),
+            OutputMode::RAW => $this->formatRaw($value),
+            OutputMode::PRINT_R => $this->formatPrintR($value),
+        };
+    }
+
+    /**
+     * Format using VarDumper (colored).
+     */
+    private function formatDump(mixed $value): string {
+        $cloner = new VarCloner();
+        $dumper = new CliDumper();
+        $dumper->setColors(true);
+
+        return $dumper->dump($cloner->cloneVar($value), true) ?? '';
+    }
+
+    /**
+     * Format as JSON.
+     */
+    private function formatJson(mixed $value): string {
+        $json = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return $json !== false ? $json : '(JSON encoding failed)';
+    }
+
+    /**
+     * Format using var_export.
+     */
+    private function formatRaw(mixed $value): string {
+        return var_export($value, true);
+    }
+
+    /**
+     * Format using print_r.
+     */
+    private function formatPrintR(mixed $value): string {
+        return print_r($value, true);
     }
 }

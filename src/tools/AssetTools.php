@@ -6,7 +6,14 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\elements\Asset;
+use craft\models\VolumeFolder;
+use craft\services\Assets;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Exception\ToolCallException;
+use Mcp\Server\RequestContext;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\Serializer;
 
 /**
@@ -22,6 +29,7 @@ class AssetTools {
         name: 'list_assets',
         description: 'List assets from Craft CMS. Filter by volume, folder, kind (image, video, pdf, etc.), filename.',
     )]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listAssets(
         ?string $volume = null,
         ?int $folderId = null,
@@ -29,41 +37,44 @@ class AssetTools {
         ?string $filename = null,
         int $limit = 50,
         int $offset = 0,
+        ?RequestContext $context = null,
     ): array {
-        $query = Asset::find()
-            ->limit($limit)
-            ->offset($offset);
+        return SafeExecution::run(function () use ($volume, $folderId, $kind, $filename, $limit, $offset): array {
+            $query = Asset::find()
+                ->limit($limit)
+                ->offset($offset);
 
-        if ($volume !== null) {
-            $query->volume($volume);
-        }
+            if ($volume !== null) {
+                $query->volume($volume);
+            }
 
-        if ($folderId !== null) {
-            $query->folderId($folderId);
-        }
+            if ($folderId !== null) {
+                $query->folderId($folderId);
+            }
 
-        if ($kind !== null) {
-            $query->kind($kind);
-        }
+            if ($kind !== null) {
+                $query->kind($kind);
+            }
 
-        if ($filename !== null) {
-            $query->filename('*' . $filename . '*');
-        }
+            if ($filename !== null) {
+                $query->filename('*' . $filename . '*');
+            }
 
-        $assets = $query->all();
-        $results = [];
+            $assets = $query->all();
+            $results = [];
 
-        foreach ($assets as $asset) {
-            $results[] = $this->serializeAsset($asset);
-        }
+            foreach ($assets as $asset) {
+                $results[] = $this->serializeAsset($asset);
+            }
 
-        return [
-            'count' => count($results),
-            'total' => $query->count(),
-            'limit' => $limit,
-            'offset' => $offset,
-            'assets' => $results,
-        ];
+            return [
+                'count' => count($results),
+                'total' => $query->count(),
+                'limit' => $limit,
+                'offset' => $offset,
+                'assets' => $results,
+            ];
+        });
     }
 
     /**
@@ -73,20 +84,20 @@ class AssetTools {
         name: 'get_asset',
         description: 'Get a single asset by ID with full metadata',
     )]
-    public function getAsset(int $id): array {
-        $asset = Asset::find()->id($id)->one();
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
+    public function getAsset(int $id, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($id): array {
+            $asset = Asset::find()->id($id)->one();
 
-        if ($asset === null) {
+            if ($asset === null) {
+                throw new ToolCallException("Asset with ID {$id} not found");
+            }
+
             return [
-                'found' => false,
-                'error' => 'Asset not found',
+                'found' => true,
+                'asset' => $this->serializeAsset($asset, true),
             ];
-        }
-
-        return [
-            'found' => true,
-            'asset' => $this->serializeAsset($asset, true),
-        ];
+        });
     }
 
     /**
@@ -96,25 +107,28 @@ class AssetTools {
         name: 'list_volumes',
         description: 'List all asset volumes (storage locations) in Craft CMS',
     )]
-    public function listVolumes(): array {
-        $volumes = Craft::$app->getVolumes()->getAllVolumes();
-        $results = [];
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
+    public function listVolumes(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $volumes = Craft::$app->getVolumes()->getAllVolumes();
+            $results = [];
 
-        foreach ($volumes as $volume) {
-            $results[] = [
-                'id' => $volume->id,
-                'handle' => $volume->handle,
-                'name' => $volume->name,
-                'type' => $volume->getFs()::class,
-                'hasUrls' => $volume->getFs()->hasUrls,
-                'rootUrl' => $volume->getFs()->hasUrls ? $volume->getFs()->getRootUrl() : null,
+            foreach ($volumes as $volume) {
+                $results[] = [
+                    'id' => $volume->id,
+                    'handle' => $volume->handle,
+                    'name' => $volume->name,
+                    'type' => $volume->getFs()::class,
+                    'hasUrls' => $volume->getFs()->hasUrls,
+                    'rootUrl' => $volume->getFs()->hasUrls ? $volume->getFs()->getRootUrl() : null,
+                ];
+            }
+
+            return [
+                'count' => count($results),
+                'volumes' => $results,
             ];
-        }
-
-        return [
-            'count' => count($results),
-            'volumes' => $results,
-        ];
+        });
     }
 
     /**
@@ -124,47 +138,76 @@ class AssetTools {
         name: 'list_asset_folders',
         description: 'List asset folders in a volume',
     )]
-    public function listAssetFolders(?string $volume = null, ?int $parentId = null): array {
-        $assetsService = Craft::$app->getAssets();
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
+    public function listAssetFolders(?string $volume = null, ?int $parentId = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($volume, $parentId): array {
+            $assetsService = Craft::$app->getAssets();
 
-        if ($volume !== null) {
-            $volumeModel = Craft::$app->getVolumes()->getVolumeByHandle($volume);
-            if ($volumeModel === null) {
-                return ['success' => false, 'error' => "Volume '{$volume}' not found"];
+            $folders = $this->getAssetFolders($assetsService, $volume, $parentId);
+            if ($folders === null) {
+                throw new ToolCallException("Volume '{$volume}' not found");
             }
 
-            if ($parentId === null) {
-                $folder = $assetsService->getRootFolderByVolumeId($volumeModel->id);
-                $folders = $assetsService->findFolders(['parentId' => $folder->id]);
-            } else {
-                $folders = $assetsService->findFolders(['parentId' => $parentId]);
+            $results = [];
+            foreach ($folders as $folder) {
+                $results[] = [
+                    'id' => $folder->id,
+                    'name' => $folder->name,
+                    'path' => $folder->path,
+                    'volumeId' => $folder->volumeId,
+                    'parentId' => $folder->parentId,
+                ];
             }
-        } else {
-            // Get all root folders
-            $folders = [];
-            foreach (Craft::$app->getVolumes()->getAllVolumes() as $vol) {
-                $rootFolder = $assetsService->getRootFolderByVolumeId($vol->id);
-                if ($rootFolder) {
-                    $folders[] = $rootFolder;
-                }
-            }
-        }
 
-        $results = [];
-        foreach ($folders as $folder) {
-            $results[] = [
-                'id' => $folder->id,
-                'name' => $folder->name,
-                'path' => $folder->path,
-                'volumeId' => $folder->volumeId,
-                'parentId' => $folder->parentId,
+            return [
+                'count' => count($results),
+                'folders' => $results,
             ];
+        });
+    }
+
+    /**
+     * Get asset folders based on volume and parent ID.
+     *
+     * @return VolumeFolder[]|null Null if volume not found
+     */
+    private function getAssetFolders(
+        Assets $assetsService,
+        ?string $volume,
+        ?int $parentId,
+    ): ?array {
+        if ($volume === null) {
+            return $this->getAllRootFolders($assetsService);
         }
 
-        return [
-            'count' => count($results),
-            'folders' => $results,
-        ];
+        $volumeModel = Craft::$app->getVolumes()->getVolumeByHandle($volume);
+        if ($volumeModel === null) {
+            return null;
+        }
+
+        if ($parentId !== null) {
+            return $assetsService->findFolders(['parentId' => $parentId]);
+        }
+
+        $rootFolder = $assetsService->getRootFolderByVolumeId($volumeModel->id);
+
+        return $assetsService->findFolders(['parentId' => $rootFolder->id]);
+    }
+
+    /**
+     * Get all root folders across all volumes.
+     *
+     * @return VolumeFolder[]
+     */
+    private function getAllRootFolders(Assets $assetsService): array {
+        $volumes = Craft::$app->getVolumes()->getAllVolumes();
+
+        return array_filter(
+            array_map(
+                fn ($vol) => $assetsService->getRootFolderByVolumeId($vol->id),
+                $volumes,
+            ),
+        );
     }
 
     /**

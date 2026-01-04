@@ -46,14 +46,19 @@ define('CRAFT_ENVIRONMENT', getenv('CRAFT_ENVIRONMENT') ?: 'production');
 /** @var craft\console\Application $app */
 $app = require $basePath . '/vendor/craftcms/cms/bootstrap/console.php';
 
-// Check if MCP is enabled
-$plugin = \stimmt\craft\Mcp\Mcp::getInstance();
+use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\services\McpRegistry;
+use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\support\SignalHandler;
+
+// Validate plugin is available and enabled
+$plugin = Mcp::getInstance();
 if ($plugin === null) {
     fwrite(STDERR, "Error: Craft MCP plugin is not installed. Run: php craft plugin/install mcp\n");
     exit(1);
 }
 
-if (!\stimmt\craft\Mcp\Mcp::isEnabled()) {
+if (!Mcp::isEnabled()) {
     fwrite(STDERR, "Error: Craft MCP is disabled.\n");
     fwrite(STDERR, "To enable, add to config/mcp.php:\n");
     fwrite(STDERR, "  return ['enabled' => true];\n");
@@ -66,34 +71,30 @@ if (!class_exists(\Mcp\Server::class)) {
     exit(1);
 }
 
-use Mcp\Server;
-use Mcp\Server\Transport\StdioTransport;
-use stimmt\craft\Mcp\services\ToolRegistry;
-
-// Initialize tool registry and collect all tools
-$registry = new ToolRegistry();
-$discoveryPaths = $registry->getDiscoveryPaths();
-$summary = $registry->getSummary();
-
-// Log registration errors
-foreach ($registry->getErrors() as $error) {
-    fwrite(STDERR, "Warning: {$error}\n");
+// Log any registration errors from registries
+foreach (McpRegistry::getAllErrors() as $source => $errors) {
+    foreach ($errors as $error) {
+        fwrite(STDERR, "Warning [{$source}]: {$error}\n");
+    }
 }
 
-// Create and configure the MCP server
+// Setup signal handling for graceful restart/shutdown
+$signalHandler = new SignalHandler();
+$signalHandler->register();
+
+// Build and run server with dedicated file logger (separate from Craft logs)
 try {
-    $builder = Server::builder()
-        ->setServerInfo('Craft CMS MCP Server', '1.0.0');
+    $logger = McpServerFactory::createFileLogger();
+    $factory = new McpServerFactory(logger: $logger);
+    $server = $factory->create();
+    $transport = $factory->createTransport();
 
-    // Register discovery paths from all sources
-    foreach ($discoveryPaths as $source => $pathInfo) {
-        $builder->setDiscovery($pathInfo['path'], $pathInfo['subdirs']);
-    }
-
-    $server = $builder->build();
-
-    $transport = new StdioTransport();
     $server->run($transport);
+
+    // Handle restart if requested via SIGHUP
+    if ($signalHandler->shouldRestart()) {
+        $signalHandler->restart($argv);
+    }
 } catch (\Throwable $e) {
     fwrite(STDERR, "Error starting MCP server: " . $e->getMessage() . "\n");
     fwrite(STDERR, $e->getTraceAsString() . "\n");

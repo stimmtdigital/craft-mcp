@@ -357,9 +357,19 @@ Execute PHP code within your Craft application context. This is a powerful tool 
 
 **Parameters:**
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `code` | string | Yes | PHP code to execute |
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `code` | string | (required) | PHP code to execute |
+| `output` | string | "dump" | Output format: `dump`, `json`, `raw`, `print_r` |
+
+**Output Modes:**
+
+| Mode | Description |
+|------|-------------|
+| `dump` | Symfony VarDumper with colors (default, best for complex objects) |
+| `json` | JSON encoded output (useful for structured data) |
+| `raw` | PHP var_export output (copy-paste ready) |
+| `print_r` | PHP print_r output (simple array inspection) |
 
 **Security restrictions:**
 
@@ -380,31 +390,50 @@ tinker code="Craft::$app->getVersion()"
 # Count entries in a section
 tinker code="\craft\elements\Entry::find()->section('news')->count()"
 
-# List all registered application components
-tinker code="return array_keys(Craft::$app->getComponents())"
-
-# Check a specific service
-tinker code="return Craft::$app->getEntries()->getSectionByHandle('blog')?->name"
+# Get JSON output for an array
+tinker code="return ['version' => Craft::$app->getVersion()]" output="json"
 ```
 
 **Response:**
 
-```json
-{
-  "success": true,
-  "result": "5.0.0",
-  "output": null,
-  "type": "string"
-}
+The tinker tool returns styled text output (not JSON). The format mimics a REPL interface:
+
+```
+> Craft::$app->getVersion()
+= "5.0.0"
+```
+
+For complex objects, the VarDumper provides colored, formatted output:
+
+```
+> \craft\elements\Entry::find()->section('news')->one()
+= craft\elements\Entry {#1234
+    +id: 42
+    +title: "Hello World"
+    ...
+  }
 ```
 
 **Error response:**
 
-```json
-{
-  "success": false,
-  "error": "Code contains blocked function for security."
-}
+Errors are displayed with a `!` prefix in red, followed by a location hint when available:
+
+```
+> throw new \Exception('Something went wrong')
+! Exception: Something went wrong
+```
+
+```
+> Craft::$app->elements->getElementById('invalid')
+! TypeError: getElementById(): Argument #1 ($elementId) must be of type int, string given
+   at Elements.php:923
+```
+
+**Security error:**
+
+```
+> exec('ls')
+! SecurityError: Code contains blocked function. Shell commands, file writes, and eval are not allowed.
 ```
 
 **Available in context:**

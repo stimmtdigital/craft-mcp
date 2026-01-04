@@ -13,7 +13,7 @@
 
 Craft MCP accelerates AI-assisted development by giving your AI assistant direct access to your Craft installation's content architecture, database schema, and configuration.
 
-At its foundation, Craft MCP is an MCP server equipped with 32 specialized tools designed to streamline AI-assisted workflows in Craft projects. Rather than manually describing your field layouts, Matrix configurations, or entry structures, your AI assistant can query this information directly from your installation, ensuring accurate and context-aware code generation.
+At its foundation, Craft MCP is an MCP server equipped with 50 specialized tools, 9 analysis prompts, and 12 data resources designed to streamline AI-assisted workflows in Craft projects. Rather than manually describing your field layouts, Matrix configurations, or entry structures, your AI assistant can query this information directly from your installation, ensuring accurate and context-aware code generation.
 
 The tools span content management (entries, assets, categories, users), schema inspection (sections, fields, volumes, entry types), system administration (configuration, logs, caches, plugins), database operations (schema inspection, query execution), and debugging utilities (queue jobs, deprecations, project config). For advanced use cases, a Tinker tool allows executing PHP code directly within your Craft application context.
 
@@ -158,8 +158,38 @@ Once Craft MCP has been installed, you're ready to connect Claude Code, Cursor, 
 
 You can find your absolute paths by running `which ddev` or `which php` in your terminal.
 
+#### Remote Server via SSH (Not Recommended)
+
+For development environments on remote servers, you can tunnel through SSH. Note that this approach is not recommended for production use due to security considerations.
+
+<details>
+<summary>SSH tunnel configuration</summary>
+
+```json
+{
+  "mcpServers": {
+    "craft-cms": {
+      "command": "ssh",
+      "args": [
+        "-t",
+        "user@your-server.com",
+        "cd /path/to/craft/project && php vendor/stimmt/craft-mcp/bin/mcp-server"
+      ]
+    }
+  }
+}
+```
+
+Requirements:
+- SSH key authentication must be configured (no password prompts)
+- The remote server must have PHP 8.2+ available
+- The Craft MCP plugin must be installed on the remote installation
+
+</details>
+
 ## Available MCP Tools
 
+### Content Tools
 | Name | Notes |
 |------|-------|
 | List Entries | Query entries with filtering by section, status, author, and limit |
@@ -167,22 +197,42 @@ You can find your absolute paths by running `which ddev` or `which php` in your 
 | Create Entry | Create new entries in any section with field data |
 | Update Entry | Modify existing entry content and custom fields |
 | List Assets | Browse assets with volume and folder filtering |
+| Get Asset | Get detailed asset information including dimensions and metadata |
+| List Asset Folders | List folder structure within asset volumes |
 | List Categories | Query categories by group with hierarchy information |
 | List Users | Query users with group filtering |
+| List Globals | List all global sets with their field values |
+
+### Schema & Structure Tools
+| Name | Notes |
+|------|-------|
 | List Sections | Inspect all sections with their entry types and field layouts |
 | List Fields | Get all fields with types, settings, and group assignments |
 | List Volumes | Inspect asset volume configurations and filesystem settings |
-| List Category Groups | Get category group definitions and field layouts |
+| List Plugins | Get installed plugins with version, status, and settings |
+
+### System Tools
+| Name | Notes |
+|------|-------|
+| Get System Info | Read Craft version, PHP version, database driver, and environment |
 | Get Config | Read Craft general config and plugin configuration values |
 | Read Logs | Search and filter application log entries by level and date |
-| List Routes | Inspect all registered routes including controller actions |
+| Get Last Error | Retrieve the most recent error from logs |
 | Clear Caches | Clear specific caches or all caches at once |
-| List Plugins | Get installed plugins with version, status, and settings |
-| Get Craft Info | Read Craft version, PHP version, database driver, and environment |
+| List Routes | Inspect all registered routes including controller actions |
+| List Console Commands | List available Craft CLI commands |
+
+### Database Tools
+| Name | Notes |
+|------|-------|
+| Get Database Info | Get database connection details and server version |
 | Get Database Schema | Inspect the complete database schema with all tables and columns |
-| Get Table Info | Get detailed structure for specific tables including indexes |
+| Get Table Counts | Get row counts for core Craft tables |
 | Run Query | Execute read-only SELECT queries against the database |
-| List Tables | List all database tables with row counts |
+
+### Debugging Tools
+| Name | Notes |
+|------|-------|
 | Get Queue Jobs | Inspect queue jobs by status (pending, reserved, failed, done) |
 | Get Project Config Diff | Show pending project config changes that need to be applied |
 | Get Deprecations | Read deprecation warnings from logs and the deprecations table |
@@ -190,6 +240,44 @@ You can find your absolute paths by running `which ddev` or `which php` in your 
 | Get Environment | Read safe environment information (no secrets exposed) |
 | List Event Handlers | Inspect registered Yii event handlers and listeners |
 | Tinker | Execute arbitrary PHP code within your Craft application context |
+
+### Multi-Site Tools
+| Name | Notes |
+|------|-------|
+| List Sites | Get all sites with handles, languages, and base URLs |
+| Get Site | Get detailed site information by ID or handle |
+| List Site Groups | List site groups with their associated sites |
+
+### GraphQL Tools
+| Name | Notes |
+|------|-------|
+| List GraphQL Schemas | List all GraphQL schemas with their scopes |
+| Get GraphQL Schema | Get schema details including SDL |
+| Execute GraphQL | Run GraphQL queries and mutations |
+| List GraphQL Tokens | List API tokens with their associated schemas |
+
+### Backup Tools
+| Name | Notes |
+|------|-------|
+| List Backups | List available database backups |
+| Create Backup | Create a new database backup |
+
+### Self-Awareness Tools
+| Name | Notes |
+|------|-------|
+| Get MCP Info | Get plugin version, status, and configuration |
+| List MCP Tools | List all available tools with descriptions and enabled status |
+| Reload MCP | Reload to detect newly installed plugins without server restart |
+
+### Commerce Tools (when Craft Commerce is installed)
+| Name | Notes |
+|------|-------|
+| List Products | List products with variant information |
+| Get Product | Get detailed product information |
+| List Orders | List orders with status filtering |
+| Get Order | Get order details by ID or number |
+| List Order Statuses | List available order statuses |
+| List Product Types | List product type configurations |
 
 ## Extending
 
@@ -201,8 +289,10 @@ See the [Extending Guide](docs/extending.md) for implementation details, code ex
 
 - **[Installation](docs/installation.md)** - Requirements, Composer setup, and detailed installation steps
 - **[Configuration](docs/configuration.md)** - All configuration options, environment variables, and security settings
-- **[Tools Reference](docs/tools/README.md)** - Complete documentation for all 32 tools with parameters and examples
-- **[Extending](docs/extending.md)** - Guide for plugin and module developers to register custom tools
+- **[Tools Reference](docs/tools/README.md)** - Complete documentation for all 50 tools with parameters and examples
+- **[Prompts](docs/prompts.md)** - Pre-built analysis prompts for content health, audits, and schema exploration
+- **[Resources](docs/resources.md)** - Read-only URI-based access to schema, config, and content data
+- **[Extending](docs/extending.md)** - Guide for plugin and module developers to register custom tools, prompts, and resources
 
 ## Contributing
 

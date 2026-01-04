@@ -1,3 +1,9 @@
+rules:
+    - Sanmai\PHPStanRules\Rules\NoNestedLoopsRule
+    - Sanmai\PHPStanRules\Rules\NoNestedIfStatementsRule
+    - Sanmai\PHPStanRules\Rules\RequireGuardClausesRule
+    - Sanmai\PHPStanRules\Rules\NoElseRule
+
 parameters:
     level: 5
     paths:
@@ -10,11 +16,15 @@ parameters:
         - vendor/yiisoft/yii2
 
     ignoreErrors:
+        # SafeExecution template type inference in closures with complex operations
+        - identifier: argument.unresolvableType
         # Craft's service locator methods (Craft::$app->getVolumes(), etc.)
         - '#Call to an undefined method yii\\console\\Application\|yii\\web\\Application::#'
         - '#Call to an undefined method yii\\db\\Schema::findIndexes#'
         # PsySH optional dependency
         - '#Psy\\#'
+        # Commerce is optional - tools check availability at runtime
+        - '#craft\\commerce\\#'
         # Missing class reference (if class doesn't exist)
         - '#Class stimmt\\craft\\Mcp\\tools\\SchemaTools not found#'
         # Dead catch - ReflectionException

@@ -7,11 +7,15 @@ namespace stimmt\craft\Mcp\tools;
 use Closure;
 use Craft;
 use Generator;
-use InvalidArgumentException;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Exception\ToolCallException;
+use Mcp\Server\RequestContext;
 use ReflectionClass;
 use ReflectionFunction;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\FileHelper;
+use stimmt\craft\Mcp\support\SafeExecution;
 use Throwable;
 use yii\base\Event;
 
@@ -28,12 +32,13 @@ class DebugTools {
         name: 'get_queue_jobs',
         description: 'List queue jobs in Craft CMS. Filter by status: pending, reserved, failed, done. Shows job class, description, and failure reason if applicable.',
     )]
-    public function getQueueJobs(string $status = 'pending', int $limit = 50): array {
-        $db = Craft::$app->getDb();
-        $prefix = $db->tablePrefix;
-        $table = $prefix . 'queue';
+    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    public function getQueueJobs(string $status = 'pending', int $limit = 50, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($status, $limit): array {
+            $db = Craft::$app->getDb();
+            $prefix = $db->tablePrefix;
+            $table = $prefix . 'queue';
 
-        try {
             $query = match ($status) {
                 'pending' => "SELECT id, channel, job, description, timePushed, ttr, delay, priority
                               FROM `{$table}`
@@ -51,7 +56,7 @@ class DebugTools {
                              ORDER BY timeUpdated DESC
                              LIMIT {$limit}",
                 'done' => "SELECT COUNT(*) as count FROM `{$table}` WHERE fail = 0",
-                default => throw new InvalidArgumentException("Invalid status: {$status}"),
+                default => throw new ToolCallException("Invalid status: {$status}"),
             };
 
             $results = $db->createCommand($query)->queryAll();
@@ -60,7 +65,7 @@ class DebugTools {
             foreach ($results as &$row) {
                 if (isset($row['job'])) {
                     // Extract class name from serialized PHP object
-                    if (preg_match('/^O:\d+:"([^"]+)"/', $row['job'], $matches)) {
+                    if (preg_match('/^O:\d+:"([^"]+)"/', (string) $row['job'], $matches)) {
                         $row['jobClass'] = $matches[1];
                     }
                     unset($row['job']); // Don't return the full serialized blob
@@ -92,12 +97,7 @@ class DebugTools {
                 'counts' => $counts,
                 'jobs' => $results,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -107,8 +107,9 @@ class DebugTools {
         name: 'get_project_config_diff',
         description: 'Show pending project config changes that need to be applied. Returns differences between YAML files and database.',
     )]
-    public function getProjectConfigDiff(): array {
-        try {
+    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    public function getProjectConfigDiff(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
             $projectConfig = Craft::$app->getProjectConfig();
 
             // Check if there are pending changes
@@ -120,9 +121,6 @@ class DebugTools {
                     'message' => 'Project config is up to date',
                 ];
             }
-
-            // Get the pending changes
-            $pendingChanges = [];
 
             // Compare YAML to DB
             $yamlConfig = $projectConfig->get();
@@ -156,12 +154,7 @@ class DebugTools {
                 ],
                 'hint' => 'Run `php craft project-config/apply` to apply changes',
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -171,66 +164,69 @@ class DebugTools {
         name: 'get_deprecations',
         description: 'Get deprecation warnings from Craft CMS logs. Shows deprecated code usage that should be updated.',
     )]
-    public function getDeprecations(int $limit = 50): array {
-        $logPath = Craft::$app->getPath()->getLogPath();
-        $webLog = $logPath . '/web.log';
+    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    public function getDeprecations(int $limit = 50, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($limit): array {
+            $logPath = Craft::$app->getPath()->getLogPath();
+            $webLog = $logPath . '/web.log';
 
-        $deprecations = [];
+            $deprecations = [];
 
-        if (file_exists($webLog)) {
-            $lines = FileHelper::tail($webLog, $limit * 5);
+            if (file_exists($webLog)) {
+                $lines = FileHelper::tail($webLog, $limit * 5);
 
-            foreach ($lines as $line) {
-                // Look for deprecation warnings
-                if (
-                    (stripos($line, 'deprecated') !== false || stripos($line, 'deprecation') !== false) && preg_match('/^\[([^\]]+)\]\[([^\]]+)\]\[([^\]]*)\]\s*(.*)$/s', $line, $matches)
-                ) {
-                    $deprecations[] = [
-                        'timestamp' => $matches[1],
-                        'level' => $matches[2],
-                        'category' => $matches[3],
-                        'message' => trim($matches[4]),
-                    ];
+                foreach ($lines as $line) {
+                    // Look for deprecation warnings
+                    if (
+                        (stripos($line, 'deprecated') !== false || stripos($line, 'deprecation') !== false) && preg_match('/^\[([^\]]+)\]\[([^\]]+)\]\[([^\]]*)\]\s*(.*)$/s', $line, $matches)
+                    ) {
+                        $deprecations[] = [
+                            'timestamp' => $matches[1],
+                            'level' => $matches[2],
+                            'category' => $matches[3],
+                            'message' => trim($matches[4]),
+                        ];
+                    }
                 }
             }
-        }
 
-        // Also check deprecation errors table if it exists
-        try {
-            $db = Craft::$app->getDb();
-            $prefix = $db->tablePrefix;
-            $table = $prefix . 'deprecationerrors';
+            // Also check deprecation errors table if it exists
+            try {
+                $db = Craft::$app->getDb();
+                $prefix = $db->tablePrefix;
+                $table = $prefix . 'deprecationerrors';
 
-            $dbDeprecations = $db->createCommand(
-                "SELECT id, `key`, fingerprint, lastOccurrence, file, line, message, template
-                 FROM `{$table}`
-                 ORDER BY lastOccurrence DESC
-                 LIMIT {$limit}",
-            )->queryAll();
+                $dbDeprecations = $db->createCommand(
+                    "SELECT id, `key`, fingerprint, lastOccurrence, file, line, message, template
+                     FROM `{$table}`
+                     ORDER BY lastOccurrence DESC
+                     LIMIT {$limit}",
+                )->queryAll();
 
-            foreach ($dbDeprecations as &$dep) {
-                if ($dep['lastOccurrence']) {
-                    $dep['lastOccurrence'] = date('Y-m-d H:i:s', strtotime((string) $dep['lastOccurrence']));
+                foreach ($dbDeprecations as &$dep) {
+                    if ($dep['lastOccurrence']) {
+                        $dep['lastOccurrence'] = date('Y-m-d H:i:s', strtotime((string) $dep['lastOccurrence']));
+                    }
                 }
+            } catch (Throwable) {
+                $dbDeprecations = [];
             }
-        } catch (Throwable) {
-            $dbDeprecations = [];
-        }
 
-        // Limit and dedupe log deprecations
-        $deprecations = array_slice($deprecations, 0, $limit);
+            // Limit and dedupe log deprecations
+            $deprecations = array_slice($deprecations, 0, $limit);
 
-        return [
-            'fromDatabase' => [
-                'count' => count($dbDeprecations),
-                'deprecations' => $dbDeprecations,
-            ],
-            'fromLogs' => [
-                'count' => count($deprecations),
-                'deprecations' => $deprecations,
-            ],
-            'hint' => 'Database deprecations persist until fixed. Clear with `php craft clear-deprecations`.',
-        ];
+            return [
+                'fromDatabase' => [
+                    'count' => count($dbDeprecations),
+                    'deprecations' => $dbDeprecations,
+                ],
+                'fromLogs' => [
+                    'count' => count($deprecations),
+                    'deprecations' => $deprecations,
+                ],
+                'hint' => 'Database deprecations persist until fixed. Clear with `php craft clear-deprecations`.',
+            ];
+        });
     }
 
     /**
@@ -240,30 +236,25 @@ class DebugTools {
         name: 'explain_query',
         description: 'Run EXPLAIN on a SELECT query to analyze performance. Shows query execution plan, indexes used, and estimated rows.',
     )]
-    public function explainQuery(string $sql): array {
-        // Security: Only allow SELECT queries
-        $trimmedSql = trim($sql);
-        $upperSql = strtoupper($trimmedSql);
+    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    public function explainQuery(string $sql, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($sql): array {
+            // Security: Only allow SELECT queries
+            $trimmedSql = trim($sql);
+            $upperSql = strtoupper($trimmedSql);
 
-        if (!str_starts_with($upperSql, 'SELECT')) {
-            return [
-                'success' => false,
-                'error' => 'Only SELECT queries can be explained',
-            ];
-        }
-
-        // Block dangerous keywords
-        $blockedKeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE'];
-        foreach ($blockedKeywords as $keyword) {
-            if (str_contains($upperSql, $keyword)) {
-                return [
-                    'success' => false,
-                    'error' => "Query contains blocked keyword: {$keyword}",
-                ];
+            if (!str_starts_with($upperSql, 'SELECT')) {
+                throw new ToolCallException('Only SELECT queries can be explained');
             }
-        }
 
-        try {
+            // Block dangerous keywords
+            $blockedKeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE'];
+            foreach ($blockedKeywords as $keyword) {
+                if (str_contains($upperSql, $keyword)) {
+                    throw new ToolCallException("Query contains blocked keyword: {$keyword}");
+                }
+            }
+
             $db = Craft::$app->getDb();
             $driver = $db->getDriverName();
 
@@ -293,12 +284,7 @@ class DebugTools {
                 'explain' => $results,
                 'warnings' => $warnings,
             ];
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        });
     }
 
     /**
@@ -308,53 +294,56 @@ class DebugTools {
         name: 'get_environment',
         description: 'Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.',
     )]
-    public function getEnvironment(): array {
-        $general = Craft::$app->getConfig()->getGeneral();
+    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    public function getEnvironment(?RequestContext $context = null): array {
+        return SafeExecution::run(function (): array {
+            $general = Craft::$app->getConfig()->getGeneral();
 
-        // Safe environment variables to expose
-        $safeEnvVars = [
-            'CRAFT_ENVIRONMENT' => getenv('CRAFT_ENVIRONMENT') ?: 'production',
-            'CRAFT_DEV_MODE' => getenv('CRAFT_DEV_MODE') ?: 'false',
-            'CRAFT_ALLOW_ADMIN_CHANGES' => getenv('CRAFT_ALLOW_ADMIN_CHANGES') ?: null,
-            'CRAFT_RUN_QUEUE_AUTOMATICALLY' => getenv('CRAFT_RUN_QUEUE_AUTOMATICALLY') ?: null,
-        ];
+            // Safe environment variables to expose
+            $safeEnvVars = [
+                'CRAFT_ENVIRONMENT' => getenv('CRAFT_ENVIRONMENT') ?: 'production',
+                'CRAFT_DEV_MODE' => getenv('CRAFT_DEV_MODE') ?: 'false',
+                'CRAFT_ALLOW_ADMIN_CHANGES' => getenv('CRAFT_ALLOW_ADMIN_CHANGES') ?: null,
+                'CRAFT_RUN_QUEUE_AUTOMATICALLY' => getenv('CRAFT_RUN_QUEUE_AUTOMATICALLY') ?: null,
+            ];
 
-        // PHP settings relevant to debugging
-        $phpSettings = [
-            'memory_limit' => ini_get('memory_limit'),
-            'max_execution_time' => ini_get('max_execution_time'),
-            'display_errors' => ini_get('display_errors'),
-            'error_reporting' => ini_get('error_reporting'),
-            'upload_max_filesize' => ini_get('upload_max_filesize'),
-            'post_max_size' => ini_get('post_max_size'),
-            'opcache.enable' => ini_get('opcache.enable'),
-        ];
+            // PHP settings relevant to debugging
+            $phpSettings = [
+                'memory_limit' => ini_get('memory_limit'),
+                'max_execution_time' => ini_get('max_execution_time'),
+                'display_errors' => ini_get('display_errors'),
+                'error_reporting' => ini_get('error_reporting'),
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'post_max_size' => ini_get('post_max_size'),
+                'opcache.enable' => ini_get('opcache.enable'),
+            ];
 
-        // System status
-        $systemStatus = [
-            'isSystemLive' => Craft::$app->getIsLive(),
-            'devMode' => $general->devMode,
-            'cpTrigger' => $general->cpTrigger,
-            'runQueueAutomatically' => $general->runQueueAutomatically,
-            'allowAdminChanges' => $general->allowAdminChanges,
-            'enableTemplateCaching' => $general->enableTemplateCaching,
-            'testToEmailAddress' => $general->testToEmailAddress ?: null,
-        ];
+            // System status
+            $systemStatus = [
+                'isSystemLive' => Craft::$app->getIsLive(),
+                'devMode' => $general->devMode,
+                'cpTrigger' => $general->cpTrigger,
+                'runQueueAutomatically' => $general->runQueueAutomatically,
+                'allowAdminChanges' => $general->allowAdminChanges,
+                'enableTemplateCaching' => $general->enableTemplateCaching,
+                'testToEmailAddress' => $general->testToEmailAddress ?: null,
+            ];
 
-        // Paths (for debugging path issues)
-        $paths = [
-            'basePath' => Craft::$app->getBasePath(),
-            'configPath' => Craft::$app->getPath()->getConfigPath(),
-            'storagePath' => Craft::$app->getPath()->getStoragePath(),
-            'templatesPath' => Craft::$app->getPath()->getSiteTemplatesPath(),
-        ];
+            // Paths (for debugging path issues)
+            $paths = [
+                'basePath' => Craft::$app->getBasePath(),
+                'configPath' => Craft::$app->getPath()->getConfigPath(),
+                'storagePath' => Craft::$app->getPath()->getStoragePath(),
+                'templatesPath' => Craft::$app->getPath()->getSiteTemplatesPath(),
+            ];
 
-        return [
-            'environment' => $safeEnvVars,
-            'php' => $phpSettings,
-            'system' => $systemStatus,
-            'paths' => $paths,
-        ];
+            return [
+                'environment' => $safeEnvVars,
+                'php' => $phpSettings,
+                'system' => $systemStatus,
+                'paths' => $paths,
+            ];
+        });
     }
 
     /**
@@ -364,21 +353,24 @@ class DebugTools {
         name: 'list_event_handlers',
         description: 'List registered event handlers/listeners in Craft CMS. Useful for debugging hooks and understanding what code runs on events.',
     )]
-    public function listEventHandlers(?string $filter = null): array {
-        $handlers = $this->getApplicationEvents($filter);
-        $classEvents = $this->getClassEvents($filter);
+    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    public function listEventHandlers(?string $filter = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($filter): array {
+            $handlers = $this->getApplicationEvents($filter);
+            $classEvents = $this->getClassEvents($filter);
 
-        return [
-            'applicationEvents' => [
-                'count' => count($handlers),
-                'events' => $handlers,
-            ],
-            'classEvents' => [
-                'count' => count($classEvents),
-                'events' => $classEvents,
-            ],
-            'hint' => 'Use filter parameter to search by event or class name',
-        ];
+            return [
+                'applicationEvents' => [
+                    'count' => count($handlers),
+                    'events' => $handlers,
+                ],
+                'classEvents' => [
+                    'count' => count($classEvents),
+                    'events' => $classEvents,
+                ],
+                'hint' => 'Use filter parameter to search by event or class name',
+            ];
+        });
     }
 
     /**
@@ -434,22 +426,47 @@ class DebugTools {
      * @return Generator<array{class: string, event: string, count: int, handlers: array}>
      */
     private function flattenClassEvents(array $classEventsProperty, ?string $filter): Generator {
-        foreach ($classEventsProperty as $className => $classEventHandlers) {
-            foreach ($classEventHandlers as $eventName => $eventHandlerList) {
-                if ($filter !== null &&
-                    stripos((string) $eventName, $filter) === false &&
-                    stripos((string) $className, $filter) === false) {
-                    continue;
-                }
+        $flattened = array_merge(...array_map(
+            fn (string $className, array $classEventHandlers) => $this->extractClassEvents($className, $classEventHandlers, $filter),
+            array_keys($classEventsProperty),
+            array_values($classEventsProperty),
+        ));
 
-                yield [
-                    'class' => $className,
-                    'event' => $eventName,
-                    'count' => count($eventHandlerList),
-                    'handlers' => $this->describeHandlers($eventHandlerList),
-                ];
-            }
+        yield from $flattened;
+    }
+
+    /**
+     * Extract events for a single class.
+     *
+     * @param array<string, array> $classEventHandlers
+     * @return array<array{class: string, event: string, count: int, handlers: array}>
+     */
+    private function extractClassEvents(string $className, array $classEventHandlers, ?string $filter): array {
+        return array_filter(
+            array_map(
+                fn (string $eventName, array $eventHandlerList) => $this->matchesFilter($className, $eventName, $filter)
+                    ? [
+                        'class' => $className,
+                        'event' => $eventName,
+                        'count' => count($eventHandlerList),
+                        'handlers' => $this->describeHandlers($eventHandlerList),
+                    ]
+                    : null,
+                array_keys($classEventHandlers),
+                array_values($classEventHandlers),
+            ),
+        );
+    }
+
+    /**
+     * Check if class or event name matches filter.
+     */
+    private function matchesFilter(string $className, string $eventName, ?string $filter): bool {
+        if ($filter === null) {
+            return true;
         }
+
+        return stripos($eventName, $filter) !== false || stripos($className, $filter) !== false;
     }
 
     /**

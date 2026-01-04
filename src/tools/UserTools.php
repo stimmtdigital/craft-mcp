@@ -6,7 +6,11 @@ namespace stimmt\craft\Mcp\tools;
 
 use craft\elements\User;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Server\RequestContext;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * User MCP tools for Craft CMS.
@@ -21,28 +25,32 @@ class UserTools {
         name: 'list_users',
         description: 'List users from Craft CMS. Filter by group handle, status, email.',
     )]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listUsers(
         ?string $group = null,
         ?string $status = null,
         ?string $email = null,
         int $limit = 50,
+        ?RequestContext $context = null,
     ): array {
-        $query = User::find()->limit($limit);
+        return SafeExecution::run(function () use ($group, $status, $email, $limit): array {
+            $query = User::find()->limit($limit);
 
-        if ($group !== null) {
-            $query->group($group);
-        }
-        if ($status !== null) {
-            $query->status($status);
-        }
-        if ($email !== null) {
-            $query->email($email);
-        }
+            if ($group !== null) {
+                $query->group($group);
+            }
+            if ($status !== null) {
+                $query->status($status);
+            }
+            if ($email !== null) {
+                $query->email($email);
+            }
 
-        $users = $query->all();
-        $results = array_map($this->serializeUser(...), $users);
+            $users = $query->all();
+            $results = array_map($this->serializeUser(...), $users);
 
-        return Response::list('users', $results);
+            return Response::list('users', $results);
+        });
     }
 
     /**
