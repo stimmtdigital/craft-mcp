@@ -11,17 +11,9 @@ namespace stimmt\craft\Mcp\contracts;
  * The isAvailable() method is called during tool registration to determine
  * whether the class's tools should be registered.
  *
+ * @deprecated Use ConditionalProvider instead. This interface is kept for backwards compatibility.
+ *
  * @author Max van Essen <support@stimmt.digital>
  */
-interface ConditionalToolProvider {
-    /**
-     * Check if this tool provider is available.
-     *
-     * Return false to skip registration of all tools in this class.
-     * Common use cases:
-     * - Check if a required plugin is installed
-     * - Check if a required service is configured
-     * - Check environment-specific conditions
-     */
-    public static function isAvailable(): bool;
+interface ConditionalToolProvider extends ConditionalProvider {
 }

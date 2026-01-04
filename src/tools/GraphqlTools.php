@@ -30,27 +30,18 @@ class GraphqlTools {
             $gql = Craft::$app->getGql();
             $schemas = $gql->getSchemas();
 
-            $result = [];
-            foreach ($schemas as $schema) {
-                $result[] = $this->serializeSchema($schema);
-            }
+            $result = array_map(
+                $this->serializeSchema(...),
+                $schemas,
+            );
 
             // Also include the public schema if it exists
             $publicSchema = $gql->getPublicSchema();
-            if ($publicSchema !== null) {
-                $hasPublic = false;
-                foreach ($result as $s) {
-                    if ($s['id'] === $publicSchema->id) {
-                        $hasPublic = true;
-                        break;
-                    }
-                }
-                if (!$hasPublic) {
-                    array_unshift($result, [
-                        ...$this->serializeSchema($publicSchema),
-                        'isPublic' => true,
-                    ]);
-                }
+            if ($publicSchema !== null && !$this->hasSchemaId($result, $publicSchema->id)) {
+                array_unshift($result, [
+                    ...$this->serializeSchema($publicSchema),
+                    'isPublic' => true,
+                ]);
             }
 
             return [
@@ -155,15 +146,12 @@ class GraphqlTools {
             }
 
             // Parse variables if provided
-            $parsedVariables = null;
-            if ($variables !== null) {
-                $parsedVariables = json_decode($variables, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    return [
-                        'success' => false,
-                        'error' => 'Invalid JSON in variables: ' . json_last_error_msg(),
-                    ];
-                }
+            $parsedVariables = $this->parseVariables($variables);
+            if ($parsedVariables === false) {
+                return [
+                    'success' => false,
+                    'error' => 'Invalid JSON in variables: ' . json_last_error_msg(),
+                ];
             }
 
             // Execute the query
@@ -231,6 +219,34 @@ class GraphqlTools {
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Parse JSON variables string.
+     *
+     * @return array<string, mixed>|null|false Null if no variables, false on error, array otherwise
+     */
+    private function parseVariables(?string $variables): array|null|false {
+        if ($variables === null) {
+            return null;
+        }
+
+        $parsed = json_decode($variables, true);
+
+        return json_last_error() === JSON_ERROR_NONE ? $parsed : false;
+    }
+
+    /**
+     * Check if a schema ID exists in the results.
+     *
+     * @param array<array<string, mixed>> $schemas
+     */
+    private function hasSchemaId(array $schemas, ?int $id): bool {
+        if ($id === null) {
+            return false;
+        }
+
+        return array_any($schemas, fn (array $schema) => ($schema['id'] ?? null) === $id);
     }
 
     /**

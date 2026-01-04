@@ -7,9 +7,14 @@ namespace stimmt\craft\Mcp;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
+use craft\services\Path;
 use Override;
+use stimmt\craft\Mcp\events\RegisterPromptsEvent;
+use stimmt\craft\Mcp\events\RegisterResourcesEvent;
 use stimmt\craft\Mcp\events\RegisterToolsEvent;
 use stimmt\craft\Mcp\models\Settings;
+use stimmt\craft\Mcp\services\PromptRegistry;
+use stimmt\craft\Mcp\services\ResourceRegistry;
 use stimmt\craft\Mcp\services\ToolRegistry;
 
 /**
@@ -25,6 +30,16 @@ class Mcp extends BasePlugin {
      * Event fired to allow plugins to register MCP tools.
      */
     public const EVENT_REGISTER_TOOLS = 'registerTools';
+
+    /**
+     * Event fired to allow plugins to register MCP prompts.
+     */
+    public const EVENT_REGISTER_PROMPTS = 'registerPrompts';
+
+    /**
+     * Event fired to allow plugins to register MCP resources.
+     */
+    public const EVENT_REGISTER_RESOURCES = 'registerResources';
 
     /**
      * Tools that can modify data or execute code.
@@ -50,6 +65,13 @@ class Mcp extends BasePlugin {
 
     private static ?ToolRegistry $toolRegistry = null;
 
+    private static ?PromptRegistry $promptRegistry = null;
+
+    private static ?ResourceRegistry $resourceRegistry = null;
+
+    /**
+     * @return array{components: array<string, mixed>}
+     */
     #[Override]
     public static function config(): array {
         return [
@@ -102,6 +124,28 @@ class Mcp extends BasePlugin {
     }
 
     /**
+     * Get the prompt registry instance.
+     */
+    public static function getPromptRegistry(): PromptRegistry {
+        if (self::$promptRegistry === null) {
+            self::$promptRegistry = new PromptRegistry();
+        }
+
+        return self::$promptRegistry;
+    }
+
+    /**
+     * Get the resource registry instance.
+     */
+    public static function getResourceRegistry(): ResourceRegistry {
+        if (self::$resourceRegistry === null) {
+            self::$resourceRegistry = new ResourceRegistry();
+        }
+
+        return self::$resourceRegistry;
+    }
+
+    /**
      * Reset the tool registry to force re-initialization.
      *
      * Useful for detecting newly installed plugins without full server restart.
@@ -111,10 +155,37 @@ class Mcp extends BasePlugin {
     }
 
     /**
+     * Reset the prompt registry to force re-initialization.
+     */
+    public static function resetPromptRegistry(): void {
+        self::$promptRegistry = null;
+    }
+
+    /**
+     * Reset the resource registry to force re-initialization.
+     */
+    public static function resetResourceRegistry(): void {
+        self::$resourceRegistry = null;
+    }
+
+    /**
+     * Reset all registries to force re-initialization.
+     *
+     * Useful for detecting newly installed plugins without full server restart.
+     */
+    public static function resetRegistries(): void {
+        self::$toolRegistry = null;
+        self::$promptRegistry = null;
+        self::$resourceRegistry = null;
+    }
+
+    /**
      * Apply config/mcp.php overrides to settings.
      */
     private static function applyConfigOverrides(Settings $settings): Settings {
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/mcp.php';
+        /** @var Path $pathService */
+        $pathService = Craft::$app->getPath();
+        $configPath = $pathService->getConfigPath() . '/mcp.php';
 
         if (!file_exists($configPath)) {
             return self::applyProductionDefaults($settings);
@@ -186,6 +257,56 @@ class Mcp extends BasePlugin {
     }
 
     /**
+     * Check if a specific prompt is enabled.
+     */
+    public static function isPromptEnabled(string $promptName): bool {
+        $settings = self::settings();
+
+        if (!$settings->enabled) {
+            return false;
+        }
+
+        if (in_array($promptName, $settings->disabledPrompts, true)) {
+            return false;
+        }
+
+        // Get prompt definition from registry
+        $definition = self::getPromptRegistry()->getDefinition($promptName);
+
+        // Check method-level condition
+        if ($definition !== null && !$definition->isConditionMet()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a specific resource is enabled.
+     */
+    public static function isResourceEnabled(string $resourceUri): bool {
+        $settings = self::settings();
+
+        if (!$settings->enabled) {
+            return false;
+        }
+
+        if (in_array($resourceUri, $settings->disabledResources, true)) {
+            return false;
+        }
+
+        // Get resource definition from registry
+        $definition = self::getResourceRegistry()->getDefinition($resourceUri);
+
+        // Check method-level condition
+        if ($definition !== null && !$definition->isConditionMet()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Get all dangerous tool names.
      *
      * @return string[]
@@ -211,6 +332,50 @@ class Mcp extends BasePlugin {
         // Log any validation errors
         foreach ($event->getErrors() as $error) {
             Craft::warning("MCP tool registration error: {$error}", __METHOD__);
+        }
+
+        return $event;
+    }
+
+    /**
+     * Collect prompt classes from other plugins via event.
+     *
+     * @deprecated Use getPromptRegistry() instead. The registry now handles all prompt collection.
+     * @return RegisterPromptsEvent The event containing registered prompts and any errors
+     */
+    public static function collectExternalPrompts(): RegisterPromptsEvent {
+        $event = new RegisterPromptsEvent();
+
+        $plugin = self::getInstance();
+        if ($plugin !== null && $plugin->hasEventHandlers(self::EVENT_REGISTER_PROMPTS)) {
+            $plugin->trigger(self::EVENT_REGISTER_PROMPTS, $event);
+        }
+
+        // Log any validation errors
+        foreach ($event->getErrors() as $error) {
+            Craft::warning("MCP prompt registration error: {$error}", __METHOD__);
+        }
+
+        return $event;
+    }
+
+    /**
+     * Collect resource classes from other plugins via event.
+     *
+     * @deprecated Use getResourceRegistry() instead. The registry now handles all resource collection.
+     * @return RegisterResourcesEvent The event containing registered resources and any errors
+     */
+    public static function collectExternalResources(): RegisterResourcesEvent {
+        $event = new RegisterResourcesEvent();
+
+        $plugin = self::getInstance();
+        if ($plugin !== null && $plugin->hasEventHandlers(self::EVENT_REGISTER_RESOURCES)) {
+            $plugin->trigger(self::EVENT_REGISTER_RESOURCES, $event);
+        }
+
+        // Log any validation errors
+        foreach ($event->getErrors() as $error) {
+            Craft::warning("MCP resource registration error: {$error}", __METHOD__);
         }
 
         return $event;

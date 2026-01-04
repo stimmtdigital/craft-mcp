@@ -36,7 +36,8 @@
         "rector/rector": "^2.0",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-type-coverage": "^4.0",
-        "phpstan/phpstan": "^2.0"
+        "phpstan/phpstan": "^2.0",
+        "sanmai/phpstan-rules": "^0.3.13"
     },
     "autoload": {
         "psr-4": {

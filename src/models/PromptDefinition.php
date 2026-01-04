@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\models;
 
-use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\enums\PromptCategory;
 
 /**
- * Value object representing an MCP tool definition with metadata.
+ * Value object representing an MCP prompt definition with metadata.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final readonly class ToolDefinition {
+final readonly class PromptDefinition {
     public function __construct(
         public string $name,
         public string $description,
@@ -19,16 +19,17 @@ final readonly class ToolDefinition {
         public string $method,
         public string $source,
         public string $category,
-        public bool $dangerous,
         public ?string $condition = null,
+        /** @var array<string, string> Parameter name => CompletionProvider class */
+        public array $completionProviders = [],
     ) {
     }
 
     /**
-     * Check if this tool is enabled based on its condition.
+     * Check if this prompt is enabled based on its condition.
      *
      * This checks the method-level condition only.
-     * Class-level conditions (ConditionalToolProvider) are checked during registration.
+     * Class-level conditions (ConditionalProvider) are checked during registration.
      */
     public function isConditionMet(): bool {
         if ($this->condition === null) {
@@ -49,10 +50,17 @@ final readonly class ToolDefinition {
     }
 
     /**
-     * Check if this is a core tool.
+     * Check if this is a core prompt.
      */
     public function isCore(): bool {
         return $this->source === 'core';
+    }
+
+    /**
+     * Check if this prompt has completion providers.
+     */
+    public function hasCompletions(): bool {
+        return $this->completionProviders !== [];
     }
 
     /**
@@ -66,14 +74,14 @@ final readonly class ToolDefinition {
             'description' => $this->description,
             'source' => $this->source,
             'category' => $this->category,
-            'dangerous' => $this->dangerous,
+            'hasCompletions' => $this->hasCompletions(),
         ];
     }
 
     /**
-     * Create a ToolDefinition from extracted metadata.
+     * Create a PromptDefinition from extracted metadata.
      *
-     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, dangerous?: bool, condition?: string|null} $data
+     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, condition?: string|null, completionProviders?: array<string, string>} $data
      */
     public static function fromArray(array $data): self {
         return new self(
@@ -82,9 +90,9 @@ final readonly class ToolDefinition {
             class: $data['class'] ?? '',
             method: $data['method'] ?? '',
             source: $data['source'] ?? 'plugin',
-            category: $data['category'] ?? ToolCategory::GENERAL->value,
-            dangerous: $data['dangerous'] ?? false,
+            category: $data['category'] ?? PromptCategory::GENERAL->value,
             condition: $data['condition'] ?? null,
+            completionProviders: $data['completionProviders'] ?? [],
         );
     }
 }

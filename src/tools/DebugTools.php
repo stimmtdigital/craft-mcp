@@ -442,22 +442,47 @@ class DebugTools {
      * @return Generator<array{class: string, event: string, count: int, handlers: array}>
      */
     private function flattenClassEvents(array $classEventsProperty, ?string $filter): Generator {
-        foreach ($classEventsProperty as $className => $classEventHandlers) {
-            foreach ($classEventHandlers as $eventName => $eventHandlerList) {
-                if ($filter !== null &&
-                    stripos((string) $eventName, $filter) === false &&
-                    stripos((string) $className, $filter) === false) {
-                    continue;
-                }
+        $flattened = array_merge(...array_map(
+            fn (string $className, array $classEventHandlers) => $this->extractClassEvents($className, $classEventHandlers, $filter),
+            array_keys($classEventsProperty),
+            array_values($classEventsProperty),
+        ));
 
-                yield [
-                    'class' => $className,
-                    'event' => $eventName,
-                    'count' => count($eventHandlerList),
-                    'handlers' => $this->describeHandlers($eventHandlerList),
-                ];
-            }
+        yield from $flattened;
+    }
+
+    /**
+     * Extract events for a single class.
+     *
+     * @param array<string, array> $classEventHandlers
+     * @return array<array{class: string, event: string, count: int, handlers: array}>
+     */
+    private function extractClassEvents(string $className, array $classEventHandlers, ?string $filter): array {
+        return array_filter(
+            array_map(
+                fn (string $eventName, array $eventHandlerList) => $this->matchesFilter($className, $eventName, $filter)
+                    ? [
+                        'class' => $className,
+                        'event' => $eventName,
+                        'count' => count($eventHandlerList),
+                        'handlers' => $this->describeHandlers($eventHandlerList),
+                    ]
+                    : null,
+                array_keys($classEventHandlers),
+                array_values($classEventHandlers),
+            ),
+        );
+    }
+
+    /**
+     * Check if class or event name matches filter.
+     */
+    private function matchesFilter(string $className, string $eventName, ?string $filter): bool {
+        if ($filter === null) {
+            return true;
         }
+
+        return stripos($eventName, $filter) !== false || stripos($className, $filter) !== false;
     }
 
     /**

@@ -39,15 +39,19 @@ final class FileHelper {
             fseek($handle, $pos);
             $char = fgetc($handle);
 
-            if ($char === "\n") {
-                if ($buffer !== '') {
-                    array_unshift($result, $buffer);
-                    $lineCount++;
-                    $buffer = '';
-                }
-            } else {
+            if ($char !== "\n") {
                 $buffer = $char . $buffer;
+
+                continue;
             }
+
+            if ($buffer === '') {
+                continue;
+            }
+
+            array_unshift($result, $buffer);
+            $lineCount++;
+            $buffer = '';
         }
 
         if ($buffer !== '' && $lineCount < $lines) {

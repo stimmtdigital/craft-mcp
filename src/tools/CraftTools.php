@@ -61,23 +61,20 @@ class CraftTools {
         $sectionsService = Craft::$app->getEntries();
         $allSections = $sectionsService->getAllSections();
 
-        $sections = [];
-        foreach ($allSections as $section) {
-            $entryTypes = [];
-            foreach ($section->getEntryTypes() as $entryType) {
-                $entryTypes[] = [
-                    'id' => $entryType->id,
-                    'handle' => $entryType->handle,
-                    'name' => $entryType->name,
-                ];
-            }
-
-            $sections[] = [
+        $sections = array_map(
+            fn ($section) => [
                 'id' => $section->id,
                 'handle' => $section->handle,
                 'name' => $section->name,
-                'type' => $section->type->value,
-                'entryTypes' => $entryTypes,
+                'type' => is_string($section->type) ? $section->type : $section->type->value,
+                'entryTypes' => array_map(
+                    fn ($entryType) => [
+                        'id' => $entryType->id,
+                        'handle' => $entryType->handle,
+                        'name' => $entryType->name,
+                    ],
+                    $section->getEntryTypes(),
+                ),
                 'siteSettings' => array_map(
                     fn ($settings) => [
                         'siteId' => $settings->siteId,
@@ -87,8 +84,9 @@ class CraftTools {
                     ],
                     $section->getSiteSettings(),
                 ),
-            ];
-        }
+            ],
+            $allSections,
+        );
 
         return [
             'count' => count($sections),

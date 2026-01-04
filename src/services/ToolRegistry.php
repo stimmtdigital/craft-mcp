@@ -225,6 +225,17 @@ final class ToolRegistry {
     }
 
     /**
+     * Reset the registry (useful for testing or hot-reload).
+     */
+    public function reset(): void {
+        $this->initialized = false;
+        $this->tools = [];
+        $this->definitions = [];
+        $this->discoveryPaths = [];
+        $this->errors = [];
+    }
+
+    /**
      * Initialize and collect all tools.
      */
     private function ensureInitialized(): void {

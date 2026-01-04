@@ -11,6 +11,7 @@ use Mcp\Capability\Attribute\McpTool;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\Serializer;
 
 /**
@@ -34,20 +35,22 @@ class EntryTools {
         int $limit = 20,
         int $offset = 0,
     ): array {
-        $query = Entry::find()
-            ->limit($limit)
-            ->offset($offset);
+        return SafeExecution::run(function () use ($section, $type, $status, $limit, $offset): array {
+            $query = Entry::find()
+                ->limit($limit)
+                ->offset($offset);
 
-        $this->applyFilters($query, [
-            'section' => $section,
-            'type' => $type,
-            'status' => $status ?? null, // null = all statuses
-        ]);
+            $this->applyFilters($query, [
+                'section' => $section,
+                'type' => $type,
+                'status' => $status ?? null, // null = all statuses
+            ]);
 
-        $entries = $query->all();
-        $results = array_map($this->serializeEntry(...), $entries);
+            $entries = $query->all();
+            $results = array_map($this->serializeEntry(...), $entries);
 
-        return Response::paginated('entries', $results, $query->count(), $limit, $offset);
+            return Response::paginated('entries', $results, (int) $query->count(), $limit, $offset);
+        });
     }
 
     /**

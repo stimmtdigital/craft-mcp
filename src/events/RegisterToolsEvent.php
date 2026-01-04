@@ -222,7 +222,9 @@ class RegisterToolsEvent extends Event {
         $this->tools[$source][] = $class;
 
         // Extract and store definitions
-        foreach ($this->extractToolDefinitions($class, $source) as $definition) {
+        /** @var class-string $classString */
+        $classString = $class;
+        foreach ($this->extractToolDefinitions($classString, $source) as $definition) {
             $this->definitions[$definition->name] = $definition;
         }
     }
@@ -230,6 +232,7 @@ class RegisterToolsEvent extends Event {
     /**
      * Extract tool definitions from a class.
      *
+     * @param class-string $class
      * @return ToolDefinition[]
      */
     private function extractToolDefinitions(string $class, string $source): array {
@@ -254,8 +257,8 @@ class RegisterToolsEvent extends Event {
             $meta = empty($metaAttrs) ? null : $metaAttrs[0]->newInstance();
 
             $definitions[] = new ToolDefinition(
-                name: $mcpTool->name,
-                description: $mcpTool->description,
+                name: $mcpTool->name ?? '',
+                description: $mcpTool->description ?? '',
                 class: $class,
                 method: $method->getName(),
                 source: $source,

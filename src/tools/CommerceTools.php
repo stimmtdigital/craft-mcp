@@ -81,30 +81,10 @@ class CommerceTools implements ConditionalToolProvider {
             $query->limit($limit)->offset($offset);
             $products = $query->all();
 
-            $result = [];
-            foreach ($products as $product) {
-                $variants = [];
-                foreach ($product->getVariants() as $variant) {
-                    $variants[] = [
-                        'id' => $variant->id,
-                        'sku' => $variant->sku,
-                        'price' => $variant->price,
-                        'stock' => $variant->stock,
-                        'isDefault' => $variant->isDefault,
-                    ];
-                }
-
-                $result[] = [
-                    'id' => $product->id,
-                    'title' => $product->title,
-                    'slug' => $product->slug,
-                    'typeHandle' => $product->getType()->handle,
-                    'status' => $product->getStatus(),
-                    'variants' => $variants,
-                    'dateCreated' => $product->dateCreated?->format('Y-m-d H:i:s'),
-                    'dateUpdated' => $product->dateUpdated?->format('Y-m-d H:i:s'),
-                ];
-            }
+            $result = array_map(
+                $this->serializeProductSummary(...),
+                $products,
+            );
 
             return [
                 'count' => count($result),
@@ -427,6 +407,35 @@ class CommerceTools implements ConditionalToolProvider {
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Serialize a product for list view.
+     *
+     * @return array<string, mixed>
+     */
+    private function serializeProductSummary(Product $product): array {
+        $variants = array_map(
+            fn ($variant) => [
+                'id' => $variant->id,
+                'sku' => $variant->sku,
+                'price' => $variant->price,
+                'stock' => $variant->stock,
+                'isDefault' => $variant->isDefault,
+            ],
+            $product->getVariants(),
+        );
+
+        return [
+            'id' => $product->id,
+            'title' => $product->title,
+            'slug' => $product->slug,
+            'typeHandle' => $product->getType()->handle,
+            'status' => $product->getStatus(),
+            'variants' => $variants,
+            'dateCreated' => $product->dateCreated?->format('Y-m-d H:i:s'),
+            'dateUpdated' => $product->dateUpdated?->format('Y-m-d H:i:s'),
+        ];
     }
 
     /**

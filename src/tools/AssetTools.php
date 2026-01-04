@@ -6,6 +6,8 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\elements\Asset;
+use craft\models\VolumeFolder;
+use craft\services\Assets;
 use Mcp\Capability\Attribute\McpTool;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -133,27 +135,9 @@ class AssetTools {
     public function listAssetFolders(?string $volume = null, ?int $parentId = null): array {
         $assetsService = Craft::$app->getAssets();
 
-        if ($volume !== null) {
-            $volumeModel = Craft::$app->getVolumes()->getVolumeByHandle($volume);
-            if ($volumeModel === null) {
-                return ['success' => false, 'error' => "Volume '{$volume}' not found"];
-            }
-
-            if ($parentId === null) {
-                $folder = $assetsService->getRootFolderByVolumeId($volumeModel->id);
-                $folders = $assetsService->findFolders(['parentId' => $folder->id]);
-            } else {
-                $folders = $assetsService->findFolders(['parentId' => $parentId]);
-            }
-        } else {
-            // Get all root folders
-            $folders = [];
-            foreach (Craft::$app->getVolumes()->getAllVolumes() as $vol) {
-                $rootFolder = $assetsService->getRootFolderByVolumeId($vol->id);
-                if ($rootFolder) {
-                    $folders[] = $rootFolder;
-                }
-            }
+        $folders = $this->getAssetFolders($assetsService, $volume, $parentId);
+        if ($folders === null) {
+            return ['success' => false, 'error' => "Volume '{$volume}' not found"];
         }
 
         $results = [];
@@ -171,6 +155,50 @@ class AssetTools {
             'count' => count($results),
             'folders' => $results,
         ];
+    }
+
+    /**
+     * Get asset folders based on volume and parent ID.
+     *
+     * @return VolumeFolder[]|null Null if volume not found
+     */
+    private function getAssetFolders(
+        Assets $assetsService,
+        ?string $volume,
+        ?int $parentId,
+    ): ?array {
+        if ($volume === null) {
+            return $this->getAllRootFolders($assetsService);
+        }
+
+        $volumeModel = Craft::$app->getVolumes()->getVolumeByHandle($volume);
+        if ($volumeModel === null) {
+            return null;
+        }
+
+        if ($parentId !== null) {
+            return $assetsService->findFolders(['parentId' => $parentId]);
+        }
+
+        $rootFolder = $assetsService->getRootFolderByVolumeId($volumeModel->id);
+
+        return $assetsService->findFolders(['parentId' => $rootFolder->id]);
+    }
+
+    /**
+     * Get all root folders across all volumes.
+     *
+     * @return VolumeFolder[]
+     */
+    private function getAllRootFolders(Assets $assetsService): array {
+        $volumes = Craft::$app->getVolumes()->getAllVolumes();
+
+        return array_filter(
+            array_map(
+                fn ($vol) => $assetsService->getRootFolderByVolumeId($vol->id),
+                $volumes,
+            ),
+        );
     }
 
     /**

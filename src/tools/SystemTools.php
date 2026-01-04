@@ -6,6 +6,8 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\helpers\FileHelper as CraftFileHelper;
+use craft\models\CategoryGroup;
+use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -235,19 +237,19 @@ class SystemTools {
             }
 
             if ($type === 'all' || $type === 'compiled-templates') {
-                $compiledTemplatesPath = Craft::$app->getPath()->getCompiledTemplatesPath(false);
-                if ($compiledTemplatesPath && is_dir($compiledTemplatesPath)) {
-                    CraftFileHelper::clearDirectory($compiledTemplatesPath);
-                    $cleared[] = 'compiled-templates';
-                }
+                $this->clearDirectoryIfExists(
+                    Craft::$app->getPath()->getCompiledTemplatesPath(false),
+                    'compiled-templates',
+                    $cleared,
+                );
             }
 
             if ($type === 'all' || $type === 'temp-files') {
-                $tempPath = Craft::$app->getPath()->getTempPath(false);
-                if ($tempPath && is_dir($tempPath)) {
-                    CraftFileHelper::clearDirectory($tempPath);
-                    $cleared[] = 'temp-files';
-                }
+                $this->clearDirectoryIfExists(
+                    Craft::$app->getPath()->getTempPath(false),
+                    'temp-files',
+                    $cleared,
+                );
             }
 
             return [
@@ -316,39 +318,87 @@ class SystemTools {
         }
 
         // Get routes from sections (entry URLs)
-        $sections = Craft::$app->getEntries()->getAllSections();
-        foreach ($sections as $section) {
-            foreach ($section->getSiteSettings() as $siteSettings) {
-                if ($siteSettings->hasUrls && $siteSettings->uriFormat) {
-                    $routes[] = [
-                        'pattern' => $siteSettings->uriFormat,
-                        'template' => $siteSettings->template,
-                        'type' => 'section',
-                        'section' => $section->handle,
-                        'siteId' => $siteSettings->siteId,
-                    ];
-                }
-            }
-        }
+        $sectionRoutes = $this->extractSectionRoutes(Craft::$app->getEntries()->getAllSections());
+        $routes = array_merge($routes, $sectionRoutes);
 
         // Get routes from categories
-        foreach (Craft::$app->getCategories()->getAllGroups() as $group) {
-            foreach ($group->getSiteSettings() as $siteSettings) {
-                if ($siteSettings->hasUrls && $siteSettings->uriFormat) {
-                    $routes[] = [
-                        'pattern' => $siteSettings->uriFormat,
-                        'template' => $siteSettings->template,
-                        'type' => 'category',
-                        'group' => $group->handle,
-                        'siteId' => $siteSettings->siteId,
-                    ];
-                }
-            }
-        }
+        $categoryRoutes = $this->extractCategoryRoutes(Craft::$app->getCategories()->getAllGroups());
+        $routes = array_merge($routes, $categoryRoutes);
 
         return [
             'count' => count($routes),
             'routes' => $routes,
         ];
+    }
+
+    /**
+     * Clear a directory if it exists.
+     *
+     * @param string[] $cleared Modified in place
+     */
+    private function clearDirectoryIfExists(?string $path, string $name, array &$cleared): void {
+        if ($path === null || !is_dir($path)) {
+            return;
+        }
+
+        CraftFileHelper::clearDirectory($path);
+        $cleared[] = $name;
+    }
+
+    /**
+     * Extract routes from sections.
+     *
+     * @param Section[] $sections
+     * @return array<array<string, mixed>>
+     */
+    private function extractSectionRoutes(array $sections): array {
+        return array_merge(...array_map(
+            fn ($section) => $this->extractSiteSettingRoutes(
+                $section->getSiteSettings(),
+                'section',
+                ['section' => $section->handle],
+            ),
+            $sections,
+        ));
+    }
+
+    /**
+     * Extract routes from category groups.
+     *
+     * @param CategoryGroup[] $groups
+     * @return array<array<string, mixed>>
+     */
+    private function extractCategoryRoutes(array $groups): array {
+        return array_merge(...array_map(
+            fn ($group) => $this->extractSiteSettingRoutes(
+                $group->getSiteSettings(),
+                'category',
+                ['group' => $group->handle],
+            ),
+            $groups,
+        ));
+    }
+
+    /**
+     * Extract routes from site settings.
+     *
+     * @param array<string, mixed> $extra
+     * @return array<array<string, mixed>>
+     */
+    private function extractSiteSettingRoutes(array $siteSettings, string $type, array $extra): array {
+        return array_filter(
+            array_map(
+                fn ($settings) => $settings->hasUrls && $settings->uriFormat
+                    ? [
+                        'pattern' => $settings->uriFormat,
+                        'template' => $settings->template,
+                        'type' => $type,
+                        ...$extra,
+                        'siteId' => $settings->siteId,
+                    ]
+                    : null,
+                $siteSettings,
+            ),
+        );
     }
 }

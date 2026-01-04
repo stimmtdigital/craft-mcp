@@ -1,3 +1,9 @@
+rules:
+    - Sanmai\PHPStanRules\Rules\NoNestedLoopsRule
+    - Sanmai\PHPStanRules\Rules\NoNestedIfStatementsRule
+    - Sanmai\PHPStanRules\Rules\RequireGuardClausesRule
+    - Sanmai\PHPStanRules\Rules\NoElseRule
+
 parameters:
     level: 5
     paths:
