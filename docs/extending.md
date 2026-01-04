@@ -181,6 +181,137 @@ class MyPluginTools
 
 The `name` parameter defines how AI assistants will call the tool, while `description` helps them understand when to use it. Write clear, specific descriptions—they directly impact how well AI assistants choose the right tool for a task.
 
+## Tool Metadata
+
+Beyond the basic `#[McpTool]` attribute, you can add metadata to your tools using the `#[McpToolMeta]` attribute. This enables categorization, dangerous tool flagging, and conditional availability.
+
+```php
+<?php
+
+use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
+
+class MyPluginTools
+{
+    #[McpTool(
+        name: 'myplugin_get_data',
+        description: 'Get data from MyPlugin'
+    )]
+    #[McpToolMeta(
+        category: ToolCategory::PLUGIN,
+        dangerous: false,
+    )]
+    public function getData(): array
+    {
+        // ...
+    }
+
+    #[McpTool(
+        name: 'myplugin_delete_all',
+        description: 'Delete all MyPlugin data'
+    )]
+    #[McpToolMeta(
+        category: ToolCategory::PLUGIN,
+        dangerous: true,
+    )]
+    public function deleteAll(): array
+    {
+        // This tool requires enableDangerousTools to be true
+    }
+}
+```
+
+### McpToolMeta Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `category` | ToolCategory | `GENERAL` | Logical grouping for the tool |
+| `dangerous` | bool | `false` | Whether this tool can modify data or execute code |
+| `condition` | string | `null` | Method name to call for conditional availability |
+
+### Tool Categories
+
+The `ToolCategory` enum provides these categories:
+
+| Category | Use Case |
+|----------|----------|
+| `CONTENT` | Tools that work with entries, assets, categories, users |
+| `SCHEMA` | Tools that inspect sections, fields, volumes |
+| `SYSTEM` | Tools for configuration, logs, caches |
+| `DATABASE` | Tools for database operations |
+| `DEBUGGING` | Tools for troubleshooting |
+| `MULTISITE` | Tools for multi-site management |
+| `GRAPHQL` | Tools for GraphQL operations |
+| `BACKUP` | Tools for database backups |
+| `COMMERCE` | Tools for Craft Commerce |
+| `CORE` | Internal MCP tools |
+| `PLUGIN` | Tools provided by plugins (recommended for your tools) |
+| `GENERAL` | Default category for uncategorized tools |
+
+### Dangerous Tools
+
+Tools marked as `dangerous: true` require the `enableDangerousTools` setting to be `true` in the MCP configuration. This protects against accidental data modification in production environments.
+
+Mark a tool as dangerous if it:
+- Modifies or deletes data
+- Executes arbitrary code
+- Creates files on the filesystem
+- Makes external API calls that have side effects
+
+### Method-Level Conditions
+
+For fine-grained control, you can make individual tools conditionally available:
+
+```php
+#[McpTool(name: 'myplugin_premium_feature', description: '...')]
+#[McpToolMeta(condition: 'isPremiumEnabled')]
+public function premiumFeature(): array
+{
+    // ...
+}
+
+public function isPremiumEnabled(): bool
+{
+    return MyPlugin::getInstance()->settings->premiumEnabled;
+}
+```
+
+The condition method must exist on the same class and return a boolean. If it returns `false`, the tool won't be registered.
+
+## Conditional Tool Providers
+
+For classes where all tools share a common availability condition, implement the `ConditionalToolProvider` interface. This is cleaner than adding conditions to every method.
+
+```php
+<?php
+
+use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
+
+class CommerceTools implements ConditionalToolProvider
+{
+    public static function isAvailable(): bool
+    {
+        // Only register these tools if Commerce is installed
+        return class_exists(\craft\commerce\Plugin::class)
+            && \Craft::$app->getPlugins()->isPluginEnabled('commerce');
+    }
+
+    #[McpTool(name: 'list_products', description: '...')]
+    public function listProducts(): array
+    {
+        // This tool only exists if isAvailable() returns true
+    }
+}
+```
+
+The `isAvailable()` method is called during tool registration. If it returns `false`, the entire class is skipped—none of its tools are registered.
+
+Common use cases:
+- Tools that require a specific plugin (Commerce, SEO, etc.)
+- Tools that require certain configuration to be present
+- Tools that only make sense in specific environments
+
 ## Naming Conventions
 
 **Always prefix your tool names** with your plugin handle to avoid conflicts with other plugins or future Craft MCP tools:

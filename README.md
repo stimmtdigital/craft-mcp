@@ -238,6 +238,7 @@ You can find your absolute paths by running `which ddev` or `which php` in your 
 |------|-------|
 | Get MCP Info | Get plugin version, status, and configuration |
 | List MCP Tools | List all available tools with descriptions and enabled status |
+| Reload MCP | Reload to detect newly installed plugins without server restart |
 
 ### Commerce Tools (when Craft Commerce is installed)
 | Name | Notes |

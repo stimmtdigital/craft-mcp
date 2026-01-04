@@ -16,7 +16,7 @@ The tools are organized into logical categories based on what they do:
 | [Multi-Site](multisite.md) | 3 | Manage and inspect multi-site configurations |
 | [GraphQL](graphql.md) | 4 | Query schemas, tokens, and execute GraphQL operations |
 | [Backup](backup.md) | 2 | List and create database backups |
-| [Self-Awareness](mcp.md) | 2 | Inspect MCP plugin status and available tools |
+| [Self-Awareness](mcp.md) | 3 | Inspect MCP plugin status, available tools, and hot-reload |
 | [Commerce](commerce.md) | 6 | Product and order management (requires Craft Commerce) |
 
 Click on a category name to see detailed documentation for each tool, including parameters, response formats, and usage examples.
@@ -128,6 +128,7 @@ These tools let AI assistants understand the MCP plugin itself:
 |------|-------------|
 | `get_mcp_info` | Get plugin version, status, tool count, and configuration |
 | `list_mcp_tools` | List all available tools with descriptions and enabled status |
+| `reload_mcp` | Reload MCP to detect newly installed plugins without server restart |
 
 ### Commerce Tools
 
