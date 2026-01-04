@@ -187,8 +187,6 @@ class GraphqlTools {
                         'name' => $schema->name,
                     ] : null,
                     'dateCreated' => $token->dateCreated?->format('Y-m-d H:i:s'),
-                    'dateLastUsed' => $token->dateLastUsed?->format('Y-m-d H:i:s'),
-                    // Note: We don't expose the actual access token for security
                 ];
             }
 

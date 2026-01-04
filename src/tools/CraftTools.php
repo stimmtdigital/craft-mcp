@@ -157,16 +157,13 @@ class CraftTools {
 
             $fields = [];
             foreach ($allFields as $field) {
-                $group = $field->getGroup();
                 $fields[] = [
                     'id' => $field->id,
                     'handle' => $field->handle,
                     'name' => $field->name,
                     'type' => $field::class,
                     'instructions' => $field->instructions,
-                    'required' => $field->required,
-                    'groupId' => $field->groupId,
-                    'groupName' => $group?->name,
+                    'searchable' => $field->searchable,
                 ];
             }
 

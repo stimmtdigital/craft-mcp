@@ -368,6 +368,8 @@ class CommerceTools implements ConditionalToolProvider {
      * @return array<string, mixed>
      */
     private function serializeProductSummary(Product $product): array {
+        $variantCollection = $product->getVariants();
+        $variantArray = method_exists($variantCollection, 'all') ? $variantCollection->all() : (array) $variantCollection;
         $variants = array_map(
             fn ($variant) => [
                 'id' => $variant->id,
@@ -376,7 +378,7 @@ class CommerceTools implements ConditionalToolProvider {
                 'stock' => $variant->stock,
                 'isDefault' => $variant->isDefault,
             ],
-            $product->getVariants(),
+            $variantArray,
         );
 
         return [
