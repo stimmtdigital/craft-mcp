@@ -46,6 +46,10 @@ define('CRAFT_ENVIRONMENT', getenv('CRAFT_ENVIRONMENT') ?: 'production');
 /** @var craft\console\Application $app */
 $app = require $basePath . '/vendor/craftcms/cms/bootstrap/console.php';
 
+// Setup signal handling for graceful restart/shutdown
+$signalHandler = new \stimmt\craft\Mcp\support\SignalHandler();
+$signalHandler->register();
+
 // Check if MCP is enabled
 $plugin = \stimmt\craft\Mcp\Mcp::getInstance();
 if ($plugin === null) {
@@ -94,6 +98,11 @@ try {
 
     $transport = new StdioTransport();
     $server->run($transport);
+
+    // Handle restart if requested via SIGHUP
+    if ($signalHandler->shouldRestart()) {
+        $signalHandler->restart($argv);
+    }
 } catch (\Throwable $e) {
     fwrite(STDERR, "Error starting MCP server: " . $e->getMessage() . "\n");
     fwrite(STDERR, $e->getTraceAsString() . "\n");

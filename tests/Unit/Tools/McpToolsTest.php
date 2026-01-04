@@ -28,6 +28,17 @@ describe('McpTools class structure', function () {
             ->and($instance->description)->toContain('all available MCP tools');
     });
 
+    it('has reload_mcp tool with McpTool attribute', function () {
+        $reflection = new ReflectionMethod(McpTools::class, 'reloadMcp');
+        $attributes = $reflection->getAttributes(McpTool::class);
+
+        expect($attributes)->toHaveCount(1);
+
+        $instance = $attributes[0]->newInstance();
+        expect($instance->name)->toBe('reload_mcp')
+            ->and($instance->description)->toContain('newly installed plugins');
+    });
+
     it('getMcpInfo returns array', function () {
         $reflection = new ReflectionMethod(McpTools::class, 'getMcpInfo');
         $returnType = $reflection->getReturnType();
@@ -44,7 +55,7 @@ describe('McpTools class structure', function () {
 });
 
 describe('McpTools tool count', function () {
-    it('has exactly 2 public methods with McpTool attribute', function () {
+    it('has exactly 3 public methods with McpTool attribute', function () {
         $reflection = new ReflectionClass(McpTools::class);
         $methods = $reflection->getMethods(ReflectionMethod::IS_PUBLIC);
 
@@ -52,6 +63,6 @@ describe('McpTools tool count', function () {
             return !empty($method->getAttributes(McpTool::class));
         });
 
-        expect($toolMethods)->toHaveCount(2);
+        expect($toolMethods)->toHaveCount(3);
     });
 });

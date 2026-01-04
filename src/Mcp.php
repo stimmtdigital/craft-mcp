@@ -102,6 +102,15 @@ class Mcp extends BasePlugin {
     }
 
     /**
+     * Reset the tool registry to force re-initialization.
+     *
+     * Useful for detecting newly installed plugins without full server restart.
+     */
+    public static function resetToolRegistry(): void {
+        self::$toolRegistry = null;
+    }
+
+    /**
      * Apply config/mcp.php overrides to settings.
      */
     private static function applyConfigOverrides(Settings $settings): Settings {

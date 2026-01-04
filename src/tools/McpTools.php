@@ -9,6 +9,8 @@ use Mcp\Capability\Attribute\McpTool;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\support\PluginReloader;
+use stimmt\craft\Mcp\support\Response;
 
 /**
  * Self-awareness tools for the MCP plugin.
@@ -107,5 +109,48 @@ class McpTools {
             'byCategory' => $byCategory,
             'tools' => $tools,
         ];
+    }
+
+    /**
+     * Reload MCP to detect newly installed plugins.
+     *
+     * This performs a soft reload that can detect newly installed Craft plugins.
+     * For code changes in existing plugins, send SIGHUP to the MCP server process.
+     */
+    #[McpTool(
+        name: 'reload_mcp',
+        description: 'Reload MCP to detect newly installed plugins. Note: Code changes require sending SIGHUP to the MCP server process.',
+    )]
+    #[McpToolMeta(category: ToolCategory::CORE->value)]
+    public function reloadMcp(): array {
+        // 1. Reload Composer classmap (detects new plugin classes)
+        PluginReloader::reloadComposerClassmap();
+
+        // 2. Refresh Craft's composer plugin info cache (re-reads plugins.php)
+        $refreshResult = PluginReloader::refreshComposerPluginInfo();
+
+        // 3. Clear project config cache (required before reset)
+        PluginReloader::clearProjectConfigCache();
+
+        // 4. Reset project config to re-read from YAML
+        Craft::$app->getProjectConfig()->reset();
+
+        // 5. Reset Plugins service internal caches
+        PluginReloader::resetPluginsService();
+
+        // 6. Reload Craft plugins
+        Craft::$app->getPlugins()->loadPlugins();
+
+        // 7. Reset tool registry to re-collect tools
+        Mcp::resetToolRegistry();
+
+        $summary = Mcp::getToolRegistry()->getSummary();
+
+        return Response::success([
+            'message' => 'MCP plugin state reloaded',
+            'pluginsDiscovered' => $refreshResult['plugins'],
+            'tools' => $summary,
+            'hint' => 'For code changes in existing plugins, send SIGHUP to the MCP server process: kill -HUP $(pgrep -f "mcp-server")',
+        ]);
     }
 }
