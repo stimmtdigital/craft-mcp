@@ -24,7 +24,7 @@ class CraftTools {
         name: 'list_plugins',
         description: 'List all installed Craft CMS plugins with their enabled status, version, and handle',
     )]
-    #[McpToolMeta(category: ToolCategory::SCHEMA->value)]
+    #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listPlugins(): array {
         $pluginsService = Craft::$app->getPlugins();
         $allPluginInfo = $pluginsService->getAllPluginInfo();
@@ -56,7 +56,7 @@ class CraftTools {
         name: 'list_sections',
         description: 'List all sections (channels, structures, singles) in Craft CMS with their entry types',
     )]
-    #[McpToolMeta(category: ToolCategory::SCHEMA->value)]
+    #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listSections(): array {
         $sectionsService = Craft::$app->getEntries();
         $allSections = $sectionsService->getAllSections();
@@ -103,7 +103,7 @@ class CraftTools {
         name: 'get_system_info',
         description: 'Get information about the Craft CMS installation including version, PHP version, and database info',
     )]
-    #[McpToolMeta(category: ToolCategory::SYSTEM->value)]
+    #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function getSystemInfo(): array {
         $info = Craft::$app->getInfo();
         $db = Craft::$app->getDb();
@@ -143,7 +143,7 @@ class CraftTools {
         name: 'list_fields',
         description: 'List all custom fields in Craft CMS with their type and group',
     )]
-    #[McpToolMeta(category: ToolCategory::SCHEMA->value)]
+    #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listFields(): array {
         $fieldsService = Craft::$app->getFields();
         $allFields = $fieldsService->getAllFields();

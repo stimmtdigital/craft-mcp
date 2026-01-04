@@ -23,7 +23,7 @@ class SiteTools {
         name: 'list_sites',
         description: 'List all sites in Craft CMS with their handles, languages, and configuration',
     )]
-    #[McpToolMeta(category: ToolCategory::MULTISITE->value)]
+    #[McpToolMeta(category: ToolCategory::MULTISITE)]
     public function listSites(): array {
         $sites = Craft::$app->getSites()->getAllSites();
 
@@ -58,7 +58,7 @@ class SiteTools {
         name: 'get_site',
         description: 'Get detailed information about a specific site by ID or handle',
     )]
-    #[McpToolMeta(category: ToolCategory::MULTISITE->value)]
+    #[McpToolMeta(category: ToolCategory::MULTISITE)]
     public function getSite(?int $id = null, ?string $handle = null): array {
         if ($id === null && $handle === null) {
             return [
@@ -121,7 +121,7 @@ class SiteTools {
         name: 'list_site_groups',
         description: 'List all site groups in Craft CMS',
     )]
-    #[McpToolMeta(category: ToolCategory::MULTISITE->value)]
+    #[McpToolMeta(category: ToolCategory::MULTISITE)]
     public function listSiteGroups(): array {
         $groups = Craft::$app->getSites()->getAllGroups();
 

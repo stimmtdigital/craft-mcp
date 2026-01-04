@@ -261,7 +261,7 @@ class RegisterToolsEvent extends Event {
                 class: $class,
                 method: $method->getName(),
                 source: $source,
-                category: $meta !== null ? $meta->category : ToolCategory::GENERAL->value,
+                category: $meta?->category->value ?? ToolCategory::GENERAL->value,
                 dangerous: $meta !== null ? $meta->dangerous : false,
                 condition: $meta?->condition,
             );

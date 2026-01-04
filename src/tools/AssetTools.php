@@ -24,7 +24,7 @@ class AssetTools {
         name: 'list_assets',
         description: 'List assets from Craft CMS. Filter by volume, folder, kind (image, video, pdf, etc.), filename.',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listAssets(
         ?string $volume = null,
         ?int $folderId = null,
@@ -76,7 +76,7 @@ class AssetTools {
         name: 'get_asset',
         description: 'Get a single asset by ID with full metadata',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function getAsset(int $id): array {
         $asset = Asset::find()->id($id)->one();
 
@@ -100,7 +100,7 @@ class AssetTools {
         name: 'list_volumes',
         description: 'List all asset volumes (storage locations) in Craft CMS',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listVolumes(): array {
         $volumes = Craft::$app->getVolumes()->getAllVolumes();
         $results = [];
@@ -129,7 +129,7 @@ class AssetTools {
         name: 'list_asset_folders',
         description: 'List asset folders in a volume',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listAssetFolders(?string $volume = null, ?int $parentId = null): array {
         $assetsService = Craft::$app->getAssets();
 

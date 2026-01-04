@@ -25,7 +25,7 @@ class McpTools {
         name: 'get_mcp_info',
         description: 'Get information about the Craft MCP plugin including version, status, and configuration',
     )]
-    #[McpToolMeta(category: ToolCategory::CORE->value)]
+    #[McpToolMeta(category: ToolCategory::CORE)]
     public function getMcpInfo(): array {
         $plugin = Mcp::getInstance();
         $settings = Mcp::settings();
@@ -63,7 +63,7 @@ class McpTools {
         name: 'list_mcp_tools',
         description: 'List all available MCP tools with their names, descriptions, and enabled status',
     )]
-    #[McpToolMeta(category: ToolCategory::CORE->value)]
+    #[McpToolMeta(category: ToolCategory::CORE)]
     public function listMcpTools(): array {
         $registry = Mcp::getToolRegistry();
         $definitions = $registry->getDefinitions();
@@ -121,7 +121,7 @@ class McpTools {
         name: 'reload_mcp',
         description: 'Reload MCP to detect newly installed plugins. Note: Code changes require sending SIGHUP to the MCP server process.',
     )]
-    #[McpToolMeta(category: ToolCategory::CORE->value)]
+    #[McpToolMeta(category: ToolCategory::CORE)]
     public function reloadMcp(): array {
         // 1. Reload Composer classmap (detects new plugin classes)
         PluginReloader::reloadComposerClassmap();

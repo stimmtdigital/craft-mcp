@@ -26,7 +26,7 @@ class EntryTools {
         name: 'list_entries',
         description: 'List entries from Craft CMS. Filter by section, type, status, limit, offset. Returns entry data including custom fields.',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listEntries(
         ?string $section = null,
         ?string $type = null,
@@ -57,7 +57,7 @@ class EntryTools {
         name: 'get_entry',
         description: 'Get a single entry by ID or slug. Returns full entry data including all custom fields.',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function getEntry(?int $id = null, ?string $slug = null, ?string $section = null): array {
         if ($id === null && $slug === null) {
             return Response::notFound('Entry', 'id or slug required');
@@ -86,7 +86,7 @@ class EntryTools {
         name: 'create_entry',
         description: 'Create a new entry in Craft CMS. Requires section handle, entry type handle, title, and optionally custom field values as JSON.',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value, dangerous: true)]
+    #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function createEntry(
         string $section,
         string $type,
@@ -134,7 +134,7 @@ class EntryTools {
         name: 'update_entry',
         description: 'Update an existing entry by ID. Can update title, slug, status, and custom field values (as JSON).',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value, dangerous: true)]
+    #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function updateEntry(
         int $id,
         ?string $title = null,

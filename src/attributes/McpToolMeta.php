@@ -20,9 +20,8 @@ class McpToolMeta {
     public function __construct(
         /**
          * The category this tool belongs to.
-         * Use ToolCategory enum values or custom strings.
          */
-        public string $category = ToolCategory::GENERAL->value,
+        public ToolCategory $category = ToolCategory::GENERAL,
 
         /**
          * Whether this tool is considered dangerous.

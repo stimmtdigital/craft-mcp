@@ -62,7 +62,7 @@ class TinkerTools {
         name: 'tinker',
         description: 'Execute PHP code within Craft CMS context. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.',
     )]
-    #[McpToolMeta(category: ToolCategory::DEBUGGING->value, dangerous: true)]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING, dangerous: true)]
     public function tinker(string $code): array {
         foreach (self::BLOCKED_PATTERNS as $pattern) {
             if (preg_match($pattern, $code)) {

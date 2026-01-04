@@ -23,7 +23,7 @@ class CategoryTools {
         name: 'list_categories',
         description: 'List categories from Craft CMS. Filter by group handle.',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listCategories(?string $group = null, int $limit = 100): array {
         $query = Category::find()->limit($limit);
 

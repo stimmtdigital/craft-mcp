@@ -61,7 +61,7 @@ class CommerceTools implements ConditionalToolProvider {
         name: 'list_products',
         description: 'List products from Craft Commerce. Filter by product type handle.',
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listProducts(
         ?string $type = null,
         int $limit = 20,
@@ -125,7 +125,7 @@ class CommerceTools implements ConditionalToolProvider {
         name: 'get_product',
         description: 'Get detailed information about a single Commerce product by ID',
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function getProduct(int $id): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();
@@ -193,7 +193,7 @@ class CommerceTools implements ConditionalToolProvider {
         name: 'list_orders',
         description: 'List orders from Craft Commerce. Filter by status handle.',
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listOrders(
         ?string $status = null,
         int $limit = 20,
@@ -253,7 +253,7 @@ class CommerceTools implements ConditionalToolProvider {
         name: 'get_order',
         description: 'Get detailed information about a single Commerce order by ID or order number',
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function getOrder(?int $id = null, ?string $number = null): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();
@@ -351,7 +351,7 @@ class CommerceTools implements ConditionalToolProvider {
         name: 'list_order_statuses',
         description: 'List all order statuses configured in Craft Commerce',
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listOrderStatuses(): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();
@@ -394,7 +394,7 @@ class CommerceTools implements ConditionalToolProvider {
         name: 'list_product_types',
         description: 'List all product types configured in Craft Commerce',
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listProductTypes(): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();

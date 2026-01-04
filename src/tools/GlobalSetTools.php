@@ -24,7 +24,7 @@ class GlobalSetTools {
         name: 'list_globals',
         description: 'List all global sets in Craft CMS with their field values',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listGlobals(): array {
         $globalSets = Craft::$app->getGlobals()->getAllSets();
         $results = array_map($this->serializeGlobalSet(...), $globalSets);

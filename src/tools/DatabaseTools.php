@@ -24,7 +24,7 @@ class DatabaseTools {
         name: 'get_database_schema',
         description: 'Get database schema information. Lists all tables, or details for a specific table including columns and indexes.',
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE->value)]
+    #[McpToolMeta(category: ToolCategory::DATABASE)]
     public function getDatabaseSchema(?string $table = null): array {
         $db = Craft::$app->getDb();
         $schema = $db->getSchema();
@@ -128,7 +128,7 @@ class DatabaseTools {
         name: 'run_query',
         description: 'Execute a read-only SQL query (SELECT only). WARNING: Basic keyword security - for development only. May be bypassable with certain PDO configs.',
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE->value, dangerous: true)]
+    #[McpToolMeta(category: ToolCategory::DATABASE, dangerous: true)]
     public function runQuery(string $sql, int $limit = 100): array {
         $trimmedSql = trim($sql);
         $upperSql = strtoupper($trimmedSql);
@@ -169,7 +169,7 @@ class DatabaseTools {
         name: 'get_database_info',
         description: 'Get database connection information including driver, server version, and connection details',
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE->value)]
+    #[McpToolMeta(category: ToolCategory::DATABASE)]
     public function getDatabaseInfo(): array {
         $db = Craft::$app->getDb();
         $config = Craft::$app->getConfig()->getDb();
@@ -192,7 +192,7 @@ class DatabaseTools {
         name: 'get_table_counts',
         description: 'Get row counts for Craft CMS tables (entries, assets, users, etc.)',
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE->value)]
+    #[McpToolMeta(category: ToolCategory::DATABASE)]
     public function getTableCounts(): array {
         $db = Craft::$app->getDb();
         $prefix = $db->tablePrefix;

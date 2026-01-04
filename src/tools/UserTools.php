@@ -23,7 +23,7 @@ class UserTools {
         name: 'list_users',
         description: 'List users from Craft CMS. Filter by group handle, status, email.',
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listUsers(
         ?string $group = null,
         ?string $status = null,
