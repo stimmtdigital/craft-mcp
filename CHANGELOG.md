@@ -29,10 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation for prompts (`docs/prompts.md`)
 - Comprehensive documentation for resources (`docs/resources.md`)
 - Extended documentation in `docs/extending.md` covering prompts, resources, and completion providers
+- Hot-reload support for newly installed plugins without MCP server restart
 
 ### Changed
 - Tool count updated from 32 to 50 tools
 - Documentation updated to reflect all available features
+- Refactored error handling to align with MCP SDK conventions
+- Applied Rector code quality improvements
+- PSR-12 compliance across all files
+- Added unit tests for new tool classes (BackupTools, CommerceTools, GraphqlTools, McpTools, SiteTools)
 
 ## [1.0.1] - 2026-01-03
 
