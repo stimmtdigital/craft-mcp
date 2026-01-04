@@ -9,6 +9,10 @@ use Mcp\Capability\Attribute\McpTool;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
+use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\models\ToolDefinition;
 use yii\base\Event;
 
 /**
@@ -19,13 +23,14 @@ use yii\base\Event;
  * ```php
  * use stimmt\craft\Mcp\Mcp;
  * use stimmt\craft\Mcp\events\RegisterToolsEvent;
+ * use stimmt\craft\Mcp\attributes\McpToolMeta;
  * use yii\base\Event;
  *
  * Event::on(
  *     Mcp::class,
  *     Mcp::EVENT_REGISTER_TOOLS,
  *     function(RegisterToolsEvent $event) {
- *         $event->addTool(MyPluginTools::class, 'myplugin');
+ *         $event->addTool(MyPluginTools::class, 'my-plugin');
  *     }
  * );
  * ```
@@ -34,10 +39,21 @@ use yii\base\Event;
  */
 class RegisterToolsEvent extends Event {
     /**
+     * Reserved sources that external plugins cannot use.
+     */
+    private const RESERVED_SOURCES = ['core', 'craft-mcp', 'mcp'];
+
+    /**
      * Registered tool classes grouped by source.
      * @var array<string, string[]> ['source' => ['ToolClass1', 'ToolClass2']]
      */
     private array $tools = [];
+
+    /**
+     * Registered tool definitions by name.
+     * @var array<string, ToolDefinition>
+     */
+    private array $definitions = [];
 
     /**
      * Registered tool directories for MCP SDK discovery.
@@ -58,19 +74,29 @@ class RegisterToolsEvent extends Event {
      * @param string $source Source identifier (plugin handle) for namespacing
      * @throws InvalidArgumentException If class is invalid
      */
-    public function addTool(string $class, string $source = 'external'): void {
-        $error = $this->validateToolClass($class);
-        if ($error !== null) {
-            $this->errors[] = "[{$source}] {$error}";
+    public function addTool(string $class, string $source = 'plugin'): void {
+        // Protect reserved sources
+        if (in_array($source, self::RESERVED_SOURCES, true)) {
+            $this->errors[] = "[{$source}] Source '{$source}' is reserved for core tools. Use your plugin handle.";
 
             return;
         }
 
-        if (!isset($this->tools[$source])) {
-            $this->tools[$source] = [];
-        }
+        $this->registerToolClass($class, $source);
+    }
 
-        $this->tools[$source][] = $class;
+    /**
+     * Register core tool classes (internal use only).
+     *
+     * This method bypasses source validation and uses 'core' as the source.
+     *
+     * @param string[] $classes Array of fully qualified class names
+     * @internal
+     */
+    public function addCoreTools(array $classes): void {
+        foreach ($classes as $class) {
+            $this->registerToolClass($class, 'core');
+        }
     }
 
     /**
@@ -94,6 +120,43 @@ class RegisterToolsEvent extends Event {
         }
 
         return $classes;
+    }
+
+    /**
+     * Get all tool definitions.
+     *
+     * @return array<string, ToolDefinition>
+     */
+    public function getDefinitions(): array {
+        return $this->definitions;
+    }
+
+    /**
+     * Get tool definitions grouped by source.
+     *
+     * @return array<string, ToolDefinition[]>
+     */
+    public function getDefinitionsBySource(): array {
+        $bySource = [];
+        foreach ($this->definitions as $definition) {
+            $bySource[$definition->source][] = $definition;
+        }
+
+        return $bySource;
+    }
+
+    /**
+     * Get tool definitions grouped by category.
+     *
+     * @return array<string, ToolDefinition[]>
+     */
+    public function getDefinitionsByCategory(): array {
+        $byCategory = [];
+        foreach ($this->definitions as $definition) {
+            $byCategory[$definition->category][] = $definition;
+        }
+
+        return $byCategory;
     }
 
     /**
@@ -134,6 +197,77 @@ class RegisterToolsEvent extends Event {
      */
     public function getDiscoveryPaths(): array {
         return $this->discoveryPaths;
+    }
+
+    /**
+     * Register a tool class and extract its definitions.
+     */
+    private function registerToolClass(string $class, string $source): void {
+        $error = $this->validateToolClass($class);
+        if ($error !== null) {
+            $this->errors[] = "[{$source}] {$error}";
+
+            return;
+        }
+
+        // Check class-level condition
+        if (is_subclass_of($class, ConditionalToolProvider::class)) {
+            if (!$class::isAvailable()) {
+                return;
+            }
+        }
+
+        // Store class for backwards compatibility
+        if (!isset($this->tools[$source])) {
+            $this->tools[$source] = [];
+        }
+        $this->tools[$source][] = $class;
+
+        // Extract and store definitions
+        foreach ($this->extractToolDefinitions($class, $source) as $definition) {
+            $this->definitions[$definition->name] = $definition;
+        }
+    }
+
+    /**
+     * Extract tool definitions from a class.
+     *
+     * @return ToolDefinition[]
+     */
+    private function extractToolDefinitions(string $class, string $source): array {
+        $definitions = [];
+
+        try {
+            $reflection = new ReflectionClass($class);
+        } catch (ReflectionException) {
+            return [];
+        }
+
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            $mcpToolAttrs = $method->getAttributes(McpTool::class);
+            if (empty($mcpToolAttrs)) {
+                continue;
+            }
+
+            $mcpTool = $mcpToolAttrs[0]->newInstance();
+
+            // Get optional McpToolMeta attribute
+            $metaAttrs = $method->getAttributes(McpToolMeta::class);
+            $meta = !empty($metaAttrs) ? $metaAttrs[0]->newInstance() : null;
+
+            $definitions[] = new ToolDefinition(
+                name: $mcpTool->name,
+                description: $mcpTool->description,
+                class: $class,
+                method: $method->getName(),
+                source: $source,
+                category: $meta !== null ? $meta->category : ToolCategory::GENERAL->value,
+                dangerous: $meta !== null ? $meta->dangerous : false,
+                condition: $meta?->condition,
+            );
+        }
+
+        return $definitions;
     }
 
     /**

@@ -6,6 +6,8 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use Throwable;
 
 /**
@@ -21,6 +23,7 @@ class SiteTools {
         name: 'list_sites',
         description: 'List all sites in Craft CMS with their handles, languages, and configuration',
     )]
+    #[McpToolMeta(category: ToolCategory::MULTISITE->value)]
     public function listSites(): array {
         $sites = Craft::$app->getSites()->getAllSites();
 
@@ -55,6 +58,7 @@ class SiteTools {
         name: 'get_site',
         description: 'Get detailed information about a specific site by ID or handle',
     )]
+    #[McpToolMeta(category: ToolCategory::MULTISITE->value)]
     public function getSite(?int $id = null, ?string $handle = null): array {
         if ($id === null && $handle === null) {
             return [
@@ -117,6 +121,7 @@ class SiteTools {
         name: 'list_site_groups',
         description: 'List all site groups in Craft CMS',
     )]
+    #[McpToolMeta(category: ToolCategory::MULTISITE->value)]
     public function listSiteGroups(): array {
         $groups = Craft::$app->getSites()->getAllGroups();
 

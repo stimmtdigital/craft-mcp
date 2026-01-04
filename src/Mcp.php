@@ -10,6 +10,7 @@ use craft\base\Plugin as BasePlugin;
 use Override;
 use stimmt\craft\Mcp\events\RegisterToolsEvent;
 use stimmt\craft\Mcp\models\Settings;
+use stimmt\craft\Mcp\services\ToolRegistry;
 
 /**
  * Craft MCP Plugin
@@ -27,6 +28,9 @@ class Mcp extends BasePlugin {
 
     /**
      * Tools that can modify data or execute code.
+     *
+     * @deprecated Use getToolRegistry()->getDangerousTools() instead.
+     *             This constant is kept for backwards compatibility.
      */
     public const DANGEROUS_TOOLS = [
         'tinker',
@@ -43,6 +47,8 @@ class Mcp extends BasePlugin {
     public bool $hasCpSettings = false;
 
     private static ?Settings $loadedSettings = null;
+
+    private static ?ToolRegistry $toolRegistry = null;
 
     #[Override]
     public static function config(): array {
@@ -82,6 +88,17 @@ class Mcp extends BasePlugin {
         self::$loadedSettings = self::applyConfigOverrides($settings);
 
         return self::$loadedSettings;
+    }
+
+    /**
+     * Get the tool registry instance.
+     */
+    public static function getToolRegistry(): ToolRegistry {
+        if (self::$toolRegistry === null) {
+            self::$toolRegistry = new ToolRegistry();
+        }
+
+        return self::$toolRegistry;
     }
 
     /**
@@ -143,12 +160,35 @@ class Mcp extends BasePlugin {
             return false;
         }
 
-        return !(in_array($toolName, self::DANGEROUS_TOOLS, true) && !$settings->enableDangerousTools);
+        // Get tool definition from registry
+        $definition = self::getToolRegistry()->getDefinition($toolName);
+
+        // Check method-level condition
+        if ($definition !== null && !$definition->isConditionMet()) {
+            return false;
+        }
+
+        // Check if tool is dangerous
+        $isDangerous = $definition !== null
+            ? $definition->dangerous
+            : in_array($toolName, self::DANGEROUS_TOOLS, true); // Fallback for backwards compat
+
+        return !($isDangerous && !$settings->enableDangerousTools);
+    }
+
+    /**
+     * Get all dangerous tool names.
+     *
+     * @return string[]
+     */
+    public static function getDangerousTools(): array {
+        return self::getToolRegistry()->getDangerousTools();
     }
 
     /**
      * Collect tool classes from other plugins via event.
      *
+     * @deprecated Use getToolRegistry() instead. The registry now handles all tool collection.
      * @return RegisterToolsEvent The event containing registered tools and any errors
      */
     public static function collectExternalTools(): RegisterToolsEvent {

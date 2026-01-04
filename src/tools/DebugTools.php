@@ -10,6 +10,8 @@ use Generator;
 use InvalidArgumentException;
 use Mcp\Capability\Attribute\McpTool;
 use ReflectionClass;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use ReflectionFunction;
 use stimmt\craft\Mcp\support\FileHelper;
 use Throwable;
@@ -28,6 +30,7 @@ class DebugTools {
         name: 'get_queue_jobs',
         description: 'List queue jobs in Craft CMS. Filter by status: pending, reserved, failed, done. Shows job class, description, and failure reason if applicable.',
     )]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING->value)]
     public function getQueueJobs(string $status = 'pending', int $limit = 50): array {
         $db = Craft::$app->getDb();
         $prefix = $db->tablePrefix;
@@ -107,6 +110,7 @@ class DebugTools {
         name: 'get_project_config_diff',
         description: 'Show pending project config changes that need to be applied. Returns differences between YAML files and database.',
     )]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING->value)]
     public function getProjectConfigDiff(): array {
         try {
             $projectConfig = Craft::$app->getProjectConfig();
@@ -171,6 +175,7 @@ class DebugTools {
         name: 'get_deprecations',
         description: 'Get deprecation warnings from Craft CMS logs. Shows deprecated code usage that should be updated.',
     )]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING->value)]
     public function getDeprecations(int $limit = 50): array {
         $logPath = Craft::$app->getPath()->getLogPath();
         $webLog = $logPath . '/web.log';
@@ -240,6 +245,7 @@ class DebugTools {
         name: 'explain_query',
         description: 'Run EXPLAIN on a SELECT query to analyze performance. Shows query execution plan, indexes used, and estimated rows.',
     )]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING->value)]
     public function explainQuery(string $sql): array {
         // Security: Only allow SELECT queries
         $trimmedSql = trim($sql);
@@ -308,6 +314,7 @@ class DebugTools {
         name: 'get_environment',
         description: 'Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.',
     )]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING->value)]
     public function getEnvironment(): array {
         $general = Craft::$app->getConfig()->getGeneral();
 
@@ -364,6 +371,7 @@ class DebugTools {
         name: 'list_event_handlers',
         description: 'List registered event handlers/listeners in Craft CMS. Useful for debugging hooks and understanding what code runs on events.',
     )]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING->value)]
     public function listEventHandlers(?string $filter = null): array {
         $handlers = $this->getApplicationEvents($filter);
         $classEvents = $this->getClassEvents($filter);

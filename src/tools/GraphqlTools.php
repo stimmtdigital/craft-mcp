@@ -7,6 +7,8 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use craft\models\GqlSchema;
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use Throwable;
 
 /**
@@ -22,6 +24,7 @@ class GraphqlTools {
         name: 'list_graphql_schemas',
         description: 'List all GraphQL schemas in Craft CMS with their scopes and permissions',
     )]
+    #[McpToolMeta(category: ToolCategory::GRAPHQL->value)]
     public function listGraphqlSchemas(): array {
         try {
             $gql = Craft::$app->getGql();
@@ -69,6 +72,7 @@ class GraphqlTools {
         name: 'get_graphql_schema',
         description: 'Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)',
     )]
+    #[McpToolMeta(category: ToolCategory::GRAPHQL->value)]
     public function getGraphqlSchema(?int $id = null, ?string $uid = null): array {
         if ($id === null && $uid === null) {
             return [
@@ -126,6 +130,7 @@ class GraphqlTools {
         name: 'execute_graphql',
         description: 'Execute a GraphQL query against Craft CMS. WARNING: This is a dangerous operation that can modify data via mutations.',
     )]
+    #[McpToolMeta(category: ToolCategory::GRAPHQL->value, dangerous: true)]
     public function executeGraphql(
         string $query,
         ?string $variables = null,
@@ -189,6 +194,7 @@ class GraphqlTools {
         name: 'list_graphql_tokens',
         description: 'List all GraphQL tokens (API keys) with their associated schemas',
     )]
+    #[McpToolMeta(category: ToolCategory::GRAPHQL->value)]
     public function listGraphqlTokens(): array {
         try {
             $gql = Craft::$app->getGql();

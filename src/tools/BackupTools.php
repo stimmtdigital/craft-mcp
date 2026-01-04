@@ -6,6 +6,8 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use Throwable;
 
 /**
@@ -21,6 +23,7 @@ class BackupTools {
         name: 'list_backups',
         description: 'List available database backups from storage/backups directory',
     )]
+    #[McpToolMeta(category: ToolCategory::BACKUP->value)]
     public function listBackups(): array {
         $backupPath = Craft::$app->getPath()->getDbBackupPath();
 
@@ -72,6 +75,7 @@ class BackupTools {
         name: 'create_backup',
         description: 'Create a new database backup. WARNING: This is a dangerous operation that creates files on the server.',
     )]
+    #[McpToolMeta(category: ToolCategory::BACKUP->value, dangerous: true)]
     public function createBackup(): array {
         try {
             /** @var \craft\db\Connection $db */

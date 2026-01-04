@@ -6,6 +6,8 @@ namespace stimmt\craft\Mcp\tools;
 
 use craft\elements\Category;
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
 
 /**
@@ -21,6 +23,7 @@ class CategoryTools {
         name: 'list_categories',
         description: 'List categories from Craft CMS. Filter by group handle.',
     )]
+    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
     public function listCategories(?string $group = null, int $limit = 100): array {
         $query = Category::find()->limit($limit);
 

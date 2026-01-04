@@ -6,11 +6,9 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
-use ReflectionClass;
-use ReflectionMethod;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
-use stimmt\craft\Mcp\services\ToolRegistry;
-use Throwable;
 
 /**
  * Self-awareness tools for the MCP plugin.
@@ -25,10 +23,11 @@ class McpTools {
         name: 'get_mcp_info',
         description: 'Get information about the Craft MCP plugin including version, status, and configuration',
     )]
+    #[McpToolMeta(category: ToolCategory::CORE->value)]
     public function getMcpInfo(): array {
         $plugin = Mcp::getInstance();
         $settings = Mcp::settings();
-        $registry = new ToolRegistry();
+        $registry = Mcp::getToolRegistry();
 
         $summary = $registry->getSummary();
 
@@ -45,6 +44,8 @@ class McpTools {
             'tools' => [
                 'total' => $summary['total'],
                 'bySource' => $summary['by_source'],
+                'byCategory' => $summary['by_category'],
+                'dangerous' => $summary['dangerous'],
                 'errors' => $summary['errors'],
             ],
             'configuration' => [
@@ -60,70 +61,51 @@ class McpTools {
         name: 'list_mcp_tools',
         description: 'List all available MCP tools with their names, descriptions, and enabled status',
     )]
+    #[McpToolMeta(category: ToolCategory::CORE->value)]
     public function listMcpTools(): array {
-        $registry = new ToolRegistry();
-        $toolClasses = $registry->getToolClasses();
+        $registry = Mcp::getToolRegistry();
+        $definitions = $registry->getDefinitions();
 
         $tools = [];
-        $dangerousTools = Mcp::DANGEROUS_TOOLS;
-
-        foreach ($toolClasses as $toolClass) {
-            if (!class_exists($toolClass)) {
-                continue;
-            }
-
-            $classTools = $this->extractToolsFromClass($toolClass, $dangerousTools);
-            $tools = array_merge($tools, $classTools);
+        foreach ($definitions as $definition) {
+            $tools[] = [
+                'name' => $definition->name,
+                'description' => $definition->description,
+                'source' => $definition->source,
+                'category' => $definition->category,
+                'dangerous' => $definition->dangerous,
+                'enabled' => Mcp::isToolEnabled($definition->name),
+            ];
         }
 
-        // Sort by name
-        usort($tools, fn (array $a, array $b) => strcmp($a['name'], $b['name']));
+        // Sort by source, then category, then name
+        usort($tools, function (array $a, array $b): int {
+            $sourceCompare = strcmp($a['source'], $b['source']);
+            if ($sourceCompare !== 0) {
+                return $sourceCompare;
+            }
+
+            $categoryCompare = strcmp($a['category'], $b['category']);
+            if ($categoryCompare !== 0) {
+                return $categoryCompare;
+            }
+
+            return strcmp($a['name'], $b['name']);
+        });
+
+        // Group counts
+        $bySource = [];
+        $byCategory = [];
+        foreach ($tools as $tool) {
+            $bySource[$tool['source']] = ($bySource[$tool['source']] ?? 0) + 1;
+            $byCategory[$tool['category']] = ($byCategory[$tool['category']] ?? 0) + 1;
+        }
 
         return [
             'count' => count($tools),
+            'bySource' => $bySource,
+            'byCategory' => $byCategory,
             'tools' => $tools,
         ];
-    }
-
-    /**
-     * Extract tool information from a class using reflection.
-     *
-     * @param class-string $toolClass
-     * @param string[] $dangerousTools
-     * @return array<array{name: string, description: string, class: string, dangerous: bool, enabled: bool}>
-     */
-    private function extractToolsFromClass(string $toolClass, array $dangerousTools): array {
-        $tools = [];
-
-        try {
-            $reflection = new ReflectionClass($toolClass);
-            $methods = $reflection->getMethods(ReflectionMethod::IS_PUBLIC);
-
-            foreach ($methods as $method) {
-                $attributes = $method->getAttributes(McpTool::class);
-
-                if (empty($attributes)) {
-                    continue;
-                }
-
-                $attribute = $attributes[0]->newInstance();
-
-                $name = $attribute->name ?? $method->getName();
-                $isDangerous = in_array($name, $dangerousTools, true);
-
-                $tools[] = [
-                    'name' => $name,
-                    'description' => $attribute->description ?? '',
-                    'class' => $toolClass,
-                    'method' => $method->getName(),
-                    'dangerous' => $isDangerous,
-                    'enabled' => Mcp::isToolEnabled($name),
-                ];
-            }
-        } catch (Throwable) {
-            // Skip classes that can't be reflected
-        }
-
-        return $tools;
     }
 }

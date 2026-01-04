@@ -6,6 +6,8 @@ namespace stimmt\craft\Mcp\tools;
 
 use craft\elements\User;
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
 
 /**
@@ -21,6 +23,7 @@ class UserTools {
         name: 'list_users',
         description: 'List users from Craft CMS. Filter by group handle, status, email.',
     )]
+    #[McpToolMeta(category: ToolCategory::CONTENT->value)]
     public function listUsers(
         ?string $group = null,
         ?string $status = null,

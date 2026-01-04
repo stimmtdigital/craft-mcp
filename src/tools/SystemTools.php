@@ -7,6 +7,8 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use craft\helpers\FileHelper as CraftFileHelper;
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\FileHelper;
 use Throwable;
 
@@ -54,6 +56,7 @@ class SystemTools {
         name: 'get_config',
         description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver")',
     )]
+    #[McpToolMeta(category: ToolCategory::SYSTEM->value)]
     public function getConfig(string $key): array {
         $parts = explode('.', $key, 2);
         $category = $parts[0];
@@ -99,6 +102,7 @@ class SystemTools {
         name: 'read_logs',
         description: 'Read recent log entries from Craft CMS logs. Optionally filter by level (error, warning, info) and limit number of entries.',
     )]
+    #[McpToolMeta(category: ToolCategory::SYSTEM->value)]
     public function readLogs(int $limit = 50, ?string $level = null): array {
         $logPath = Craft::$app->getPath()->getLogPath();
 
@@ -196,6 +200,7 @@ class SystemTools {
         name: 'get_last_error',
         description: 'Get the most recent error from Craft CMS log files',
     )]
+    #[McpToolMeta(category: ToolCategory::SYSTEM->value)]
     public function getLastError(): array {
         $result = $this->readLogs(1, 'error');
 
@@ -219,6 +224,7 @@ class SystemTools {
         name: 'clear_caches',
         description: 'Clear Craft CMS caches. Specify type: all, data, compiled-templates, compiled-classes, asset-indexing-data, temp-files',
     )]
+    #[McpToolMeta(category: ToolCategory::SYSTEM->value, dangerous: true)]
     public function clearCaches(string $type = 'all'): array {
         $cleared = [];
 
@@ -264,6 +270,7 @@ class SystemTools {
         name: 'list_console_commands',
         description: 'List all available Craft CMS console commands (like php craft <command>)',
     )]
+    #[McpToolMeta(category: ToolCategory::SYSTEM->value)]
     public function listConsoleCommands(): array {
         $commands = [];
 
@@ -294,6 +301,7 @@ class SystemTools {
         name: 'list_routes',
         description: 'List all registered routes in Craft CMS',
     )]
+    #[McpToolMeta(category: ToolCategory::SYSTEM->value)]
     public function listRoutes(): array {
         $routes = [];
 

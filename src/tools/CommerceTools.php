@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\commerce\elements\Order;
+use craft\commerce\elements\Product;
 use craft\commerce\Plugin as Commerce;
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
+use stimmt\craft\Mcp\enums\ToolCategory;
 use Throwable;
 
 /**
@@ -16,13 +21,37 @@ use Throwable;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-class CommerceTools {
+class CommerceTools implements ConditionalToolProvider {
     /**
      * Check if Commerce plugin is available.
+     *
+     * Uses cached plugin state first (fast), falls back to project config
+     * to detect plugins installed after MCP server start.
      */
     public static function isAvailable(): bool {
-        return class_exists(Commerce::class) &&
-               Craft::$app->getPlugins()->isPluginEnabled('commerce');
+        if (!class_exists(Commerce::class)) {
+            return false;
+        }
+
+        $plugins = Craft::$app->getPlugins();
+
+        // Fast path: plugin was loaded at Craft bootstrap
+        if ($plugins->isPluginEnabled('commerce')) {
+            return true;
+        }
+
+        // Check project config (reads from YAML, detects post-boot installs)
+        $config = Craft::$app->getProjectConfig()->get('plugins.commerce');
+        $enabledInConfig = $config !== null && ($config['enabled'] ?? false) === true;
+
+        if (!$enabledInConfig) {
+            return false;
+        }
+
+        // Plugin is enabled in config but not loaded - try reloading plugins
+        $plugins->loadPlugins();
+
+        return $plugins->isPluginEnabled('commerce');
     }
 
     /**
@@ -32,6 +61,7 @@ class CommerceTools {
         name: 'list_products',
         description: 'List products from Craft Commerce. Filter by product type handle.',
     )]
+    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
     public function listProducts(
         ?string $type = null,
         int $limit = 20,
@@ -42,8 +72,7 @@ class CommerceTools {
         }
 
         try {
-            $commerce = Commerce::getInstance();
-            $query = $commerce->getProducts()->getProductQuery();
+            $query = Product::find();
 
             if ($type !== null) {
                 $query->type($type);
@@ -96,6 +125,7 @@ class CommerceTools {
         name: 'get_product',
         description: 'Get detailed information about a single Commerce product by ID',
     )]
+    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
     public function getProduct(int $id): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();
@@ -163,6 +193,7 @@ class CommerceTools {
         name: 'list_orders',
         description: 'List orders from Craft Commerce. Filter by status handle.',
     )]
+    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
     public function listOrders(
         ?string $status = null,
         int $limit = 20,
@@ -173,8 +204,7 @@ class CommerceTools {
         }
 
         try {
-            $commerce = Commerce::getInstance();
-            $query = $commerce->getOrders()->getOrderQuery();
+            $query = Order::find();
 
             // Only completed orders by default
             $query->isCompleted(true);
@@ -223,6 +253,7 @@ class CommerceTools {
         name: 'get_order',
         description: 'Get detailed information about a single Commerce order by ID or order number',
     )]
+    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
     public function getOrder(?int $id = null, ?string $number = null): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();
@@ -320,6 +351,7 @@ class CommerceTools {
         name: 'list_order_statuses',
         description: 'List all order statuses configured in Craft Commerce',
     )]
+    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
     public function listOrderStatuses(): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();
@@ -337,9 +369,9 @@ class CommerceTools {
                     'name' => $status->name,
                     'handle' => $status->handle,
                     'color' => $status->color,
+                    'description' => $status->description,
                     'default' => $status->default,
                     'sortOrder' => $status->sortOrder,
-                    'dateCreated' => $status->dateCreated?->format('Y-m-d H:i:s'),
                 ];
             }
 
@@ -362,6 +394,7 @@ class CommerceTools {
         name: 'list_product_types',
         description: 'List all product types configured in Craft Commerce',
     )]
+    #[McpToolMeta(category: ToolCategory::COMMERCE->value)]
     public function listProductTypes(): array {
         if (!self::isAvailable()) {
             return $this->commerceNotAvailable();
@@ -379,9 +412,8 @@ class CommerceTools {
                     'name' => $type->name,
                     'handle' => $type->handle,
                     'hasDimensions' => $type->hasDimensions,
-                    'hasVariants' => $type->hasVariants,
+                    'maxVariants' => $type->maxVariants,
                     'hasVariantTitleField' => $type->hasVariantTitleField,
-                    'dateCreated' => $type->dateCreated?->format('Y-m-d H:i:s'),
                 ];
             }
 
