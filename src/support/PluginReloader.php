@@ -22,7 +22,7 @@ use yii\helpers\Inflector;
  * @author Max van Essen <support@stimmt.digital>
  */
 final class PluginReloader {
-    private const PLUGINS_SERVICE_PROPERTIES = [
+    private const array PLUGINS_SERVICE_PROPERTIES = [
         '_storedPluginInfo' => [],
         '_pluginsLoaded' => false,
         '_loadingPlugins' => false,
@@ -74,7 +74,6 @@ final class PluginReloader {
 
         foreach (self::PLUGINS_SERVICE_PROPERTIES as $propertyName => $resetValue) {
             $property = $ref->getProperty($propertyName);
-            $property->setAccessible(true);
             $property->setValue($plugins, $resetValue);
         }
     }
@@ -124,7 +123,6 @@ final class PluginReloader {
             // Update the private property via reflection
             $ref = new ReflectionClass($plugins);
             $prop = $ref->getProperty('_composerPluginInfo');
-            $prop->setAccessible(true);
             $prop->setValue($plugins, $composerPluginInfo);
 
             return [
@@ -166,7 +164,7 @@ final class PluginReloader {
      */
     private static function normalizeHandle(string $handle): string {
         if (strtolower($handle) !== $handle) {
-            $handle = preg_replace('/\-{2,}/', '-', Inflector::camel2id($handle)) ?? $handle;
+            return preg_replace('/\-{2,}/', '-', Inflector::camel2id($handle)) ?? $handle;
         }
 
         return $handle;

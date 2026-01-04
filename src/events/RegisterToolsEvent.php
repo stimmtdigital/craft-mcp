@@ -41,7 +41,7 @@ class RegisterToolsEvent extends Event {
     /**
      * Reserved sources that external plugins cannot use.
      */
-    private const RESERVED_SOURCES = ['core', 'craft-mcp', 'mcp'];
+    private const array RESERVED_SOURCES = ['core', 'craft-mcp', 'mcp'];
 
     /**
      * Registered tool classes grouped by source.
@@ -211,10 +211,8 @@ class RegisterToolsEvent extends Event {
         }
 
         // Check class-level condition
-        if (is_subclass_of($class, ConditionalToolProvider::class)) {
-            if (!$class::isAvailable()) {
-                return;
-            }
+        if (is_subclass_of($class, ConditionalToolProvider::class) && !$class::isAvailable()) {
+            return;
         }
 
         // Store class for backwards compatibility
@@ -253,7 +251,7 @@ class RegisterToolsEvent extends Event {
 
             // Get optional McpToolMeta attribute
             $metaAttrs = $method->getAttributes(McpToolMeta::class);
-            $meta = !empty($metaAttrs) ? $metaAttrs[0]->newInstance() : null;
+            $meta = empty($metaAttrs) ? null : $metaAttrs[0]->newInstance();
 
             $definitions[] = new ToolDefinition(
                 name: $mcpTool->name,
@@ -262,7 +260,7 @@ class RegisterToolsEvent extends Event {
                 method: $method->getName(),
                 source: $source,
                 category: $meta?->category->value ?? ToolCategory::GENERAL->value,
-                dangerous: $meta !== null ? $meta->dangerous : false,
+                dangerous: $meta !== null && $meta->dangerous,
                 condition: $meta?->condition,
             );
         }

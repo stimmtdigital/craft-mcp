@@ -257,7 +257,7 @@ class GraphqlTools {
      * @return array<string, array<string, array<string>>>
      */
     private function parseScope(?array $scope): array {
-        if (empty($scope)) {
+        if ($scope === null || $scope === []) {
             return [];
         }
 

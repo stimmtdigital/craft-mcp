@@ -11,16 +11,16 @@ use stimmt\craft\Mcp\enums\ToolCategory;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class ToolDefinition {
+final readonly class ToolDefinition {
     public function __construct(
-        public readonly string $name,
-        public readonly string $description,
-        public readonly string $class,
-        public readonly string $method,
-        public readonly string $source,
-        public readonly string $category,
-        public readonly bool $dangerous,
-        public readonly ?string $condition = null,
+        public string $name,
+        public string $description,
+        public string $class,
+        public string $method,
+        public string $source,
+        public string $category,
+        public bool $dangerous,
+        public ?string $condition = null,
     ) {
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\db\Connection;
 use Mcp\Capability\Attribute\McpTool;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -78,7 +79,7 @@ class BackupTools {
     #[McpToolMeta(category: ToolCategory::BACKUP, dangerous: true)]
     public function createBackup(): array {
         try {
-            /** @var \craft\db\Connection $db */
+            /** @var Connection $db */
             $db = Craft::$app->getDb();
             $backupPath = $db->backup();
 
