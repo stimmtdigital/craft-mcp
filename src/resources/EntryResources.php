@@ -34,7 +34,7 @@ final class EntryResources {
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://entries/{section}',
-        name: 'Section Entries',
+        name: 'section-entries',
         description: 'List of entries in a specific section with basic metadata.',
         mimeType: 'application/json',
     )]
@@ -65,7 +65,7 @@ final class EntryResources {
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://entries/{section}/{slug}',
-        name: 'Entry by Slug',
+        name: 'entry-by-slug',
         description: 'Get a specific entry by its section handle and slug.',
         mimeType: 'application/json',
     )]
@@ -96,7 +96,7 @@ final class EntryResources {
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://entries/{section}/stats',
-        name: 'Section Entry Statistics',
+        name: 'section-stats',
         description: 'Get entry statistics for a specific section.',
         mimeType: 'application/json',
     )]

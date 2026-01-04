@@ -32,7 +32,7 @@ final class ConfigResources {
      */
     #[McpResource(
         uri: 'craft://config/general',
-        name: 'General Configuration',
+        name: 'general-config',
         description: 'Safe general configuration values from Craft CMS (excludes sensitive data).',
         mimeType: 'application/json',
     )]
@@ -77,7 +77,7 @@ final class ConfigResources {
      */
     #[McpResource(
         uri: 'craft://config/routes',
-        name: 'Routes Configuration',
+        name: 'routes-config',
         description: 'Custom routes configured in Craft CMS.',
         mimeType: 'application/json',
     )]
@@ -99,7 +99,7 @@ final class ConfigResources {
      */
     #[McpResource(
         uri: 'craft://config/sites',
-        name: 'Sites Configuration',
+        name: 'sites-config',
         description: 'All configured sites in Craft CMS with their settings.',
         mimeType: 'application/json',
     )]
@@ -123,7 +123,7 @@ final class ConfigResources {
      */
     #[McpResource(
         uri: 'craft://config/volumes',
-        name: 'Volumes Configuration',
+        name: 'volumes-config',
         description: 'All configured asset volumes in Craft CMS.',
         mimeType: 'application/json',
     )]
@@ -147,7 +147,7 @@ final class ConfigResources {
      */
     #[McpResource(
         uri: 'craft://config/plugins',
-        name: 'Installed Plugins',
+        name: 'installed-plugins',
         description: 'List of all installed plugins with their status.',
         mimeType: 'application/json',
     )]

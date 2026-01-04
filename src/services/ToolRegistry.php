@@ -176,6 +176,26 @@ final class ToolRegistry {
     }
 
     /**
+     * Get tool definitions registered by external plugins (not core).
+     *
+     * Used by McpServerFactory for manual registration of external tools.
+     *
+     * @return ToolDefinition[]
+     */
+    public function getExternalToolDefinitions(): array {
+        $this->ensureInitialized();
+
+        $external = [];
+        foreach ($this->definitions as $definition) {
+            if ($definition->source !== 'core') {
+                $external[] = $definition;
+            }
+        }
+
+        return $external;
+    }
+
+    /**
      * Get any errors encountered during tool registration.
      *
      * @return string[]

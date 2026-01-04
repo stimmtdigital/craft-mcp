@@ -32,7 +32,7 @@ final class SchemaResources {
      */
     #[McpResource(
         uri: 'craft://schema/sections',
-        name: 'All Sections',
+        name: 'all-sections',
         description: 'List of all sections in the Craft CMS installation with their basic metadata.',
         mimeType: 'application/json',
     )]
@@ -56,7 +56,7 @@ final class SchemaResources {
      */
     #[McpResource(
         uri: 'craft://schema/fields',
-        name: 'All Fields',
+        name: 'all-fields',
         description: 'List of all custom fields in the Craft CMS installation with their types and groups.',
         mimeType: 'application/json',
     )]
@@ -80,7 +80,7 @@ final class SchemaResources {
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://schema/sections/{handle}',
-        name: 'Section Schema',
+        name: 'section-schema',
         description: 'Detailed schema information for a specific section including entry types and fields.',
         mimeType: 'application/json',
     )]
@@ -120,7 +120,7 @@ final class SchemaResources {
      */
     #[McpResourceTemplate(
         uriTemplate: 'craft://schema/fields/{handle}',
-        name: 'Field Details',
+        name: 'field-details',
         description: 'Detailed information about a specific field including where it is used.',
         mimeType: 'application/json',
     )]

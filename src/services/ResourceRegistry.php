@@ -175,6 +175,26 @@ final class ResourceRegistry {
     }
 
     /**
+     * Get resource definitions registered by external plugins (not core).
+     *
+     * Used by McpServerFactory for manual registration of external resources.
+     *
+     * @return ResourceDefinition[]
+     */
+    public function getExternalResourceDefinitions(): array {
+        $this->ensureInitialized();
+
+        $external = [];
+        foreach ($this->definitions as $definition) {
+            if ($definition->source !== 'core') {
+                $external[] = $definition;
+            }
+        }
+
+        return $external;
+    }
+
+    /**
      * Get any errors encountered during resource registration.
      *
      * @return string[]

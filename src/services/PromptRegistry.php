@@ -145,6 +145,26 @@ final class PromptRegistry {
     }
 
     /**
+     * Get prompt definitions registered by external plugins (not core).
+     *
+     * Used by McpServerFactory for manual registration of external prompts.
+     *
+     * @return PromptDefinition[]
+     */
+    public function getExternalPromptDefinitions(): array {
+        $this->ensureInitialized();
+
+        $external = [];
+        foreach ($this->definitions as $definition) {
+            if ($definition->source !== 'core') {
+                $external[] = $definition;
+            }
+        }
+
+        return $external;
+    }
+
+    /**
      * Get any errors encountered during prompt registration.
      *
      * @return string[]

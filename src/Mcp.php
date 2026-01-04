@@ -13,6 +13,7 @@ use stimmt\craft\Mcp\events\RegisterPromptsEvent;
 use stimmt\craft\Mcp\events\RegisterResourcesEvent;
 use stimmt\craft\Mcp\events\RegisterToolsEvent;
 use stimmt\craft\Mcp\models\Settings;
+use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\services\PromptRegistry;
 use stimmt\craft\Mcp\services\ResourceRegistry;
 use stimmt\craft\Mcp\services\ToolRegistry;
@@ -177,6 +178,16 @@ class Mcp extends BasePlugin {
         self::$toolRegistry = null;
         self::$promptRegistry = null;
         self::$resourceRegistry = null;
+    }
+
+    /**
+     * Create a new MCP server factory instance.
+     *
+     * The factory handles server building with proper SDK patterns,
+     * including discovery, container, and logging configuration.
+     */
+    public function getServerFactory(): McpServerFactory {
+        return new McpServerFactory();
     }
 
     /**
