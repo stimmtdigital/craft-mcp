@@ -305,6 +305,7 @@ class GraphqlTools {
 
         return array_map(function (array $handles): array {
             ksort($handles);
+
             return array_map(fn (array $actions) => array_values(array_unique($actions)), $handles);
         }, $permissions);
     }

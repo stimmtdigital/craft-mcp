@@ -6,8 +6,8 @@ namespace stimmt\craft\Mcp\services;
 
 use Craft;
 use stimmt\craft\Mcp\events\RegisterToolsEvent;
-use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\tools\AssetTools;
 use stimmt\craft\Mcp\tools\BackupTools;
 use stimmt\craft\Mcp\tools\CategoryTools;

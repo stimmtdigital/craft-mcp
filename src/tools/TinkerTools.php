@@ -8,9 +8,9 @@ use Craft;
 use Mcp\Capability\Attribute\McpTool;
 use ParseError;
 use Psy\CodeCleaner;
+use Psy\Exception\ParseErrorException;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use Psy\Exception\ParseErrorException;
 use stimmt\craft\Mcp\support\Serializer;
 use Throwable;
 

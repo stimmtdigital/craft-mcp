@@ -9,6 +9,7 @@ use Craft;
 use craft\helpers\ArrayHelper;
 use craft\helpers\FileHelper;
 use ReflectionClass;
+use Throwable;
 use yii\helpers\Inflector;
 
 /**
@@ -108,9 +109,9 @@ final class PluginReloader {
 
             // Build the new composer plugin info array (mirrors Craft's init logic)
             $normalized = array_map(
-                fn(string $packageName, array $plugin) => self::normalizePluginConfig($packageName, $plugin),
+                fn (string $packageName, array $plugin) => self::normalizePluginConfig($packageName, $plugin),
                 array_keys($pluginConfigs),
-                $pluginConfigs
+                $pluginConfigs,
             );
 
             // Re-key by handle and remove handle from values
@@ -130,7 +131,7 @@ final class PluginReloader {
                 'refreshed' => true,
                 'plugins' => array_keys($composerPluginInfo),
             ];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return [
                 'refreshed' => false,
                 'plugins' => [],
@@ -155,7 +156,7 @@ final class PluginReloader {
             ? FileHelper::normalizePath($resolvedPath)
             : null;
 
-        return array_filter($plugin, fn($v) => $v !== null);
+        return array_filter($plugin, fn ($v) => $v !== null);
     }
 
     /**

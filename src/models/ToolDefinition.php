@@ -21,7 +21,8 @@ final class ToolDefinition {
         public readonly string $category,
         public readonly bool $dangerous,
         public readonly ?string $condition = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Check if this tool is enabled based on its condition.

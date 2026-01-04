@@ -36,5 +36,6 @@ class McpToolMeta {
          * If null, the tool is always available (subject to class-level conditions).
          */
         public ?string $condition = null,
-    ) {}
+    ) {
+    }
 }
