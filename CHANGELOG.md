@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Interactive `mcp/install` wizard for generating MCP client configuration files
+  - Auto-detects DDEV vs native PHP environment
+  - Supports Claude Code, Cursor, and Claude Desktop clients
+  - Options: `--environment` (`-e`), `--serverName` (`-s`)
+- `read_logs` tool now supports `pattern` parameter for case-insensitive content search
+- `read_logs` tool now supports `source` parameter to target specific log files (web, console, queue, or plugin name)
+
+### Fixed
+- Fixed null pointer errors in entry, category, and product serialization when related model (section/type/group) is missing
+- `list_console_commands` now discovers all commands including those from plugins
+
 ## [1.1.0] - 2026-01-04
 
 ### Added
