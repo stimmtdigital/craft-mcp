@@ -248,9 +248,9 @@ class EntryTools {
             'slug' => $entry->slug,
             'status' => $entry->getStatus(),
             'sectionId' => $entry->sectionId,
-            'sectionHandle' => $entry->getSection()?->handle,
+            'sectionHandle' => $entry->getSection()?->handle, // @phpstan-ignore nullsafe.neverNull
             'typeId' => $entry->typeId,
-            'typeHandle' => $entry->getType()?->handle,
+            'typeHandle' => $entry->getType()?->handle, // @phpstan-ignore nullsafe.neverNull
             'authorId' => $entry->authorId,
             'postDate' => $entry->postDate?->format('Y-m-d H:i:s'),
             'expiryDate' => $entry->expiryDate?->format('Y-m-d H:i:s'),

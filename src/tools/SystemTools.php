@@ -97,16 +97,26 @@ class SystemTools {
      */
     #[McpTool(
         name: 'read_logs',
-        description: 'Read recent log entries from Craft CMS logs. Optionally filter by level (error, warning, info) and limit number of entries.',
+        description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit.',
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
-    public function readLogs(int $limit = 50, ?string $level = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($limit, $level): array {
+    public function readLogs(int $limit = 50, ?string $level = null, ?string $pattern = null, ?string $source = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($limit, $level, $pattern, $source): array {
             $logPath = Craft::$app->getPath()->getLogPath();
 
             // Find all .log files, prioritizing today's date-based logs
             $today = date('Y-m-d');
             $allLogs = glob($logPath . '/*.log') ?: [];
+
+            // Filter by source if specified (e.g., "web" matches "web.log" and "web-2026-01-05.log")
+            if ($source !== null) {
+                $allLogs = array_filter($allLogs, function ($file) use ($source) {
+                    $basename = basename($file, '.log');
+
+                    return str_starts_with($basename, $source);
+                });
+                $allLogs = array_values($allLogs); // Re-index array
+            }
 
             // Sort: today's logs first, then by modification time descending
             usort($allLogs, function ($a, $b) use ($today) {
@@ -130,7 +140,7 @@ class SystemTools {
             foreach ($logFiles as $logFile) {
                 $entries = array_merge(
                     $entries,
-                    $this->parseLogFile($logFile, $level, $limit * 2),
+                    $this->parseLogFile($logFile, $level, $pattern, $limit * 2),
                 );
             }
 
@@ -147,7 +157,7 @@ class SystemTools {
     /**
      * Parse entries from a log file.
      */
-    private function parseLogFile(string $logFile, ?string $levelFilter, int $maxLines): array {
+    private function parseLogFile(string $logFile, ?string $levelFilter, ?string $pattern, int $maxLines): array {
         if (!file_exists($logFile)) {
             return [];
         }
@@ -162,6 +172,10 @@ class SystemTools {
             }
 
             if ($levelFilter !== null && $parsed['level'] !== strtolower($levelFilter)) {
+                continue;
+            }
+
+            if ($pattern !== null && !str_contains(strtolower((string) $parsed['message']), strtolower($pattern))) {
                 continue;
             }
 

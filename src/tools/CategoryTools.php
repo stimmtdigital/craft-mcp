@@ -51,7 +51,7 @@ class CategoryTools {
             'slug' => $category->slug,
             'level' => $category->level,
             'groupId' => $category->groupId,
-            'groupHandle' => $category->getGroup()?->handle,
+            'groupHandle' => $category->getGroup()?->handle, // @phpstan-ignore nullsafe.neverNull
             'url' => $category->getUrl(),
         ];
     }
