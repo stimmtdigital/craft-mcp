@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\console\controllers\HelpController;
 use craft\helpers\FileHelper as CraftFileHelper;
 use craft\models\CategoryGroup;
 use craft\models\Section;
@@ -25,32 +26,6 @@ class SystemTools {
      * Log line format: 2026-01-03 04:01:45 [web.INFO] [category] message
      */
     private const string LOG_PATTERN = '/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([^.\]]+)\.(\w+)\] \[([^\]]*)\] (.*)$/s';
-
-    /**
-     * Core console commands with descriptions.
-     */
-    private const array CORE_COMMANDS = [
-        'cache' => 'Clear and manage caches',
-        'clear-caches' => 'Clear various Craft caches',
-        'db' => 'Database operations (backup, restore, convert)',
-        'gc' => 'Garbage collection',
-        'graphql' => 'GraphQL schema operations',
-        'index-assets' => 'Re-index assets',
-        'install' => 'Install Craft CMS',
-        'invalidate-tags' => 'Invalidate cache tags',
-        'mailer' => 'Test email configuration',
-        'migrate' => 'Run database migrations',
-        'off' => 'Turn system off',
-        'on' => 'Turn system on',
-        'plugin' => 'Manage plugins (install, uninstall, enable, disable)',
-        'project-config' => 'Manage project config',
-        'queue' => 'Manage queue jobs',
-        'resave' => 'Re-save elements',
-        'restore' => 'Restore database from backup',
-        'setup' => 'Setup wizard',
-        'update' => 'Update Craft and plugins',
-        'users' => 'Manage users',
-    ];
 
     /**
      * Get a configuration value by key.
@@ -282,21 +257,8 @@ class SystemTools {
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function listConsoleCommands(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
-            $commands = [];
-
-            foreach (Craft::$app->controllerMap as $id => $controller) {
-                $commands[] = [
-                    'id' => $id,
-                    'controller' => is_array($controller) ? $controller['class'] : $controller,
-                ];
-            }
-
-            foreach (self::CORE_COMMANDS as $id => $description) {
-                $commands[] = [
-                    'id' => $id,
-                    'description' => $description,
-                ];
-            }
+            $helpController = new HelpController('help', Craft::$app);
+            $commands = array_values($helpController->getCommands());
 
             return [
                 'count' => count($commands),
