@@ -70,9 +70,51 @@ For production environments, you'll want to review the security options in the [
 
 ## MCP Client Setup
 
-Once the plugin is installed and configured, you'll need to tell your AI assistant how to connect to the MCP server. The setup process varies depending on which tool you're using.
+Once the plugin is installed and configured, you'll need to tell your AI assistant how to connect to the MCP server.
 
-### Claude Code
+### Automatic Setup (Recommended)
+
+The easiest way to configure your MCP clients is using the built-in installation wizard:
+
+```bash
+php craft mcp/install
+```
+
+The wizard will:
+1. Detect your environment (DDEV or native PHP)
+2. Let you select which clients to configure (Claude Code, Cursor, Claude Desktop)
+3. Generate the appropriate configuration files automatically
+
+**Options:**
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--environment` | `-e` | Override detected environment (`ddev` or `native`) |
+| `--serverName` | `-s` | Custom server name (default: `craft-cms`) |
+
+**Examples:**
+
+```bash
+# Interactive wizard with auto-detection
+php craft mcp/install
+
+# Force DDEV environment
+php craft mcp/install --environment=ddev
+
+# Use a custom server name
+php craft mcp/install --serverName=my-craft-site
+
+# Non-interactive mode (use defaults)
+php craft mcp/install --interactive=0
+```
+
+The wizard handles all the details: creating directories, setting correct paths for your environment, and warning you if a server with the same name already exists.
+
+### Manual Setup
+
+If you prefer to configure manually or need to understand the configuration format, follow the instructions below for your specific client.
+
+#### Claude Code
 
 Claude Code looks for MCP server configurations in a `.mcp.json` file in your project root.
 
@@ -109,7 +151,7 @@ Claude Code looks for MCP server configurations in a `.mcp.json` file in your pr
 ```
 </details>
 
-### Cursor
+#### Cursor
 
 Cursor stores MCP configurations in a `.cursor/mcp.json` file within your project.
 
@@ -147,7 +189,7 @@ Cursor stores MCP configurations in a `.cursor/mcp.json` file within your projec
 ```
 </details>
 
-### Claude Desktop
+#### Claude Desktop
 
 Claude Desktop uses a global configuration file rather than a project-specific one. Unlike Claude Code and Cursor, it requires absolute paths for the command and working directory.
 
