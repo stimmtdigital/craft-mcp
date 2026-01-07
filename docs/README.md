@@ -6,7 +6,7 @@ Welcome to the Craft MCP documentation. This guide covers everything you need to
 
 Craft MCP is an MCP (Model Context Protocol) server that gives AI assistants direct access to your Craft CMS installation. Rather than manually describing your content architecture, field layouts, or database schema, your AI assistant can query this information directly, enabling more accurate and context-aware code generation.
 
-The plugin provides 47 specialized tools, 9 analysis prompts, and 12 data resources spanning content management, schema inspection, system administration, database operations, and debugging utilities.
+The plugin provides 50 specialized tools, 9 analysis prompts, and 12 data resources spanning content management, schema inspection, system administration, database operations, and debugging utilities.
 
 ## Getting Started
 
@@ -25,7 +25,7 @@ If you're new to Craft MCP, we recommend following these steps:
 
 ### Tools Reference
 
-- **[Tools Overview](tools/README.md)** - Quick reference for all 47 available tools
+- **[Tools Overview](tools/README.md)** - Quick reference for all 50 available tools
 - **[Content Tools](tools/content.md)** - Query and manage entries, assets, categories, and users
 - **[System Tools](tools/system.md)** - Access configuration, logs, caches, routes, and plugins
 - **[Database Tools](tools/database.md)** - Inspect schema, run queries, and explore table structures

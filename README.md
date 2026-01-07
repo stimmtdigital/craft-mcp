@@ -45,7 +45,24 @@ For additional configuration options including disabling specific tools, IP allo
 
 Once Craft MCP has been installed, you're ready to connect Claude Code, Cursor, Claude Desktop, or your AI assistant of choice.
 
-### Set up Your Code Editors
+### Quick Setup (Recommended)
+
+Run the interactive configuration wizard to automatically generate config files for your MCP clients:
+
+```bash
+php craft mcp/install
+```
+
+The wizard will:
+- Detect your environment (DDEV or native PHP)
+- Let you select which clients to configure (Claude Code, Cursor, Claude Desktop)
+- Generate the appropriate configuration files
+
+Options:
+- `-e, --environment` - Override detected environment (`ddev` or `native`)
+- `-s, --serverName` - Custom server name (default: `craft-cms`)
+
+### Manual Setup
 
 #### Claude Code
 
@@ -216,7 +233,7 @@ Requirements:
 |------|-------|
 | Get System Info | Read Craft version, PHP version, database driver, and environment |
 | Get Config | Read Craft general config and plugin configuration values |
-| Read Logs | Search and filter application log entries by level and date |
+| Read Logs | Search and filter log entries by level, source, pattern, with text or JSON output |
 | Get Last Error | Retrieve the most recent error from logs |
 | Clear Caches | Clear specific caches or all caches at once |
 | List Routes | Inspect all registered routes including controller actions |

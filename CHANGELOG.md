@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-01-07
+
+### Added
+- Interactive `mcp/install` wizard for generating MCP client configuration files
+  - Auto-detects DDEV vs native PHP environment
+  - Supports Claude Code, Cursor, and Claude Desktop clients
+  - Options: `--environment` (`-e`), `--serverName` (`-s`)
+- `read_logs` tool now supports `pattern` parameter for case-insensitive content search
+- `read_logs` tool now supports `source` parameter to target specific log files (web, console, queue, or plugin name)
+- `read_logs` tool now discovers plugin logs recursively in subdirectories
+- `read_logs` tool now parses multi-line stack traces into structured arrays
+- `read_logs` tool now sends progress notifications to clients while parsing multiple files
+- `read_logs` tool now supports `output` parameter (`structured` or `text`) for human-readable colored output
+- New `ResponseFormat` enum for reusable tool output format selection
+- New `LogParser`, `LogEntry`, `StackFrame`, and `LogFormatter` classes for clean log architecture
+
+### Changed
+- Refactored log parsing into dedicated `LogParser` class for cleaner architecture
+- `FileHelper::tail()` now uses chunk-based reading for improved performance on large files
+
+### Fixed
+- Fixed null pointer errors in entry, category, and product serialization when related model (section/type/group) is missing
+- `list_console_commands` now discovers all commands including those from plugins
+- `tinker` tool now properly preserves indentation in multi-line PHP input
+
 ## [1.1.0] - 2026-01-04
 
 ### Added

@@ -83,6 +83,10 @@
             "@lint:test",
             "@analyse",
             "@test"
+        ],
+        "pre-commit": [
+            "@fix",
+            "@ci"
         ]
     }
 }

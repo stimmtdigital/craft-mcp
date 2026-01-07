@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\console\controllers\HelpController;
 use craft\helpers\FileHelper as CraftFileHelper;
 use craft\models\CategoryGroup;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\Content\TextContent;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\FileHelper;
+use stimmt\craft\Mcp\support\LogEntry;
+use stimmt\craft\Mcp\support\LogFormatter;
+use stimmt\craft\Mcp\support\LogParser;
 use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
@@ -21,37 +26,6 @@ use stimmt\craft\Mcp\support\SafeExecution;
  * @author Max van Essen <support@stimmt.digital>
  */
 class SystemTools {
-    /**
-     * Log line format: 2026-01-03 04:01:45 [web.INFO] [category] message
-     */
-    private const string LOG_PATTERN = '/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([^.\]]+)\.(\w+)\] \[([^\]]*)\] (.*)$/s';
-
-    /**
-     * Core console commands with descriptions.
-     */
-    private const array CORE_COMMANDS = [
-        'cache' => 'Clear and manage caches',
-        'clear-caches' => 'Clear various Craft caches',
-        'db' => 'Database operations (backup, restore, convert)',
-        'gc' => 'Garbage collection',
-        'graphql' => 'GraphQL schema operations',
-        'index-assets' => 'Re-index assets',
-        'install' => 'Install Craft CMS',
-        'invalidate-tags' => 'Invalidate cache tags',
-        'mailer' => 'Test email configuration',
-        'migrate' => 'Run database migrations',
-        'off' => 'Turn system off',
-        'on' => 'Turn system on',
-        'plugin' => 'Manage plugins (install, uninstall, enable, disable)',
-        'project-config' => 'Manage project config',
-        'queue' => 'Manage queue jobs',
-        'resave' => 'Re-save elements',
-        'restore' => 'Restore database from backup',
-        'setup' => 'Setup wizard',
-        'update' => 'Update Craft and plugins',
-        'users' => 'Manage users',
-    ];
-
     /**
      * Get a configuration value by key.
      */
@@ -97,99 +71,61 @@ class SystemTools {
      */
     #[McpTool(
         name: 'read_logs',
-        description: 'Read recent log entries from Craft CMS logs. Optionally filter by level (error, warning, info) and limit number of entries.',
+        description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for human-readable colored output.',
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
-    public function readLogs(int $limit = 50, ?string $level = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($limit, $level): array {
-            $logPath = Craft::$app->getPath()->getLogPath();
+    public function readLogs(
+        int $limit = 50,
+        ?string $level = null,
+        ?string $pattern = null,
+        ?string $source = null,
+        ResponseFormat $output = ResponseFormat::STRUCTURED,
+        ?RequestContext $context = null,
+    ): array|TextContent {
+        return SafeExecution::run(function () use ($limit, $level, $pattern, $source, $output, $context): array|TextContent {
+            $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
 
-            // Find all .log files, prioritizing today's date-based logs
-            $today = date('Y-m-d');
-            $allLogs = glob($logPath . '/*.log') ?: [];
-
-            // Sort: today's logs first, then by modification time descending
-            usort($allLogs, function ($a, $b) use ($today) {
-                $aIsToday = str_contains($a, $today);
-                $bIsToday = str_contains($b, $today);
-
-                if ($aIsToday && !$bIsToday) {
-                    return -1;
-                }
-                if (!$aIsToday && $bIsToday) {
-                    return 1;
-                }
-
-                return filemtime($b) <=> filemtime($a);
-            });
-
-            // Limit to most recent logs to avoid processing too many files
-            $logFiles = array_slice($allLogs, 0, 5);
-
-            $entries = [];
-            foreach ($logFiles as $logFile) {
-                $entries = array_merge(
-                    $entries,
-                    $this->parseLogFile($logFile, $level, $limit * 2),
-                );
-            }
-
-            // Sort by timestamp descending and limit
-            usort($entries, fn ($a, $b) => strcmp((string) $b['timestamp'], (string) $a['timestamp']));
-
-            return [
-                'count' => min(count($entries), $limit),
-                'entries' => array_slice($entries, 0, $limit),
-            ];
+            return match ($output) {
+                ResponseFormat::TEXT => LogFormatter::format($entries),
+                ResponseFormat::STRUCTURED => [
+                    'count' => count($entries),
+                    'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $entries),
+                ],
+            };
         });
     }
 
     /**
-     * Parse entries from a log file.
+     * Fetch and sort log entries.
+     *
+     * @return LogEntry[]
      */
-    private function parseLogFile(string $logFile, ?string $levelFilter, int $maxLines): array {
-        if (!file_exists($logFile)) {
-            return [];
-        }
+    private function fetchLogEntries(
+        int $limit,
+        ?string $level,
+        ?string $pattern,
+        ?string $source,
+        ?RequestContext $context,
+    ): array {
+        $parser = new LogParser(Craft::$app->getPath()->getLogPath());
 
+        $files = $parser->discoverLogFiles($source);
         $entries = [];
-        $logName = basename($logFile);
+        $gateway = $context?->getClientGateway();
+        $totalFiles = count($files);
 
-        foreach (FileHelper::tail($logFile, $maxLines) as $line) {
-            $parsed = $this->parseLogLine($line);
-            if ($parsed === null) {
-                continue;
-            }
+        foreach ($files as $index => $file) {
+            $gateway?->progress($index + 1, $totalFiles, 'Parsing ' . basename($file));
 
-            if ($levelFilter !== null && $parsed['level'] !== strtolower($levelFilter)) {
-                continue;
-            }
-
-            $entries[] = ['file' => $logName, ...$parsed];
+            $entries = array_merge(
+                $entries,
+                $parser->parseFile($file, $level, $pattern, $limit * 2),
+            );
         }
 
-        return $entries;
-    }
+        usort($entries, static fn (LogEntry $a, LogEntry $b): int => $b->timestamp <=> $a->timestamp);
 
-    /**
-     * Parse a single log line.
-     */
-    private function parseLogLine(string $line): ?array {
-        if (in_array(trim($line), ['', '0'], true)) {
-            return null;
-        }
-
-        if (!preg_match(self::LOG_PATTERN, $line, $matches)) {
-            return null;
-        }
-
-        return [
-            'timestamp' => $matches[1],
-            'channel' => $matches[2],
-            'level' => strtolower($matches[3]),
-            'category' => $matches[4],
-            'message' => trim($matches[5]),
-        ];
+        return array_slice($entries, 0, $limit);
     }
 
     /**
@@ -268,21 +204,8 @@ class SystemTools {
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function listConsoleCommands(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
-            $commands = [];
-
-            foreach (Craft::$app->controllerMap as $id => $controller) {
-                $commands[] = [
-                    'id' => $id,
-                    'controller' => is_array($controller) ? $controller['class'] : $controller,
-                ];
-            }
-
-            foreach (self::CORE_COMMANDS as $id => $description) {
-                $commands[] = [
-                    'id' => $id,
-                    'description' => $description,
-                ];
-            }
+            $helpController = new HelpController('help', Craft::$app);
+            $commands = array_values($helpController->getCommands());
 
             return [
                 'count' => count($commands),

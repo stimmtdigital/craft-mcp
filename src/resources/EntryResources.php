@@ -207,7 +207,7 @@ final class EntryResources {
             'title' => $entry->title ?? '',
             'slug' => $entry->slug ?? '',
             'status' => $entry->status ?? '',
-            'type' => $entry->getType()->handle ?? '',
+            'type' => $entry->getType()?->handle ?? '', // @phpstan-ignore nullsafe.neverNull
             'url' => $entry->url,
             'dateCreated' => $entry->dateCreated?->format('Y-m-d H:i:s'),
             'dateUpdated' => $entry->dateUpdated?->format('Y-m-d H:i:s'),

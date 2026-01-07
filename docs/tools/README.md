@@ -59,7 +59,7 @@ These tools provide access to Craft's configuration and system status:
 |------|-------------|
 | `get_system_info` | Get Craft version, PHP version, database driver, and environment info |
 | `get_config` | Read values from general config, plugin settings, or custom config files |
-| `read_logs` | Search and filter application log entries by level, date, and content |
+| `read_logs` | Search and filter log entries by level, source, pattern, with text or JSON output |
 | `get_last_error` | Retrieve the most recent error from the application logs |
 | `clear_caches` | Clear specific Craft caches or all caches at once |
 | `list_console_commands` | List all available Craft CLI commands with descriptions |
