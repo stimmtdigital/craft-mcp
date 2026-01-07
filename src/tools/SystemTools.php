@@ -10,10 +10,13 @@ use craft\helpers\FileHelper as CraftFileHelper;
 use craft\models\CategoryGroup;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\Content\TextContent;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\LogEntry;
+use stimmt\craft\Mcp\support\LogFormatter;
 use stimmt\craft\Mcp\support\LogParser;
 use stimmt\craft\Mcp\support\SafeExecution;
 
@@ -68,36 +71,61 @@ class SystemTools {
      */
     #[McpTool(
         name: 'read_logs',
-        description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit.',
+        description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for human-readable colored output.',
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
-    public function readLogs(int $limit = 50, ?string $level = null, ?string $pattern = null, ?string $source = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($limit, $level, $pattern, $source, $context): array {
-            $parser = new LogParser(Craft::$app->getPath()->getLogPath());
+    public function readLogs(
+        int $limit = 50,
+        ?string $level = null,
+        ?string $pattern = null,
+        ?string $source = null,
+        ResponseFormat $output = ResponseFormat::STRUCTURED,
+        ?RequestContext $context = null,
+    ): array|TextContent {
+        return SafeExecution::run(function () use ($limit, $level, $pattern, $source, $output, $context): array|TextContent {
+            $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
 
-            $files = $parser->discoverLogFiles($source);
-            $entries = [];
-            $gateway = $context?->getClientGateway();
-            $totalFiles = count($files);
-
-            foreach ($files as $index => $file) {
-                $gateway?->progress($index + 1, $totalFiles, 'Parsing ' . basename($file));
-
-                $entries = array_merge(
-                    $entries,
-                    $parser->parseFile($file, $level, $pattern, $limit * 2),
-                );
-            }
-
-            usort($entries, static fn (LogEntry $a, LogEntry $b): int => $b->timestamp <=> $a->timestamp);
-
-            $limited = array_slice($entries, 0, $limit);
-
-            return [
-                'count' => count($limited),
-                'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $limited),
-            ];
+            return match ($output) {
+                ResponseFormat::TEXT => LogFormatter::format($entries),
+                ResponseFormat::STRUCTURED => [
+                    'count' => count($entries),
+                    'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $entries),
+                ],
+            };
         });
+    }
+
+    /**
+     * Fetch and sort log entries.
+     *
+     * @return LogEntry[]
+     */
+    private function fetchLogEntries(
+        int $limit,
+        ?string $level,
+        ?string $pattern,
+        ?string $source,
+        ?RequestContext $context,
+    ): array {
+        $parser = new LogParser(Craft::$app->getPath()->getLogPath());
+
+        $files = $parser->discoverLogFiles($source);
+        $entries = [];
+        $gateway = $context?->getClientGateway();
+        $totalFiles = count($files);
+
+        foreach ($files as $index => $file) {
+            $gateway?->progress($index + 1, $totalFiles, 'Parsing ' . basename($file));
+
+            $entries = array_merge(
+                $entries,
+                $parser->parseFile($file, $level, $pattern, $limit * 2),
+            );
+        }
+
+        usort($entries, static fn (LogEntry $a, LogEntry $b): int => $b->timestamp <=> $a->timestamp);
+
+        return array_slice($entries, 0, $limit);
     }
 
     /**

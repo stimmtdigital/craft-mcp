@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `read_logs` tool now discovers plugin logs recursively in subdirectories
 - `read_logs` tool now parses multi-line stack traces into structured arrays
 - `read_logs` tool now sends progress notifications to clients while parsing multiple files
-- New `LogParser`, `LogEntry`, and `StackFrame` classes for clean log parsing architecture
+- `read_logs` tool now supports `output` parameter (`structured` or `text`) for human-readable colored output
+- New `ResponseFormat` enum for reusable tool output format selection
+- New `LogParser`, `LogEntry`, `StackFrame`, and `LogFormatter` classes for clean log architecture
 
 ### Changed
 - Refactored log parsing into dedicated `LogParser` class for cleaner architecture
