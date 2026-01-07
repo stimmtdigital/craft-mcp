@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Options: `--environment` (`-e`), `--serverName` (`-s`)
 - `read_logs` tool now supports `pattern` parameter for case-insensitive content search
 - `read_logs` tool now supports `source` parameter to target specific log files (web, console, queue, or plugin name)
+- `read_logs` tool now discovers plugin logs recursively in subdirectories
+- `read_logs` tool now parses multi-line stack traces into structured arrays
+- `read_logs` tool now sends progress notifications to clients while parsing multiple files
+- New `LogParser`, `LogEntry`, and `StackFrame` classes for clean log parsing architecture
+
+### Changed
+- Refactored log parsing into dedicated `LogParser` class for cleaner architecture
+- `FileHelper::tail()` now uses chunk-based reading for improved performance on large files
 
 ### Fixed
 - Fixed null pointer errors in entry, category, and product serialization when related model (section/type/group) is missing

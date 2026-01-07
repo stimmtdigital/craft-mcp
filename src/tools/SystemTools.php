@@ -13,7 +13,8 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\FileHelper;
+use stimmt\craft\Mcp\support\LogEntry;
+use stimmt\craft\Mcp\support\LogParser;
 use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
@@ -22,11 +23,6 @@ use stimmt\craft\Mcp\support\SafeExecution;
  * @author Max van Essen <support@stimmt.digital>
  */
 class SystemTools {
-    /**
-     * Log line format: 2026-01-03 04:01:45 [web.INFO] [category] message
-     */
-    private const string LOG_PATTERN = '/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([^.\]]+)\.(\w+)\] \[([^\]]*)\] (.*)$/s';
-
     /**
      * Get a configuration value by key.
      */
@@ -76,109 +72,32 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function readLogs(int $limit = 50, ?string $level = null, ?string $pattern = null, ?string $source = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($limit, $level, $pattern, $source): array {
-            $logPath = Craft::$app->getPath()->getLogPath();
+        return SafeExecution::run(function () use ($limit, $level, $pattern, $source, $context): array {
+            $parser = new LogParser(Craft::$app->getPath()->getLogPath());
 
-            // Find all .log files, prioritizing today's date-based logs
-            $today = date('Y-m-d');
-            $allLogs = glob($logPath . '/*.log') ?: [];
-
-            // Filter by source if specified (e.g., "web" matches "web.log" and "web-2026-01-05.log")
-            if ($source !== null) {
-                $allLogs = array_filter($allLogs, function ($file) use ($source) {
-                    $basename = basename($file, '.log');
-
-                    return str_starts_with($basename, $source);
-                });
-                $allLogs = array_values($allLogs); // Re-index array
-            }
-
-            // Sort: today's logs first, then by modification time descending
-            usort($allLogs, function ($a, $b) use ($today) {
-                $aIsToday = str_contains($a, $today);
-                $bIsToday = str_contains($b, $today);
-
-                if ($aIsToday && !$bIsToday) {
-                    return -1;
-                }
-                if (!$aIsToday && $bIsToday) {
-                    return 1;
-                }
-
-                return filemtime($b) <=> filemtime($a);
-            });
-
-            // Limit to most recent logs to avoid processing too many files
-            $logFiles = array_slice($allLogs, 0, 5);
-
+            $files = $parser->discoverLogFiles($source);
             $entries = [];
-            foreach ($logFiles as $logFile) {
+            $gateway = $context?->getClientGateway();
+            $totalFiles = count($files);
+
+            foreach ($files as $index => $file) {
+                $gateway?->progress($index + 1, $totalFiles, 'Parsing ' . basename($file));
+
                 $entries = array_merge(
                     $entries,
-                    $this->parseLogFile($logFile, $level, $pattern, $limit * 2),
+                    $parser->parseFile($file, $level, $pattern, $limit * 2),
                 );
             }
 
-            // Sort by timestamp descending and limit
-            usort($entries, fn ($a, $b) => strcmp((string) $b['timestamp'], (string) $a['timestamp']));
+            usort($entries, static fn (LogEntry $a, LogEntry $b): int => $b->timestamp <=> $a->timestamp);
+
+            $limited = array_slice($entries, 0, $limit);
 
             return [
-                'count' => min(count($entries), $limit),
-                'entries' => array_slice($entries, 0, $limit),
+                'count' => count($limited),
+                'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $limited),
             ];
         });
-    }
-
-    /**
-     * Parse entries from a log file.
-     */
-    private function parseLogFile(string $logFile, ?string $levelFilter, ?string $pattern, int $maxLines): array {
-        if (!file_exists($logFile)) {
-            return [];
-        }
-
-        $entries = [];
-        $logName = basename($logFile);
-
-        foreach (FileHelper::tail($logFile, $maxLines) as $line) {
-            $parsed = $this->parseLogLine($line);
-            if ($parsed === null) {
-                continue;
-            }
-
-            if ($levelFilter !== null && $parsed['level'] !== strtolower($levelFilter)) {
-                continue;
-            }
-
-            if ($pattern !== null && !str_contains(strtolower((string) $parsed['message']), strtolower($pattern))) {
-                continue;
-            }
-
-            $entries[] = ['file' => $logName, ...$parsed];
-        }
-
-        return $entries;
-    }
-
-    /**
-     * Parse a single log line.
-     */
-    private function parseLogLine(string $line): ?array {
-        if (in_array(trim($line), ['', '0'], true)) {
-            return null;
-        }
-
-        if (!preg_match(self::LOG_PATTERN, $line, $matches)) {
-            return null;
-        }
-
-        return [
-            'timestamp' => $matches[1],
-            'channel' => $matches[2],
-            'level' => strtolower($matches[3]),
-            'category' => $matches[4],
-            'message' => trim($matches[5]),
-        ];
     }
 
     /**
