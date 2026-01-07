@@ -233,7 +233,7 @@ Requirements:
 |------|-------|
 | Get System Info | Read Craft version, PHP version, database driver, and environment |
 | Get Config | Read Craft general config and plugin configuration values |
-| Read Logs | Search and filter application log entries by level and date |
+| Read Logs | Search and filter log entries by level, source, pattern, with text or JSON output |
 | Get Last Error | Retrieve the most recent error from logs |
 | Clear Caches | Clear specific caches or all caches at once |
 | List Routes | Inspect all registered routes including controller actions |

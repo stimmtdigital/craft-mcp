@@ -104,7 +104,7 @@ When something goes wrong, the logs tell the story. These tools let AI assistant
 
 ### read_logs
 
-Search through recent log entries with optional filtering by severity level. This is useful for understanding what's happening in your application and identifying patterns in warnings or errors.
+Search through recent log entries with filtering by severity level, log source, and content pattern. This is useful for understanding what's happening in your application and identifying patterns in warnings or errors.
 
 **Parameters:**
 
@@ -112,6 +112,9 @@ Search through recent log entries with optional filtering by severity level. Thi
 |------|------|---------|-------------|
 | `limit` | int | 50 | Maximum number of entries to return |
 | `level` | string | null | Filter by log level: "error", "warning", or "info" |
+| `source` | string | null | Filter by log source: "web", "console", "queue", or a plugin name |
+| `pattern` | string | null | Case-insensitive search pattern to filter log messages |
+| `output` | string | "structured" | Output format: "structured" (JSON) or "text" (human-readable with ANSI colors) |
 
 **Examples:**
 
@@ -124,9 +127,18 @@ read_logs level="error" limit=10
 
 # Look for warnings
 read_logs level="warning"
+
+# Search for specific content
+read_logs pattern="database" limit=20
+
+# Filter by log source
+read_logs source="web" level="error"
+
+# Get human-readable colored output
+read_logs output="text" limit=10
 ```
 
-**Response:**
+**Response (structured):**
 
 ```json
 {
@@ -135,13 +147,31 @@ read_logs level="warning"
     {
       "file": "web.log",
       "timestamp": "2024-01-15 10:30:45",
+      "channel": "web",
       "level": "error",
       "category": "application",
-      "message": "Error message here"
+      "message": "Error message here",
+      "stackTrace": [
+        {
+          "index": 0,
+          "file": "/var/www/html/src/Service.php",
+          "line": 123,
+          "call": "SomeClass->method()"
+        }
+      ]
     }
   ]
 }
 ```
+
+**Response (text):**
+
+When using `output="text"`, returns ANSI-colored human-readable output:
+- Timestamps appear dimmed
+- ERROR level appears in red
+- WARNING level appears in yellow
+- INFO level appears dimmed
+- Stack traces are indented and dimmed
 
 ---
 

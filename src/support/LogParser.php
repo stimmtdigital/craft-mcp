@@ -15,7 +15,7 @@ use SplFileInfo;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class LogParser {
+final readonly class LogParser {
     /**
      * Log line format: 2026-01-03 04:01:45 [web.INFO] [category] message
      */
@@ -32,7 +32,7 @@ final class LogParser {
     private const int MAX_FILES = 5;
 
     public function __construct(
-        private readonly string $logPath,
+        private string $logPath,
     ) {
     }
 
