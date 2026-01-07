@@ -135,7 +135,7 @@ class TinkerTools {
      * Format the input line.
      */
     private function formatInput(string $code): string {
-        return Ansi::dim(Ansi::PROMPT) . ' ' . Ansi::dim($code) . "\n";
+        return Ansi::dim(Ansi::prefixLines(Ansi::PROMPT, $code)) . "\n";
     }
 
     /**
@@ -144,7 +144,7 @@ class TinkerTools {
     private function formatOutput(mixed $value, OutputMode $mode): string {
         $formatted = trim($this->formatResult($value, $mode));
 
-        return Ansi::dim(Ansi::RESULT) . ' ' . $formatted;
+        return Ansi::prefixLines(Ansi::dim(Ansi::RESULT), $formatted);
     }
 
     /**

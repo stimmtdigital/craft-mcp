@@ -103,4 +103,19 @@ final class Ansi {
     public static function strip(string $text): string {
         return preg_replace('/\033\[[0-9;]*m/', '', $text) ?? $text;
     }
+
+    /**
+     * Prefix multiline content with a symbol, indenting continuation lines.
+     *
+     * Example: prefixLines('>', "line1\nline2") => "> line1\n  line2"
+     */
+    public static function prefixLines(string $prefix, string $content): string {
+        $lines = explode("\n", $content);
+        $first = array_shift($lines);
+        $visualWidth = mb_strlen(self::strip($prefix));
+        $indent = str_repeat(' ', $visualWidth + 1);
+        $continuation = array_map(static fn (string $line): string => $indent . $line, $lines);
+
+        return $prefix . ' ' . $first . ($continuation !== [] ? "\n" . implode("\n", $continuation) : '');
+    }
 }

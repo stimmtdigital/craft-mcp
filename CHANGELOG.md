@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed null pointer errors in entry, category, and product serialization when related model (section/type/group) is missing
 - `list_console_commands` now discovers all commands including those from plugins
+- `tinker` tool now properly preserves indentation in multi-line PHP input
 
 ## [1.1.0] - 2026-01-04
 
