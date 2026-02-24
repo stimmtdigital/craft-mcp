@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-24
+
+### Added
+- Monorepo-aware project root detection in `mcp/install` wizard
+  - Auto-detects `.ddev`/`.git` markers in parent directories
+  - Config files (`.mcp.json`, `.cursor/mcp.json`) placed at actual project root
+  - Binary paths automatically prefixed with Craft subdirectory (e.g., `backend/vendor/...`)
+- `ProjectRootResolver` class for clean project root resolution (SRP)
+- Unit tests for `ProjectRootResolver`
+
+### Changed
+- Upgraded `mcp/sdk` from `^0.2` to `^0.3`
+- PHPStan ignore patterns updated for Craft CMS generic type annotations
+
+### Fixed
+- `mcp/install` now writes config files to the correct location in monorepo setups
+- Removed dead code branch in `McpServerFactory`
+
 ## [1.1.1] - 2026-01-07
 
 ### Added
