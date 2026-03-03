@@ -16,6 +16,7 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\OutputMode;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Ansi;
+use stimmt\craft\Mcp\support\MutexGuard;
 use Symfony\Component\VarDumper\Cloner\VarCloner;
 use Symfony\Component\VarDumper\Dumper\CliDumper;
 use Throwable;
@@ -113,6 +114,8 @@ class TinkerTools {
             ob_end_clean();
 
             return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
+        } finally {
+            MutexGuard::releaseAll();
         }
     }
 
