@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\support;
 use Craft;
 use ReflectionException;
 use ReflectionProperty;
+use yii\mutex\Mutex;
 
 /**
  * Releases mutex locks accumulated during long-running MCP process execution.
@@ -42,12 +43,15 @@ final class MutexGuard {
      * Yii2's Mutex::$_locks is private with no public accessor. Reflection is
      * the only way to discover which locks are held. Falls back to releasing
      * the known problematic 'project-config' lock if Reflection fails.
+     *
+     * Note: Reflection targets the declaring class (Mutex) directly, since
+     * private properties are not visible when reflecting on a subclass.
      */
     private static function releaseYiiMutexLocks(): void {
         $mutex = Craft::$app->getMutex();
 
         try {
-            $property = new ReflectionProperty($mutex, '_locks');
+            $property = new ReflectionProperty(Mutex::class, '_locks');
             $locks = $property->getValue($mutex);
 
             foreach ($locks as $lock) {
