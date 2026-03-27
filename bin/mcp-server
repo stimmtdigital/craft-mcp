@@ -84,7 +84,16 @@ $signalHandler->register();
 
 // Build and run server with dedicated file logger (separate from Craft logs)
 try {
-    $logger = McpServerFactory::createFileLogger();
+    $settings = Mcp::settings();
+    $logger = McpServerFactory::createFileLogger(logLevel: $settings->logLevel);
+
+    // Register logger so Yii can inject it into tool constructors.
+    // TinkerTools must also be registered so the SDK's container lookup
+    // finds it via Psr11ContainerAdapter::has() instead of falling back
+    // to bare instantiation (which would skip DI and use NullLogger).
+    Craft::$container->setSingleton(\Psr\Log\LoggerInterface::class, fn() => $logger);
+    Craft::$container->set(\stimmt\craft\Mcp\tools\TinkerTools::class);
+
     $factory = new McpServerFactory(logger: $logger);
     $server = $factory->create();
     $transport = $factory->createTransport();

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `logLevel` configuration option to control MCP server log verbosity (`storage/logs/mcp-server.log`). Set to `'debug'` for full tool dispatch logging. Default: `'error'` ([#10](https://github.com/stimmtdigital/craft-mcp/issues/10))
+- Debug logging in `tinker` tool for execution tracing, security blocks, and error diagnostics
+
+### Fixed
+- `tinker` tool now wraps execution in `SafeExecution`, ensuring unexpected errors surface with real messages instead of the generic "Tool execution failed" ([#10](https://github.com/stimmtdigital/craft-mcp/issues/10))
+
 ## [1.2.2] - 2026-03-04
 
 ### Fixed

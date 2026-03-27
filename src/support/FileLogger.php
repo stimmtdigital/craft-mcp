@@ -9,6 +9,7 @@ use craft\config\GeneralConfig;
 use craft\services\Config;
 use DateTimeImmutable;
 use DateTimeZone;
+use InvalidArgumentException;
 use Psr\Log\AbstractLogger;
 use Stringable;
 use Throwable;
@@ -23,9 +24,35 @@ use Throwable;
  *   $logger->error('Tool execution failed', ['tool' => 'tinker', 'error' => $e->getMessage()]);
  */
 class FileLogger extends AbstractLogger {
+    private const array LEVEL_PRIORITY = [
+        'debug'     => 0,
+        'info'      => 1,
+        'notice'    => 2,
+        'warning'   => 3,
+        'error'     => 4,
+        'critical'  => 5,
+        'alert'     => 6,
+        'emergency' => 7,
+    ];
+
+    private readonly string $minLevel;
+
     private ?DateTimeZone $timezone = null;
 
-    public function __construct(private readonly string $logPath) {
+    public function __construct(
+        private readonly string $logPath,
+        string $minLevel = 'error',
+    ) {
+        $minLevel = strtolower($minLevel);
+
+        if (!array_key_exists($minLevel, self::LEVEL_PRIORITY)) {
+            throw new InvalidArgumentException(
+                "Invalid log level '{$minLevel}'. Must be one of: " . implode(', ', array_keys(self::LEVEL_PRIORITY)),
+            );
+        }
+
+        $this->minLevel = $minLevel;
+
         $this->ensureDirectoryExists();
         $this->initializeTimezone();
     }
@@ -37,14 +64,33 @@ class FileLogger extends AbstractLogger {
      * @param array<string, mixed> $context
      */
     public function log($level, string|Stringable $message, array $context = []): void {
+        if ($this->levelPriority($level) < $this->levelPriority($this->minLevel)) {
+            return;
+        }
+
         $timestamp = $this->getTimestamp();
-        $levelString = is_string($level) ? $level : (is_object($level) && method_exists($level, '__toString') ? (string) $level : 'INFO');
-        $levelUpper = strtoupper($levelString);
+        $levelUpper = strtoupper($this->levelToString($level));
         $contextJson = $context !== [] ? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES) : '';
 
         $line = "[{$timestamp}] [{$levelUpper}] {$message}{$contextJson}\n";
 
         file_put_contents($this->logPath, $line, FILE_APPEND | LOCK_EX);
+    }
+
+    private function levelPriority(mixed $level): int {
+        return self::LEVEL_PRIORITY[strtolower($this->levelToString($level))] ?? 3;
+    }
+
+    private function levelToString(mixed $level): string {
+        if (is_string($level)) {
+            return $level;
+        }
+
+        if (is_object($level) && method_exists($level, '__toString')) {
+            return (string) $level;
+        }
+
+        return 'info';
     }
 
     private function ensureDirectoryExists(): void {

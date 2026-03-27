@@ -5,3 +5,4 @@ DEVELOPMENT.md
 .phpunit.result.cache
 .phpstan.cache/
 /dev/
+/docs/superpowers/
