@@ -10,6 +10,8 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Server\RequestContext;
 use ParseError;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Psy\CodeCleaner;
 use Psy\Exception\ParseErrorException;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
@@ -17,6 +19,7 @@ use stimmt\craft\Mcp\enums\OutputMode;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Ansi;
 use stimmt\craft\Mcp\support\MutexGuard;
+use stimmt\craft\Mcp\support\SafeExecution;
 use Symfony\Component\VarDumper\Cloner\VarCloner;
 use Symfony\Component\VarDumper\Dumper\CliDumper;
 use Throwable;
@@ -59,6 +62,10 @@ class TinkerTools {
 
     private ?CodeCleaner $cleaner = null;
 
+    public function __construct(
+        private readonly LoggerInterface $logger = new NullLogger(),
+    ) {}
+
     /**
      * Execute arbitrary PHP code within Craft's application context.
      *
@@ -76,47 +83,56 @@ class TinkerTools {
         string $output = 'dump',
         ?RequestContext $context = null,
     ): TextContent {
-        // Note: SafeExecution is not used here because tinker has its own
-        // formatted error output for the REPL experience. Errors are part
-        // of the expected output, not SDK-level failures.
-        $outputMode = OutputMode::tryFrom($output) ?? OutputMode::DUMP;
+        // SafeExecution is the outer safety net for unexpected failures
+        // (e.g. CodeCleaner instantiation). The inner try/catch handles
+        // expected errors with REPL-style formatting.
+        return SafeExecution::run(function () use ($code, $output): TextContent {
+            $outputMode = OutputMode::tryFrom($output) ?? OutputMode::DUMP;
 
-        foreach (self::BLOCKED_PATTERNS as $pattern) {
-            if (preg_match($pattern, $code)) {
+            $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
+
+            foreach (self::BLOCKED_PATTERNS as $pattern) {
+                if (preg_match($pattern, $code)) {
+                    $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
+
+                    return $this->response(
+                        $code,
+                        $this->formatError('SecurityError', 'Code contains blocked function. Shell commands, file writes, and eval are not allowed.'),
+                    );
+                }
+            }
+
+            try {
+                $cleaner = $this->getCodeCleaner();
+                $cleanedCode = $cleaner->clean([$code]);
+
+                $app = Craft::$app;
+
+                ob_start();
+                $result = eval($cleanedCode);
+                $stdout = ob_get_clean();
+
+                $this->logger->debug('Tinker completed');
+
                 return $this->response(
                     $code,
-                    $this->formatError('SecurityError', 'Code contains blocked function. Shell commands, file writes, and eval are not allowed.'),
+                    $this->formatOutput($result, $outputMode),
+                    $stdout ?: null,
                 );
+            } catch (ParseErrorException|ParseError $e) {
+                ob_end_clean();
+                $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+
+                return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
+            } catch (Throwable $e) {
+                ob_end_clean();
+                $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+
+                return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
+            } finally {
+                MutexGuard::releaseAll();
             }
-        }
-
-        try {
-            $cleaner = $this->getCodeCleaner();
-            $cleanedCode = $cleaner->clean([$code]);
-
-            // Make useful variables available
-            $app = Craft::$app;
-
-            ob_start();
-            $result = eval($cleanedCode);
-            $stdout = ob_get_clean();
-
-            return $this->response(
-                $code,
-                $this->formatOutput($result, $outputMode),
-                $stdout ?: null,
-            );
-        } catch (ParseErrorException|ParseError $e) {
-            ob_end_clean();
-
-            return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
-        } catch (Throwable $e) {
-            ob_end_clean();
-
-            return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
-        } finally {
-            MutexGuard::releaseAll();
-        }
+        });
     }
 
     /**
