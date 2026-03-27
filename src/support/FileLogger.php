@@ -35,17 +35,23 @@ class FileLogger extends AbstractLogger {
         'emergency' => 7,
     ];
 
+    private readonly string $minLevel;
+
     private ?DateTimeZone $timezone = null;
 
     public function __construct(
         private readonly string $logPath,
-        private readonly string $minLevel = 'error',
+        string $minLevel = 'error',
     ) {
+        $minLevel = strtolower($minLevel);
+
         if (!array_key_exists($minLevel, self::LEVEL_PRIORITY)) {
             throw new InvalidArgumentException(
                 "Invalid log level '{$minLevel}'. Must be one of: " . implode(', ', array_keys(self::LEVEL_PRIORITY)),
             );
         }
+
+        $this->minLevel = $minLevel;
 
         $this->ensureDirectoryExists();
         $this->initializeTimezone();

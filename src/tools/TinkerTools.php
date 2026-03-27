@@ -123,12 +123,18 @@ class TinkerTools {
                     $stdout ?: null,
                 );
             } catch (ParseErrorException|ParseError $e) {
-                ob_end_clean();
+                if (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
+
                 $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
 
                 return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
             } catch (Throwable $e) {
-                ob_end_clean();
+                if (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
+
                 $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
 
                 return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
