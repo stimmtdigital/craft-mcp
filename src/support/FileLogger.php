@@ -9,6 +9,7 @@ use craft\config\GeneralConfig;
 use craft\services\Config;
 use DateTimeImmutable;
 use DateTimeZone;
+use InvalidArgumentException;
 use Psr\Log\AbstractLogger;
 use Stringable;
 use Throwable;
@@ -41,8 +42,8 @@ class FileLogger extends AbstractLogger {
         private readonly string $minLevel = 'error',
     ) {
         if (!array_key_exists($minLevel, self::LEVEL_PRIORITY)) {
-            throw new \InvalidArgumentException(
-                "Invalid log level '{$minLevel}'. Must be one of: " . implode(', ', array_keys(self::LEVEL_PRIORITY))
+            throw new InvalidArgumentException(
+                "Invalid log level '{$minLevel}'. Must be one of: " . implode(', ', array_keys(self::LEVEL_PRIORITY)),
             );
         }
 

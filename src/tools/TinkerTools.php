@@ -64,7 +64,8 @@ class TinkerTools {
 
     public function __construct(
         private readonly LoggerInterface $logger = new NullLogger(),
-    ) {}
+    ) {
+    }
 
     /**
      * Execute arbitrary PHP code within Craft's application context.
@@ -92,14 +93,16 @@ class TinkerTools {
             $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
 
             foreach (self::BLOCKED_PATTERNS as $pattern) {
-                if (preg_match($pattern, $code)) {
-                    $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
-
-                    return $this->response(
-                        $code,
-                        $this->formatError('SecurityError', 'Code contains blocked function. Shell commands, file writes, and eval are not allowed.'),
-                    );
+                if (!preg_match($pattern, $code)) {
+                    continue;
                 }
+
+                $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
+
+                return $this->response(
+                    $code,
+                    $this->formatError('SecurityError', 'Code contains blocked function. Shell commands, file writes, and eval are not allowed.'),
+                );
             }
 
             try {
