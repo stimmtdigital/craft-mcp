@@ -84,7 +84,12 @@ $signalHandler->register();
 
 // Build and run server with dedicated file logger (separate from Craft logs)
 try {
-    $logger = McpServerFactory::createFileLogger();
+    $settings = Mcp::settings();
+    $logger = McpServerFactory::createFileLogger(logLevel: $settings->logLevel);
+
+    // Register logger for tool constructor injection (e.g. TinkerTools)
+    Craft::$container->setSingleton(\Psr\Log\LoggerInterface::class, fn() => $logger);
+
     $factory = new McpServerFactory(logger: $logger);
     $server = $factory->create();
     $transport = $factory->createTransport();
