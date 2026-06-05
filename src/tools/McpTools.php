@@ -136,19 +136,16 @@ class McpTools {
             // 2. Refresh Craft's composer plugin info cache (re-reads plugins.php)
             $refreshResult = PluginReloader::refreshComposerPluginInfo();
 
-            // 3. Clear project config cache (required before reset)
-            PluginReloader::clearProjectConfigCache();
+            // 3. Re-read project config from YAML (clears the internal cache first)
+            PluginReloader::resetProjectConfig();
 
-            // 4. Reset project config to re-read from YAML
-            Craft::$app->getProjectConfig()->reset();
-
-            // 5. Reset Plugins service internal caches
+            // 4. Reset Plugins service internal caches
             PluginReloader::resetPluginsService();
 
-            // 6. Reload Craft plugins
+            // 5. Reload Craft plugins
             Craft::$app->getPlugins()->loadPlugins();
 
-            // 7. Reset tool registry to re-collect tools
+            // 6. Reset tool registry to re-collect tools
             Mcp::resetToolRegistry();
 
             $summary = Mcp::getToolRegistry()->getSummary();

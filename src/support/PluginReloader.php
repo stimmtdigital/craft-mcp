@@ -63,6 +63,20 @@ final class PluginReloader {
     }
 
     /**
+     * Re-read the project config from YAML.
+     *
+     * Clears the 'projectConfig:internal' cache and resets the ProjectConfig
+     * service so the next read/write picks up changes made by an external
+     * process (a CLI migration, `project-config/apply`, or a control-panel
+     * edit). This is what clears a `StaleResourceException` raised in the
+     * long-lived MCP server process.
+     */
+    public static function resetProjectConfig(): void {
+        self::clearProjectConfigCache();
+        Craft::$app->getProjectConfig()->reset();
+    }
+
+    /**
      * Reset the Plugins service to allow reloading.
      *
      * Clears all internal caches so loadPlugins() will re-read from database
