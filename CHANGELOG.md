@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-07
+
 ### Added
 - `logLevel` configuration option to control MCP server log verbosity (`storage/logs/mcp-server.log`). Set to `'debug'` for full tool dispatch logging. Default: `'error'` ([#10](https://github.com/stimmtdigital/craft-mcp/issues/10))
 - Debug logging in `tinker` tool for execution tracing, security blocks, and error diagnostics
