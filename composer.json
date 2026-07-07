@@ -29,7 +29,7 @@
     "require": {
         "php": "^8.3",
         "craftcms/cms": "^5.0",
-        "mcp/sdk": "^0.4"
+        "mcp/sdk": "^0.6"
     },
     "require-dev": {
         "laravel/pint": "^1.18",
