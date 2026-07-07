@@ -151,7 +151,7 @@ final class SchemaResources {
                     'type' => SchemaHelper::getFieldTypeName($field),
                     'instructions' => $field->instructions !== '' ? $field->instructions : null,
                     'searchable' => $field->searchable,
-                    'translationMethod' => $field->translationMethod ?? 'none',
+                    'translationMethod' => $field->translationMethod,
                 ],
                 'usedIn' => SchemaHelper::findFieldUsage($handle),
             ];

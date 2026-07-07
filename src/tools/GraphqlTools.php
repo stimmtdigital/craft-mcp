@@ -235,7 +235,7 @@ class GraphqlTools {
             'name' => $schema->name,
             'scope' => $schema->scope,
             'permissions' => $this->parseScope($schema->scope),
-            'isPublic' => $schema->isPublic ?? false,
+            'isPublic' => $schema->isPublic,
         ];
     }
 
