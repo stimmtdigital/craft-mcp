@@ -413,11 +413,14 @@ class DebugTools {
     /**
      * Flatten nested class events structure.
      *
+     * Yii stores class-level handlers as `Event::$_events[$eventName][$className][]`,
+     * so the outer key is the event name and the inner key is the class name.
+     *
      * @return Generator<array{class: string, event: string, count: int, handlers: array}>
      */
     private function flattenClassEvents(array $classEventsProperty, ?string $filter): Generator {
         $flattened = array_merge(...array_map(
-            fn (string $className, array $classEventHandlers) => $this->extractClassEvents($className, $classEventHandlers, $filter),
+            fn (string $eventName, array $classHandlers) => $this->extractClassEvents($eventName, $classHandlers, $filter),
             array_keys($classEventsProperty),
             array_values($classEventsProperty),
         ));
@@ -426,15 +429,15 @@ class DebugTools {
     }
 
     /**
-     * Extract events for a single class.
+     * Extract the per-class handlers registered for a single event name.
      *
-     * @param array<string, array> $classEventHandlers
+     * @param array<string, array> $classHandlers keyed by class name
      * @return array<array{class: string, event: string, count: int, handlers: array}>
      */
-    private function extractClassEvents(string $className, array $classEventHandlers, ?string $filter): array {
+    private function extractClassEvents(string $eventName, array $classHandlers, ?string $filter): array {
         return array_filter(
             array_map(
-                fn (string $eventName, array $eventHandlerList) => $this->matchesFilter($className, $eventName, $filter)
+                fn (string $className, array $eventHandlerList) => $this->matchesFilter($className, $eventName, $filter)
                     ? [
                         'class' => $className,
                         'event' => $eventName,
@@ -442,8 +445,8 @@ class DebugTools {
                         'handlers' => $this->describeHandlers($eventHandlerList),
                     ]
                     : null,
-                array_keys($classEventHandlers),
-                array_values($classEventHandlers),
+                array_keys($classHandlers),
+                array_values($classHandlers),
             ),
         );
     }

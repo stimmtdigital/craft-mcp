@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_asset_folders` no longer dereferences a null root folder when a volume has no indexed root folder
 - `list_backups` and `create_backup` guard against `filesize()`/`filemtime()` returning `false` (file removed mid-listing), preventing a `TypeError`
 - Added explicit `symfony/polyfill-php84` requirement: `array_any()` (PHP 8.4) is used on the supported `^8.3` floor and previously relied on the polyfill arriving transitively
+- `list_event_handlers` reported class-level handlers with the `class` and `event` fields swapped; Yii stores them as `$_events[eventName][className]`, so the two nesting levels were mislabeled
 
 ### Changed
 - Extracted read-only SQL validation into a shared `SqlReadGuard` support class used by `run_query` and `explain_query`
