@@ -70,12 +70,6 @@ final readonly class ProjectRootResolver {
     }
 
     private function hasMarker(string $directory): bool {
-        foreach (self::MARKERS as $marker) {
-            if (is_dir($directory . DIRECTORY_SEPARATOR . $marker)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(self::MARKERS, fn ($marker) => is_dir($directory . DIRECTORY_SEPARATOR . $marker));
     }
 }

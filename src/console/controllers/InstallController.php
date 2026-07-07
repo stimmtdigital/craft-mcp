@@ -231,13 +231,7 @@ class InstallController extends Controller {
      * @param McpClientInterface[] $clients
      */
     private function anyClientRequiresAbsolutePaths(array $clients): bool {
-        foreach ($clients as $client) {
-            if ($client->requiresAbsolutePaths()) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($clients, fn ($client) => $client->requiresAbsolutePaths());
     }
 
     /**
