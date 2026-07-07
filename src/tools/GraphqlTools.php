@@ -84,8 +84,7 @@ class GraphqlTools {
             $sdl = null;
 
             try {
-                $schemaDef = $gql->getSchemaDef($schema);
-                $sdl = $schemaDef !== null ? (string) $schemaDef : null;
+                $sdl = (string) $gql->getSchemaDef($schema);
             } catch (Throwable) {
                 // SDL generation might fail for some schemas
             }

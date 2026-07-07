@@ -117,7 +117,7 @@ class CraftTools {
                 'craft' => [
                     'version' => Craft::$app->getVersion(),
                     'edition' => Craft::$app->getEditionName(),
-                    'schemaVersion' => $info->schemaVersion ?? null,
+                    'schemaVersion' => $info->schemaVersion,
                     'environment' => Craft::$app->env ?? 'production',
                     'devMode' => Craft::$app->getConfig()->getGeneral()->devMode,
                 ],

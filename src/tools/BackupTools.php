@@ -42,9 +42,17 @@ class BackupTools {
             $backups = [];
 
             foreach ($files as $file) {
-                $filename = basename($file);
                 $size = filesize($file);
                 $modified = filemtime($file);
+                // Skip files that vanished between glob() and stat (cleanup race).
+                if ($size === false) {
+                    continue;
+                }
+                if ($modified === false) {
+                    continue;
+                }
+
+                $filename = basename($file);
 
                 $backups[] = [
                     'filename' => $filename,
@@ -92,6 +100,9 @@ class BackupTools {
 
             $filename = basename($backupPath);
             $size = file_exists($backupPath) ? filesize($backupPath) : 0;
+            if ($size === false) {
+                $size = 0;
+            }
 
             return [
                 'success' => true,

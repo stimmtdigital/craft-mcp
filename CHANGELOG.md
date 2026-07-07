@@ -17,8 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tinker` tool blocks unbounded `while (ob_get_level())` teardown loops, which would spin forever against the non-removable stdout shield
 - `tinker` tool now drains only output buffers it opened (baseline-aware): the previous `ob_get_level() > 0` guard closed outer buffers such as the stdout shield, clobbering the original error with an `ErrorException` when user code had closed the capture buffer
 - Added explicit `psy/psysh` requirement: tinker relied on it arriving transitively (e.g. via `yiisoft/yii2-shell`) and fatally errored on installs without it
+- `run_query` and `explain_query` no longer reject legitimate SELECTs whose columns contain a blocked keyword as a substring (e.g. `dateCreated` matched `CREATE`, `dateUpdated` matched `UPDATE`); the read-only guard now matches keywords on word boundaries via the shared `SqlReadGuard`, and `explain_query` gained the stronger keyword set
+- `get_deprecations` database lookup selected a nonexistent `template` column, so the query always failed and was silently swallowed; the column is removed and the query now runs
+- `get_table_counts` and `get_deprecations` check table existence via schema instead of catching every `Throwable`, so a genuine database error surfaces instead of being masked as "Table not found" / zero results
+- `list_asset_folders` no longer dereferences a null root folder when a volume has no indexed root folder
+- `list_backups` and `create_backup` guard against `filesize()`/`filemtime()` returning `false` (file removed mid-listing), preventing a `TypeError`
+- Added explicit `symfony/polyfill-php84` requirement: `array_any()` (PHP 8.4) is used on the supported `^8.3` floor and previously relied on the polyfill arriving transitively
+- `list_event_handlers` reported class-level handlers with the `class` and `event` fields swapped; Yii stores them as `$_events[eventName][className]`, so the two nesting levels were mislabeled
 
 ### Changed
+- Extracted read-only SQL validation into a shared `SqlReadGuard` support class used by `run_query` and `explain_query`
 - Upgraded `mcp/sdk` from `^0.4` to `^0.6`
 - Added explicit `symfony/finder` requirement: the SDK moved it from `require` to `suggest` in 0.5, but file-based discovery (used for tool/prompt/resource registration) still needs it at server boot
 
