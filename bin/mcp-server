@@ -16,6 +16,24 @@ declare(strict_types=1);
  *   ddev exec php vendor/stimmt/craft-mcp/bin/mcp-server
  */
 
+// Shield the stdio transport: stdout is the JSON-RPC stream, so any stray
+// echo/print or PHP notice (from tinker'd code, Craft deprecations, etc.)
+// would corrupt the protocol framing. This non-removable output buffer
+// reroutes all echo-style output to stderr. The transport is unaffected:
+// it writes frames via fwrite(STDOUT), which bypasses output buffering.
+// CLEANABLE keeps Yii-style bounded ob_clean() fallbacks working.
+ob_start(
+    static function (string $buffer): string {
+        if ($buffer !== '') {
+            fwrite(STDERR, $buffer);
+        }
+
+        return '';
+    },
+    1,
+    PHP_OUTPUT_HANDLER_CLEANABLE,
+);
+
 // Find Craft's base path by looking for bootstrap.php
 $basePath = null;
 $currentDir = __DIR__;

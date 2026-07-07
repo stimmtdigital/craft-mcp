@@ -58,6 +58,9 @@ class TinkerTools {
         '/\bmove_uploaded_file\s*\(/i',
         '/\beval\s*\(/i',
         '/\bcreate_function\s*\(/i',
+        // Unbounded buffer teardown: the server's stdout shield buffer is
+        // non-removable, so a while-loop draining ob_get_level() never ends.
+        '/\bwhile\s*\(\s*ob_get_level\s*\(/i',
     ];
 
     private ?CodeCleaner $cleaner = null;
@@ -101,7 +104,7 @@ class TinkerTools {
 
                 return $this->response(
                     $code,
-                    $this->formatError('SecurityError', 'Code contains blocked function. Shell commands, file writes, and eval are not allowed.'),
+                    $this->formatError('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
                 );
             }
 
