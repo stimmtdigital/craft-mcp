@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tinker` tool now drains only output buffers it opened (baseline-aware): the previous `ob_get_level() > 0` guard closed outer buffers such as the stdout shield, clobbering the original error with an `ErrorException` when user code had closed the capture buffer
 - Added explicit `psy/psysh` requirement: tinker relied on it arriving transitively (e.g. via `yiisoft/yii2-shell`) and fatally errored on installs without it
 
+### Changed
+- Upgraded `mcp/sdk` from `^0.4` to `^0.6`
+- Added explicit `symfony/finder` requirement: the SDK moved it from `require` to `suggest` in 0.5, but file-based discovery (used for tool/prompt/resource registration) still needs it at server boot
+
 ## [1.2.2] - 2026-03-04
 
 ### Fixed
