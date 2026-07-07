@@ -65,12 +65,12 @@ class McpServerFactory {
      * Create a file logger that writes to storage/logs/mcp-server.log.
      * This is separate from Craft's logging system.
      */
-    public static function createFileLogger(?string $logPath = null): LoggerInterface {
+    public static function createFileLogger(?string $logPath = null, string $logLevel = 'error'): LoggerInterface {
         if ($logPath === null) {
             $logPath = Craft::getAlias('@storage/logs/mcp-server.log');
         }
 
-        return new FileLogger($logPath);
+        return new FileLogger($logPath, $logLevel);
     }
 
     private function getInstructions(): string {

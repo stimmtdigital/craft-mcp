@@ -31,6 +31,8 @@ class Settings extends Model {
     /** @var string[] */
     public array $allowedIps = [];
 
+    public string $logLevel = 'error';
+
     /**
      * @return array<int, array<int|string, mixed>>
      */
@@ -39,6 +41,7 @@ class Settings extends Model {
         return [
             [['enabled', 'enableDangerousTools'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps'], 'each', 'rule' => ['string']],
+            [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
         ];
     }
 }

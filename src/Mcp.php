@@ -264,7 +264,7 @@ class Mcp extends BasePlugin {
             ? $definition->dangerous
             : in_array($toolName, self::DANGEROUS_TOOLS, true); // Fallback for backwards compat
 
-        return !($isDangerous && !$settings->enableDangerousTools);
+        return !$isDangerous || $settings->enableDangerousTools;
     }
 
     /**

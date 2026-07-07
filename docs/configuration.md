@@ -47,6 +47,12 @@ return [
         '127.0.0.1',
         '::1',
     ],
+
+    // Minimum log level for the MCP server log (storage/logs/mcp-server.log).
+    // Set to 'debug' to see tool invocations, arguments, and execution details.
+    // Valid values: 'debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'
+    // Default: 'error'
+    'logLevel' => 'error',
 ];
 ```
 
@@ -58,6 +64,7 @@ return [
 | `enableDangerousTools` | `bool` | `false` (prod) / `true` (other) | Whether tools that modify data or execute code are available |
 | `disabledTools` | `array` | `[]` | List of tool names to disable regardless of other settings |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
+| `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
 
 ## Environment Variables
 
@@ -187,6 +194,27 @@ If you want to allow most tools but restrict a few specific ones, use the `disab
 ```
 
 Tools listed here are disabled regardless of the `enableDangerousTools` setting. Use the snake_case tool name as shown in the [Tools Reference](tools/README.md).
+
+## Debugging
+
+The MCP server writes logs to `storage/logs/mcp-server.log`, separate from Craft's own logging. By default, only errors are logged. To enable verbose logging for troubleshooting tool failures:
+
+```php
+'logLevel' => 'debug',
+```
+
+With debug logging enabled, the log includes:
+- Tool invocations with name and arguments (from the MCP SDK)
+- Tinker-specific events: code being executed, security pattern blocks, and caught errors
+- Execution results and timing
+
+After changing the log level, restart the MCP server (send SIGHUP to the process, or restart your AI client).
+
+### Common Issues
+
+**"Tool execution failed" with no detail**: This typically means an unexpected error occurred outside the tool's error handling. Check `storage/logs/mcp-server.log` for the full exception. Enable `'logLevel' => 'debug'` for additional context.
+
+**Tinker returns no output**: Verify that `enableDangerousTools` is `true` and that `tinker` is not in the `disabledTools` array. Check with the `list_mcp_tools` tool to confirm tinker is listed as enabled.
 
 ## Next Steps
 
