@@ -16,6 +16,7 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\FileHelper;
 use stimmt\craft\Mcp\support\SafeExecution;
+use stimmt\craft\Mcp\support\SqlReadGuard;
 use Throwable;
 use yii\base\Event;
 
@@ -190,14 +191,16 @@ class DebugTools {
                 }
             }
 
-            // Also check deprecation errors table if it exists
-            try {
-                $db = Craft::$app->getDb();
-                $prefix = $db->tablePrefix;
-                $table = $prefix . 'deprecationerrors';
+            // Also check the deprecation errors table if it exists. Guard on
+            // table existence rather than catching everything, so a genuine
+            // query failure surfaces instead of silently reporting zero.
+            $dbDeprecations = [];
+            $db = Craft::$app->getDb();
+            $table = $db->tablePrefix . 'deprecationerrors';
 
+            if ($db->getTableSchema($table) !== null) {
                 $dbDeprecations = $db->createCommand(
-                    "SELECT id, `key`, fingerprint, lastOccurrence, file, line, message, template
+                    "SELECT id, `key`, fingerprint, lastOccurrence, file, line, message
                      FROM `{$table}`
                      ORDER BY lastOccurrence DESC
                      LIMIT {$limit}",
@@ -208,8 +211,8 @@ class DebugTools {
                         $dep['lastOccurrence'] = date('Y-m-d H:i:s', strtotime((string) $dep['lastOccurrence']));
                     }
                 }
-            } catch (Throwable) {
-                $dbDeprecations = [];
+
+                unset($dep);
             }
 
             // Limit and dedupe log deprecations
@@ -239,21 +242,8 @@ class DebugTools {
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function explainQuery(string $sql, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($sql): array {
-            // Security: Only allow SELECT queries
-            $trimmedSql = trim($sql);
-            $upperSql = strtoupper($trimmedSql);
-
-            if (!str_starts_with($upperSql, 'SELECT')) {
-                throw new ToolCallException('Only SELECT queries can be explained');
-            }
-
-            // Block dangerous keywords
-            $blockedKeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE'];
-            foreach ($blockedKeywords as $keyword) {
-                if (str_contains($upperSql, $keyword)) {
-                    throw new ToolCallException("Query contains blocked keyword: {$keyword}");
-                }
-            }
+            // Security: only allow read-only SELECT queries
+            $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
 
             $db = Craft::$app->getDb();
             $driver = $db->getDriverName();

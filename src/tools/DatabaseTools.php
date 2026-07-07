@@ -12,6 +12,7 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
+use stimmt\craft\Mcp\support\SqlReadGuard;
 use Throwable;
 
 /**
@@ -118,11 +119,6 @@ class DatabaseTools {
     /**
      * Blocked SQL keywords.
      */
-    private const array BLOCKED_SQL_KEYWORDS = [
-        'INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE',
-        'ALTER', 'CREATE', 'GRANT', 'REVOKE', 'INTO OUTFILE',
-    ];
-
     /**
      * Execute a read-only SQL query.
      *
@@ -138,21 +134,10 @@ class DatabaseTools {
         return SafeExecution::run(function () use ($sql, $limit, $context): array {
             $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
 
-            $trimmedSql = trim($sql);
-            $upperSql = strtoupper($trimmedSql);
-
-            if (!str_starts_with($upperSql, 'SELECT')) {
-                throw new ToolCallException('Only SELECT queries are allowed for safety.');
-            }
-
-            foreach (self::BLOCKED_SQL_KEYWORDS as $keyword) {
-                if (str_contains($upperSql, $keyword)) {
-                    throw new ToolCallException("Query contains blocked keyword: {$keyword}");
-                }
-            }
+            $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
 
             // Add LIMIT if not present
-            if (!str_contains($upperSql, 'LIMIT')) {
+            if (!preg_match('/\bLIMIT\b/i', $trimmedSql)) {
                 $sql = rtrim($trimmedSql, ';') . " LIMIT {$limit}";
             }
 
@@ -225,21 +210,25 @@ class DatabaseTools {
 
             $counts = [];
             foreach ($tables as $table => $label) {
-                try {
-                    $fullTable = $prefix . $table;
-                    $count = $db->createCommand("SELECT COUNT(*) FROM `{$fullTable}`")->queryScalar();
-                    $counts[$table] = [
-                        'label' => $label,
-                        'count' => (int) $count,
-                    ];
-                } catch (Throwable) {
-                    // Table might not exist
+                $fullTable = $prefix . $table;
+
+                // Skip tables that genuinely don't exist; let real query
+                // failures surface via SafeExecution instead of masking them.
+                if ($db->getTableSchema($fullTable) === null) {
                     $counts[$table] = [
                         'label' => $label,
                         'count' => null,
-                        'error' => 'Table not found',
+                        'error' => 'Table does not exist',
                     ];
+
+                    continue;
                 }
+
+                $count = $db->createCommand("SELECT COUNT(*) FROM `{$fullTable}`")->queryScalar();
+                $counts[$table] = [
+                    'label' => $label,
+                    'count' => (int) $count,
+                ];
             }
 
             return $counts;

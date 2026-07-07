@@ -190,6 +190,9 @@ class AssetTools {
         }
 
         $rootFolder = $assetsService->getRootFolderByVolumeId($volumeModel->id);
+        if ($rootFolder === null) {
+            return [];
+        }
 
         return $assetsService->findFolders(['parentId' => $rootFolder->id]);
     }
