@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tinker` tool now wraps execution in `SafeExecution`, ensuring unexpected errors surface with real messages instead of the generic "Tool execution failed" ([#10](https://github.com/stimmtdigital/craft-mcp/issues/10))
 - Stray output (echo/print/PHP notices from tinker'd code or Craft) no longer corrupts the stdio JSON-RPC stream; it is rerouted to stderr via a non-removable output buffer in `bin/mcp-server`
 - `tinker` tool blocks unbounded `while (ob_get_level())` teardown loops, which would spin forever against the non-removable stdout shield
+- `tinker` tool now drains only output buffers it opened (baseline-aware): the previous `ob_get_level() > 0` guard closed outer buffers such as the stdout shield, clobbering the original error with an `ErrorException` when user code had closed the capture buffer
+- Added explicit `psy/psysh` requirement: tinker relied on it arriving transitively (e.g. via `yiisoft/yii2-shell`) and fatally errored on installs without it
 
 ## [1.2.2] - 2026-03-04
 

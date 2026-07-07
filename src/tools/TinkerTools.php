@@ -108,6 +108,8 @@ class TinkerTools {
                 );
             }
 
+            $baseLevel = ob_get_level();
+
             try {
                 $cleaner = $this->getCodeCleaner();
                 $cleanedCode = $cleaner->clean([$code]);
@@ -116,27 +118,23 @@ class TinkerTools {
 
                 ob_start();
                 $result = eval($cleanedCode);
-                $stdout = ob_get_clean();
+                $stdout = $this->drainCapturedOutput($baseLevel);
 
                 $this->logger->debug('Tinker completed');
 
                 return $this->response(
                     $code,
                     $this->formatOutput($result, $outputMode),
-                    $stdout ?: null,
+                    $stdout,
                 );
             } catch (ParseErrorException|ParseError $e) {
-                if (ob_get_level() > 0) {
-                    ob_end_clean();
-                }
+                $this->drainCapturedOutput($baseLevel);
 
                 $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
 
                 return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
             } catch (Throwable $e) {
-                if (ob_get_level() > 0) {
-                    ob_end_clean();
-                }
+                $this->drainCapturedOutput($baseLevel);
 
                 $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
 
@@ -145,6 +143,30 @@ class TinkerTools {
                 MutexGuard::releaseAll();
             }
         });
+    }
+
+    /**
+     * Collect and close every buffer opened above the capture baseline.
+     *
+     * User code may have closed the capture buffer or opened extra ones,
+     * so this only drains buffers above $baseLevel. Outer buffers such as
+     * the stdout shield in bin/mcp-server are never touched, and a
+     * non-removable buffer above the baseline stops the drain instead of
+     * looping forever.
+     */
+    private function drainCapturedOutput(int $baseLevel): ?string {
+        $stdout = '';
+
+        while (ob_get_level() > $baseLevel) {
+            $flags = (int) (ob_get_status()['flags'] ?? 0);
+            if (($flags & PHP_OUTPUT_HANDLER_REMOVABLE) === 0) {
+                break;
+            }
+
+            $stdout = ob_get_clean() . $stdout;
+        }
+
+        return $stdout !== '' ? $stdout : null;
     }
 
     /**
