@@ -11,88 +11,97 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\Reader;
+use stimmt\craft\Mcp\elements\refs\Keys;
+use stimmt\craft\Mcp\elements\refs\Translator;
+use stimmt\craft\Mcp\elements\schema\Describer;
+use stimmt\craft\Mcp\elements\schema\Meta;
+use stimmt\craft\Mcp\elements\WriteMode;
+use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
-use stimmt\craft\Mcp\support\Serializer;
+use stimmt\craft\Mcp\support\SiteResolver;
 
 /**
- * Entry-related MCP tools for Craft CMS.
+ * Entry tools: payload-format reads, draft-first writes, schema discovery.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
 class EntryTools {
-    /**
-     * List entries with optional filters.
-     */
+    private readonly Reader $reader;
+
+    private readonly Writer $writer;
+
+    private readonly Keys $keys;
+
+    public function __construct(?Reader $reader = null, ?Writer $writer = null, ?Keys $keys = null) {
+        $translator = null;
+        if ($reader === null || $writer === null) {
+            $translator = Craft::$container->has(Translator::class)
+                ? Craft::$container->get(Translator::class)
+                : Translator::withDefaults();
+        }
+
+        $this->reader = $reader ?? new Reader($translator);
+        $this->writer = $writer ?? new Writer($translator);
+        $this->keys = $keys ?? new Keys();
+    }
+
     #[McpTool(
         name: 'list_entries',
-        description: 'List entries from Craft CMS. Filter by section, type, status, limit, offset. Returns entry data including custom fields.',
+        description: 'List entries. Filter by section, type, status, site handle, and full-text search. Returns entries in the payload format (natural keys for relations).',
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listEntries(
         ?string $section = null,
         ?string $type = null,
         ?string $status = null,
+        ?string $site = null,
+        ?string $search = null,
         int $limit = 20,
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $status, $limit, $offset): array {
-            $query = Entry::find()
-                ->limit($limit)
-                ->offset($offset);
+        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $limit, $offset): array {
+            SiteResolver::resolve($site);
 
-            $this->applyFilters($query, [
-                'section' => $section,
-                'type' => $type,
-                'status' => $status ?? null, // null = all statuses
-            ]);
+            $query = Entry::find()->limit($limit)->offset($offset);
+            foreach (['section' => $section, 'type' => $type, 'status' => $status, 'site' => $site, 'search' => $search] as $method => $value) {
+                if ($value !== null) {
+                    $query->$method($value);
+                }
+            }
 
-            $entries = $query->all();
-            $results = array_map($this->serializeEntry(...), $entries);
+            $results = array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all());
 
             return Response::paginated('entries', $results, (int) $query->count(), $limit, $offset);
         });
     }
 
-    /**
-     * Get a single entry by ID or slug.
-     */
     #[McpTool(
         name: 'get_entry',
-        description: 'Get a single entry by ID or slug. Returns full entry data including all custom fields.',
+        description: 'Get one entry by id or slug, in the payload format: what this returns is exactly what create_entry/update_entry accept as fields.',
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
-    public function getEntry(?int $id = null, ?string $slug = null, ?string $section = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $slug, $section): array {
-            if ($id === null && $slug === null) {
-                throw new ToolCallException('Either id or slug must be provided');
-            }
+    public function getEntry(
+        ?int $id = null,
+        ?string $slug = null,
+        ?string $section = null,
+        ?string $site = null,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($id, $slug, $section, $site): array {
+            $entry = $this->find($id, $slug, $section, $site);
 
-            $query = Entry::find()->status(null);
-            $this->applyFilters($query, [
-                'id' => $id,
-                'slug' => $slug,
-                'section' => $section,
-            ]);
-
-            $entry = $query->one();
-
-            if ($entry === null) {
-                throw new ToolCallException('Entry not found');
-            }
-
-            return Response::found('entry', $this->serializeEntry($entry));
+            return Response::found('entry', $this->reader->read($entry, $site));
         });
     }
 
-    /**
-     * Create a new entry.
-     */
     #[McpTool(
         name: 'create_entry',
-        description: 'Create a new entry in Craft CMS. Requires section handle, entry type handle, title, and optionally custom field values as JSON.',
+        description: 'Create an entry. fields is JSON in the payload format (natural keys: {section,slug} for entries, {volume,filename} for assets, matrix blocks by type handle). Saves as a draft unless mode or the entryWriteMode setting says live. Use describe_entry_schema first to learn the shape.',
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function createEntry(
@@ -100,182 +109,191 @@ class EntryTools {
         string $type,
         string $title,
         ?string $slug = null,
+        ?string $site = null,
         ?string $fields = null,
+        ?string $mode = null,
+        ?string $parent = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $title, $slug, $fields): array {
-            $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section);
-            if ($sectionModel === null) {
-                throw new ToolCallException("Section '{$section}' not found");
+        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent): array {
+            SiteResolver::resolve($site);
+            $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
+                ?? throw new ToolCallException("Section '{$section}' not found");
+            $entryType = $this->entryType($sectionModel, $type);
+
+            $attributes = [
+                'type' => Entry::class,
+                'sectionId' => $sectionModel->id,
+                'typeId' => $entryType->id,
+                'title' => $title,
+                'slug' => $slug,
+                'authorId' => $this->authorId(),
+            ];
+
+            $parentId = $this->parentId($parent, $section, $site);
+            if ($parentId !== null) {
+                $attributes['newParentId'] = $parentId;
             }
 
-            $entryType = $this->findEntryType($sectionModel, $type);
-            if ($entryType === null) {
-                throw new ToolCallException("Entry type '{$type}' not found in section '{$section}'");
-            }
+            $result = $this->writer->create($attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
 
-            $fieldValues = $this->parseFieldsJson($fields);
-            if ($fieldValues === false) {
-                throw new ToolCallException('Invalid JSON in fields parameter');
-            }
-
-            $entry = new Entry();
-            $entry->sectionId = $sectionModel->id;
-            $entry->typeId = $entryType->id;
-            $entry->title = $title;
-            $entry->slug = $slug;
-            $entry->authorId = $this->getAuthorId();
-
-            if ($fieldValues !== null) {
-                $entry->setFieldValues($fieldValues);
-            }
-
-            if (!Craft::$app->getElements()->saveElement($entry)) {
-                throw new ToolCallException('Failed to save entry: ' . json_encode($entry->getErrors()));
-            }
-
-            return Response::success(['entry' => $this->serializeEntry($entry)]);
+            return $result->isFailure()
+                ? ['success' => false] + $result->toArray()
+                : Response::success($result->toArray());
         });
     }
 
-    /**
-     * Update an existing entry.
-     */
     #[McpTool(
         name: 'update_entry',
-        description: 'Update an existing entry by ID. Can update title, slug, status, and custom field values (as JSON).',
+        description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change.',
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function updateEntry(
         int $id,
+        ?string $site = null,
         ?string $title = null,
         ?string $slug = null,
         ?string $status = null,
         ?string $fields = null,
+        ?string $mode = null,
+        ?string $parent = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $title, $slug, $status, $fields): array {
-            $entry = Entry::find()->id($id)->status(null)->one();
+        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent): array {
+            $entry = $this->find($id, null, null, $site);
 
-            if ($entry === null) {
-                throw new ToolCallException("Entry with ID {$id} not found");
-            }
+            $attributes = array_filter([
+                'title' => $title,
+                'slug' => $slug,
+            ], static fn (?string $v): bool => $v !== null);
 
-            $fieldValues = $this->parseFieldsJson($fields);
-            if ($fieldValues === false) {
-                throw new ToolCallException('Invalid JSON in fields parameter');
-            }
-
-            if ($title !== null) {
-                $entry->title = $title;
-            }
-            if ($slug !== null) {
-                $entry->slug = $slug;
-            }
             if ($status !== null) {
-                $entry->enabled = ($status === 'live' || $status === 'enabled');
-            }
-            if ($fieldValues !== null) {
-                $entry->setFieldValues($fieldValues);
+                $attributes['enabled'] = in_array($status, ['live', 'enabled'], true);
             }
 
-            if (!Craft::$app->getElements()->saveElement($entry)) {
-                throw new ToolCallException('Failed to save entry: ' . json_encode($entry->getErrors()));
+            $parentId = $this->parentId($parent, $entry->getSection()?->handle, $site);
+            if ($parentId !== null) {
+                $attributes['newParentId'] = $parentId;
             }
 
-            return Response::success(['entry' => $this->serializeEntry($entry)]);
+            $result = $this->writer->update($entry, $attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
+
+            return $result->isFailure()
+                ? ['success' => false] + $result->toArray()
+                : Response::success($result->toArray());
         });
     }
 
-    /**
-     * Apply non-null filters to a query.
-     */
-    private function applyFilters(mixed $query, array $filters): void {
-        foreach ($filters as $method => $value) {
+    #[McpTool(
+        name: 'describe_entry_schema',
+        description: 'Describe the fields a section/entry type accepts: handles, kinds, required flags, matrix block types (depth-expanded), native fields, writable meta attributes. Pass example (entry id or slug) to include a real entry payload as a golden fixture.',
+    )]
+    #[McpToolMeta(category: ToolCategory::SCHEMA)]
+    public function describeEntrySchema(
+        string $section,
+        ?string $type = null,
+        int $depth = 1,
+        ?string $example = null,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($section, $type, $depth, $example): array {
+            $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
+                ?? throw new ToolCallException("Section '{$section}' not found");
+            $entryType = $this->entryType($sectionModel, $type ?? $sectionModel->getEntryTypes()[0]->handle);
+
+            Craft::$app->getFields()->refreshFields();
+
+            $describer = new Describer();
+            $meta = new Meta();
+            $layout = $entryType->getFieldLayout();
+
+            $schema = [
+                'section' => $sectionModel->handle,
+                'type' => $entryType->handle,
+                'flags' => $meta->entryFlags($entryType),
+                'meta' => $meta->writable(new Entry(['typeId' => $entryType->id])),
+                'natives' => $describer->natives($layout),
+                'fields' => $describer->describe($layout, $depth),
+            ];
+
+            if ($example !== null) {
+                $id = is_numeric($example) ? (int) $example : null;
+                $entry = $this->find($id, $id === null ? $example : null, $sectionModel->handle, null);
+                $schema['example'] = $this->reader->read($entry);
+            }
+
+            return $schema;
+        });
+    }
+
+    private function find(?int $id, ?string $slug, ?string $section, ?string $site): Entry {
+        if ($id === null && $slug === null) {
+            throw new ToolCallException('Either id or slug must be provided');
+        }
+
+        SiteResolver::resolve($site);
+
+        $query = Entry::find()->status(null);
+        foreach (['id' => $id, 'slug' => $slug, 'section' => $section, 'site' => $site] as $method => $value) {
             if ($value !== null) {
                 $query->$method($value);
             }
         }
+
+        return $query->one() ?? throw new ToolCallException('Entry not found');
     }
 
-    /**
-     * Find entry type by handle in section.
-     */
-    private function findEntryType(mixed $section, string $handle): ?object {
+    private function entryType(mixed $section, string $handle): object {
         foreach ($section->getEntryTypes() as $entryType) {
             if ($entryType->handle === $handle) {
                 return $entryType;
             }
         }
 
-        return null;
+        throw new ToolCallException("Entry type '{$handle}' not found in section '{$section->handle}'");
     }
 
-    /**
-     * Parse fields JSON parameter.
-     *
-     * @return array|null|false null if empty, false if invalid JSON, array if valid
-     */
-    private function parseFieldsJson(?string $fields): array|null|false {
+    private function fieldsPayload(?string $fields): array {
         if ($fields === null) {
-            return null;
+            return [];
         }
 
         $decoded = json_decode($fields, true);
+        if (!is_array($decoded)) {
+            throw new ToolCallException('Invalid JSON in fields parameter');
+        }
 
-        return json_last_error() === JSON_ERROR_NONE ? $decoded : false;
+        return $decoded;
     }
 
-    /**
-     * Get author ID for new entries.
-     */
-    private function getAuthorId(): ?int {
-        $user = Craft::$app->getUser()->getIdentity();
-        if ($user === null) {
-            $user = User::find()->admin()->one();
+    private function mode(?string $mode): WriteMode {
+        if ($mode !== null) {
+            return WriteMode::tryFrom(strtolower($mode))
+                ?? throw new ToolCallException("Unknown mode '{$mode}'; use draft or live");
         }
+
+        $settings = Mcp::settings();
+
+        return WriteMode::fromSetting($settings->entryWriteMode);
+    }
+
+    private function parentId(?string $parent, ?string $section, ?string $site): ?int {
+        if ($parent === null) {
+            return null;
+        }
+
+        if (is_numeric($parent)) {
+            return (int) $parent;
+        }
+
+        $id = $section === null ? null : $this->keys->idFor(Entry::class, ['section' => $section, 'slug' => $parent], $site);
+
+        return $id ?? throw new ToolCallException("Parent entry '{$parent}' not found");
+    }
+
+    private function authorId(): ?int {
+        $user = Craft::$app->getUser()->getIdentity() ?? User::find()->admin()->one();
 
         return $user?->id;
-    }
-
-    /**
-     * Serialize an entry to array.
-     */
-    private function serializeEntry(Entry $entry): array {
-        $data = [
-            'id' => $entry->id,
-            'title' => $entry->title,
-            'slug' => $entry->slug,
-            'status' => $entry->getStatus(),
-            'sectionId' => $entry->sectionId,
-            'sectionHandle' => $entry->getSection()?->handle, // @phpstan-ignore nullsafe.neverNull
-            'typeId' => $entry->typeId,
-            'typeHandle' => $entry->getType()?->handle, // @phpstan-ignore nullsafe.neverNull
-            'authorId' => $entry->authorId,
-            'postDate' => $entry->postDate?->format('Y-m-d H:i:s'),
-            'expiryDate' => $entry->expiryDate?->format('Y-m-d H:i:s'),
-            'dateCreated' => $entry->dateCreated?->format('Y-m-d H:i:s'),
-            'dateUpdated' => $entry->dateUpdated?->format('Y-m-d H:i:s'),
-            'url' => $entry->getUrl(),
-        ];
-
-        $fieldLayout = $entry->getFieldLayout();
-        if ($fieldLayout !== null) {
-            $data['fields'] = $this->serializeFields($entry, $fieldLayout);
-        }
-
-        return $data;
-    }
-
-    /**
-     * Serialize custom field values.
-     */
-    private function serializeFields(Entry $entry, mixed $fieldLayout): array {
-        $fieldValues = [];
-        foreach ($fieldLayout->getCustomFields() as $field) {
-            $fieldValues[$field->handle] = Serializer::serialize($entry->getFieldValue($field->handle));
-        }
-
-        return $fieldValues;
     }
 }
