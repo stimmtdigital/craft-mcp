@@ -57,4 +57,14 @@ describe('Keys', function () {
         expect($keys->idFor(Entry::class, ['slug' => 'about'], null))->toBeNull()
             ->and($keys->idFor(User::class, [], null))->toBeNull();
     });
+
+    it('exposes the natural-key shape per target type', function () {
+        $keys = new Keys();
+
+        expect($keys->keyShape(Entry::class))->toBe(['section', 'slug'])
+            ->and($keys->keyShape(Category::class))->toBe(['group', 'slug'])
+            ->and($keys->keyShape(User::class))->toBe(['username'])
+            ->and($keys->keyShape(Asset::class))->toBe(['volume', 'path?', 'filename'])
+            ->and($keys->keyShape('some\\plugin\\Product'))->toBeNull();
+    });
 });
