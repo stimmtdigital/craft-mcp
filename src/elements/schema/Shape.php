@@ -19,6 +19,7 @@ use craft\models\FieldLayout;
 use stimmt\craft\Mcp\elements\LayoutFields;
 use stimmt\craft\Mcp\elements\refs\Keys;
 use stimmt\craft\Mcp\elements\refs\Link as LinkRef;
+use Stringable;
 use Throwable;
 
 /**
@@ -122,11 +123,20 @@ final readonly class Shape {
             return $this->links($field, $depth);
         }
 
-        if ($field instanceof ElementContainerFieldInterface) {
-            return $this->container($field, $depth);
-        }
+        return $this->maybeContainer($field, $depth) ?? $this->objectProbe($field, $depth);
+    }
 
-        return $this->objectProbe($field, $depth);
+    /**
+     * A fillable-container shape, or null when the field is not a container
+     * or has no nested layout to fill (so probed() falls through to object
+     * or scalar).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function maybeContainer(FieldInterface $field, int $depth): ?array {
+        return $field instanceof ElementContainerFieldInterface
+            ? $this->container($field, $depth)
+            : null;
     }
 
     /**
@@ -261,12 +271,22 @@ final readonly class Shape {
     }
 
     /**
-     * @return array<string, mixed>
+     * A container with no field-layout providers has no nested layout to
+     * fill, so it is not a fields-container in the write sense (a rich-text
+     * field that merely CAN embed entries lands here). Returning null lets
+     * probed() fall through to the scalar description of its stored value.
+     *
+     * @return array<string, mixed>|null
      */
-    private function container(ElementContainerFieldInterface $field, int $depth): array {
+    private function container(ElementContainerFieldInterface $field, int $depth): ?array {
+        $providers = array_values($field->getFieldLayoutProviders());
+        if ($providers === []) {
+            return null;
+        }
+
         $described = array_map(
             fn (object $provider): array => $this->ofLayout($provider->getFieldLayout(), $depth - 1),
-            array_values($field->getFieldLayoutProviders()),
+            $providers,
         );
 
         $shape = ['kind' => 'container', 'payload' => '{fields: {...}} or list of {fields: {...}}'];
@@ -289,8 +309,15 @@ final readonly class Shape {
     private function scalar(FieldInterface $field): array {
         $valueType = $field::phpType();
         $shape = ['kind' => 'scalar', 'valueType' => $valueType];
+
+        // A stringable value object (rich-text/HTML field data, colours, and
+        // the like) serialises from a plain string, so tell the agent to send
+        // one rather than leaving an opaque class name as the only signal.
+        $class = ltrim(explode('|', $valueType)[0], '\\');
         if (str_contains($valueType, 'DateTime')) {
             $shape['hint'] = 'ISO 8601 date-time string';
+        } elseif (str_contains($class, '\\') && is_a($class, Stringable::class, true)) {
+            $shape['hint'] = 'pass a string value (rich-text fields expect HTML markup)';
         }
 
         return $shape;

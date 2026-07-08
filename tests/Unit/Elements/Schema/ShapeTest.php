@@ -5,9 +5,13 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/Fixtures/CraftStub.php';
 require_once dirname(__DIR__, 4) . '/vendor/yiisoft/yii2/Yii.php';
 
+use craft\base\ElementContainerFieldInterface;
+use craft\base\NestedElementInterface;
 use craft\elements\Entry;
+use craft\elements\User;
 use craft\fieldlayoutelements\CustomField;
 use craft\fields\Checkboxes;
+use craft\fields\Color;
 use craft\fields\Date;
 use craft\fields\Dropdown;
 use craft\fields\Entries;
@@ -21,6 +25,58 @@ use craft\models\EntryType;
 use craft\models\FieldLayout;
 use stimmt\craft\Mcp\elements\schema\Shape;
 use stimmt\craft\Mcp\Tests\Fixtures\Layouts;
+
+/**
+ * A field implementing Craft's container interface with a configurable
+ * provider list, so both the fillable-container path and the empty
+ * (rich-text-style) fallthrough can be exercised without a plugin dependency.
+ *
+ * @param array<int, object> $providers
+ */
+function shapeContainerField(array $providers): ElementContainerFieldInterface {
+    return new class ($providers) extends PlainText implements ElementContainerFieldInterface {
+        /** @param array<int, object> $providers */
+        public function __construct(private array $providers) {
+            parent::__construct(['handle' => 'nested']);
+        }
+
+        public function getFieldLayoutProviders(): array {
+            return $this->providers;
+        }
+
+        public function getUriFormatForElement(NestedElementInterface $element): ?string {
+            return null;
+        }
+
+        public function getRouteForElement(NestedElementInterface $element): mixed {
+            return null;
+        }
+
+        public function getSupportedSitesForElement(NestedElementInterface $element): array {
+            return [];
+        }
+
+        public function canViewElement(NestedElementInterface $element, User $user): ?bool {
+            return null;
+        }
+
+        public function canSaveElement(NestedElementInterface $element, User $user): ?bool {
+            return null;
+        }
+
+        public function canDuplicateElement(NestedElementInterface $element, User $user): ?bool {
+            return null;
+        }
+
+        public function canDeleteElement(NestedElementInterface $element, User $user): ?bool {
+            return null;
+        }
+
+        public function canDeleteElementForSite(NestedElementInterface $element, User $user): ?bool {
+            return null;
+        }
+    };
+}
 
 describe('Shape::of', function () {
     // Number::dbType() reads Craft::$app->getDb() during Field::init(), even
@@ -187,6 +243,34 @@ describe('Shape::of', function () {
         expect($out['kind'])->toBe('object')
             ->and($out['fields']['fields'])->toHaveKey('inner')
             ->and($out['note'])->toContain('not natural keys');
+    });
+
+    it('hints a plain string for stringable field-data value types', function () {
+        $out = (new Shape())->of(new Color(['handle' => 'accent']));
+
+        expect($out['kind'])->toBe('scalar')
+            ->and($out['valueType'])->toContain('ColorData')
+            ->and($out['hint'])->toContain('string');
+    });
+
+    it('describes a container with providers as a fillable fields shape', function () {
+        $provider = new class () {
+            public function getFieldLayout(): FieldLayout {
+                return Layouts::with([new CustomField(new PlainText(['handle' => 'inner']))]);
+            }
+        };
+
+        $out = (new Shape())->of(shapeContainerField([$provider]));
+
+        expect($out['kind'])->toBe('container')
+            ->and($out['note'])->toContain('not natural keys')
+            ->and($out['fields']['fields'])->toHaveKey('inner');
+    });
+
+    it('falls through to scalar when a container has no providers (rich-text style)', function () {
+        $out = (new Shape())->of(shapeContainerField([]));
+
+        expect($out['kind'])->toBe('scalar');
     });
 
     it('truncates at depth zero', function () {
