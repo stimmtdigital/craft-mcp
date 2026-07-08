@@ -227,7 +227,7 @@ Requirements:
 ### Schema & Structure Tools
 | Name | Notes |
 |------|-------|
-| Describe Entry Schema | Everything needed to write a valid entry first try: fields, kinds, required flags, matrix block types (depth-expanded), native fields, writable meta attributes, and an optional real entry as a golden-fixture example |
+| Describe Entry Schema | Everything needed to write a valid entry first try: fields, kinds, required flags, matrix block types (depth-expanded), native fields, writable meta attributes, an optional real entry as a golden-fixture example, and per-field `input` shapes describing the payload each field accepts |
 | List Sections | Inspect all sections with their entry types; filter by handle/name search |
 | List Fields | Get all fields with types and settings; filter by search term or field type |
 | List Volumes | Inspect asset volume configurations and filesystem settings |
@@ -310,6 +310,7 @@ Entry reads and writes share one format, powered by an element-generic `elements
 - **Draft-first**: writes land as drafts with a `cpEditUrl` deep link for human review; `publish_entry` (or a reviewer in the control panel) makes them live. Set `entryWriteMode: 'live'` in `config/mcp.php` to restore immediate saves.
 - **Structured feedback**: validation failures return per-field errors; unresolvable natural keys become warnings on an otherwise successful save, never a guess or a silent drop.
 - **Third-party friendly**: any field type round-trips via Craft's own serialize contract; fields extending the core relation/Matrix types get natural keys automatically; `EVENT_REGISTER_FIELD_TRANSLATORS` covers fields that embed element ids in custom formats.
+- **Per-field input shapes**: read the `input` structure for each field from `describe_entry_schema` to understand the exact payload shape each field accepts (natural-key format for relations, block types for Matrix, allowed values for options, etc.).
 
 ## Extending
 
