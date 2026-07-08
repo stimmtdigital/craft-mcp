@@ -170,7 +170,8 @@ describe('Shape::of', function () {
 
         expect($out['kind'])->toBe('links')
             ->and($out['linkTypes'])->toHaveKey('url')
-            ->and($out['linkTypes']['url']['fields']['fields'])->toHaveKey('linkText');
+            ->and($out['linkTypes']['url']['fields']['fields'])->toHaveKey('linkText')
+            ->and($out['note'])->toContain('not natural keys');
     });
 
     it('describes a duck-typed layout-backed field as an object', function () {
@@ -184,7 +185,8 @@ describe('Shape::of', function () {
         $out = (new Shape())->of($field);
 
         expect($out['kind'])->toBe('object')
-            ->and($out['fields']['fields'])->toHaveKey('inner');
+            ->and($out['fields']['fields'])->toHaveKey('inner')
+            ->and($out['note'])->toContain('not natural keys');
     });
 
     it('truncates at depth zero', function () {

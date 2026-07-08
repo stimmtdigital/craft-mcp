@@ -7,8 +7,10 @@ namespace stimmt\craft\Mcp\elements\schema;
 use craft\base\ElementContainerFieldInterface;
 use craft\base\FieldInterface;
 use craft\fieldlayoutelements\BaseNativeField;
+use craft\fields\Addresses;
 use craft\fields\BaseOptionsField;
 use craft\fields\BaseRelationField;
+use craft\fields\ContentBlock;
 use craft\fields\data\MultiOptionsFieldData;
 use craft\fields\Link as LinkField;
 use craft\fields\Matrix;
@@ -31,6 +33,16 @@ use Throwable;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Shape {
+    /**
+     * Attached to shapes whose parent field the module's Writer does not
+     * translate (Hyper-style link fields, generic layout-backed fields, and
+     * third-party containers). Their nested values reach Craft raw, so an
+     * agent must send stored IDs or ref strings there, not natural keys. The
+     * translated core containers (Matrix, ContentBlock, Addresses) do resolve
+     * natural keys and never carry this note.
+     */
+    private const string UNTRANSLATED_NOTE = 'nested values pass through unchanged: relation and link sub-fields here take stored IDs or ref strings, not natural keys';
+
     public function __construct(
         private Keys $keys = new Keys(),
     ) {
@@ -128,7 +140,7 @@ final readonly class Shape {
         $layout = $field->getFieldLayout();
 
         return $layout instanceof FieldLayout
-            ? ['kind' => 'object', 'fields' => $this->ofLayout($layout, $depth - 1)]
+            ? ['kind' => 'object', 'note' => self::UNTRANSLATED_NOTE, 'fields' => $this->ofLayout($layout, $depth - 1)]
             : null;
     }
 
@@ -232,6 +244,7 @@ final readonly class Shape {
         return [
             'kind' => 'links',
             'payload' => 'list of link objects; identify each by handle or type; sub-fields per linkTypes',
+            'note' => self::UNTRANSLATED_NOTE,
             'linkTypes' => $linkTypes,
         ];
     }
@@ -257,6 +270,13 @@ final readonly class Shape {
         );
 
         $shape = ['kind' => 'container', 'payload' => '{fields: {...}} or list of {fields: {...}}'];
+
+        // Matrix is handled in core(); the only core containers the Writer
+        // translates that reach here are ContentBlock and Addresses. Anything
+        // else is a third-party container whose nested values pass through raw.
+        if (!$field instanceof ContentBlock && !$field instanceof Addresses) {
+            $shape['note'] = self::UNTRANSLATED_NOTE;
+        }
 
         return count($described) === 1
             ? $shape + ['fields' => $described[0]]

@@ -16,6 +16,8 @@ use craft\models\FieldLayout;
  * layout-level overrides, native layout fields, Matrix block types with
  * depth-limited expansion (depth > 0 expands sub-fields one level shallower
  * per recursion; a top-level matrix at depth 0 still names its block types).
+ * Every field also carries a machine-readable input shape from Shape, which
+ * is the single source of the field's kind.
  *
  * @author Max van Essen <support@stimmt.digital>
  */

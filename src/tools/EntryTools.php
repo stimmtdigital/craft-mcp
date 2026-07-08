@@ -179,7 +179,7 @@ class EntryTools {
 
     #[McpTool(
         name: 'describe_entry_schema',
-        description: 'Describe the fields a section/entry type accepts: handles, kinds, required flags, matrix block types (depth-expanded), native fields, writable meta attributes. Pass example (entry id or slug) to include a real entry payload as a golden fixture.',
+        description: 'Describe the fields a section/entry type accepts: handles, kinds, required flags, a per-field input shape (the exact payload each field takes: natural keys for relations, block types for matrix, link/option/table/container shapes for structured and third-party fields), native fields, writable meta attributes. Pass example (entry id or slug) to include a real entry payload as a golden fixture.',
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function describeEntrySchema(
