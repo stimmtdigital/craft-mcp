@@ -253,7 +253,7 @@ final readonly class Shape {
 
         return [
             'kind' => 'links',
-            'payload' => 'list of link objects; identify each by handle or type; sub-fields per linkTypes',
+            'payload' => 'list of link objects; identify each by handle (or type); put native attributes (linkValue, linkText, ...) at the top level and custom sub-fields under a nested "fields" object keyed by handle',
             'note' => self::UNTRANSLATED_NOTE,
             'linkTypes' => $linkTypes,
         ];

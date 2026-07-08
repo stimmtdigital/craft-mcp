@@ -227,7 +227,8 @@ describe('Shape::of', function () {
         expect($out['kind'])->toBe('links')
             ->and($out['linkTypes'])->toHaveKey('url')
             ->and($out['linkTypes']['url']['fields']['fields'])->toHaveKey('linkText')
-            ->and($out['note'])->toContain('not natural keys');
+            ->and($out['note'])->toContain('not natural keys')
+            ->and($out['payload'])->toContain('custom sub-fields under a nested "fields" object');
     });
 
     it('describes a duck-typed layout-backed field as an object', function () {
