@@ -17,7 +17,13 @@ function describerLayoutCustomOnly(): FieldLayout {
     $body = new CustomField(new PlainText(['handle' => 'body', 'name' => 'Body', 'instructions' => 'Write here']));
     $body->required = true;
 
-    $related = new CustomField(new Entries(['handle' => 'related', 'name' => 'Related']));
+    // showUnpermittedSections bypasses the Craft::$app permission lookup in getInputSources(),
+    // which isn't available in the unit test environment.
+    $related = new CustomField(new Entries([
+        'handle' => 'related',
+        'name' => 'Related',
+        'showUnpermittedSections' => true,
+    ]));
 
     // Use reflection to set elements, avoiding Craft service dependencies
     $tabReflection = new ReflectionObject($tab);
@@ -61,14 +67,18 @@ describe('Describer', function () {
             ->and($byHandle['body']['instructions'])->toBe('Write here')
             ->and($byHandle['body']['kind'])->toBe('plain')
             ->and($byHandle['related']['kind'])->toBe('relation')
-            ->and($byHandle['related']['target']['elementType'])->toBe(craft\elements\Entry::class);
+            ->and($byHandle['related']['target']['elementType'])->toBe(craft\elements\Entry::class)
+            ->and($byHandle['related']['target']['sources'])->toBe('*');
     });
 
     it('lists native layout fields', function () {
         $natives = (new Describer())->natives(describerLayoutWithNatives());
 
+        // TitleField has no per-layout label override, so name falls back to the raw ''
+        // (the translated default label would need Craft services, unavailable here).
         expect($natives)->toHaveCount(1)
             ->and($natives[0]['attribute'])->toBe('title')
+            ->and($natives[0]['name'])->toBe('')
             ->and($natives[0]['mandatory'])->toBeTrue();
     });
 

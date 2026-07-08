@@ -36,16 +36,9 @@ final class Describer {
         $natives = [];
         foreach ($layout->getElementsByType(BaseNativeField::class) as $element) {
             /** @var BaseNativeField $element */
-            $label = '';
-            try {
-                $label = (string) $element->label();
-            } catch (\Throwable) {
-                // label() may require Craft services not available in unit tests
-            }
-
             $natives[] = [
                 'attribute' => $element->attribute(),
-                'name' => $label,
+                'name' => (string) ($element->label ?? ''),
                 'required' => (bool) $element->required,
                 'mandatory' => $element->mandatory(),
             ];
@@ -80,14 +73,8 @@ final class Describer {
         if ($field instanceof BaseRelationField) {
             $target = [
                 'elementType' => $field::elementType(),
+                'sources' => $field->getInputSources(),
             ];
-
-            try {
-                $target['sources'] = $field->getInputSources();
-            } catch (\Throwable) {
-                // getInputSources() may require Craft services not available in unit tests;
-                // verified in integration (Task 22)
-            }
 
             $described['target'] = $target;
         }
