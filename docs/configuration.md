@@ -53,6 +53,7 @@ return [
     // Valid values: 'debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'
     // Default: 'error'
     'logLevel' => 'error',
+    'entryWriteMode' => 'draft',
 ];
 ```
 
@@ -65,6 +66,7 @@ return [
 | `disabledTools` | `array` | `[]` | List of tool names to disable regardless of other settings |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
+| `entryWriteMode` | `string` | `'draft'` | Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
 
 ## Environment Variables
 
