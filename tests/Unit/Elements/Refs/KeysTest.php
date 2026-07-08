@@ -5,6 +5,7 @@ declare(strict_types=1);
 use craft\elements\Asset;
 use craft\elements\Category;
 use craft\elements\Entry;
+use craft\elements\GlobalSet;
 use craft\elements\Tag;
 use craft\elements\User;
 use stimmt\craft\Mcp\elements\refs\AssetKey;
@@ -63,7 +64,9 @@ describe('Keys', function () {
 
         expect($keys->keyShape(Entry::class))->toBe(['section', 'slug'])
             ->and($keys->keyShape(Category::class))->toBe(['group', 'slug'])
+            ->and($keys->keyShape(Tag::class))->toBe(['group', 'slug'])
             ->and($keys->keyShape(User::class))->toBe(['username'])
+            ->and($keys->keyShape(GlobalSet::class))->toBe(['handle'])
             ->and($keys->keyShape(Asset::class))->toBe(['volume', 'path?', 'filename'])
             ->and($keys->keyShape('some\\plugin\\Product'))->toBeNull();
     });

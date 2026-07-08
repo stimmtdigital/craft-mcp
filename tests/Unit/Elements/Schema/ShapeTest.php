@@ -195,7 +195,8 @@ describe('Shape::of', function () {
         $out = (new Shape())->ofLayout(Layouts::with([$dropdown]));
 
         expect($out['fields'])->toHaveKey('style')
-            ->and($out['fields']['style']['input']['allowedValues'])->toBe(['a']);
+            ->and($out['fields']['style']['input']['allowedValues'])->toBe(['a'])
+            ->and($out['natives'])->toBe([]);
     });
 
     it('describes a duck-typed link field generically without naming its class', function () {

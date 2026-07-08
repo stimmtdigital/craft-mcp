@@ -68,13 +68,13 @@ final readonly class Shape {
      */
     public function ofLayout(?FieldLayout $layout, int $depth = 2): array {
         if ($layout === null) {
-            return ['native' => [], 'fields' => []];
+            return ['natives' => [], 'fields' => []];
         }
 
-        $native = [];
+        $natives = [];
         foreach ($layout->getElementsByType(BaseNativeField::class) as $element) {
             /** @var BaseNativeField $element */
-            $native[] = ['attribute' => $element->attribute(), 'required' => (bool) $element->required];
+            $natives[] = ['attribute' => $element->attribute(), 'required' => (bool) $element->required];
         }
 
         $fields = [];
@@ -82,7 +82,7 @@ final readonly class Shape {
             $fields[$handle] = ['input' => $this->of($field, $depth)];
         }
 
-        return ['native' => $native, 'fields' => $fields];
+        return ['natives' => $natives, 'fields' => $fields];
     }
 
     /**
