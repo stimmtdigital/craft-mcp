@@ -30,9 +30,9 @@ use Throwable;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Shape {
+final readonly class Shape {
     public function __construct(
-        private readonly Keys $keys = new Keys(),
+        private Keys $keys = new Keys(),
     ) {
     }
 

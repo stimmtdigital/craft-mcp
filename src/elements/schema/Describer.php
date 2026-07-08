@@ -19,8 +19,8 @@ use craft\models\FieldLayout;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Describer {
-    private readonly Shape $shape;
+final readonly class Describer {
+    private Shape $shape;
 
     public function __construct(?Shape $shape = null) {
         $this->shape = $shape ?? new Shape();
