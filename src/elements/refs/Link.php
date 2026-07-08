@@ -22,7 +22,7 @@ use stimmt\craft\Mcp\elements\Warning;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Link implements FieldTranslator {
-    private const array TARGETS = [
+    public const array TARGETS = [
         'entry' => Entry::class,
         'asset' => Asset::class,
         'category' => Category::class,
