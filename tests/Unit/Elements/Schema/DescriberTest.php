@@ -28,10 +28,22 @@ describe('Describer', function () {
         expect($byHandle)->toHaveKeys(['body', 'related'])
             ->and($byHandle['body']['required'])->toBeTrue()
             ->and($byHandle['body']['instructions'])->toBe('Write here')
-            ->and($byHandle['body']['kind'])->toBe('plain')
+            ->and($byHandle['body']['kind'])->toBe('scalar')
             ->and($byHandle['related']['kind'])->toBe('relation')
             ->and($byHandle['related']['target']['elementType'])->toBe(craft\elements\Entry::class)
             ->and($byHandle['related']['target']['sources'])->toBe('*');
+    });
+
+    it('includes an input shape and derives kind from it', function () {
+        $body = new CustomField(new PlainText(['handle' => 'body']));
+        $related = new CustomField(new Entries(['handle' => 'related', 'showUnpermittedSections' => true]));
+
+        $byHandle = array_column((new Describer())->describe(Layouts::with([$body, $related])), null, 'handle');
+
+        expect($byHandle['body']['input']['kind'])->toBe('scalar')
+            ->and($byHandle['body']['kind'])->toBe('scalar')
+            ->and($byHandle['related']['kind'])->toBe('relation')
+            ->and($byHandle['related']['input']['item'])->toBe(['section', 'slug']);
     });
 
     it('lists native layout fields', function () {
