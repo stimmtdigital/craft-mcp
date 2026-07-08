@@ -13,9 +13,11 @@ use stimmt\craft\Mcp\elements\Context;
 use stimmt\craft\Mcp\elements\Warning;
 
 /**
- * Core Link fields store element links as numeric-id ref strings
- * ({entry:123@1}) and their normalizer only accepts numeric ids. Read adds a
- * natural "key" next to the ref; write resolves the key back into the ref.
+ * Core Link fields store element links as ref strings ({entry:123@1:url});
+ * the core link types only recognize refs carrying the ':url' suffix. Read
+ * adds a natural "key" next to the ref; write resolves the key back into a
+ * core-recognizable ref, preserving the original @site/:attr suffix parts and
+ * leaving the ref untouched when the key resolves to the same element.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -45,8 +47,7 @@ final readonly class Link implements FieldTranslator {
             return $value;
         }
 
-        [$target, $id] = $ref;
-        $key = $this->keys->keyFor($target, $id, $context->site);
+        $key = $this->keys->keyFor($ref['target'], $ref['id'], $context->site);
         if ($key !== null) {
             $value['key'] = $key;
         }
@@ -62,17 +63,20 @@ final readonly class Link implements FieldTranslator {
         $key = $value['key'];
         unset($value['key']);
 
-        $target = self::TARGETS[$value['type'] ?? ''] ?? null;
+        $handle = (string) ($value['type'] ?? '');
+        $target = self::TARGETS[$handle] ?? null;
         $id = $target !== null ? $this->keys->idFor($target, $key, $context->site) : null;
+        $ref = $this->parseRef($value['value'] ?? null);
 
         if ($id !== null) {
-            $handle = array_search($target, self::TARGETS, true);
-            $value['value'] = sprintf('{%s:%d}', $handle, $id);
+            if ($ref === null || $ref['target'] !== $target || $ref['id'] !== $id) {
+                $value['value'] = $this->buildRef($handle, $id, $ref);
+            }
 
             return $value;
         }
 
-        if ($this->parseRef($value['value'] ?? null) === null) {
+        if ($ref === null) {
             $context->warn(new Warning(
                 (string) $field->handle,
                 (string) $field->handle,
@@ -85,15 +89,32 @@ final readonly class Link implements FieldTranslator {
     }
 
     /**
-     * @return array{0: class-string, 1: int}|null [target element class, id]
+     * @return array{target: class-string, id: int, site: string, attr: ?string}|null
      */
     private function parseRef(mixed $raw): ?array {
-        if (!is_string($raw) || !preg_match('/^\{(\w+):(\d+)(?:@\d+)?/', $raw, $m)) {
+        if (!is_string($raw) || !preg_match('/^\{(\w+):(\d+)(@\d+)?(:\w+)?\}$/', $raw, $m)) {
             return null;
         }
 
         $target = self::TARGETS[$m[1]] ?? null;
+        if ($target === null) {
+            return null;
+        }
 
-        return $target === null ? null : [$target, (int) $m[2]];
+        return [
+            'target' => $target,
+            'id' => (int) $m[2],
+            'site' => $m[3] ?? '',
+            'attr' => ($m[4] ?? '') === '' ? null : $m[4],
+        ];
+    }
+
+    /**
+     * Original @site and :attr suffix parts survive a rewrite; without an
+     * original ref the canonical core format is emitted, ':url' included
+     * (core's element link types anchor on that suffix).
+     */
+    private function buildRef(string $handle, int $id, ?array $ref): string {
+        return sprintf('{%s:%d%s%s}', $handle, $id, $ref['site'] ?? '', $ref['attr'] ?? ':url');
     }
 }

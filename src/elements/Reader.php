@@ -44,7 +44,8 @@ final readonly class Reader {
 
     private function attributes(ElementInterface $element): array {
         $attributes = [
-            'id' => $element->getCanonicalId(),
+            'id' => $element->id,
+            'canonicalId' => $element->getCanonicalId(),
             'title' => $element->title,
             'slug' => $element->slug,
             'status' => $element->getStatus(),

@@ -8,7 +8,6 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\models\FieldLayout;
 use stimmt\craft\Mcp\elements\refs\Translator;
-use Throwable;
 
 /**
  * Agent payload to persisted element. Draft-first: draft mode saves new
@@ -65,13 +64,9 @@ final readonly class Writer {
     }
 
     private function saveAsDraft(ElementInterface $element): bool {
-        try {
-            Craft::$app->getDrafts()->saveElementAsDraft($element, null, null, null, false);
+        Craft::$app->getDrafts()->saveElementAsDraft($element, null, null, null, false);
 
-            return !$element->hasErrors();
-        } catch (Throwable) {
-            return false;
-        }
+        return !$element->hasErrors();
     }
 
     private function result(string $action, ElementInterface $element, bool $saved, Context $context): Result {
@@ -88,6 +83,7 @@ final readonly class Writer {
             $action,
             $element->getCanonicalId(),
             draftId: $element->draftId ?? null,
+            draftElementId: $element->getIsDraft() ? $element->id : null,
             state: $element->getIsDraft() ? WriteMode::Draft : WriteMode::Live,
             warnings: $context->warnings(),
             cpEditUrl: $element->getCpEditUrl(),

@@ -6,6 +6,10 @@ namespace stimmt\craft\Mcp\elements\refs;
 
 use Craft;
 use craft\base\FieldInterface;
+use craft\fields\Addresses;
+use craft\fields\ContentBlock;
+use craft\fields\Matrix;
+use craft\models\FieldLayout;
 use stimmt\craft\Mcp\elements\Context;
 use stimmt\craft\Mcp\elements\LayoutFields;
 
@@ -28,7 +32,7 @@ final readonly class Translator {
         $translator = new self($registry);
 
         $registry->register(new Containers(
-            fn (string $type, array $values, Context $context, bool $toKeys): array => $translator->translateBlock($type, $values, $context, $toKeys),
+            fn (FieldInterface $field, string $type, array $values, Context $context, bool $toKeys): array => $translator->translateBlock($field, $type, $values, $context, $toKeys),
         ));
         $registry->register(new Link($keys));
         $registry->register(new Relations($keys));
@@ -50,17 +54,36 @@ final readonly class Translator {
         return $this->translate($fields, $values, $context, toKeys: false);
     }
 
-    public function translateBlock(string $typeHandle, array $values, Context $context, bool $toKeys): array {
-        if ($typeHandle === '') {
+    public function translateBlock(FieldInterface $field, string $typeHandle, array $values, Context $context, bool $toKeys): array {
+        $layout = $this->blockLayout($field, $typeHandle);
+        if ($layout === null) {
             return $values;
         }
 
-        $type = Craft::$app->getEntries()->getEntryTypeByHandle($typeHandle);
-        if ($type === null) {
-            return $values;
+        return $this->translate(LayoutFields::of($layout), $values, $context, $toKeys);
+    }
+
+    /**
+     * Matrix blocks carry an entry-type handle; a ContentBlock value uses the
+     * field's own layout; Addresses use the shared Address element layout.
+     * Unknown containers resolve to null, so their values pass through.
+     */
+    private function blockLayout(FieldInterface $field, string $typeHandle): ?FieldLayout {
+        if ($field instanceof Matrix) {
+            return $typeHandle === ''
+                ? null
+                : Craft::$app->getEntries()->getEntryTypeByHandle($typeHandle)?->getFieldLayout();
         }
 
-        return $this->translate(LayoutFields::of($type->getFieldLayout()), $values, $context, $toKeys);
+        if ($field instanceof ContentBlock) {
+            return $field->getFieldLayout();
+        }
+
+        if ($field instanceof Addresses) {
+            return Craft::$app->getAddresses()->getFieldLayout();
+        }
+
+        return null;
     }
 
     private function translate(array $fields, array $values, Context $context, bool $toKeys): array {

@@ -11,10 +11,10 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\elements\Reader;
-use stimmt\craft\Mcp\elements\refs\Translator;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
@@ -30,20 +30,13 @@ class EntryWorkflowTools {
     private readonly Writer $writer;
 
     public function __construct(?Reader $reader = null, ?Writer $writer = null) {
-        $translator = null;
-        if ($reader === null || $writer === null) {
-            $translator = Craft::$container->has(Translator::class)
-                ? Craft::$container->get(Translator::class)
-                : Translator::withDefaults();
-        }
-
-        $this->reader = $reader ?? new Reader($translator);
-        $this->writer = $writer ?? new Writer($translator);
+        $this->reader = $reader ?? ElementModule::reader();
+        $this->writer = $writer ?? ElementModule::writer();
     }
 
     #[McpTool(
         name: 'publish_entry',
-        description: 'Publish an entry: applies a draft to its canonical entry, or enables a disabled live entry.',
+        description: 'Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.',
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
@@ -51,14 +44,10 @@ class EntryWorkflowTools {
             $entry = $this->find($id, $site, withDrafts: true);
 
             if ($entry->getIsDraft()) {
-                $applied = Craft::$app->getDrafts()->applyDraft($entry);
-
-                return Response::success(['entry' => $this->reader->read($applied, $site)]);
+                return $this->applyDraft($entry, $site);
             }
 
-            $this->enableIfDisabled($entry);
-
-            return Response::success(['entry' => $this->reader->read($entry, $site)]);
+            return $this->publishCanonical($entry, $site);
         });
     }
 
@@ -122,7 +111,7 @@ class EntryWorkflowTools {
     public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $fromSite, $toSite): array {
             SiteResolver::resolve($fromSite);
-            $target = SiteResolver::resolve($toSite);
+            SiteResolver::resolve($toSite);
 
             $source = $this->find($id, $fromSite);
             $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
@@ -137,11 +126,56 @@ class EntryWorkflowTools {
         });
     }
 
-    private function enableIfDisabled(Entry $entry): void {
-        if ($entry->enabled) {
-            return;
+    private function applyDraft(Entry $draft, ?string $site): array {
+        $applied = Craft::$app->getDrafts()->applyDraft($draft);
+
+        return Response::success(['entry' => $this->reader->read($applied, $site)]);
+    }
+
+    private function publishCanonical(Entry $entry, ?string $site): array {
+        $drafts = $this->pendingDrafts($entry, $site);
+
+        if (count($drafts) > 1) {
+            $ids = implode(', ', array_map(static fn (Entry $draft): int => (int) $draft->id, $drafts));
+
+            throw new ToolCallException(
+                "Entry {$entry->id} has multiple pending drafts; publish one by its draft element id: {$ids}",
+            );
         }
 
+        if ($drafts !== []) {
+            return $this->applyDraft($drafts[0], $site);
+        }
+
+        if (!$entry->enabled) {
+            $this->enable($entry);
+
+            return Response::success(['entry' => $this->reader->read($entry, $site)]);
+        }
+
+        throw new ToolCallException("Entry {$entry->id} has no pending draft and is already enabled; nothing to publish");
+    }
+
+    /**
+     * Newest-first non-provisional pending drafts of a canonical entry.
+     *
+     * @return Entry[]
+     */
+    private function pendingDrafts(Entry $entry, ?string $site): array {
+        $query = Entry::find()
+            ->draftOf($entry->id)
+            ->drafts()
+            ->provisionalDrafts(false)
+            ->status(null)
+            ->orderBy(['dateUpdated' => SORT_DESC]);
+        if ($site !== null) {
+            $query->site($site);
+        }
+
+        return $query->all();
+    }
+
+    private function enable(Entry $entry): void {
         $entry->enabled = true;
         if (!Craft::$app->getElements()->saveElement($entry)) {
             throw new ToolCallException('Failed to enable entry: ' . json_encode($entry->getErrors()));

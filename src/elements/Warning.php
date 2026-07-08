@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\elements;
 
 /**
- * One unresolved natural key, attached to a successful write.
+ * One unresolved natural key, collected while translating a payload. Warnings
+ * accompany read payloads and write results alike, failed writes included.
  *
  * @author Max van Essen <support@stimmt.digital>
  */

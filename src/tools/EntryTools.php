@@ -13,13 +13,13 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\refs\Keys;
-use stimmt\craft\Mcp\elements\refs\Translator;
 use stimmt\craft\Mcp\elements\schema\Describer;
 use stimmt\craft\Mcp\elements\schema\Meta;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
@@ -37,15 +37,8 @@ class EntryTools {
     private readonly Keys $keys;
 
     public function __construct(?Reader $reader = null, ?Writer $writer = null, ?Keys $keys = null) {
-        $translator = null;
-        if ($reader === null || $writer === null) {
-            $translator = Craft::$container->has(Translator::class)
-                ? Craft::$container->get(Translator::class)
-                : Translator::withDefaults();
-        }
-
-        $this->reader = $reader ?? new Reader($translator);
-        $this->writer = $writer ?? new Writer($translator);
+        $this->reader = $reader ?? ElementModule::reader();
+        $this->writer = $writer ?? ElementModule::writer();
         $this->keys = $keys ?? new Keys();
     }
 
@@ -132,7 +125,7 @@ class EntryTools {
 
             $parentId = $this->parentId($parent, $section, $site);
             if ($parentId !== null) {
-                $attributes['newParentId'] = $parentId;
+                $attributes['parentId'] = $parentId;
             }
 
             $result = $this->writer->create($attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
@@ -173,7 +166,7 @@ class EntryTools {
 
             $parentId = $this->parentId($parent, $entry->getSection()?->handle, $site);
             if ($parentId !== null) {
-                $attributes['newParentId'] = $parentId;
+                $attributes['parentId'] = $parentId;
             }
 
             $result = $this->writer->update($entry, $attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
@@ -217,9 +210,7 @@ class EntryTools {
             ];
 
             if ($example !== null) {
-                $id = is_numeric($example) ? (int) $example : null;
-                $entry = $this->find($id, $id === null ? $example : null, $sectionModel->handle, null);
-                $schema['example'] = $this->reader->read($entry);
+                $schema['example'] = $this->reader->read($this->exampleEntry($example, $sectionModel->handle));
             }
 
             return $schema;
@@ -227,6 +218,10 @@ class EntryTools {
     }
 
     private function find(?int $id, ?string $slug, ?string $section, ?string $site): Entry {
+        return $this->lookup($id, $slug, $section, $site) ?? throw new ToolCallException('Entry not found');
+    }
+
+    private function lookup(?int $id, ?string $slug, ?string $section, ?string $site): ?Entry {
         if ($id === null && $slug === null) {
             throw new ToolCallException('Either id or slug must be provided');
         }
@@ -246,7 +241,14 @@ class EntryTools {
             }
         }
 
-        return $query->one() ?? throw new ToolCallException('Entry not found');
+        return $query->one();
+    }
+
+    private function exampleEntry(string $example, string $section): Entry {
+        $byId = is_numeric($example) ? $this->lookup((int) $example, null, $section, null) : null;
+
+        // Numeric-looking values that match no id fall back to a slug lookup.
+        return $byId ?? $this->find(null, $example, $section, null);
     }
 
     private function entryType(mixed $section, string $handle): object {

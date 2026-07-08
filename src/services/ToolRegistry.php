@@ -16,6 +16,7 @@ use stimmt\craft\Mcp\tools\CraftTools;
 use stimmt\craft\Mcp\tools\DatabaseTools;
 use stimmt\craft\Mcp\tools\DebugTools;
 use stimmt\craft\Mcp\tools\EntryTools;
+use stimmt\craft\Mcp\tools\EntryWorkflowTools;
 use stimmt\craft\Mcp\tools\GlobalSetTools;
 use stimmt\craft\Mcp\tools\GraphqlTools;
 use stimmt\craft\Mcp\tools\McpTools;
@@ -44,6 +45,7 @@ final class ToolRegistry {
         DatabaseTools::class,
         DebugTools::class,
         EntryTools::class,
+        EntryWorkflowTools::class,
         GlobalSetTools::class,
         GraphqlTools::class,
         McpTools::class,

@@ -15,6 +15,7 @@ final readonly class Result {
     public const string ACTION_UPDATED = 'updated';
 
     /**
+     * @param int|null $draftElementId the draft's own element id, addressable by update/publish tools
      * @param Warning[] $warnings
      * @param array<string, string[]> $errors attribute or field path => messages
      */
@@ -22,6 +23,7 @@ final readonly class Result {
         public string $action,
         public ?int $elementId,
         public ?int $draftId = null,
+        public ?int $draftElementId = null,
         public ?WriteMode $state = null,
         public array $warnings = [],
         public array $errors = [],
@@ -38,6 +40,7 @@ final readonly class Result {
             'action' => $this->action,
             'elementId' => $this->elementId,
             'draftId' => $this->draftId,
+            'draftElementId' => $this->draftElementId,
             'state' => $this->state?->value,
             'cpEditUrl' => $this->cpEditUrl,
             'warnings' => array_map(static fn (Warning $w): array => $w->toArray(), $this->warnings),
