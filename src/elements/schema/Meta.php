@@ -47,9 +47,9 @@ final class Meta {
      */
     public function entryFlags(EntryType $type): array {
         return [
-            'hasTitleField' => (bool) $type->hasTitleField,
-            'showSlugField' => (bool) $type->showSlugField,
-            'showStatusField' => (bool) $type->showStatusField,
+            'hasTitleField' => $type->hasTitleField,
+            'showSlugField' => $type->showSlugField,
+            'showStatusField' => $type->showStatusField,
         ];
     }
 }

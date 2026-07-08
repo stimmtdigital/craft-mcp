@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\elements;
 
 use craft\base\ElementInterface;
+use craft\base\FieldInterface;
 use craft\elements\db\EntryQuery;
 use craft\elements\Entry;
 use craft\fields\Matrix;
@@ -17,9 +18,9 @@ use stimmt\craft\Mcp\elements\refs\Translator;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Reader {
+final readonly class Reader {
     public function __construct(
-        private readonly Translator $translator,
+        private Translator $translator,
     ) {
     }
 
@@ -35,7 +36,7 @@ final class Reader {
     }
 
     /**
-     * @param array<string, \craft\base\FieldInterface> $fields
+     * @param array<string, FieldInterface> $fields
      */
     public function translateFields(array $fields, array $values, Context $context): array {
         return $this->translator->toKeys($fields, $values, $context);
@@ -69,7 +70,7 @@ final class Reader {
     }
 
     /**
-     * @param array<string, \craft\base\FieldInterface> $fields
+     * @param array<string, FieldInterface> $fields
      */
     private function serializedFields(ElementInterface $element, array $fields): array {
         $values = [];

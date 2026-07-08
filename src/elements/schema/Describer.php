@@ -66,8 +66,8 @@ final class Describer {
             'name' => (string) $field->name,
             'type' => $field::class,
             'kind' => $this->kind($field),
-            'instructions' => (string) ($field->instructions ?? ''),
-            'required' => (bool) $element->required,
+            'instructions' => $field->instructions ?? '',
+            'required' => $element->required,
         ];
 
         if ($field instanceof BaseRelationField) {
@@ -103,7 +103,7 @@ final class Describer {
             fn (EntryType $type): array => [
                 'handle' => (string) $type->handle,
                 'name' => (string) $type->name,
-                'hasTitleField' => (bool) $type->hasTitleField,
+                'hasTitleField' => $type->hasTitleField,
                 'fields' => $this->fields($type->getFieldLayout(), $depth, top: false),
             ],
             $field->getEntryTypes(),

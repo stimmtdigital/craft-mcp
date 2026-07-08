@@ -16,8 +16,11 @@ use yii\base\Model;
  */
 class MetaFixture extends Model {
     public $title;
+
     public $postDate;
+
     public $dateCreated;
+
     public $id;
 
     public function rules(): array {

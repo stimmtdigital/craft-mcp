@@ -13,7 +13,8 @@ use stimmt\craft\Mcp\elements\refs\Registry;
 
 function translatorFor(string $class, string $name): FieldTranslator {
     return new class ($class, $name) implements FieldTranslator {
-        public function __construct(private readonly string $class, public readonly string $name) {}
+        public function __construct(private readonly string $class, public readonly string $name) {
+        }
 
         public function handles(FieldInterface $field): bool {
             return $field instanceof $this->class;
@@ -38,7 +39,8 @@ describe('Registry', function () {
         };
 
         Craft::$app = new class ($db) {
-            public function __construct(private readonly object $db) {}
+            public function __construct(private readonly object $db) {
+            }
 
             public function getDb(): object {
                 return $this->db;

@@ -9,23 +9,23 @@ namespace stimmt\craft\Mcp\elements;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Result {
-    public const ACTION_CREATED = 'created';
+final readonly class Result {
+    public const string ACTION_CREATED = 'created';
 
-    public const ACTION_UPDATED = 'updated';
+    public const string ACTION_UPDATED = 'updated';
 
     /**
      * @param Warning[] $warnings
      * @param array<string, string[]> $errors attribute or field path => messages
      */
     public function __construct(
-        public readonly string $action,
-        public readonly ?int $elementId,
-        public readonly ?int $draftId = null,
-        public readonly ?WriteMode $state = null,
-        public readonly array $warnings = [],
-        public readonly array $errors = [],
-        public readonly ?string $cpEditUrl = null,
+        public string $action,
+        public ?int $elementId,
+        public ?int $draftId = null,
+        public ?WriteMode $state = null,
+        public array $warnings = [],
+        public array $errors = [],
+        public ?string $cpEditUrl = null,
     ) {
     }
 

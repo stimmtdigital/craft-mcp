@@ -9,12 +9,12 @@ namespace stimmt\craft\Mcp\elements;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Warning {
+final readonly class Warning {
     public function __construct(
-        public readonly string $field,
-        public readonly string $path,
-        public readonly array $key,
-        public readonly string $message,
+        public string $field,
+        public string $path,
+        public array $key,
+        public string $message,
     ) {
     }
 

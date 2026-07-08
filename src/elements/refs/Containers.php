@@ -18,12 +18,12 @@ use stimmt\craft\Mcp\elements\Context;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Containers implements FieldTranslator {
+final readonly class Containers implements FieldTranslator {
     /**
      * @param Closure(string, array, Context, bool): array $recurse
      */
     public function __construct(
-        private readonly Closure $recurse,
+        private Closure $recurse,
     ) {
     }
 

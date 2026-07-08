@@ -16,9 +16,9 @@ use stimmt\craft\Mcp\elements\Warning;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Relations implements FieldTranslator {
+final readonly class Relations implements FieldTranslator {
     public function __construct(
-        private readonly Keys $keys,
+        private Keys $keys,
     ) {
     }
 

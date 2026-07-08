@@ -17,9 +17,9 @@ use Throwable;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Writer {
+final readonly class Writer {
     public function __construct(
-        private readonly Translator $translator,
+        private Translator $translator,
     ) {
     }
 
@@ -37,7 +37,7 @@ final class Writer {
             ? $this->saveAsDraft($element)
             : Craft::$app->getElements()->saveElement($element);
 
-        return $this->result(Result::ACTION_CREATED, $element, $saved, $mode, $context);
+        return $this->result(Result::ACTION_CREATED, $element, $saved, $context);
     }
 
     public function update(ElementInterface $element, array $attributes, array $fieldsPayload, WriteMode $mode, ?string $site = null): Result {
@@ -54,7 +54,7 @@ final class Writer {
 
         $saved = Craft::$app->getElements()->saveElement($element);
 
-        return $this->result(Result::ACTION_UPDATED, $element, $saved, $mode, $context);
+        return $this->result(Result::ACTION_UPDATED, $element, $saved, $context);
     }
 
     /**
@@ -74,7 +74,7 @@ final class Writer {
         }
     }
 
-    private function result(string $action, ElementInterface $element, bool $saved, WriteMode $mode, Context $context): Result {
+    private function result(string $action, ElementInterface $element, bool $saved, Context $context): Result {
         if (!$saved) {
             return new Result(
                 $action,

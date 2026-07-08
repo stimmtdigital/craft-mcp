@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use craft\elements\Entry;
 use craft\fields\Entries;
 use stimmt\craft\Mcp\elements\Context;
 use stimmt\craft\Mcp\elements\refs\Keys;

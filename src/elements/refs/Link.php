@@ -19,7 +19,7 @@ use stimmt\craft\Mcp\elements\Warning;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Link implements FieldTranslator {
+final readonly class Link implements FieldTranslator {
     private const array TARGETS = [
         'entry' => Entry::class,
         'asset' => Asset::class,
@@ -27,7 +27,7 @@ final class Link implements FieldTranslator {
     ];
 
     public function __construct(
-        private readonly Keys $keys,
+        private Keys $keys,
     ) {
     }
 

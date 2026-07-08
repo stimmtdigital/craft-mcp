@@ -60,7 +60,7 @@ describe('Translator', function () {
     it('lets an event-registered translator override a built-in', function () {
         $registry = new Registry();
         $translator = Translator::withDefaults(fixtureKeys(), $registry);
-        $registry->register(new class implements stimmt\craft\Mcp\elements\refs\FieldTranslator {
+        $registry->register(new class () implements stimmt\craft\Mcp\elements\refs\FieldTranslator {
             public function handles(craft\base\FieldInterface $field): bool {
                 return $field instanceof Entries;
             }

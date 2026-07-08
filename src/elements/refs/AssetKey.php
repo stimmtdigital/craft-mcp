@@ -15,10 +15,10 @@ use craft\elements\Asset;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class AssetKey {
+final readonly class AssetKey {
     public function __construct(
-        private readonly ?Closure $lookupId = null,
-        private readonly ?Closure $lookupKey = null,
+        private ?Closure $lookupId = null,
+        private ?Closure $lookupKey = null,
     ) {
     }
 
@@ -75,8 +75,8 @@ final class AssetKey {
             return null;
         }
 
-        $key = ['volume' => $asset->getVolume()->handle, 'filename' => (string) $asset->getFilename()];
-        $path = (string) ($asset->getFolder()->path ?? '');
+        $key = ['volume' => $asset->getVolume()->handle, 'filename' => $asset->getFilename()];
+        $path = $asset->getFolder()->path ?? '';
         if ($path !== '') {
             $key['path'] = $path;
         }

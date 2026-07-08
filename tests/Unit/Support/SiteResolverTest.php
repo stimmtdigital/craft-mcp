@@ -13,13 +13,15 @@ describe('SiteResolver', function () {
         $this->originalApp = Craft::$app;
         $site = new Site(['handle' => 'en']);
         Craft::$app = new class ($site) {
-            public function __construct(private readonly Site $site) {}
+            public function __construct(private readonly Site $site) {
+            }
 
             public function getSites(): object {
                 $site = $this->site;
 
                 return new class ($site) {
-                    public function __construct(private readonly Site $site) {}
+                    public function __construct(private readonly Site $site) {
+                    }
 
                     public function getSiteByHandle(string $handle): ?Site {
                         return $handle === 'en' ? $this->site : null;

@@ -20,7 +20,7 @@ use craft\elements\User;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Keys {
+final readonly class Keys {
     private const array SHAPES = [
         Entry::class => ['section', 'slug'],
         Category::class => ['group', 'slug'],
@@ -30,9 +30,9 @@ final class Keys {
     ];
 
     public function __construct(
-        private readonly ?AssetKey $assets = null,
-        private readonly ?Closure $lookupId = null,
-        private readonly ?Closure $lookupKey = null,
+        private ?AssetKey $assets = null,
+        private ?Closure $lookupId = null,
+        private ?Closure $lookupKey = null,
     ) {
     }
 
@@ -78,13 +78,7 @@ final class Keys {
             return false;
         }
 
-        foreach ($shape as $part) {
-            if (!is_string($key[$part] ?? null) || $key[$part] === '') {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($shape, fn ($part) => is_string($key[$part] ?? null) && $key[$part] !== '');
     }
 
     private function queryId(string $elementType, array $key, ?string $site): ?int {
@@ -93,15 +87,21 @@ final class Keys {
             $query->site($site);
         }
 
-        match ($elementType) {
+        $constrained = match ($elementType) {
             Entry::class => $query->section($key['section'])->slug($key['slug']),
             Category::class => $query->group($key['group'])->slug($key['slug']),
             Tag::class => $query->group($key['group'])->slug($key['slug']),
             User::class => $query->username($key['username']),
             GlobalSet::class => $query->handle($key['handle']),
+            default => null,
         };
 
-        return $query->ids()[0] ?? null;
+        // Never run the query unconstrained: an unsupported type must miss.
+        if ($constrained === null) {
+            return null;
+        }
+
+        return $constrained->ids()[0] ?? null;
     }
 
     private function queryKey(string $elementType, int $id, ?string $site): ?array {
@@ -126,6 +126,7 @@ final class Keys {
             ],
             User::class => ['username' => (string) $element->username],
             GlobalSet::class => ['handle' => (string) $element->handle],
+            default => null,
         };
     }
 }

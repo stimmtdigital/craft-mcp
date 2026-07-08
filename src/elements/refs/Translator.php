@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\elements\refs;
 
 use Craft;
+use craft\base\FieldInterface;
 use stimmt\craft\Mcp\elements\Context;
 use stimmt\craft\Mcp\elements\LayoutFields;
 
@@ -15,9 +16,9 @@ use stimmt\craft\Mcp\elements\LayoutFields;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Translator {
+final readonly class Translator {
     public function __construct(
-        private readonly Registry $registry,
+        private Registry $registry,
     ) {
     }
 
@@ -36,14 +37,14 @@ final class Translator {
     }
 
     /**
-     * @param array<string, \craft\base\FieldInterface> $fields
+     * @param array<string, FieldInterface> $fields
      */
     public function toKeys(array $fields, array $values, Context $context): array {
         return $this->translate($fields, $values, $context, toKeys: true);
     }
 
     /**
-     * @param array<string, \craft\base\FieldInterface> $fields
+     * @param array<string, FieldInterface> $fields
      */
     public function toIds(array $fields, array $values, Context $context): array {
         return $this->translate($fields, $values, $context, toKeys: false);
