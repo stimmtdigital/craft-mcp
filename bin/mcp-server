@@ -112,6 +112,23 @@ try {
     Craft::$container->setSingleton(\Psr\Log\LoggerInterface::class, fn() => $logger);
     Craft::$container->set(\stimmt\craft\Mcp\tools\TinkerTools::class);
 
+    // Elements module: shared translator registry, event-extensible.
+    $keys = new \stimmt\craft\Mcp\elements\refs\Keys();
+    $registry = new \stimmt\craft\Mcp\elements\refs\Registry();
+    $translator = \stimmt\craft\Mcp\elements\refs\Translator::withDefaults($keys, $registry);
+
+    $event = new \stimmt\craft\Mcp\events\RegisterFieldTranslatorsEvent();
+    $plugin->trigger(\stimmt\craft\Mcp\Mcp::EVENT_REGISTER_FIELD_TRANSLATORS, $event);
+    foreach ($event->translators as $fieldTranslator) {
+        $registry->register($fieldTranslator);
+    }
+
+    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\refs\Translator::class, fn() => $translator);
+    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Reader::class, fn() => new \stimmt\craft\Mcp\elements\Reader($translator));
+    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Writer::class, fn() => new \stimmt\craft\Mcp\elements\Writer($translator));
+    Craft::$container->set(\stimmt\craft\Mcp\tools\EntryTools::class);
+    // EntryWorkflowTools registered when the class lands (Task 20)
+
     $factory = new McpServerFactory(logger: $logger);
     $server = $factory->create();
     $transport = $factory->createTransport();
