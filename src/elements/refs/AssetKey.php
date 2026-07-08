@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\elements\refs;
 
 use Closure;
+use Craft;
 use craft\elements\Asset;
 
 /**
@@ -37,14 +38,28 @@ final class AssetKey {
             return ($this->lookupId)($volume, $path, $filename);
         }
 
-        $folderPath = $path === '' ? null : rtrim($path, '/') . '/';
-
-        return Asset::find()
+        $query = Asset::find()
             ->volume($volume)
-            ->folderPath($folderPath)
             ->filename($filename)
-            ->status(null)
-            ->ids()[0] ?? null;
+            ->status(null);
+
+        if ($path !== '') {
+            return $query->folderPath(rtrim($path, '/') . '/')->ids()[0] ?? null;
+        }
+
+        // An empty path means the volume root. AssetQuery skips a falsy
+        // folderPath filter entirely, so constrain to the root folder id
+        // explicitly or a same-named file in any subfolder could match.
+        $volumeModel = Craft::$app->getVolumes()->getVolumeByHandle($volume);
+        $root = $volumeModel === null
+            ? null
+            : Craft::$app->getAssets()->getRootFolderByVolumeId($volumeModel->id);
+
+        if ($root === null) {
+            return null;
+        }
+
+        return $query->folderId($root->id)->ids()[0] ?? null;
     }
 
     /**
