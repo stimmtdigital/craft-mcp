@@ -210,7 +210,7 @@ class EntryTools {
             ];
 
             if ($example !== null) {
-                $schema['example'] = $this->reader->read($this->exampleEntry($example, $sectionModel->handle));
+                $schema['example'] = $this->reader->read($this->example($example, $sectionModel->handle));
             }
 
             return $schema;
@@ -244,7 +244,7 @@ class EntryTools {
         return $query->one();
     }
 
-    private function exampleEntry(string $example, string $section): Entry {
+    private function example(string $example, string $section): Entry {
         $byId = is_numeric($example) ? $this->lookup((int) $example, null, $section, null) : null;
 
         // Numeric-looking values that match no id fall back to a slug lookup.
