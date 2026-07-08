@@ -44,7 +44,7 @@ final readonly class Writer {
         $context = new Context($site ?? $element->getSite()->handle);
 
         if ($mode === WriteMode::Draft && !$element->getIsDraft()) {
-            $element = Craft::$app->getDrafts()->createDraft($element, (int) (Craft::$app->getUser()->getId() ?? 0));
+            $element = Craft::$app->getDrafts()->createDraft($element, Craft::$app->getUser()->getId());
         }
 
         Craft::configure($element, $attributes);

@@ -234,6 +234,12 @@ class EntryTools {
         SiteResolver::resolve($site);
 
         $query = Entry::find()->status(null);
+        if ($id !== null) {
+            // An id lookup must find drafts too: agents read back the draft
+            // a write just created. drafts(null) matches both.
+            $query->drafts(null);
+        }
+
         foreach (['id' => $id, 'slug' => $slug, 'section' => $section, 'site' => $site] as $method => $value) {
             if ($value !== null) {
                 $query->$method($value);

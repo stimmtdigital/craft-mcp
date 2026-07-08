@@ -71,12 +71,14 @@ final class Describer {
         ];
 
         if ($field instanceof BaseRelationField) {
-            $target = [
+            // The raw sources setting, not getInputSources(): the latter is
+            // permission-filtered and requires a user session, which the
+            // console MCP process does not have. Schema description wants
+            // the configured sources anyway.
+            $described['target'] = [
                 'elementType' => $field::elementType(),
-                'sources' => $field->getInputSources(),
+                'sources' => $field->sources ?? '*',
             ];
-
-            $described['target'] = $target;
         }
 
         if ($field instanceof Matrix) {
