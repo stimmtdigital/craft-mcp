@@ -127,7 +127,7 @@ try {
     Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Reader::class, fn() => new \stimmt\craft\Mcp\elements\Reader($translator));
     Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Writer::class, fn() => new \stimmt\craft\Mcp\elements\Writer($translator));
     Craft::$container->set(\stimmt\craft\Mcp\tools\EntryTools::class);
-    // EntryWorkflowTools registered when the class lands (Task 20)
+    Craft::$container->set(\stimmt\craft\Mcp\tools\EntryWorkflowTools::class);
 
     $factory = new McpServerFactory(logger: $logger);
     $server = $factory->create();
