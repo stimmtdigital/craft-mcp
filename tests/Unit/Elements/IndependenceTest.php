@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 describe('elements module independence', function () {
     it('imports nothing outside craft, yii, psr/log, and itself', function () {
-        $files = glob(dirname(__DIR__, 3) . '/src/elements/{,*/,*/*/}*.php', GLOB_BRACE) ?: [];
+        $root = dirname(__DIR__, 3) . '/src/elements';
+        $files = array_merge(
+            glob($root . '/*.php') ?: [],
+            glob($root . '/*/*.php') ?: [],
+            glob($root . '/*/*/*.php') ?: [],
+        );
         expect($files)->not->toBeEmpty();
 
         $violations = [];

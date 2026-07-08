@@ -18,6 +18,7 @@ describe('Result', function () {
             Result::ACTION_CREATED,
             7,
             draftId: 3,
+            draftElementId: 12,
             state: WriteMode::Draft,
             warnings: [new Warning('f', 'f.0', ['slug' => 'x'], 'missing')],
             cpEditUrl: 'https://cms.test/edit/7',
@@ -27,10 +28,15 @@ describe('Result', function () {
         expect($array['action'])->toBe('created')
             ->and($array['elementId'])->toBe(7)
             ->and($array['draftId'])->toBe(3)
+            ->and($array['draftElementId'])->toBe(12)
             ->and($array['state'])->toBe('draft')
             ->and($array['warnings'])->toHaveCount(1)
             ->and($array['warnings'][0]['message'])->toBe('missing')
             ->and($array['cpEditUrl'])->toBe('https://cms.test/edit/7')
             ->and($array['errors'])->toBe([]);
+    });
+
+    it('defaults draftElementId to null for live saves', function () {
+        expect((new Result(Result::ACTION_UPDATED, 7, state: WriteMode::Live))->toArray()['draftElementId'])->toBeNull();
     });
 });

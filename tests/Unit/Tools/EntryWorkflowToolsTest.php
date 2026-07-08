@@ -18,4 +18,17 @@ describe('EntryWorkflowTools structure', function () {
         ['duplicateEntry', 'duplicate_entry'],
         ['copyEntryToSite', 'copy_entry_to_site'],
     ]);
+
+    // Shape-level (behavior needs a Craft app; dev/integration-elements.py is
+    // the acceptance test): a canonical id must resolve to its single pending
+    // non-provisional draft, fail loudly on several, and refuse a no-op
+    // publish (final-review C3).
+    it('publishes a canonical id through its pending draft lookup', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryWorkflowTools::class))->getFileName());
+
+        expect($source)->toContain('->draftOf(')
+            ->and($source)->toContain('->provisionalDrafts(false)')
+            ->and($source)->toContain('multiple pending drafts')
+            ->and($source)->toContain('nothing to publish');
+    });
 });

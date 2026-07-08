@@ -34,4 +34,15 @@ describe('EntryTools structure', function () {
 
         expect($params)->toContain('site')->toContain('mode')->toContain('parent');
     });
+
+    // Craft 5 elements expose setParentId()/parentId; 'newParentId' is not a
+    // property, so writes carrying a parent would throw UnknownPropertyException
+    // (final-review C1). Behavioral coverage lives in dev/integration-elements.py;
+    // this locks the attribute key at the source level.
+    it('sets the structure parent through the parentId attribute', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect($source)->toContain("\$attributes['parentId'] = \$parentId;")
+            ->and($source)->not->toContain('newParentId');
+    });
 });

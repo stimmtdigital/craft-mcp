@@ -32,6 +32,7 @@ function translatorFor(string $class, string $name): FieldTranslator {
 
 describe('Registry', function () {
     beforeEach(function () {
+        $this->originalApp = Craft::$app;
         $db = new class () {
             public function getIsMysql(): bool {
                 return false;
@@ -46,6 +47,10 @@ describe('Registry', function () {
                 return $this->db;
             }
         };
+    });
+
+    afterEach(function () {
+        Craft::$app = $this->originalApp;
     });
 
     it('selects the first matching translator', function () {
