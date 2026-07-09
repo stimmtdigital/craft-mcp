@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.1] - 2026-07-09
+
 ### Added
 - `elements` module: element-generic payload engine (natural keys for relations, draft-first writes, schema discovery), reusable outside the plugin (imports only craftcms/cms and psr/log, enforced by an architecture test)
 - `describe_entry_schema` tool: fields, kinds, required flags, matrix block types, native fields, writable meta attributes, optional golden-fixture `example`
