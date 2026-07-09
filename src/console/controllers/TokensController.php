@@ -68,7 +68,9 @@ class TokensController extends Controller {
         ['plaintext' => $plaintext] = (new Tokens(new RecordStore()))
             ->create((int) $user->id, $scope, $name, $this->expires);
 
-        $url = rtrim(Craft::$app->getSites()->getPrimarySite()->getBaseUrl() ?? '', '/') . '/' . Mcp::settings()->httpPath;
+        $settings = Mcp::settings();
+        $base = $settings->httpPublicUrl ?? Craft::$app->getSites()->getPrimarySite()->getBaseUrl() ?? '';
+        $url = rtrim($base, '/') . '/' . $settings->httpPath;
 
         $this->stdout("Token created (shown once, store it now):\n\n  {$plaintext}\n\n", Console::FG_GREEN);
         $this->stdout("Claude Desktop config (claude_desktop_config.json):\n");
@@ -83,7 +85,9 @@ class TokensController extends Controller {
   }
 
 JSON);
-        $this->stdout("\nThe url host comes from the primary site. If Craft answers on a different domain (headless setups often serve the CMS on a separate host), replace the host with the domain where the control panel lives.\n", Console::FG_YELLOW);
+        if ($settings->httpPublicUrl === null) {
+            $this->stdout("\nThe url host comes from the primary site. If Craft answers on a different domain (headless setups often serve the CMS on a separate host), set the httpPublicUrl setting to that domain, or edit the url by hand.\n", Console::FG_YELLOW);
+        }
 
         return ExitCode::OK;
     }

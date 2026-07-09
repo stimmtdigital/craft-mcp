@@ -48,6 +48,13 @@ class Settings extends Model {
     public int $httpSessionTtl = 3600;
 
     /**
+     * Base URL clients should reach the endpoint on, e.g. 'https://cms.example.com'.
+     * Null derives it from the primary site, which is wrong on headless
+     * deployments where Craft answers on a different domain than the site.
+     */
+    public ?string $httpPublicUrl = null;
+
+    /**
      * @return array<int, array<int|string, mixed>>
      */
     #[Override]
@@ -60,6 +67,7 @@ class Settings extends Model {
             [['httpPath'], 'required'],
             [['httpPath'], 'match', 'pattern' => '/^[a-z0-9\-\/]+$/i'],
             [['httpSessionTtl'], 'integer', 'min' => 60],
+            [['httpPublicUrl'], 'url', 'skipOnEmpty' => true],
         ];
     }
 }

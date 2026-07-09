@@ -37,9 +37,10 @@ class McpServerFactory {
     }
 
     /**
-     * Create a configured MCP Server instance. A non-null $scope filters the
-     * tool registry after discovery (HTTP path); null keeps today's stdio
-     * behavior exactly. A session store overrides the SDK in-memory default.
+     * Create a configured MCP Server instance. The global tool settings
+     * (disabledTools, enableDangerousTools, method conditions) are enforced
+     * on every transport; a non-null $scope narrows the registry further for
+     * the HTTP path. A session store overrides the SDK in-memory default.
      */
     public function create(?Scope $scope = null, ?SessionStoreInterface $sessionStore = null): Server {
         $registry = new Registry(null, $this->logger ?? new NullLogger());
@@ -70,10 +71,7 @@ class McpServerFactory {
         $this->registerExternalElements($builder);
 
         $server = $builder->build();
-
-        if ($scope !== null) {
-            $this->applyScope($registry, $scope);
-        }
+        $this->filterTools($registry, $scope);
 
         return $server;
     }
@@ -116,14 +114,15 @@ class McpServerFactory {
     }
 
     /**
-     * Unregister every tool the scope or the global settings disallow. Runs
-     * against the informational ToolRegistry, so external event-registered
-     * tools are covered too.
+     * Unregister every tool the global settings disallow (disabledTools,
+     * enableDangerousTools, method conditions) and, when a scope is given,
+     * everything outside it. Runs against the informational ToolRegistry, so
+     * external event-registered tools are covered too.
      */
-    private function applyScope(Registry $registry, Scope $scope): void {
+    private function filterTools(Registry $registry, ?Scope $scope): void {
         foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
             $allowed = Mcp::isToolEnabled($definition->name)
-                && $scope->allows($definition->category, $definition->dangerous);
+                && ($scope === null || $scope->allows($definition->category, $definition->dangerous));
 
             if (!$allowed) {
                 $registry->unregisterTool($definition->name);

@@ -96,7 +96,11 @@ Scope is applied on top of the plugin's existing global settings (`enabled`, `en
 3. Restart Claude Desktop.
 4. Verify the connection: the `craft-cms` server should appear in Claude Desktop's connected servers list. Ask the assistant to run `list_sections`, a lightweight readonly tool available to every scope; a successful response confirms both the connection and the token's authentication.
 
-The printed `url` host comes from the primary site's base URL. On headless deployments where the frontend and the CMS live on different domains, replace the host with the domain where Craft itself answers (typically the control panel's domain), keeping the `/mcp` path.
+The printed `url` host comes from the primary site's base URL unless the `httpPublicUrl` setting is set. On headless deployments where the frontend and the CMS live on different domains, set `httpPublicUrl` to the domain where Craft itself answers (typically the control panel's domain) so every printed snippet is correct as-is:
+
+```php
+'httpPublicUrl' => 'https://cms.example.com',
+```
 
 ## Managing Tokens
 

@@ -66,6 +66,12 @@ return [
     // HTTP session TTL in seconds; idle sessions are cleaned up after this long.
     // Default: 3600
     'httpSessionTtl' => 3600,
+
+    // Base URL clients reach the HTTP endpoint on, for the snippet printed by
+    // mcp/tokens/create. Null derives it from the primary site, which is wrong
+    // on headless deployments where Craft answers on a different domain.
+    // Default: null
+    'httpPublicUrl' => null,
 ];
 ```
 
@@ -82,6 +88,7 @@ return [
 | `httpTransport` | `bool` | `false` | Whether the MCP server is also served over HTTP with per-user bearer tokens |
 | `httpPath` | `string` | `'mcp'` | Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |
 | `httpSessionTtl` | `int` | `3600` | HTTP session TTL in seconds; idle sessions are cleaned up after this long |
+| `httpPublicUrl` | `string\|null` | `null` | Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 
