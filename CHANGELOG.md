@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.2] - 2026-07-09
+
 ### Fixed
 - The long-lived stdio server now detects external project config changes (migrations, `project-config/apply`, control panel edits) before each tool call and refreshes itself, ending `StaleResourceException` on writes and silently stale schema reads across the whole read surface (fields and layouts, sections and entry types, sites, volumes, category groups, global sets). No more manual `reload_mcp` after running migrations. Thanks @dgaidula for the report and groundwork in #18.
 
