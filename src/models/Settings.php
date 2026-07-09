@@ -38,16 +38,36 @@ class Settings extends Model {
      */
     public string $entryWriteMode = 'draft';
 
+    /** Master switch for the HTTP transport. Off by default; enabling it registers the site URL rule. */
+    public bool $httpTransport = false;
+
+    /** Endpoint path on the primary site (no leading slash). */
+    public string $httpPath = 'mcp';
+
+    /** HTTP session TTL in seconds. */
+    public int $httpSessionTtl = 3600;
+
+    /**
+     * Base URL clients should reach the endpoint on, e.g. 'https://cms.example.com'.
+     * Null derives it from the primary site, which is wrong on headless
+     * deployments where Craft answers on a different domain than the site.
+     */
+    public ?string $httpPublicUrl = null;
+
     /**
      * @return array<int, array<int|string, mixed>>
      */
     #[Override]
     public function defineRules(): array {
         return [
-            [['enabled', 'enableDangerousTools'], 'boolean'],
+            [['enabled', 'enableDangerousTools', 'httpTransport'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps'], 'each', 'rule' => ['string']],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
             [['entryWriteMode'], 'in', 'range' => ['draft', 'live']],
+            [['httpPath'], 'required'],
+            [['httpPath'], 'match', 'pattern' => '/^[a-z0-9\-\/]+$/i'],
+            [['httpSessionTtl'], 'integer', 'min' => 60],
+            [['httpPublicUrl'], 'url', 'skipOnEmpty' => true],
         ];
     }
 }

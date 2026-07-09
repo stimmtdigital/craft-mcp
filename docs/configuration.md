@@ -54,6 +54,24 @@ return [
     // Default: 'error'
     'logLevel' => 'error',
     'entryWriteMode' => 'draft',
+
+    // Serve the MCP server over HTTP with per-user bearer tokens, in addition to stdio.
+    // Default: false
+    'httpTransport' => false,
+
+    // Endpoint path on the primary site (no leading slash), used only when httpTransport is true.
+    // Default: 'mcp'
+    'httpPath' => 'mcp',
+
+    // HTTP session TTL in seconds; idle sessions are cleaned up after this long.
+    // Default: 3600
+    'httpSessionTtl' => 3600,
+
+    // Base URL clients reach the HTTP endpoint on, for the snippet printed by
+    // mcp/tokens/create. Null derives it from the primary site, which is wrong
+    // on headless deployments where Craft answers on a different domain.
+    // Default: null
+    'httpPublicUrl' => null,
 ];
 ```
 
@@ -66,7 +84,13 @@ return [
 | `disabledTools` | `array` | `[]` | List of tool names to disable regardless of other settings |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
-| `entryWriteMode` | `string` | `'draft'` | Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
+| `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
+| `httpTransport` | `bool` | `false` | Since 1.4.0. Whether the MCP server is also served over HTTP with per-user bearer tokens |
+| `httpPath` | `string` | `'mcp'` | Since 1.4.0. Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |
+| `httpSessionTtl` | `int` | `3600` | Since 1.4.0. HTTP session TTL in seconds; idle sessions are cleaned up after this long |
+| `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
+
+See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 
 ## Environment Variables
 
@@ -104,7 +128,7 @@ The plugin automatically adjusts its defaults based on the `CRAFT_ENVIRONMENT` e
 | `enabled` | `false` | `true` |
 | `enableDangerousTools` | `false` | `true` |
 
-This means you can safely deploy the plugin to production without worrying about accidentally exposing the MCP server—it's disabled by default unless you explicitly enable it.
+This means you can safely deploy the plugin to production without worrying about accidentally exposing the MCP server: it's disabled by default unless you explicitly enable it.
 
 ## Multi-Environment Configuration
 
@@ -147,7 +171,7 @@ The MCP server provides powerful access to your Craft installation. While this i
 
 ### Production Environments
 
-By default, the MCP server is **completely disabled** when `CRAFT_ENVIRONMENT` is set to `production`. This is intentional—the server provides access to your content, configuration, and in some cases the ability to execute code.
+By default, the MCP server is **completely disabled** when `CRAFT_ENVIRONMENT` is set to `production`. This is intentional: the server provides access to your content, configuration, and in some cases the ability to execute code.
 
 If you have a specific need to enable MCP in production (for example, a protected staging server that uses `production` as its environment name), take these precautions:
 
@@ -220,5 +244,6 @@ After changing the log level, restart the MCP server (send SIGHUP to the process
 
 ## Next Steps
 
+- **[HTTP Transport](http-transport.md)** - Serve the MCP server over HTTP with per-user scoped bearer tokens
 - **[Tools Reference](tools/README.md)** - See all available tools and their capabilities
 - **[Extending](extending.md)** - Learn how to add custom tools from your plugins

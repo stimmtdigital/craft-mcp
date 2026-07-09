@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `site` parameter on all entry tools ([#9](https://github.com/stimmtdigital/craft-mcp/issues/9)); `search` on `list_entries`, `parent` on the entry write tools
 - `search`/`type` filters on `list_fields`, `search` on `list_sections`
 - `EVENT_REGISTER_FIELD_TRANSLATORS` for plugins whose field types embed element ids
+- HTTP transport (opt-in): serve the MCP server from a Craft endpoint with per-user scoped bearer tokens (`readonly`/`content`/`full`), managed via `craft mcp/tokens/*` console commands. Content editors can connect Claude Desktop to a remote install with no local tooling. (#13)
+- Dangerous tools now carry a `destructiveHint` annotation in `tools/list`, making risk visible to MCP clients.
 
 ### Changed
 - `get_entry`/`list_entries` return the payload format: relations as natural keys ({section,slug}, {volume,filename}, ...), matrix blocks in core shape with translated internals, disabled blocks included; what you read is what create/update accept

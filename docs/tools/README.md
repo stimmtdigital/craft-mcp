@@ -1,6 +1,6 @@
 # Tools Reference
 
-Craft MCP provides 50 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
+Craft MCP provides 55 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
 
 ## Tool Categories
 
@@ -8,11 +8,11 @@ The tools are organized into logical categories based on what they do:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-| [Content](content.md) | 10 | Query and manage entries, assets, categories, users, and global sets |
+| [Content](content.md) | 14 | Query and manage entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
 | [System](system.md) | 7 | Access configuration, logs, caches, routes, and system information |
 | [Database](database.md) | 4 | Inspect database schema, run queries, and explore table structures |
 | [Debugging](debugging.md) | 7 | Monitor queue jobs, project config changes, deprecations, and more |
-| Schema | 4 | Inspect sections, fields, volumes, and plugins |
+| Schema | 5 | Inspect sections, fields, volumes, and plugins; discover an entry type's write schema |
 | [Multi-Site](multisite.md) | 3 | Manage and inspect multi-site configurations |
 | [GraphQL](graphql.md) | 4 | Query schemas, tokens, and execute GraphQL operations |
 | [Backup](backup.md) | 2 | List and create database backups |
@@ -29,10 +29,14 @@ These tools let AI assistants work with your Craft content:
 
 | Tool | Description |
 |------|-------------|
-| `list_entries` | Query entries with filtering by section, status, author, site, and more |
-| `get_entry` | Retrieve a single entry by ID or slug, including all custom field values |
-| `create_entry` | Create new entries in any section with title, slug, and field data |
-| `update_entry` | Modify existing entry content, status, or custom field values |
+| `list_entries` | List entries, filtering by section, type, status, site, and full-text search; returns the payload format |
+| `get_entry` | Get one entry by id or slug, in the payload format that `create_entry`/`update_entry` accept as `fields` |
+| `create_entry` | Create an entry from payload-format `fields`; saves as a draft by default |
+| `update_entry` | Update an entry by id from payload-format `fields`; drafts on top of a live entry by default |
+| `publish_entry` | Apply a pending draft to its canonical entry, or enable a disabled live entry |
+| `delete_entry` | Soft-delete an entry to the trash, restorable from the control panel |
+| `duplicate_entry` | Duplicate an entry as an unpublished draft, with optional field overrides |
+| `copy_entry_to_site` | Copy an entry's field values to another site as a draft, without machine translation |
 | `list_assets` | Browse assets with filtering by volume, folder, filename, and kind |
 | `get_asset` | Get detailed asset information including dimensions, file size, and metadata |
 | `list_asset_folders` | List folder structure within a specific asset volume |
@@ -50,6 +54,9 @@ These tools help AI assistants understand your content architecture:
 | `list_fields` | List all custom fields with types, settings, and group assignments |
 | `list_volumes` | Inspect asset volume configurations and filesystem settings |
 | `list_plugins` | Get installed plugins with versions, handles, and enabled status |
+| `describe_entry_schema` | Describe a section/entry type's fields, kinds, and per-field input shapes, for use with `create_entry`/`update_entry` |
+
+`describe_entry_schema` is documented in full on the [Content page](content.md#describe_entry_schema) alongside the entry read/write payload format it describes.
 
 ### System Tools
 
@@ -154,6 +161,10 @@ Some tools can modify data or execute code, which may not be appropriate in all 
 | `run_query` | Medium | Executes SQL queries (limited to SELECT, but still exposes data) |
 | `create_entry` | Medium | Creates new entries in your content |
 | `update_entry` | Medium | Modifies existing entry content and fields |
+| `publish_entry` | Medium | Applies a draft to its canonical entry, or enables a disabled entry |
+| `delete_entry` | Medium | Moves an entry to the trash |
+| `duplicate_entry` | Medium | Creates a new draft entry from an existing one |
+| `copy_entry_to_site` | Medium | Writes a draft on another site from an entry's field values |
 | `create_backup` | Medium | Creates files on the server filesystem |
 | `clear_caches` | Low | Clears caches, which can temporarily impact site performance |
 

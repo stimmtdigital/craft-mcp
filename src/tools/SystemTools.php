@@ -11,6 +11,7 @@ use craft\models\CategoryGroup;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\Content\TextContent;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ResponseFormat;
@@ -160,6 +161,7 @@ class SystemTools {
     #[McpTool(
         name: 'clear_caches',
         description: 'Clear Craft CMS caches. Specify type: all, data, compiled-templates, compiled-classes, asset-indexing-data, temp-files',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, dangerous: true)]
     public function clearCaches(string $type = 'all', ?RequestContext $context = null): array {

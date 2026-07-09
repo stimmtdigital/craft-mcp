@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -128,6 +129,7 @@ class DatabaseTools {
     #[McpTool(
         name: 'run_query',
         description: 'Execute a read-only SQL query (SELECT only). WARNING: Basic keyword security - for development only. May be bypassable with certain PDO configs.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, dangerous: true)]
     public function runQuery(string $sql, int $limit = 100, ?RequestContext $context = null): array {

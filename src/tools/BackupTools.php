@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use craft\db\Connection;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -86,6 +87,7 @@ class BackupTools {
     #[McpTool(
         name: 'create_backup',
         description: 'Create a new database backup. WARNING: This is a dangerous operation that creates files on the server.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::BACKUP, dangerous: true)]
     public function createBackup(?RequestContext $context = null): array {
