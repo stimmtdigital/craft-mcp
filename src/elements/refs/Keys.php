@@ -72,6 +72,21 @@ final readonly class Keys {
         return $this->queryKey($elementType, $id, $site);
     }
 
+    /**
+     * The natural-key field list for a target element class, or null when the
+     * type has no natural key. Single source of truth shared with the schema
+     * describer so a documented shape never drifts from idFor()/keyFor().
+     *
+     * @return string[]|null
+     */
+    public function keyShape(string $elementType): ?array {
+        if ($elementType === Asset::class) {
+            return ['volume', 'path?', 'filename'];
+        }
+
+        return self::SHAPES[$elementType] ?? null;
+    }
+
     private function wellFormed(string $elementType, array $key): bool {
         $shape = self::SHAPES[$elementType] ?? null;
         if ($shape === null) {

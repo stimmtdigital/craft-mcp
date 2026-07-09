@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `elements` module: element-generic payload engine (natural keys for relations, draft-first writes, schema discovery), reusable outside the plugin (imports only craftcms/cms and psr/log, enforced by an architecture test)
 - `describe_entry_schema` tool: fields, kinds, required flags, matrix block types, native fields, writable meta attributes, optional golden-fixture `example`
+- `describe_entry_schema` now returns a per-field `input` shape describing the payload each field accepts: relations show their natural-key shape (e.g. `{section, slug}`), Matrix and Hyper-style fields recurse into their block/link types and sub-fields, core Link fields list their configured types and key shapes, option fields list allowed values, tables list their columns, scalars show their value type. Derived dynamically from field layouts and the module's own key contract, so it stays correct for any field including third-party ones.
 - `publish_entry`, `delete_entry`, `duplicate_entry`, `copy_entry_to_site` workflow tools
 - `entryWriteMode` setting (`'draft'` default, `'live'` restores immediate saves); per-call `mode` override
 - `site` parameter on all entry tools ([#9](https://github.com/stimmtdigital/craft-mcp/issues/9)); `search` on `list_entries`, `parent` on the entry write tools
