@@ -62,6 +62,34 @@ final class PluginReloader {
         Craft::$app->getCache()->delete('projectConfig:internal');
     }
 
+    private const array ENTRIES_SERVICE_PROPERTIES = [
+        '_sections' => null,
+        '_entryTypes' => null,
+    ];
+
+    /**
+     * Re-read the project config from YAML: clears the internal cache and
+     * resets the ProjectConfig service. Adopted from PR #18 (dgaidula).
+     */
+    public static function resetProjectConfig(): void {
+        self::clearProjectConfigCache();
+        Craft::$app->getProjectConfig()->reset();
+    }
+
+    /**
+     * Drop the Entries service's section and entry-type memos so the next
+     * read re-queries. Craft exposes no public sections refresh, hence the
+     * same reflection idiom as resetPluginsService().
+     */
+    public static function resetEntriesMemos(): void {
+        $entries = Craft::$app->getEntries();
+        $ref = new ReflectionClass($entries);
+
+        foreach (self::ENTRIES_SERVICE_PROPERTIES as $propertyName => $resetValue) {
+            $ref->getProperty($propertyName)->setValue($entries, $resetValue);
+        }
+    }
+
     /**
      * Reset the Plugins service to allow reloading.
      *
