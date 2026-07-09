@@ -43,6 +43,11 @@ class Mcp extends BasePlugin {
     public const EVENT_REGISTER_RESOURCES = 'registerResources';
 
     /**
+     * Event fired to let plugins register elements field translators.
+     */
+    public const EVENT_REGISTER_FIELD_TRANSLATORS = 'registerFieldTranslators';
+
+    /**
      * Tools that can modify data or execute code.
      *
      * @deprecated Use getToolRegistry()->getDangerousTools() instead.

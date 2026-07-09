@@ -209,10 +209,14 @@ Requirements:
 ### Content Tools
 | Name | Notes |
 |------|-------|
-| List Entries | Query entries with filtering by section, status, author, and limit |
-| Get Entry | Retrieve full entry details including all custom field values |
-| Create Entry | Create new entries in any section with field data |
-| Update Entry | Modify existing entry content and custom fields |
+| List Entries | Query entries with filtering by section, type, status, site, and full-text search |
+| Get Entry | Full entry in the payload format: relations as natural keys ({section, slug}, {volume, filename}), matrix blocks by type handle; what you read is what the write tools accept |
+| Create Entry | Create entries with natural-key field payloads; saves as a reviewable draft by default (`entryWriteMode` setting / `mode` param) |
+| Update Entry | Draft-first edits: updating a live entry creates a draft on top, leaving the live version untouched until published |
+| Publish Entry | Applies a draft to its canonical entry, or enables a disabled entry |
+| Delete Entry | Soft delete to the trash (restorable in the control panel) |
+| Duplicate Entry | Clone as a draft, with optional title/slug/field overrides ("like X but change these") |
+| Copy Entry To Site | Copy field values to another site's version as a draft (localization workflows) |
 | List Assets | Browse assets with volume and folder filtering |
 | Get Asset | Get detailed asset information including dimensions and metadata |
 | List Asset Folders | List folder structure within asset volumes |
@@ -223,8 +227,9 @@ Requirements:
 ### Schema & Structure Tools
 | Name | Notes |
 |------|-------|
-| List Sections | Inspect all sections with their entry types and field layouts |
-| List Fields | Get all fields with types, settings, and group assignments |
+| Describe Entry Schema | Everything needed to write a valid entry first try: fields, kinds, required flags, matrix block types (depth-expanded), native fields, writable meta attributes, an optional real entry as a golden-fixture example, and per-field `input` shapes describing the payload each field accepts |
+| List Sections | Inspect all sections with their entry types; filter by handle/name search |
+| List Fields | Get all fields with types and settings; filter by search term or field type |
 | List Volumes | Inspect asset volume configurations and filesystem settings |
 | List Plugins | Get installed plugins with version, status, and settings |
 
@@ -295,6 +300,17 @@ Requirements:
 | Get Order | Get order details by ID or number |
 | List Order Statuses | List available order statuses |
 | List Product Types | List product type configurations |
+
+## Content Writing for Agents
+
+Entry reads and writes share one format, powered by an element-generic `elements` module:
+
+- **Natural keys everywhere**: relations are `{"section": "pages", "slug": "about"}`, assets are `{"volume": "images", "filename": "hero.jpg"}`, categories/tags are `{"group": "...", "slug": "..."}`, users are `{"username": "..."}`. No numeric IDs to guess.
+- **Matrix in core shape**: blocks keyed by id (or `new1`...), `type` as the entry-type handle, `title`/`enabled` honored, disabled blocks preserved on round trips.
+- **Draft-first**: writes land as drafts with a `cpEditUrl` deep link for human review; `publish_entry` (or a reviewer in the control panel) makes them live. Set `entryWriteMode: 'live'` in `config/mcp.php` to restore immediate saves.
+- **Structured feedback**: validation failures return per-field errors; unresolvable natural keys become warnings on an otherwise successful save, never a guess or a silent drop.
+- **Third-party friendly**: any field type round-trips via Craft's own serialize contract; fields extending the core relation/Matrix types get natural keys automatically; `EVENT_REGISTER_FIELD_TRANSLATORS` covers fields that embed element ids in custom formats.
+- **Per-field input shapes**: read the `input` structure for each field from `describe_entry_schema` to understand the exact payload shape each field accepts (natural-key format for relations, block types for Matrix, allowed values for options, etc.).
 
 ## Extending
 

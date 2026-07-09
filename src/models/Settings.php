@@ -34,6 +34,11 @@ class Settings extends Model {
     public string $logLevel = 'error';
 
     /**
+     * Default save mode for entry writes: 'draft' (reviewable) or 'live'.
+     */
+    public string $entryWriteMode = 'draft';
+
+    /**
      * @return array<int, array<int|string, mixed>>
      */
     #[Override]
@@ -42,6 +47,7 @@ class Settings extends Model {
             [['enabled', 'enableDangerousTools'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps'], 'each', 'rule' => ['string']],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
+            [['entryWriteMode'], 'in', 'range' => ['draft', 'live']],
         ];
     }
 }

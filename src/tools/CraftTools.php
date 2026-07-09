@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\base\FieldInterface;
+use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\services\SchemaHelper;
 use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
@@ -58,13 +61,21 @@ class CraftTools {
      */
     #[McpTool(
         name: 'list_sections',
-        description: 'List all sections (channels, structures, singles) in Craft CMS with their entry types',
+        description: 'List all sections (channels, structures, singles) in Craft CMS with their entry types. Optionally filter by handle/name search term.',
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
-    public function listSections(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
+    public function listSections(?string $search = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($search): array {
             $sectionsService = Craft::$app->getEntries();
             $allSections = $sectionsService->getAllSections();
+
+            if ($search !== null) {
+                $allSections = array_values(array_filter(
+                    $allSections,
+                    fn (Section $section): bool => stripos($section->handle ?? '', $search) !== false
+                        || stripos($section->name ?? '', $search) !== false,
+                ));
+            }
 
             $sections = array_map(
                 fn ($section) => [
@@ -147,13 +158,28 @@ class CraftTools {
      */
     #[McpTool(
         name: 'list_fields',
-        description: 'List all custom fields in Craft CMS with their type and group',
+        description: 'List all custom fields in Craft CMS with their type and group. Optionally filter by handle/name search term or field type.',
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
-    public function listFields(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
+    public function listFields(?string $search = null, ?string $type = null, ?RequestContext $context = null): array {
+        return SafeExecution::run(function () use ($search, $type): array {
             $fieldsService = Craft::$app->getFields();
             $allFields = $fieldsService->getAllFields();
+
+            if ($search !== null) {
+                $allFields = array_filter(
+                    $allFields,
+                    fn (FieldInterface $field): bool => stripos($field->handle ?? '', $search) !== false
+                        || stripos($field->name ?? '', $search) !== false,
+                );
+            }
+
+            if ($type !== null) {
+                $allFields = array_filter(
+                    $allFields,
+                    fn (FieldInterface $field): bool => stripos(SchemaHelper::getFieldTypeName($field), $type) !== false,
+                );
+            }
 
             $fields = [];
             foreach ($allFields as $field) {
