@@ -19,7 +19,8 @@ describe('Scope', function () {
             ->and(Scope::Content->allows(ToolCategory::DATABASE->value, true))->toBeFalse()
             ->and(Scope::Content->allows(ToolCategory::GRAPHQL->value, true))->toBeFalse()
             ->and(Scope::Content->allows(ToolCategory::SYSTEM->value, true))->toBeFalse()
-            ->and(Scope::Content->allows(ToolCategory::BACKUP->value, true))->toBeFalse();
+            ->and(Scope::Content->allows(ToolCategory::BACKUP->value, true))->toBeFalse()
+            ->and(Scope::Content->allows(ToolCategory::MULTISITE->value, true))->toBeFalse();
     });
 
     it('full allows everything', function () {

@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\http;
 
 use craft\helpers\Db;
 use DateTimeImmutable;
+use RuntimeException;
 use stimmt\craft\Mcp\records\Token as Record;
 
 /**
@@ -27,7 +28,10 @@ final class RecordStore implements TokenStore {
         $record->userId = $token->userId;
         $record->scope = $token->scope->value;
         $record->expiryDate = Db::prepareDateForDb($token->expiryDate);
-        $record->save(false);
+
+        if (!$record->save(false)) {
+            throw new RuntimeException('Failed to persist the token');
+        }
 
         return $this->toToken($record);
     }

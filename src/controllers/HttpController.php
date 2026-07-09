@@ -36,6 +36,12 @@ class HttpController extends Controller {
             return $this->error(404, -32601, 'MCP HTTP transport is not enabled');
         }
 
+        // An empty allowlist admits every IP (the default); a non-empty one
+        // rejects everything else before auth even runs.
+        if ($settings->allowedIps !== [] && !in_array($this->request->getUserIP(), $settings->allowedIps, true)) {
+            return $this->error(403, -32001, 'Client IP is not allowed');
+        }
+
         if ($this->request->getMethod() === 'GET') {
             $this->response->getHeaders()->set('Allow', 'POST, DELETE, OPTIONS');
 

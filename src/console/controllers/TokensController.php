@@ -83,6 +83,7 @@ class TokensController extends Controller {
   }
 
 JSON);
+        $this->stdout("\nThe url host comes from the primary site. If Craft answers on a different domain (headless setups often serve the CMS on a separate host), replace the host with the domain where the control panel lives.\n", Console::FG_YELLOW);
 
         return ExitCode::OK;
     }

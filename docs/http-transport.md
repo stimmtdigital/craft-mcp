@@ -96,6 +96,8 @@ Scope is applied on top of the plugin's existing global settings (`enabled`, `en
 3. Restart Claude Desktop.
 4. Verify the connection: the `craft-cms` server should appear in Claude Desktop's connected servers list. Ask the assistant to run `list_sections`, a lightweight readonly tool available to every scope; a successful response confirms both the connection and the token's authentication.
 
+The printed `url` host comes from the primary site's base URL. On headless deployments where the frontend and the CMS live on different domains, replace the host with the domain where Craft itself answers (typically the control panel's domain), keeping the `/mcp` path.
+
 ## Managing Tokens
 
 List every token, including which user it acts as, its scope, expiry, and last use:
@@ -117,6 +119,8 @@ Revocation and expiry both take effect immediately on the next request; there is
 - **HTTPS only.** Bearer tokens are sent as plain headers; only use this transport behind TLS. Do not enable it on a plain HTTP site.
 - **Tokens are credentials.** Treat a minted token like a password: store it in a secrets manager or your MCP client's own config, never in a repository or shared document.
 - **Scope minimally.** Grant `readonly` or `content` by default and reserve `full` for developers who genuinely need code execution and direct database access.
+- **Scope, not Craft permissions, bounds a token.** Tools call Craft services directly, so a `content` token can write to any section regardless of what its user may edit in the control panel. The user link governs draft authorship and auditing; per-permission enforcement is a possible future addition.
+- **IP allowlisting applies.** When the plugin's `allowedIps` setting is non-empty, the endpoint rejects requests from any other IP with a 403 before authentication runs. An empty list (the default) allows all IPs.
 - **Sessions are server-side files.** Each connection's session state is written under Craft's runtime storage path (`storage/runtime/mcp-sessions/`) and expires after `httpSessionTtl` seconds of inactivity (default: 3600). No session data is kept client-side beyond the `Mcp-Session-Id` header.
 
 ## Troubleshooting
@@ -124,6 +128,10 @@ Revocation and expiry both take effect immediately on the next request; there is
 ### 401 Unauthorized
 
 Returned when the bearer token is missing, malformed, unknown, or expired, or when the Craft user it belongs to is disabled or suspended. The response includes a `WWW-Authenticate: Bearer` header. Check `mcp/tokens/list` to confirm the token still exists and hasn't expired, and confirm the user account is enabled.
+
+### 403 Forbidden
+
+Returned when the plugin's `allowedIps` setting is non-empty and the request comes from an IP that is not listed. Check the setting in `config/mcp.php` and remember that proxies can change the client IP Craft sees.
 
 ### 404 Not Found
 

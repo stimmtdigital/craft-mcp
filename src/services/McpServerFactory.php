@@ -88,7 +88,10 @@ class McpServerFactory {
     /**
      * HTTP transport for one request, with the SDK's default protections and
      * the current host added to the DNS-rebinding allowlist (the default list
-     * is localhost-only, which would reject every staging domain).
+     * is localhost-only, which would reject every staging domain). Admitting
+     * the request's own host makes that middleware permissive by design here;
+     * the real gate is bearer auth in the controller plus Craft's own
+     * trusted-host validation upstream.
      */
     public function createHttpTransport(ServerRequestInterface $request, string $hostName): StreamableHttpTransport {
         $middleware = [

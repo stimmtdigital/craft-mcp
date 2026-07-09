@@ -112,7 +112,7 @@ class EntryWorkflowTools {
         description: 'Copy an entry\'s field values from one site to another as a draft on the target site. Copies values; does not machine-translate.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::MULTISITE, dangerous: true)]
+    #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $fromSite, $toSite): array {
             SiteResolver::resolve($fromSite);
