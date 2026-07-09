@@ -8,6 +8,7 @@ use Craft;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\Content\TextContent;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use ParseError;
 use Psr\Log\LoggerInterface;
@@ -79,6 +80,7 @@ class TinkerTools {
     #[McpTool(
         name: 'tinker',
         description: 'Execute PHP code within Craft CMS context. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING, dangerous: true)]
     public function tinker(

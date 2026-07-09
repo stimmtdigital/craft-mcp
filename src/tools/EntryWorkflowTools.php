@@ -8,6 +8,7 @@ use Craft;
 use craft\elements\Entry;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\elements\Reader;
@@ -37,6 +38,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'publish_entry',
         description: 'Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
@@ -54,6 +56,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'delete_entry',
         description: 'Soft-delete an entry (moves to trash, restorable in the control panel).',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function deleteEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
@@ -71,6 +74,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'duplicate_entry',
         description: 'Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for "like X but change these".',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function duplicateEntry(
@@ -106,6 +110,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'copy_entry_to_site',
         description: 'Copy an entry\'s field values from one site to another as a draft on the target site. Copies values; does not machine-translate.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::MULTISITE, dangerous: true)]
     public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {

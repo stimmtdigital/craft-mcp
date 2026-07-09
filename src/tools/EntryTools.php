@@ -9,6 +9,7 @@ use craft\elements\Entry;
 use craft\elements\User;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\elements\Reader;
@@ -95,6 +96,7 @@ class EntryTools {
     #[McpTool(
         name: 'create_entry',
         description: 'Create an entry. fields is JSON in the payload format (natural keys: {section,slug} for entries, {volume,filename} for assets, matrix blocks by type handle). Saves as a draft unless mode or the entryWriteMode setting says live. Use describe_entry_schema first to learn the shape.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function createEntry(
@@ -139,6 +141,7 @@ class EntryTools {
     #[McpTool(
         name: 'update_entry',
         description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function updateEntry(

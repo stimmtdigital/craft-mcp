@@ -8,6 +8,7 @@ use Craft;
 use craft\models\GqlSchema;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -106,6 +107,7 @@ class GraphqlTools {
     #[McpTool(
         name: 'execute_graphql',
         description: 'Execute a GraphQL query against Craft CMS. WARNING: This is a dangerous operation that can modify data via mutations.',
+        annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL, dangerous: true)]
     public function executeGraphql(
