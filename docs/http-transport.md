@@ -1,5 +1,7 @@
 # HTTP Transport
 
+> **Since 1.4.0.** Everything on this page requires Craft MCP 1.4.0 or later.
+
 By default, Craft MCP speaks to AI assistants over stdio: the client launches a local PHP process and talks to it directly. That works well when the assistant runs on the same machine as your Craft install, but it does not help a content editor who wants to connect Claude Desktop to a remote or production site with no local PHP, DDEV, or SSH access.
 
 The HTTP transport solves this by serving the MCP server from an endpoint on your Craft site itself, authenticated with a per-user bearer token. Anyone with a valid token can point Claude Desktop (or any MCP client that supports Streamable HTTP) straight at your site's URL, with access scoped to exactly what their token allows.

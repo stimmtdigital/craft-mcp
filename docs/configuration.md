@@ -84,11 +84,11 @@ return [
 | `disabledTools` | `array` | `[]` | List of tool names to disable regardless of other settings |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
-| `entryWriteMode` | `string` | `'draft'` | Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
-| `httpTransport` | `bool` | `false` | Whether the MCP server is also served over HTTP with per-user bearer tokens |
-| `httpPath` | `string` | `'mcp'` | Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |
-| `httpSessionTtl` | `int` | `3600` | HTTP session TTL in seconds; idle sessions are cleaned up after this long |
-| `httpPublicUrl` | `string\|null` | `null` | Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
+| `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
+| `httpTransport` | `bool` | `false` | Since 1.4.0. Whether the MCP server is also served over HTTP with per-user bearer tokens |
+| `httpPath` | `string` | `'mcp'` | Since 1.4.0. Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |
+| `httpSessionTtl` | `int` | `3600` | Since 1.4.0. HTTP session TTL in seconds; idle sessions are cleaned up after this long |
+| `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 
