@@ -27,6 +27,8 @@ final class SafeExecution {
      * @throws ToolCallException
      */
     public static function run(callable $callback): mixed {
+        ConfigFreshness::ensure();
+
         try {
             return $callback();
         } catch (ToolCallException $e) {
