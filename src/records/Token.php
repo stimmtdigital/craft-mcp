@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\records;
 
 use craft\db\ActiveRecord;
+use Override;
 
 /**
  * ActiveRecord for the mcp_tokens table.
@@ -20,6 +21,7 @@ use craft\db\ActiveRecord;
  * @author Max van Essen <support@stimmt.digital>
  */
 class Token extends ActiveRecord {
+    #[Override]
     public static function tableName(): string {
         return '{{%mcp_tokens}}';
     }

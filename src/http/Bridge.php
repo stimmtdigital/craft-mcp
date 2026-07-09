@@ -26,12 +26,18 @@ final readonly class Bridge {
         );
 
         foreach ($request->getHeaders()->toArray() as $name => $values) {
-            foreach ((array) $values as $value) {
-                $psr7 = $psr7->withAddedHeader($name, $value);
-            }
+            $psr7 = $this->withHeader($psr7, (string) $name, $values);
         }
 
         return $psr7->withBody($factory->createStream($request->getRawBody()));
+    }
+
+    private function withHeader(ServerRequestInterface $psr7, string $name, mixed $values): ServerRequestInterface {
+        foreach ((array) $values as $value) {
+            $psr7 = $psr7->withAddedHeader($name, (string) $value);
+        }
+
+        return $psr7;
     }
 
     public function apply(ResponseInterface $psr7, CraftResponse $response): CraftResponse {

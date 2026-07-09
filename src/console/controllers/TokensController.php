@@ -6,7 +6,9 @@ namespace stimmt\craft\Mcp\console\controllers;
 
 use Craft;
 use craft\console\Controller;
+use craft\elements\User;
 use craft\helpers\Console;
+use Override;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\http\Tokens;
@@ -31,11 +33,14 @@ class TokensController extends Controller {
     /** @var int|null Days until the token expires; omit for no expiry. */
     public ?int $expires = null;
 
+    #[Override]
     public function options($actionID): array {
-        return match ($actionID) {
+        $options = match ($actionID) {
             'create' => ['user', 'scope', 'name', 'expires'],
             default => [],
         };
+
+        return array_merge(parent::options($actionID), $options);
     }
 
     /**
@@ -85,7 +90,8 @@ JSON);
         }
 
         foreach ($tokens as $token) {
-            $user = Craft::$app->getUsers()->getUserById($token->userId)?->username ?? ('#' . $token->userId);
+            $identity = Craft::$app->getUsers()->getUserById($token->userId);
+            $user = $identity instanceof User ? $identity->username : ('#' . $token->userId);
             $expiry = $token->expiryDate?->format('Y-m-d') ?? 'never';
             $used = $token->lastUsedAt?->format('Y-m-d H:i') ?? 'never';
             $this->stdout("[{$token->id}] {$token->name}  user={$user}  scope={$token->scope->value}  expires={$expiry}  lastUsed={$used}\n");

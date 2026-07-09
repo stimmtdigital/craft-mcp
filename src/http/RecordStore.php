@@ -37,7 +37,14 @@ final class RecordStore implements TokenStore {
     }
 
     public function all(): array {
-        return array_map($this->toToken(...), Record::find()->orderBy(['id' => SORT_ASC])->all());
+        $tokens = [];
+        foreach (Record::find()->orderBy(['id' => SORT_ASC])->all() as $record) {
+            if ($record instanceof Record) {
+                $tokens[] = $this->toToken($record);
+            }
+        }
+
+        return $tokens;
     }
 
     public function touch(int $id, DateTimeImmutable $when): void {

@@ -8,6 +8,7 @@ use Craft;
 use craft\web\Controller;
 use craft\web\Response;
 use Mcp\Server\Session\FileSessionStore;
+use Psr\Log\LoggerInterface;
 use stimmt\craft\Mcp\http\Bridge;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Token;
@@ -73,7 +74,7 @@ class HttpController extends Controller {
     private function serve(Token $token): Response {
         $settings = Mcp::settings();
         $logger = McpServerFactory::createFileLogger(logLevel: $settings->logLevel);
-        Craft::$container->setSingleton(\Psr\Log\LoggerInterface::class, fn () => $logger);
+        Craft::$container->setSingleton(LoggerInterface::class, fn () => $logger);
 
         $factory = new McpServerFactory(logger: $logger);
         $store = new FileSessionStore(
@@ -88,6 +89,7 @@ class HttpController extends Controller {
         // Same discipline as bin/mcp-server: stray echo/print output would
         // corrupt the JSON body, so buffer it away to the log instead.
         ob_start();
+
         try {
             $psr7 = $server->run($transport);
         } finally {
