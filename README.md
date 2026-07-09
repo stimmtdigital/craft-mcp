@@ -11,27 +11,18 @@
 
 ## Introduction
 
-Craft MCP accelerates AI-assisted development by giving your AI assistant direct access to your Craft installation's content architecture, database schema, and configuration.
+Craft MCP is an MCP (Model Context Protocol) server for Craft CMS. It gives AI assistants direct access to your installation's content, schema, and configuration: rather than describing your field layouts or Matrix setups by hand, the assistant queries them, writes reviewable draft content in a natural-key format, and inspects the system it is working in.
 
-At its foundation, Craft MCP is an MCP server equipped with 50 specialized tools, 9 analysis prompts, and 12 data resources designed to streamline AI-assisted workflows in Craft projects. Rather than manually describing your field layouts, Matrix configurations, or entry structures, your AI assistant can query this information directly from your installation, ensuring accurate and context-aware code generation.
+It ships more than 50 specialized tools, 9 analysis prompts, and 12 data resources, served over stdio for local development and over HTTP with scoped bearer tokens for remote users.
 
-The tools span content management (entries, assets, categories, users), schema inspection (sections, fields, volumes, entry types), system administration (configuration, logs, caches, plugins), database operations (schema inspection, query execution), and debugging utilities (queue jobs, deprecations, project config). For advanced use cases, a Tinker tool allows executing PHP code directly within your Craft application context.
-
-## Installation
-
-Craft MCP can be installed via Composer:
+## Quick Start
 
 ```bash
 composer require stimmt/craft-mcp
-```
-
-Next, install the plugin through Craft's CLI:
-
-```bash
 php craft plugin/install mcp
 ```
 
-Then create a configuration file at `config/mcp.php` to enable the MCP server. By default, the server is disabled in production environments for security:
+Enable the server in `config/mcp.php` (it is disabled in production by default):
 
 ```php
 <?php
@@ -41,313 +32,55 @@ return [
 ];
 ```
 
-For additional configuration options including disabling specific tools, IP allowlists, and environment-specific settings, see the [Configuration Guide](docs/configuration.md).
-
-Once Craft MCP has been installed, you're ready to connect Claude Code, Cursor, Claude Desktop, or your AI assistant of choice.
-
-### Quick Setup (Recommended)
-
-Run the interactive configuration wizard to automatically generate config files for your MCP clients:
+Then run the interactive wizard to configure your MCP clients:
 
 ```bash
 php craft mcp/install
 ```
 
-The wizard will:
-- Detect your environment (DDEV or native PHP)
-- Let you select which clients to configure (Claude Code, Cursor, Claude Desktop)
-- Generate the appropriate configuration files
+That is the whole happy path. For manual client configuration (Claude Code, Cursor, Claude Desktop, SSH), see the [Client Setup guide](docs/client-setup.md); for all options including tool disabling, IP allowlists, and environment defaults, see the [Configuration guide](docs/configuration.md).
 
-Options:
-- `-e, --environment` - Override detected environment (`ddev` or `native`)
-- `-s, --serverName` - Custom server name (default: `craft-cms`)
+## Remote Access over HTTP
 
-### Manual Setup
-
-#### Claude Code
-
-1. Create a new file called `.mcp.json` in your Craft project root
-2. Add the server configuration based on your local environment:
-
-<details>
-<summary>With DDEV (recommended for Craft projects)</summary>
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "command": "ddev",
-      "args": ["exec", "php", "vendor/stimmt/craft-mcp/bin/mcp-server"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary>Without DDEV (native PHP)</summary>
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "command": "php",
-      "args": ["vendor/stimmt/craft-mcp/bin/mcp-server"]
-    }
-  }
-}
-```
-</details>
-
-#### Cursor
-
-1. Create a new file called `.cursor/mcp.json` in your Craft project root (create the `.cursor` directory if it doesn't exist)
-2. Add the server configuration based on your local environment:
-
-<details>
-<summary>With DDEV (recommended for Craft projects)</summary>
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "command": "ddev",
-      "args": ["exec", "php", "vendor/stimmt/craft-mcp/bin/mcp-server"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary>Without DDEV (native PHP)</summary>
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "command": "php",
-      "args": ["vendor/stimmt/craft-mcp/bin/mcp-server"]
-    }
-  }
-}
-```
-</details>
-
-#### Claude Desktop
-
-1. Open your Claude Desktop configuration file:
-   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-2. Add the server configuration. Unlike Claude Code and Cursor, Claude Desktop requires absolute paths for both the command and working directory:
-
-<details>
-<summary>With DDEV (recommended for Craft projects)</summary>
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "command": "/usr/local/bin/ddev",
-      "args": ["exec", "php", "vendor/stimmt/craft-mcp/bin/mcp-server"],
-      "cwd": "/path/to/your/craft/project"
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary>Without DDEV (native PHP)</summary>
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "command": "/usr/bin/php",
-      "args": ["vendor/stimmt/craft-mcp/bin/mcp-server"],
-      "cwd": "/path/to/your/craft/project"
-    }
-  }
-}
-```
-</details>
-
-You can find your absolute paths by running `which ddev` or `which php` in your terminal.
-
-#### Remote Server via SSH (Not Recommended)
-
-For development environments on remote servers, you can tunnel through SSH. Note that this approach is not recommended for production use due to security considerations.
-
-<details>
-<summary>SSH tunnel configuration</summary>
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "command": "ssh",
-      "args": [
-        "-t",
-        "user@your-server.com",
-        "cd /path/to/craft/project && php vendor/stimmt/craft-mcp/bin/mcp-server"
-      ]
-    }
-  }
-}
-```
-
-Requirements:
-- SSH key authentication must be configured (no password prompts)
-- The remote server must have PHP 8.2+ available
-- The Craft MCP plugin must be installed on the remote installation
-
-</details>
-
-## HTTP Transport (Remote Access)
-
-For remote access without SSH tunnels or local PHP, Craft MCP can serve itself over HTTP directly from your Craft site, authenticated with per-user bearer tokens scoped to `readonly`, `content`, or `full` access. This lets a content editor point Claude Desktop straight at a remote or production install with no local tooling at all.
-
-The transport is off by default. Enable it in `config/mcp.php`, mint a token with `php craft mcp/tokens/create --user=<email or username> --scope=content --name="..."`, then add it to Claude Desktop's configuration:
-
-```json
-{
-  "mcpServers": {
-    "craft-cms": {
-      "url": "https://your-site.com/mcp",
-      "headers": {
-        "Authorization": "Bearer mcp_..."
-      }
-    }
-  }
-}
-```
-
-See the [HTTP Transport Guide](docs/http-transport.md) for enabling the endpoint, minting and managing tokens, scope details, and troubleshooting.
-
-## Available MCP Tools
-
-### Content Tools
-| Name | Notes |
-|------|-------|
-| List Entries | Query entries with filtering by section, type, status, site, and full-text search |
-| Get Entry | Full entry in the payload format: relations as natural keys ({section, slug}, {volume, filename}), matrix blocks by type handle; what you read is what the write tools accept |
-| Create Entry | Create entries with natural-key field payloads; saves as a reviewable draft by default (`entryWriteMode` setting / `mode` param) |
-| Update Entry | Draft-first edits: updating a live entry creates a draft on top, leaving the live version untouched until published |
-| Publish Entry | Applies a draft to its canonical entry, or enables a disabled entry |
-| Delete Entry | Soft delete to the trash (restorable in the control panel) |
-| Duplicate Entry | Clone as a draft, with optional title/slug/field overrides ("like X but change these") |
-| Copy Entry To Site | Copy field values to another site's version as a draft (localization workflows) |
-| List Assets | Browse assets with volume and folder filtering |
-| Get Asset | Get detailed asset information including dimensions and metadata |
-| List Asset Folders | List folder structure within asset volumes |
-| List Categories | Query categories by group with hierarchy information |
-| List Users | Query users with group filtering |
-| List Globals | List all global sets with their field values |
-
-### Schema & Structure Tools
-| Name | Notes |
-|------|-------|
-| Describe Entry Schema | Everything needed to write a valid entry first try: fields, kinds, required flags, matrix block types (depth-expanded), native fields, writable meta attributes, an optional real entry as a golden-fixture example, and per-field `input` shapes describing the payload each field accepts |
-| List Sections | Inspect all sections with their entry types; filter by handle/name search |
-| List Fields | Get all fields with types and settings; filter by search term or field type |
-| List Volumes | Inspect asset volume configurations and filesystem settings |
-| List Plugins | Get installed plugins with version, status, and settings |
-
-### System Tools
-| Name | Notes |
-|------|-------|
-| Get System Info | Read Craft version, PHP version, database driver, and environment |
-| Get Config | Read Craft general config and plugin configuration values |
-| Read Logs | Search and filter log entries by level, source, pattern, with text or JSON output |
-| Get Last Error | Retrieve the most recent error from logs |
-| Clear Caches | Clear specific caches or all caches at once |
-| List Routes | Inspect all registered routes including controller actions |
-| List Console Commands | List available Craft CLI commands |
-
-### Database Tools
-| Name | Notes |
-|------|-------|
-| Get Database Info | Get database connection details and server version |
-| Get Database Schema | Inspect the complete database schema with all tables and columns |
-| Get Table Counts | Get row counts for core Craft tables |
-| Run Query | Execute read-only SELECT queries against the database |
-
-### Debugging Tools
-| Name | Notes |
-|------|-------|
-| Get Queue Jobs | Inspect queue jobs by status (pending, reserved, failed, done) |
-| Get Project Config Diff | Show pending project config changes that need to be applied |
-| Get Deprecations | Read deprecation warnings from logs and the deprecations table |
-| Explain Query | Run EXPLAIN on queries for performance analysis |
-| Get Environment | Read safe environment information (no secrets exposed) |
-| List Event Handlers | Inspect registered Yii event handlers and listeners |
-| Tinker | Execute arbitrary PHP code within your Craft application context |
-
-### Multi-Site Tools
-| Name | Notes |
-|------|-------|
-| List Sites | Get all sites with handles, languages, and base URLs |
-| Get Site | Get detailed site information by ID or handle |
-| List Site Groups | List site groups with their associated sites |
-
-### GraphQL Tools
-| Name | Notes |
-|------|-------|
-| List GraphQL Schemas | List all GraphQL schemas with their scopes |
-| Get GraphQL Schema | Get schema details including SDL |
-| Execute GraphQL | Run GraphQL queries and mutations |
-| List GraphQL Tokens | List API tokens with their associated schemas |
-
-### Backup Tools
-| Name | Notes |
-|------|-------|
-| List Backups | List available database backups |
-| Create Backup | Create a new database backup |
-
-### Self-Awareness Tools
-| Name | Notes |
-|------|-------|
-| Get MCP Info | Get plugin version, status, and configuration |
-| List MCP Tools | List all available tools with descriptions and enabled status |
-| Reload MCP | Reload to detect newly installed plugins without server restart |
-
-### Commerce Tools (when Craft Commerce is installed)
-| Name | Notes |
-|------|-------|
-| List Products | List products with variant information |
-| Get Product | Get detailed product information |
-| List Orders | List orders with status filtering |
-| Get Order | Get order details by ID or number |
-| List Order Statuses | List available order statuses |
-| List Product Types | List product type configurations |
+Content editors and office users can point Claude Desktop straight at a remote install: the plugin serves the MCP protocol from a Craft endpoint, authenticated with per-user bearer tokens scoped to `readonly`, `content`, or `full` access. Off by default; enabling it, minting tokens (`php craft mcp/tokens/create`), and troubleshooting are covered in the [HTTP Transport guide](docs/http-transport.md).
 
 ## Content Writing for Agents
 
-Entry reads and writes share one format, powered by an element-generic `elements` module:
+Entry reads and writes share one payload format: relations as natural keys (`{"section": "pages", "slug": "about"}`), Matrix blocks by type handle, and per-field `input` shapes from `describe_entry_schema` that tell an agent exactly what every field accepts, third-party fields included. Writes land as reviewable drafts with a control panel deep link, and `publish_entry` makes them live. The full format, workflow, and schema discovery are covered in the [Content Writing guide](docs/content-writing.md).
 
-- **Natural keys everywhere**: relations are `{"section": "pages", "slug": "about"}`, assets are `{"volume": "images", "filename": "hero.jpg"}`, categories/tags are `{"group": "...", "slug": "..."}`, users are `{"username": "..."}`. No numeric IDs to guess.
-- **Matrix in core shape**: blocks keyed by id (or `new1`...), `type` as the entry-type handle, `title`/`enabled` honored, disabled blocks preserved on round trips.
-- **Draft-first**: writes land as drafts with a `cpEditUrl` deep link for human review; `publish_entry` (or a reviewer in the control panel) makes them live. Set `entryWriteMode: 'live'` in `config/mcp.php` to restore immediate saves.
-- **Structured feedback**: validation failures return per-field errors; unresolvable natural keys become warnings on an otherwise successful save, never a guess or a silent drop.
-- **Third-party friendly**: any field type round-trips via Craft's own serialize contract; fields extending the core relation/Matrix types get natural keys automatically; `EVENT_REGISTER_FIELD_TRANSLATORS` covers fields that embed element ids in custom formats.
-- **Per-field input shapes**: read the `input` structure for each field from `describe_entry_schema` to understand the exact payload shape each field accepts (natural-key format for relations, block types for Matrix, allowed values for options, etc.).
+## The Toolbox
+
+| Category | Highlights |
+|----------|-----------|
+| [Content](docs/tools/content.md) | Entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), schema discovery via `describe_entry_schema`, assets, categories, users, globals |
+| [System](docs/tools/system.md) | System info, config, logs, caches, routes, console commands |
+| [Database](docs/tools/database.md) | Schema inspection, table counts, read-only queries |
+| [Debugging](docs/tools/debugging.md) | Queue jobs, project config diff, deprecations, EXPLAIN, event handlers, and a Tinker tool for executing PHP in the Craft context |
+| [Multi-Site](docs/tools/multisite.md) | Sites, site groups, per-site details |
+| [GraphQL](docs/tools/graphql.md) | Schemas, SDL, query execution, tokens |
+| [Backup](docs/tools/backup.md) | Create and list database backups |
+| [Self-Awareness](docs/tools/mcp.md) | Plugin info, tool listing with risk annotations, hot reload |
+| [Commerce](docs/tools/commerce.md) | Products, orders, and statuses (when Craft Commerce is installed) |
+
+Tools that modify data or execute code are flagged `dangerous`: they sit behind the `enableDangerousTools` setting, carry a `destructiveHint` annotation in `tools/list`, and are excluded from `readonly` and (except entry workflow) `content` HTTP scopes. See the [Tools Overview](docs/tools/README.md) for the complete reference.
 
 ## Extending
 
-Other Craft plugins and modules can register their own MCP tools by listening to the `EVENT_REGISTER_TOOLS` event. This allows you to expose plugin-specific functionality to AI assistants, such as custom element types, module APIs, or specialized queries.
-
-See the [Extending Guide](docs/extending.md) for implementation details, code examples, and best practices for tool development.
+Other plugins and modules can register their own tools, prompts, resources, and field translators through events (`EVENT_REGISTER_TOOLS`, `EVENT_REGISTER_FIELD_TRANSLATORS`, and friends). See the [Extending guide](docs/extending.md) for implementation details and examples.
 
 ## Documentation
 
-- **[Installation](docs/installation.md)** - Requirements, Composer setup, and detailed installation steps
-- **[Configuration](docs/configuration.md)** - All configuration options, environment variables, and security settings
-- **[HTTP Transport](docs/http-transport.md)** - Remote access over HTTP with per-user scoped bearer tokens
-- **[Tools Reference](docs/tools/README.md)** - Complete documentation for all 50 tools with parameters and examples
-- **[Prompts](docs/prompts.md)** - Pre-built analysis prompts for content health, audits, and schema exploration
+The [documentation index](docs/README.md) links everything; the direct routes:
+
+- **[Installation](docs/installation.md)** - Requirements, Composer setup, detailed installation steps
+- **[Client Setup](docs/client-setup.md)** - Wizard and manual configs for Claude Code, Cursor, Claude Desktop
+- **[Configuration](docs/configuration.md)** - All configuration options and security settings
+- **[HTTP Transport](docs/http-transport.md)** - Remote access with per-user scoped bearer tokens
+- **[Content Writing](docs/content-writing.md)** - The payload format, draft workflow, and schema discovery for agents
+- **[Tools Reference](docs/tools/README.md)** - Complete documentation for every tool
+- **[Prompts](docs/prompts.md)** - Pre-built analysis prompts
 - **[Resources](docs/resources.md)** - Read-only URI-based access to schema, config, and content data
-- **[Extending](docs/extending.md)** - Guide for plugin and module developers to register custom tools, prompts, and resources
+- **[Extending](docs/extending.md)** - Register custom tools, prompts, resources, and field translators
 
 ## Contributing
 
