@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\elements\Asset;
+use craft\models\FieldLayout;
 use craft\models\VolumeFolder;
 use craft\services\Assets;
 use Mcp\Capability\Attribute\McpTool;
@@ -240,7 +241,7 @@ class AssetTools {
 
             // Custom fields
             $fieldValues = [];
-            if ($asset->getFieldLayout()) {
+            if ($asset->getFieldLayout() instanceof FieldLayout) {
                 foreach ($asset->getFieldLayout()->getCustomFields() as $field) {
                     $value = $asset->getFieldValue($field->handle);
                     $fieldValues[$field->handle] = Serializer::serialize($value);
