@@ -30,6 +30,25 @@ describe('Bridge', function () {
             ->and((string) $psr7->getBody())->toBe('{"jsonrpc":"2.0"}');
     });
 
+    it('does not duplicate the Host header the PSR-7 factory already derived from the URI', function () {
+        // Nyholm's Request constructor sets an initial Host header from the URI
+        // when none is supplied; Craft's own header collection also carries the
+        // client's real Host header, so copying it with withAddedHeader (instead
+        // of replacing the first value) doubles it. A doubled Host header fails
+        // the SDK's DnsRebindingProtectionMiddleware, which compares it verbatim
+        // against the allowed hostname.
+        $request = (new ReflectionClass(CraftRequest::class))->newInstanceWithoutConstructor();
+        $request->setRawBody('{}');
+        $request->setUrl('/mcp');
+        $request->setHostInfo('https://cms.craft.dev');
+        $request->getHeaders()->set('Host', 'cms.craft.dev');
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+
+        $psr7 = (new Bridge())->toPsr7($request);
+
+        expect($psr7->getHeaderLine('Host'))->toBe('cms.craft.dev');
+    });
+
     it('applies a psr-7 response onto a craft response', function () {
         $psr7 = new Psr7Response(202, ['Mcp-Session-Id' => 'abc', 'Content-Type' => 'application/json'], '{"ok":true}');
         // CraftResponse::init() (via yii\web\Response) reads Yii::$app->charset,

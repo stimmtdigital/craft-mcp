@@ -32,8 +32,21 @@ final readonly class Bridge {
         return $psr7->withBody($factory->createStream($request->getRawBody()));
     }
 
+    /**
+     * The first value replaces whatever the PSR-7 factory may have derived
+     * on construction (notably Host, which Nyholm's Request sets from the
+     * URI); withAddedHeader alone would duplicate it instead of overriding
+     * it, and a doubled Host header fails the SDK's DNS-rebinding check.
+     * Remaining values append, preserving genuinely multi-valued headers.
+     */
     private function withHeader(ServerRequestInterface $psr7, string $name, mixed $values): ServerRequestInterface {
-        foreach ((array) $values as $value) {
+        $values = (array) $values;
+        if ($values === []) {
+            return $psr7;
+        }
+
+        $psr7 = $psr7->withHeader($name, (string) array_shift($values));
+        foreach ($values as $value) {
             $psr7 = $psr7->withAddedHeader($name, (string) $value);
         }
 
