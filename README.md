@@ -204,6 +204,27 @@ Requirements:
 
 </details>
 
+## HTTP Transport (Remote Access)
+
+For remote access without SSH tunnels or local PHP, Craft MCP can serve itself over HTTP directly from your Craft site, authenticated with per-user bearer tokens scoped to `readonly`, `content`, or `full` access. This lets a content editor point Claude Desktop straight at a remote or production install with no local tooling at all.
+
+The transport is off by default. Enable it in `config/mcp.php`, mint a token with `php craft mcp/tokens/create --user=<email or username> --scope=content --name="..."`, then add it to Claude Desktop's configuration:
+
+```json
+{
+  "mcpServers": {
+    "craft-cms": {
+      "url": "https://your-site.com/mcp",
+      "headers": {
+        "Authorization": "Bearer mcp_..."
+      }
+    }
+  }
+}
+```
+
+See the [HTTP Transport Guide](docs/http-transport.md) for enabling the endpoint, minting and managing tokens, scope details, and troubleshooting.
+
 ## Available MCP Tools
 
 ### Content Tools
@@ -322,6 +343,7 @@ See the [Extending Guide](docs/extending.md) for implementation details, code ex
 
 - **[Installation](docs/installation.md)** - Requirements, Composer setup, and detailed installation steps
 - **[Configuration](docs/configuration.md)** - All configuration options, environment variables, and security settings
+- **[HTTP Transport](docs/http-transport.md)** - Remote access over HTTP with per-user scoped bearer tokens
 - **[Tools Reference](docs/tools/README.md)** - Complete documentation for all 50 tools with parameters and examples
 - **[Prompts](docs/prompts.md)** - Pre-built analysis prompts for content health, audits, and schema exploration
 - **[Resources](docs/resources.md)** - Read-only URI-based access to schema, config, and content data
