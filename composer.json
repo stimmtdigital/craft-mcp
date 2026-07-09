@@ -77,6 +77,7 @@
         }
     },
     "scripts": {
+        "cut": "php .github/scripts/cut.php",
         "lint": "pint",
         "lint:test": "pint --test",
         "refactor": "rector process",
