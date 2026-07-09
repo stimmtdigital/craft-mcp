@@ -5,11 +5,20 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\services;
 
 use Craft;
+use Mcp\Capability\Registry;
 use Mcp\Server;
 use Mcp\Server\Builder;
+use Mcp\Server\Session\SessionStoreInterface;
+use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
+use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
+use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
 use Mcp\Server\Transport\StdioTransport;
+use Mcp\Server\Transport\StreamableHttpTransport;
 use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\support\FileLogger;
@@ -28,9 +37,13 @@ class McpServerFactory {
     }
 
     /**
-     * Create a configured MCP Server instance.
+     * Create a configured MCP Server instance. A non-null $scope filters the
+     * tool registry after discovery (HTTP path); null keeps today's stdio
+     * behavior exactly. A session store overrides the SDK in-memory default.
      */
-    public function create(): Server {
+    public function create(?Scope $scope = null, ?SessionStoreInterface $sessionStore = null): Server {
+        $registry = new Registry(null, $this->logger ?? new NullLogger());
+
         $builder = Server::builder()
             ->setServerInfo(
                 name: 'Craft CMS MCP Server',
@@ -40,9 +53,14 @@ class McpServerFactory {
             ->setDiscovery(
                 basePath: dirname(__DIR__),
                 scanDirs: ['tools', 'prompts', 'resources'],
-                excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts'],
+                excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts', 'elements', 'http', 'records', 'migrations', 'controllers', 'console', 'installer'],
             )
-            ->setContainer($this->container);
+            ->setContainer($this->container)
+            ->setRegistry($registry);
+
+        if ($sessionStore !== null) {
+            $builder->setSession(sessionStore: $sessionStore);
+        }
 
         // Add custom logger if provided (writes to separate file, not Craft logs)
         if ($this->logger !== null) {
@@ -51,7 +69,13 @@ class McpServerFactory {
 
         $this->registerExternalElements($builder);
 
-        return $builder->build();
+        $server = $builder->build();
+
+        if ($scope !== null) {
+            $this->applyScope($registry, $scope);
+        }
+
+        return $server;
     }
 
     /**
@@ -59,6 +83,21 @@ class McpServerFactory {
      */
     public function createTransport(): StdioTransport {
         return new StdioTransport();
+    }
+
+    /**
+     * HTTP transport for one request, with the SDK's default protections and
+     * the current host added to the DNS-rebinding allowlist (the default list
+     * is localhost-only, which would reject every staging domain).
+     */
+    public function createHttpTransport(ServerRequestInterface $request, string $hostName): StreamableHttpTransport {
+        $middleware = [
+            new CorsMiddleware(),
+            new DnsRebindingProtectionMiddleware(allowedHosts: ['localhost', '127.0.0.1', '[::1]', strtolower($hostName)]),
+            new ProtocolVersionMiddleware(),
+        ];
+
+        return new StreamableHttpTransport($request, logger: $this->logger, middleware: $middleware);
     }
 
     /**
@@ -71,6 +110,22 @@ class McpServerFactory {
         }
 
         return new FileLogger($logPath, $logLevel);
+    }
+
+    /**
+     * Unregister every tool the scope or the global settings disallow. Runs
+     * against the informational ToolRegistry, so external event-registered
+     * tools are covered too.
+     */
+    private function applyScope(Registry $registry, Scope $scope): void {
+        foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
+            $allowed = Mcp::isToolEnabled($definition->name)
+                && $scope->allows($definition->category, $definition->dangerous);
+
+            if (!$allowed) {
+                $registry->unregisterTool($definition->name);
+            }
+        }
     }
 
     private function getInstructions(): string {
