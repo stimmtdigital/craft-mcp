@@ -31,6 +31,7 @@ enum Scope: string {
         $scope = self::tryFrom(strtolower(trim($value)));
         if ($scope === null) {
             $valid = implode(', ', array_column(self::cases(), 'value'));
+
             throw new InvalidArgumentException("Unknown scope '{$value}'; use one of: {$valid}");
         }
 

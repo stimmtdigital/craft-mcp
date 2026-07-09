@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use stimmt\craft\Mcp\http\Scope;
-use stimmt\craft\Mcp\http\Token;
 use stimmt\craft\Mcp\http\Tokens;
 use stimmt\craft\Mcp\Tests\Fixtures\InMemoryTokenStore;
 
