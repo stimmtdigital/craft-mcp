@@ -33,6 +33,17 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      # To cut a pre-release: git tag v1.4.0-beta.1 && git push origin v1.4.0-beta.1
+      # Pre-release tags publish immediately for testers; stable tags create a
+      # draft so the title and notes get a human pass before publishing.
+      - name: Determine release channel
+        id: channel
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-alpha*|*-beta*|*-rc*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
       - name: Generate changelog
         id: changelog
         uses: orhun/git-cliff-action@v4
@@ -55,7 +66,7 @@ jobs:
             ```bash
             composer require stimmt/craft-mcp:^${{ steps.version.outputs.version }}
             ```
-          draft: false
-          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
+          draft: ${{ steps.channel.outputs.prerelease == 'false' }}
+          prerelease: ${{ steps.channel.outputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -27,6 +27,16 @@ After Composer finishes downloading the package, install the plugin through Craf
 php craft plugin/install mcp
 ```
 
+### Beta Releases
+
+Pre-releases are tagged like `v1.4.0-beta.1` and marked as pre-release on GitHub. Composer never installs them by accident: its default stability is `stable`, so regular installs keep resolving to the latest stable version. To test a beta, opt in explicitly:
+
+```bash
+composer require stimmt/craft-mcp:^1.4.0@beta
+```
+
+Most Craft projects ship with `minimum-stability: dev` and `prefer-stable: true` in their root `composer.json`, so an exact constraint like `^1.4.0-beta.1` also resolves without extra flags. When the stable version is released, the same constraint upgrades to it with a normal `composer update`.
+
 ### Local Development
 
 If you're contributing to Craft MCP or developing it locally, you can install from a local path:
