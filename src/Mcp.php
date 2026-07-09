@@ -7,7 +7,10 @@ namespace stimmt\craft\Mcp;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
+use craft\events\RegisterUrlRulesEvent;
 use craft\services\Path;
+use craft\web\Request as WebRequest;
+use craft\web\UrlManager;
 use Override;
 use stimmt\craft\Mcp\events\RegisterPromptsEvent;
 use stimmt\craft\Mcp\events\RegisterResourcesEvent;
@@ -17,6 +20,7 @@ use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\services\PromptRegistry;
 use stimmt\craft\Mcp\services\ResourceRegistry;
 use stimmt\craft\Mcp\services\ToolRegistry;
+use yii\base\Event;
 
 /**
  * Craft MCP Plugin
@@ -88,6 +92,8 @@ class Mcp extends BasePlugin {
     #[Override]
     public function init(): void {
         parent::init();
+
+        $this->registerHttpEndpoint();
 
         Craft::info('Craft MCP plugin loaded', __METHOD__);
     }
@@ -193,6 +199,30 @@ class Mcp extends BasePlugin {
      */
     public function getServerFactory(): McpServerFactory {
         return new McpServerFactory();
+    }
+
+    /**
+     * Registers the HTTP transport endpoint when enabled. Off by default: no
+     * setting, no route, no surface.
+     */
+    private function registerHttpEndpoint(): void {
+        $request = Craft::$app->getRequest();
+        if (!$request instanceof WebRequest || !$request->getIsSiteRequest()) {
+            return;
+        }
+
+        $settings = self::settings();
+        if (!$settings->httpTransport) {
+            return;
+        }
+
+        Event::on(
+            UrlManager::class,
+            UrlManager::EVENT_REGISTER_SITE_URL_RULES,
+            static function (RegisterUrlRulesEvent $event) use ($settings): void {
+                $event->rules[$settings->httpPath] = 'mcp/http/handle';
+            },
+        );
     }
 
     /**
