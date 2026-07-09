@@ -67,6 +67,10 @@ final class PluginReloader {
         '_entryTypes' => null,
     ];
 
+    private const array FIELDS_SERVICE_LAYOUT_PROPERTIES = [
+        '_layouts' => null,
+    ];
+
     /**
      * Re-read the project config from YAML: clears the internal cache and
      * resets the ProjectConfig service. Adopted from PR #18 (dgaidula).
@@ -74,6 +78,25 @@ final class PluginReloader {
     public static function resetProjectConfig(): void {
         self::clearProjectConfigCache();
         Craft::$app->getProjectConfig()->reset();
+    }
+
+    /**
+     * Drop the Fields service's field-layout memo so the next layout lookup
+     * rebuilds fresh CustomField elements. Craft's own Fields::refreshFields()
+     * only nulls the raw field-records memo (_fields); the separate _layouts
+     * memo holds CustomField objects that resolve and clone their
+     * FieldInterface once per process (CustomField::getField() memoizes on
+     * first access), so a project-config-only field edit such as a changed
+     * instructions string never reaches it without this: the field record
+     * refreshes but every already-built layout keeps serving the old clone.
+     */
+    public static function resetFieldLayoutsMemo(): void {
+        $fields = Craft::$app->getFields();
+        $ref = new ReflectionClass($fields);
+
+        foreach (self::FIELDS_SERVICE_LAYOUT_PROPERTIES as $propertyName => $resetValue) {
+            $ref->getProperty($propertyName)->setValue($fields, $resetValue);
+        }
     }
 
     /**

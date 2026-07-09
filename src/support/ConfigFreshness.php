@@ -12,7 +12,8 @@ use Throwable;
 /**
  * Detects external project config changes before a tool runs and refreshes
  * the long-lived server's in-process state (cached Info, ProjectConfig,
- * field and section memos). Proactive counterpart to Craft's stale check:
+ * field, field-layout, and section memos). Proactive counterpart to Craft's
+ * stale check:
  * the same configVersion comparison _acquireLock() uses to throw
  * StaleResourceException, done first so writes succeed and reads are fresh.
  * Fail-open by design: a failing probe must never block a tool call.
@@ -57,6 +58,7 @@ final class ConfigFreshness {
         Craft::$app->getIsInstalled(true);
         PluginReloader::resetProjectConfig();
         Craft::$app->getFields()->refreshFields();
+        PluginReloader::resetFieldLayoutsMemo();
         PluginReloader::resetEntriesMemos();
         Craft::info('Project config changed externally; refreshed in-process state', __METHOD__);
     }
