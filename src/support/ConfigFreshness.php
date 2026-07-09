@@ -11,12 +11,13 @@ use Throwable;
 
 /**
  * Detects external project config changes before a tool runs and refreshes
- * the long-lived server's in-process state (cached Info, ProjectConfig,
- * field, field-layout, and section memos). Proactive counterpart to Craft's
- * stale check:
- * the same configVersion comparison _acquireLock() uses to throw
- * StaleResourceException, done first so writes succeed and reads are fresh.
- * Fail-open by design: a failing probe must never block a tool call.
+ * the long-lived server's in-process state: cached Info, ProjectConfig, and
+ * the schema memos this plugin reads through (fields, field layouts,
+ * sections and entry types, sites, volumes, category groups, global sets).
+ * Proactive counterpart to Craft's stale check: the same configVersion
+ * comparison _acquireLock() uses to throw StaleResourceException, done first
+ * so writes succeed and reads are fresh. Fail-open by design: a failing
+ * probe must never block a tool call.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -41,6 +42,9 @@ final class ConfigFreshness {
     }
 
     private static function applicable(): bool {
+        // Order matters: these short-circuits keep ensure()'s catch (and its
+        // Craft::warning call) unreachable under a null or stubbed app in
+        // unit tests.
         return Craft::$app !== null
             && method_exists(Craft::$app, 'getInfo')
             && Craft::$app->getIsInstalled();
@@ -53,13 +57,20 @@ final class ConfigFreshness {
     }
 
     private static function refresh(): void {
-        // Public API that nulls the cached Info model, so the next stale
-        // check compares against a fresh configVersion.
-        Craft::$app->getIsInstalled(true);
         PluginReloader::resetProjectConfig();
         Craft::$app->getFields()->refreshFields();
         PluginReloader::resetFieldLayoutsMemo();
         PluginReloader::resetEntriesMemos();
+        Craft::$app->getSites()->refreshSites();
+        Craft::$app->getGlobals()->reset();
+        PluginReloader::resetVolumesMemo();
+        PluginReloader::resetCategoriesMemo();
+
+        // Last on purpose: getIsInstalled(true) nulls the cached Info model,
+        // which is what makes the next stale check compare a fresh
+        // configVersion. If an earlier step ever throws, the version still
+        // mismatches on the next call and the refresh retries itself.
+        Craft::$app->getIsInstalled(true);
         Craft::info('Project config changed externally; refreshed in-process state', __METHOD__);
     }
 }

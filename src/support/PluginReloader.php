@@ -29,6 +29,23 @@ final class PluginReloader {
         '_plugins' => [],
     ];
 
+    private const array ENTRIES_SERVICE_PROPERTIES = [
+        '_sections' => null,
+        '_entryTypes' => null,
+    ];
+
+    private const array FIELDS_SERVICE_LAYOUT_PROPERTIES = [
+        '_layouts' => null,
+    ];
+
+    private const array VOLUMES_SERVICE_PROPERTIES = [
+        '_volumes' => null,
+    ];
+
+    private const array CATEGORIES_SERVICE_PROPERTIES = [
+        '_groups' => null,
+    ];
+
     /**
      * Reload Composer's classmap to detect new plugin classes.
      *
@@ -61,15 +78,6 @@ final class PluginReloader {
     public static function clearProjectConfigCache(): void {
         Craft::$app->getCache()->delete('projectConfig:internal');
     }
-
-    private const array ENTRIES_SERVICE_PROPERTIES = [
-        '_sections' => null,
-        '_entryTypes' => null,
-    ];
-
-    private const array FIELDS_SERVICE_LAYOUT_PROPERTIES = [
-        '_layouts' => null,
-    ];
 
     /**
      * Re-read the project config from YAML: clears the internal cache and
@@ -110,6 +118,30 @@ final class PluginReloader {
 
         foreach (self::ENTRIES_SERVICE_PROPERTIES as $propertyName => $resetValue) {
             $ref->getProperty($propertyName)->setValue($entries, $resetValue);
+        }
+    }
+
+    /**
+     * Drop the Volumes service's memo; no public refresh exists.
+     */
+    public static function resetVolumesMemo(): void {
+        $volumes = Craft::$app->getVolumes();
+        $ref = new ReflectionClass($volumes);
+
+        foreach (self::VOLUMES_SERVICE_PROPERTIES as $propertyName => $resetValue) {
+            $ref->getProperty($propertyName)->setValue($volumes, $resetValue);
+        }
+    }
+
+    /**
+     * Drop the Categories service's group memo; no public refresh exists.
+     */
+    public static function resetCategoriesMemo(): void {
+        $categories = Craft::$app->getCategories();
+        $ref = new ReflectionClass($categories);
+
+        foreach (self::CATEGORIES_SERVICE_PROPERTIES as $propertyName => $resetValue) {
+            $ref->getProperty($propertyName)->setValue($categories, $resetValue);
         }
     }
 
