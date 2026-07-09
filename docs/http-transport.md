@@ -127,7 +127,7 @@ Returned when the bearer token is missing, malformed, unknown, or expired, or wh
 
 ### 404 Not Found
 
-Returned when the HTTP transport is disabled (`httpTransport` is `false`) or when the request path doesn't match `httpPath` exactly. Confirm both settings in `config/mcp.php` and that the client's configured URL matches.
+Returned when the HTTP transport is disabled (`httpTransport` is `false`) or when the request path doesn't match `httpPath` exactly; in both cases the route is never registered, so Craft serves its regular 404 page. A JSON-shaped 404 from the endpoint itself appears only in the narrower case where `httpTransport` is `true` but the plugin's global `enabled` setting is `false`. Either way: confirm both settings in `config/mcp.php` and that the client's configured URL matches.
 
 ### 405 Method Not Allowed
 

@@ -8,6 +8,7 @@ use Craft;
 use craft\console\Controller;
 use craft\elements\User;
 use craft\helpers\Console;
+use InvalidArgumentException;
 use Override;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Scope;
@@ -55,9 +56,17 @@ class TokensController extends Controller {
             return ExitCode::USAGE;
         }
 
+        try {
+            $scope = Scope::fromInput($this->scope);
+        } catch (InvalidArgumentException $e) {
+            $this->stderr($e->getMessage() . "\n", Console::FG_RED);
+
+            return ExitCode::USAGE;
+        }
+
         $name = $this->name ?? ($user->username . ' token');
         ['plaintext' => $plaintext] = (new Tokens(new RecordStore()))
-            ->create((int) $user->id, Scope::fromInput($this->scope), $name, $this->expires);
+            ->create((int) $user->id, $scope, $name, $this->expires);
 
         $url = rtrim(Craft::$app->getSites()->getPrimarySite()->getBaseUrl() ?? '', '/') . '/' . Mcp::settings()->httpPath;
 

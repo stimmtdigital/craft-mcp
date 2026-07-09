@@ -19,7 +19,9 @@ use stimmt\craft\Mcp\services\McpServerFactory;
 /**
  * The HTTP MCP endpoint. Bearer-token auth, per-user identity, then a
  * request-scoped StreamableHttpTransport round trip. GET is refused (no SSE
- * under FPM in v1); DELETE ends the session; OPTIONS is CORS preflight.
+ * under FPM in v1); DELETE ends the session; OPTIONS answers 204 before auth
+ * (preflight requests carry no Authorization header by definition; no CORS
+ * allow-origin headers are emitted in v1, so browser origins stay unsupported).
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -38,6 +40,15 @@ class HttpController extends Controller {
             $this->response->getHeaders()->set('Allow', 'POST, DELETE, OPTIONS');
 
             return $this->error(405, -32601, 'Streaming is not supported; use POST');
+        }
+
+        // Preflight cannot carry Authorization, so it must precede auth.
+        if ($this->request->getMethod() === 'OPTIONS') {
+            $this->response->format = Response::FORMAT_RAW;
+            $this->response->setStatusCode(204);
+            $this->response->getHeaders()->set('Allow', 'POST, DELETE, OPTIONS');
+
+            return $this->response;
         }
 
         $token = $this->authenticate();
