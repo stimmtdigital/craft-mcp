@@ -1,6 +1,6 @@
 # Commerce Tools
 
-Commerce tools provide access to Craft Commerce data—products, orders, and their associated configurations. These tools are only available when Craft Commerce is installed and enabled.
+Commerce tools provide access to Craft Commerce data, products, orders, and their associated configurations. These tools are only available when Craft Commerce is installed and enabled.
 
 > **Note:** These tools are conditionally registered. If Commerce isn't installed, they won't appear in the tool list.
 

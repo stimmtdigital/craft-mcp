@@ -1,6 +1,6 @@
 # GraphQL Tools
 
-GraphQL tools provide access to Craft's built-in GraphQL API. You can inspect schemas, list API tokens, and execute queries directly—useful for debugging GraphQL integrations or exploring what data is available through the API.
+GraphQL tools provide access to Craft's built-in GraphQL API. You can inspect schemas, list API tokens, and execute queries directly, useful for debugging GraphQL integrations or exploring what data is available through the API.
 
 ## Schemas
 
@@ -111,7 +111,7 @@ get_graphql_schema uid="a1b2c3d4-..."
 }
 ```
 
-The `sdl` field contains the complete schema definition—this can be quite large for schemas with broad access. The `sdlLength` field tells you how many characters the SDL contains.
+The `sdl` field contains the complete schema definition, this can be quite large for schemas with broad access. The `sdlLength` field tells you how many characters the SDL contains.
 
 ---
 
@@ -175,7 +175,7 @@ execute_graphql query="{ entries { title } }" schemaId=2
 }
 ```
 
-Note that GraphQL errors are returned in the `errors` field while `success` remains true—this matches standard GraphQL behavior where partial results can be returned alongside errors.
+Note that GraphQL errors are returned in the `errors` field while `success` remains true, this matches standard GraphQL behavior where partial results can be returned alongside errors.
 
 ---
 
@@ -185,7 +185,7 @@ GraphQL tokens are API keys that authenticate requests and associate them with a
 
 ### list_graphql_tokens
 
-List all GraphQL tokens with their associated schemas. Token values are not exposed for security—only metadata about the tokens.
+List all GraphQL tokens with their associated schemas. Token values are not exposed for security, only metadata about the tokens.
 
 **Parameters:** None
 

@@ -1,6 +1,6 @@
 # Self-Awareness Tools
 
-Self-awareness tools let AI assistants understand the MCP plugin itself—its configuration, available tools, and runtime status. This is useful for discovering capabilities and troubleshooting integration issues.
+Self-awareness tools let AI assistants understand the MCP plugin itself, its configuration, available tools, and runtime status. This is useful for discovering capabilities and troubleshooting integration issues.
 
 ## Plugin Information
 
@@ -59,7 +59,7 @@ get_mcp_info
 Key sections:
 
 - **status**: Shows whether the plugin and dangerous tools are enabled, plus the current environment
-- **tools.bySource**: Shows where tools come from—`craft-mcp` for built-in tools, other sources for plugin-provided tools
+- **tools.bySource**: Shows where tools come from, `craft-mcp` for built-in tools, other sources for plugin-provided tools
 - **tools.byCategory**: Tool count by functional category
 - **tools.dangerous**: Count of tools marked as dangerous
 - **tools.errors**: Any errors encountered during tool registration
@@ -124,7 +124,7 @@ list_mcp_tools
 }
 ```
 
-Tools are sorted by source, then category, then name. The `enabled` field reflects both the dangerous tools setting and the `disabledTools` configuration—a tool shows as disabled if either condition prevents it from running.
+Tools are sorted by source, then category, then name. The `enabled` field reflects both the dangerous tools setting and the `disabledTools` configuration, a tool shows as disabled if either condition prevents it from running.
 
 ---
 
