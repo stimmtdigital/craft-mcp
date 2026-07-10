@@ -65,7 +65,7 @@ Please describe:
 2. The entry types available and what content they represent
 3. The field configuration and data types
 4. Any relationships or complex field types
-5. Suggestions for querying or managing entries in this section
+5. Suggestions for querying or managing entries in this section (describe_entry_schema returns the write-ready per-field input shapes plus an optional golden-fixture example)
 PROMPT);
         });
     }
@@ -138,7 +138,7 @@ Please provide:
 2. The main content types and their purposes
 3. How different sections might relate to each other
 4. Any observations about the field structure and complexity
-5. Suggestions for content management workflows
+5. Suggestions for content management workflows (writes land as reviewable drafts by default; publish_entry makes them live)
 PROMPT);
     }
 

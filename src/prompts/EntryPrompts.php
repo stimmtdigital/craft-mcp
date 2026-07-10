@@ -66,12 +66,14 @@ I want to create entries in Craft CMS. Here's the section structure:
 {$guideJson}
 ```
 
-Please provide:
-1. An explanation of how to create entries in this section using the create_entry tool
-2. The required and optional fields for each entry type
-3. Example JSON payload(s) for the 'fields' parameter
-4. Any validation rules or constraints to be aware of
-5. Common pitfalls to avoid when creating entries
+Work with the payload format, not guesses:
+1. First call describe_entry_schema for this section (pass example with an existing entry id or slug to get a golden fixture); every field's 'input' shape is the exact payload it accepts
+2. Relations use natural keys ({"section": "...", "slug": "..."}, {"volume": "...", "filename": "..."}), never numeric ids; Matrix blocks are keyed objects with the entry-type handle as 'type'
+3. What get_entry returns is exactly what create_entry accepts, so an existing entry is a valid template
+4. Writes save as drafts by default: review via the returned cpEditUrl, then publish_entry makes them live
+5. Check the 'warnings' list on every write response; unresolvable keys become warnings, and validation failures return per-field errors
+
+Please walk me through creating an entry in this section following that flow, including a concrete fields payload built from the schema's input shapes.
 PROMPT);
         });
     }
@@ -112,7 +114,7 @@ I need to query entries from this Craft CMS section:
 ```
 
 Please provide guidance on:
-1. How to use the list_entries tool effectively for this section
+1. How to use the list_entries tool effectively for this section, including the full-text 'search' and multi-site 'site' parameters
 2. Available filter parameters based on the field types
 3. Pagination strategies for the {$entryCount} entries
 4. Performance optimization tips
@@ -158,11 +160,11 @@ Current state:
 - Entry types: {$entryTypes}
 
 Please help me understand:
-1. How to safely iterate through all entries using list_entries with pagination
-2. How to batch update entries using update_entry
-3. Error handling and rollback strategies
-4. Performance considerations for bulk operations
-5. Best practices to avoid data loss or corruption
+1. How to safely iterate through all entries using list_entries with pagination (and the search/site filters)
+2. How to batch update entries using update_entry: each write lands as a draft on top of the live entry, so nothing changes for visitors until publish_entry runs per entry
+3. How drafts double as the safety net: a wrong batch is discarded drafts, not corrupted live content; review spot checks via each response's cpEditUrl before publishing
+4. When duplicate_entry ("like X but change these") or copy_entry_to_site fits the job better than editing in place
+5. Reading the 'warnings' list on every write response, since unresolvable natural keys warn instead of failing the save
 
 What kind of bulk operation would you like to perform?
 PROMPT);
