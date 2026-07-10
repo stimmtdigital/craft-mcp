@@ -172,6 +172,43 @@ PROMPT);
     }
 
     /**
+     * Generate a prompt for reviewing the pending draft queue.
+     *
+     * @return array{array{role: string, content: string}}
+     */
+    #[McpPrompt(
+        name: 'review_pending_drafts',
+        description: 'Walk through the pending entry drafts awaiting review: inspect, publish, or reject each one.',
+    )]
+    #[McpPromptMeta(category: PromptCategory::WORKFLOW)]
+    public function reviewPendingDrafts(
+        #[CompletionProvider(provider: SectionHandleProvider::class)]
+        ?string $section = null,
+    ): array {
+        return SafePromptExecution::run(function () use ($section): array {
+            $query = Entry::find()->drafts()->provisionalDrafts(false)->status(null);
+            if ($section !== null) {
+                $query->section($section);
+            }
+
+            $pending = (int) $query->count();
+            $scopeLine = $section !== null ? "the \"{$section}\" section" : 'all sections';
+
+            return $this->promptResponse(<<<PROMPT
+I want to review the pending entry drafts in {$scopeLine}. There are currently {$pending} non-provisional drafts awaiting review.
+
+Please walk me through the review queue:
+1. Call list_drafts (filter by section, site, or creator as needed) to get the queue, newest first; each row has a draftElementId, the creator, the draft notes, and a cpEditUrl
+2. For each draft I pick: fetch its content with get_entry using the draftElementId, and summarize what it changes (for edits to existing entries, compare against get_entry on the canonicalId)
+3. To approve: publish_entry with the draftElementId; to reject: delete_entry with the draftElementId (the canonical entry is untouched either way)
+4. Share the cpEditUrl whenever I want to look at a draft in the control panel myself
+
+Start by showing me the queue.
+PROMPT);
+        });
+    }
+
+    /**
      * Filter entry types to a specific one if provided.
      *
      * @return list<EntryType>|null

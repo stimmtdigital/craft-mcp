@@ -188,6 +188,22 @@ bulk_entry_operations section="news"
 
 ---
 
+### review_pending_drafts
+
+Walk through the pending entry drafts awaiting review: inspect each one, publish it, or reject it. Embeds the live count of non-provisional drafts and drives the list_drafts, get_entry, publish_entry, and delete_entry loop, sharing each draft's cpEditUrl for control panel review.
+
+**Arguments:**
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `section` | No | Limit the queue to one section handle |
+
+**Example:**
+
+```
+review_pending_drafts section="pages"
+```
+
 ## Schema Exploration
 
 These prompts help you understand your content architecture and field configurations.
@@ -250,7 +266,7 @@ This is useful for understanding field dependencies before making changes, or fo
 
 ### explore_content_model
 
-Get a comprehensive overview of your entire content model—all sections, entry types, and their field relationships.
+Get a comprehensive overview of your entire content model: all sections, entry types, and their field relationships.
 
 **Parameters:** None
 

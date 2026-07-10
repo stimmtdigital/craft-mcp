@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `list_drafts` tool: the review queue for the draft-first workflow. Lists pending (non-provisional) entry drafts newest first, filterable by section, site, or creator, with the draft element id, canonical id, draft notes, and a control panel deep link per row. Available to `readonly` HTTP tokens, since reviewing is reading.
+- `review_pending_drafts` prompt: walks the queue conversationally (inspect via `get_entry`, approve via `publish_entry`, reject via `delete_entry`).
+
 ## [1.4.0-beta.3] - 2026-07-10
 
 ### Changed

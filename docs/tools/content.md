@@ -329,6 +329,30 @@ Relation fields carry both a top-level `target` (the related element type and it
 
 ---
 
+### list_drafts
+
+List pending (non-provisional) entry drafts awaiting review, newest first. This is the review queue for the draft-first workflow: everything create_entry, update_entry, and duplicate_entry produce lands here until it is published or discarded.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `section` | string | No | Filter by section handle |
+| `site` | string | No | Filter by site handle |
+| `creator` | string | No | Filter by the draft creator's username or email |
+| `limit` | int | No | Maximum drafts to return (default: 20) |
+| `offset` | int | No | Offset for pagination (default: 0) |
+
+**Response rows:** `draftElementId` (what publish_entry and get_entry accept), `canonicalId` (the live entry it belongs to; equals the draft for brand-new entries, flagged by `isNewEntry`), `title`, `section`, `type`, `site`, `creator`, `notes`, `dateUpdated`, and a `cpEditUrl` deep link for reviewing the draft in the control panel.
+
+**Example:**
+
+```
+list_drafts section="pages" creator="anna@site.nl"
+```
+
+The `review_pending_drafts` prompt walks through this queue conversationally: inspect, publish, or reject each draft.
+
 ### publish_entry
 
 Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.
