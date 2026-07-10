@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.3] - 2026-07-10
+
 ### Changed
 - Agent guidance now teaches the content-writing upgrade everywhere it speaks: the server instructions walk through schema discovery, natural keys, and the draft-first flow; the `create_entry_guide` and `bulk_entry_operations` prompts stop inviting payload guessing and lean on `describe_entry_schema` input shapes and drafts-as-safety-net; and a new `craft://guides/content-writing` resource serves the full payload contract on demand. HTTP connections additionally get a per-scope note in their instructions stating what the presenting token can and cannot do, and the `debug_content_issue` prompt stops recommending a tool that does not exist.
 
