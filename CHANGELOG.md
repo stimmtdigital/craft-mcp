@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.4] - 2026-07-10
+
 ### Fixed
 - Production safety defaults (`enabled` and `enableDangerousTools` off) now apply BEFORE the config file is read instead of only when no config file exists. Previously, creating `config/mcp.php` (as every quick start instructs) silently re-enabled dangerous tools in production; now only an explicit `'enableDangerousTools' => true` in the file does that.
 - `config/mcp.php` now supports Craft's multi-environment config convention (a `'*'` base merged with the current environment's block), which the configuration guide documented but the loader ignored.
