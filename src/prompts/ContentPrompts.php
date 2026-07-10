@@ -140,7 +140,7 @@ I'm experiencing a content-related issue in Craft CMS and need help debugging it
 Please help me:
 1. Identify potential causes of this issue
 2. Suggest diagnostic steps to narrow down the problem
-3. Recommend tools to use (read_logs, get_last_error, get_file_problems)
+3. Recommend tools to use (read_logs, get_last_error, get_deprecations, explain_query)
 4. Provide possible solutions or workarounds
 5. Identify if this might be a configuration, data, or code issue
 

@@ -50,7 +50,7 @@ class McpServerFactory {
                 name: 'Craft CMS MCP Server',
                 version: Mcp::getInstance()?->getVersion() ?? '1.0.0',
             )
-            ->setInstructions($this->getInstructions())
+            ->setInstructions($this->getInstructions($scope))
             ->setDiscovery(
                 basePath: dirname(__DIR__),
                 scanDirs: ['tools', 'prompts', 'resources'],
@@ -130,7 +130,24 @@ class McpServerFactory {
         }
     }
 
-    private function getInstructions(): string {
+    private function getInstructions(?Scope $scope = null): string {
+        return $this->baseInstructions() . $this->scopeNote($scope);
+    }
+
+    /**
+     * Per-connection scope note so the instructions are truthful for the
+     * token at hand; stdio (null scope) carries no note.
+     */
+    private function scopeNote(?Scope $scope): string {
+        return match ($scope) {
+            null => '',
+            Scope::ReadOnly => "\n\n## This Connection\n\nThis connection is READ-ONLY: no write, publish, or destructive tools are available, and the Writing Content section above does not apply here. Focus on browsing and inspection (`list_*`, `get_*`, `describe_entry_schema`).",
+            Scope::Content => "\n\n## This Connection\n\nThis connection has CONTENT scope: read everything, and write entries through the draft-first flow above (create, update, publish, delete, duplicate, copy to site). Code execution, raw SQL, GraphQL mutation, cache, and backup tools are not available.",
+            Scope::Full => "\n\n## This Connection\n\nThis connection has FULL scope: every tool the server exposes is available, including code execution and database tools. Prefer draft-mode writes and read-only queries unless the task requires more.",
+        };
+    }
+
+    private function baseInstructions(): string {
         return <<<'INSTRUCTIONS'
 This MCP server provides access to a Craft CMS installation.
 
@@ -140,12 +157,23 @@ This MCP server provides access to a Craft CMS installation.
 **Resources**: Read configuration, schema information, system state
 **Prompts**: Generate content, analyze structure, create entries
 
+## Writing Content (read this before create_entry/update_entry)
+
+1. Call `describe_entry_schema` for the section first; pass `example` (an entry id or slug) to get a real entry as a golden fixture. Every field carries an `input` shape describing the exact payload it accepts.
+2. The payload format is symmetric: what `get_entry` returns is exactly what `create_entry`/`update_entry` accept. Read one, tweak it, write it back.
+3. Use natural keys, never numeric ids: relations are `{"section": "...", "slug": "..."}`, assets `{"volume": "...", "filename": "..."}`, categories/tags `{"group": "...", "slug": "..."}`, users `{"username": "..."}`. Matrix blocks are keyed objects (`new1`, `new2`, ...) with the entry-type handle as `type`.
+4. Writes land as DRAFTS by default: the response carries `draftElementId` and a `cpEditUrl` deep link for human review; `publish_entry` makes them live. Nothing touches live content until published.
+5. Always read the `warnings` list on write responses: unresolvable natural keys become warnings, never guesses or silent drops. Validation failures return per-field errors.
+6. Multi-site installs: pass the `site` handle parameter; `copy_entry_to_site` moves content between sites.
+
+The full contract lives in the `craft://guides/content-writing` resource.
+
 ## Best Practices
 
 1. Use `list_*` tools to explore available data before making changes
 2. Use `get_*` tools to inspect specific items
-3. Check schema/fields before creating or updating entries
-4. Use read-only queries before mutations
+3. Use read-only queries before mutations
+4. Tools marked with a destructive annotation modify data or execute code; prefer draft-mode writes and review flows
 INSTRUCTIONS;
     }
 

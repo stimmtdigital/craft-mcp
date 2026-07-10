@@ -6,7 +6,7 @@ Resources use the `craft://` URI scheme, making it easy to reference specific da
 
 ## Schema Resources
 
-These resources expose your content architecture—sections, fields, and their configurations.
+These resources expose your content architecture: sections, fields, and their configurations.
 
 ### craft://schema/sections
 
@@ -293,6 +293,17 @@ Get information about all installed plugins.
 ## Content Resources
 
 These resources provide access to entry content within your sections.
+
+## Guide Resources
+
+Static reference guides agents can read on demand.
+
+### craft://guides/content-writing
+
+The full content-writing contract as markdown: the natural-key payload format, Matrix block shape, draft-first workflow, schema discovery with per-field input shapes, and how structured warnings and validation errors behave. The server instructions point agents here; the same content lives in [Content Writing](content-writing.md) for humans.
+
+**Example URI:** `craft://guides/content-writing`
+
 
 ### craft://entries/{section}
 
