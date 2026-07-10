@@ -300,7 +300,7 @@ Static reference guides agents can read on demand.
 
 ### craft://guides/content-writing
 
-The full content-writing contract as markdown: the natural-key payload format, Matrix block shape, draft-first workflow, schema discovery with per-field input shapes, and how structured warnings and validation errors behave. The server instructions point agents here; the same content lives in [Content Writing](content-writing.md) for humans.
+The full content-writing contract as markdown: the natural-key payload format, Matrix block shape, draft-first workflow, schema discovery with per-field input shapes, and how structured warnings and validation errors behave. The server instructions point agents here; it is served directly from the shipped [Content Writing](content-writing.md) page, so agents and humans always read the same contract.
 
 **Example URI:** `craft://guides/content-writing`
 
