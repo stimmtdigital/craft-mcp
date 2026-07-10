@@ -1,6 +1,6 @@
 # Tools Reference
 
-Craft MCP provides 55 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
+Craft MCP provides 56 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
 
 ## Tool Categories
 
@@ -8,7 +8,7 @@ The tools are organized into logical categories based on what they do:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-| [Content](content.md) | 14 | Query and manage entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
+| [Content](content.md) | 15 | Query and manage entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
 | [System](system.md) | 7 | Access configuration, logs, caches, routes, and system information |
 | [Database](database.md) | 4 | Inspect database schema, run queries, and explore table structures |
 | [Debugging](debugging.md) | 7 | Monitor queue jobs, project config changes, deprecations, and more |
@@ -33,6 +33,7 @@ These tools let AI assistants work with your Craft content:
 | `get_entry` | Get one entry by id or slug, in the payload format that `create_entry`/`update_entry` accept as `fields` |
 | `create_entry` | Create an entry from payload-format `fields`; saves as a draft by default |
 | `update_entry` | Update an entry by id from payload-format `fields`; drafts on top of a live entry by default |
+| `list_drafts` | List pending drafts awaiting review, newest first, with publish ids and control panel links |
 | `publish_entry` | Apply a pending draft to its canonical entry, or enable a disabled live entry |
 | `delete_entry` | Soft-delete an entry to the trash, restorable from the control panel |
 | `duplicate_entry` | Duplicate an entry as an unpublished draft, with optional field overrides |

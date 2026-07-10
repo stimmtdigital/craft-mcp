@@ -127,12 +127,12 @@ create_entry_guide section="blog" entryType="article"
 
 **What it provides:**
 
-The prompt gathers the section's complete field layout and presents:
+The prompt gathers the section's structure and walks the schema-discovery flow:
 
-- Required vs optional fields for each entry type
-- Field types and validation constraints
-- Example JSON payloads for the `create_entry` tool
-- Common pitfalls to avoid
+- Calling `describe_entry_schema` first (with a golden-fixture `example`) so every field's `input` shape is known, not guessed
+- Natural-key payloads for relations and the Matrix block format
+- The draft-first flow: review via `cpEditUrl`, publish via `publish_entry`
+- Reading `warnings` and per-field validation errors on write responses
 
 This is particularly useful when you need to create entries programmatically and want to understand the exact field structure.
 
@@ -181,10 +181,10 @@ bulk_entry_operations section="news"
 
 **What it provides:**
 
-- Safe iteration patterns using pagination
-- Batch update strategies
-- Error handling and rollback considerations
-- Performance tips for large datasets
+- Safe iteration patterns using pagination and the search/site filters
+- Batch updates that land as drafts, so live content is untouched until each `publish_entry`
+- Drafts as the safety net: a wrong batch is discarded drafts, not corrupted content
+- When `duplicate_entry` or `copy_entry_to_site` fits better than editing in place
 
 ---
 

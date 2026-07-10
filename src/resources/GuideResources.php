@@ -56,7 +56,7 @@ Call `describe_entry_schema` for the section and entry type before writing. Pass
 - `create_entry` saves a draft; `update_entry` on a live entry creates a draft on top, leaving the live version untouched.
 - Responses carry `draftElementId` and a `cpEditUrl` deep link for human review in the control panel.
 - `publish_entry` applies the draft (canonical id when one pending draft exists, the specific `draftElementId` when several).
-- `delete_entry` soft-deletes to the trash; `duplicate_entry` clones as a draft with overrides; `copy_entry_to_site` copies values to another site's version as a draft.
+- `list_drafts` lists the pending review queue (newest first, filterable by section, site, or creator); `delete_entry` soft-deletes to the trash; `duplicate_entry` clones as a draft with overrides; `copy_entry_to_site` copies values to another site's version as a draft.
 - Pass `mode: "live"` per call (or set the `entryWriteMode` setting) for immediate saves.
 
 ## Structured feedback
