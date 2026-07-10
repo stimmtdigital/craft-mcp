@@ -226,15 +226,20 @@ class Mcp extends BasePlugin {
     }
 
     /**
-     * Apply config/mcp.php overrides to settings.
+     * Apply config/mcp.php overrides to settings. Production safety defaults
+     * are applied FIRST and unconditionally, so creating a config file never
+     * silently re-enables dangerous tools in production; only an explicit
+     * key in the file overrides them.
      */
     private static function applyConfigOverrides(Settings $settings): Settings {
+        $settings = self::applyProductionDefaults($settings);
+
         /** @var Path $pathService */
         $pathService = Craft::$app->getPath();
         $configPath = $pathService->getConfigPath() . '/mcp.php';
 
         if (!file_exists($configPath)) {
-            return self::applyProductionDefaults($settings);
+            return $settings;
         }
 
         $config = require $configPath;
@@ -242,7 +247,7 @@ class Mcp extends BasePlugin {
             return $settings;
         }
 
-        foreach ($config as $key => $value) {
+        foreach (self::resolveEnvironmentConfig($config, self::environment()) as $key => $value) {
             if (property_exists($settings, $key)) {
                 $settings->$key = $value;
             }
@@ -252,12 +257,32 @@ class Mcp extends BasePlugin {
     }
 
     /**
-     * Apply safe defaults when no config file exists.
+     * Craft's multi-environment config convention: a file with a '*' key is
+     * environment-nested; the '*' base is merged with the current
+     * environment's block. Files without a '*' key are flat and untouched.
+     *
+     * @param array<array-key, mixed> $config
+     * @return array<array-key, mixed>
+     */
+    public static function resolveEnvironmentConfig(array $config, string $environment): array {
+        if (!isset($config['*']) || !is_array($config['*'])) {
+            return $config;
+        }
+
+        $environmentConfig = $config[$environment] ?? [];
+
+        return array_merge($config['*'], is_array($environmentConfig) ? $environmentConfig : []);
+    }
+
+    private static function environment(): string {
+        return Craft::$app->env ?? getenv('CRAFT_ENVIRONMENT') ?: 'production';
+    }
+
+    /**
+     * Safe defaults per environment, applied before any config file.
      */
     private static function applyProductionDefaults(Settings $settings): Settings {
-        $environment = Craft::$app->env ?? getenv('CRAFT_ENVIRONMENT') ?: 'production';
-
-        if ($environment === 'production') {
+        if (self::environment() === 'production') {
             $settings->enabled = false;
             $settings->enableDangerousTools = false;
         }
