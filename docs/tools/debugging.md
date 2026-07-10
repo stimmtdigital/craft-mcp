@@ -1,6 +1,6 @@
 # Debugging Tools
 
-Debugging tools help AI assistants investigate issues in your Craft installation. From queue job failures to project config drift to deprecation warnings, these tools surface the diagnostic information needed to understand what's happening—and what's gone wrong.
+Debugging tools help AI assistants investigate issues in your Craft installation. From queue job failures to project config drift to deprecation warnings, these tools surface the diagnostic information needed to understand what's happening, and what's gone wrong.
 
 ## Queue Jobs
 
@@ -64,7 +64,7 @@ get_queue_jobs status="reserved"
 }
 ```
 
-The `counts` object in every response gives you a quick overview of the entire queue state, regardless of which status you filtered by. This makes it easy to spot problems—if you see failed jobs piling up, something needs attention.
+The `counts` object in every response gives you a quick overview of the entire queue state, regardless of which status you filtered by. This makes it easy to spot problems: if you see failed jobs piling up, something needs attention.
 
 ---
 
@@ -170,7 +170,7 @@ get_deprecations limit=20
 }
 ```
 
-Database deprecations are particularly useful because they include the exact file and line number where the deprecated code was called. This makes fixing them straightforward—you know exactly where to look.
+Database deprecations are particularly useful because they include the exact file and line number where the deprecated code was called. This makes fixing them straightforward: you know exactly where to look.
 
 ---
 
@@ -188,7 +188,7 @@ Run MySQL or PostgreSQL's `EXPLAIN` command on a SELECT query to understand how 
 |------|------|----------|-------------|
 | `sql` | string | Yes | The SELECT query to analyze |
 
-**Security:** This tool has the same restrictions as `run_query`—only SELECT statements are allowed, and dangerous keywords are blocked.
+**Security:** This tool has the same restrictions as `run_query`: only SELECT statements are allowed, and dangerous keywords are blocked.
 
 **Example:**
 
@@ -229,7 +229,7 @@ Key things to look for in the output:
 
 ## Environment
 
-Environment settings affect how Craft behaves—dev mode, queue settings, caching, and more. This tool surfaces those settings without exposing sensitive values like database credentials.
+Environment settings affect how Craft behaves: dev mode, queue settings, caching, and more. This tool surfaces those settings without exposing sensitive values like database credentials.
 
 ### get_environment
 
@@ -279,7 +279,7 @@ get_environment
 }
 ```
 
-This tool is particularly useful for debugging issues that might be environment-specific—like why template caching works in production but not locally, or why file uploads are failing due to PHP limits.
+This tool is particularly useful for debugging issues that might be environment-specific, like why template caching works in production but not locally, or why file uploads are failing due to PHP limits.
 
 ---
 
@@ -373,13 +373,17 @@ Execute PHP code within your Craft application context. This is a powerful tool 
 
 **Security restrictions:**
 
-For safety, certain operations are blocked:
+For safety, code is checked against a pattern blocklist before it runs:
 
-- **Shell commands**: `exec`, `shell_exec`, `system`, `passthru`, `proc_open`
-- **File writes**: `file_put_contents`, `fwrite`, `fputs`
-- **Dangerous functions**: `eval` (to prevent nested evaluation)
+- **Shell and process execution**: `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`
+- **Process control**: `pcntl_*`, `posix_*` functions
+- **File writes and deletes**: `unlink`, `rmdir`, `file_put_contents`, `fwrite`, `rename`, `copy`, `move_uploaded_file`
+- **Dangerous functions**: `eval`, `create_function`
+- **Unbounded output-buffer teardown**: a `while (ob_get_level() ...)` loop is blocked, since the server's stdout shield buffer can't be removed and such a loop would never end
 
 The code is parsed using PsySH's CodeCleaner before execution.
+
+**This is not a secure sandbox.** The blocklist can be bypassed (for example via `call_user_func` or variable functions), so only enable `tinker` in trusted environments; treat it as a development convenience, not isolation.
 
 **Examples:**
 
@@ -433,7 +437,7 @@ Errors are displayed with a `!` prefix in red, followed by a location hint when 
 
 ```
 > exec('ls')
-! SecurityError: Code contains blocked function. Shell commands, file writes, and eval are not allowed.
+! SecurityError: Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.
 ```
 
 **Available in context:**

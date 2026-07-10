@@ -208,7 +208,7 @@ If no errors exist in the logs, the response will indicate `"found": false`.
 
 ## Caching
 
-Craft uses several caching layers to improve performance. Sometimes you need to clear these caches—after template changes, during debugging, or when troubleshooting stale data issues.
+Craft uses several caching layers to improve performance. Sometimes you need to clear these caches: after template changes, during debugging, or when troubleshooting stale data issues.
 
 ### clear_caches
 
@@ -340,7 +340,7 @@ list_console_commands
 
 ## Schema Information
 
-These tools help AI assistants understand your content architecture—the sections, fields, asset volumes, and plugins that define how your Craft installation is structured.
+These tools help AI assistants understand your content architecture: the sections, fields, and plugins that define how your Craft installation is structured.
 
 ### list_plugins
 
@@ -354,7 +354,7 @@ List all installed plugins with their version numbers, enabled status, and devel
 
 ### list_sections
 
-Get all sections and their entry types. This reveals the content structure of your site—which sections exist, whether they're channels, structures, or singles, and what entry types are available in each.
+Get all sections and their entry types. This reveals the content structure of your site: which sections exist, whether they're channels, structures, or singles, and what entry types are available in each.
 
 **Parameters:** None
 
@@ -369,13 +369,3 @@ List all custom fields defined in your Craft installation. Each field includes i
 **Parameters:** None
 
 **Response includes:** Field handle, name, type, group assignment, and field-specific settings.
-
----
-
-### list_volumes
-
-Get information about asset volumes—where files are stored and how they're accessed. This includes filesystem configuration and public URL settings.
-
-**Parameters:** None
-
-**Response includes:** Volume handle, name, filesystem type, and base URL.

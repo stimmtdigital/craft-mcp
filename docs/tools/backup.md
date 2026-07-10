@@ -1,6 +1,6 @@
 # Backup Tools
 
-Backup tools help manage database backups in your Craft installation. You can list existing backups and create new ones—useful for snapshotting the database before making significant changes.
+Backup tools help manage database backups in your Craft installation. You can list existing backups and create new ones, useful for snapshotting the database before making significant changes.
 
 ## Database Backups
 
@@ -106,4 +106,4 @@ Common failure reasons:
 - **Before migrations**: Create a backup before running `project-config/apply` or database migrations
 - **Before bulk operations**: Back up before mass entry updates or deletions
 - **Regular cleanup**: Old backups accumulate; periodically remove backups you no longer need
-- **External storage**: For production, copy important backups to external storage—the `storage/backups` directory shouldn't be your only copy
+- **External storage**: For production, copy important backups to external storage, the `storage/backups` directory shouldn't be your only copy

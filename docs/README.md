@@ -6,7 +6,7 @@ Welcome to the Craft MCP documentation. This guide covers everything you need to
 
 Craft MCP is an MCP (Model Context Protocol) server that gives AI assistants direct access to your Craft CMS installation. Rather than manually describing your content architecture, field layouts, or database schema, your AI assistant can query this information directly, write reviewable draft content in a natural-key payload format, and inspect the system it is working in.
 
-The plugin provides more than 50 specialized tools, 9 analysis prompts, and 12 data resources, served over stdio for local development and over HTTP with per-user scoped bearer tokens for remote users.
+The plugin provides more than 50 specialized tools, 10 analysis prompts, and 13 data resources, served over stdio for local development and over HTTP with per-user scoped bearer tokens for remote users.
 
 ## Getting Started
 

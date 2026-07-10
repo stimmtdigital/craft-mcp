@@ -13,7 +13,7 @@
 
 Craft MCP is an MCP (Model Context Protocol) server for Craft CMS. It gives AI assistants direct access to your installation's content, schema, and configuration: rather than describing your field layouts or Matrix setups by hand, the assistant queries them, writes reviewable draft content in a natural-key format, and inspects the system it is working in.
 
-It ships more than 50 specialized tools, 9 analysis prompts, and 12 data resources, served over stdio for local development and over HTTP with scoped bearer tokens for remote users.
+It ships more than 50 specialized tools, 10 analysis prompts, and 13 data resources, served over stdio for local development and over HTTP with scoped bearer tokens for remote users.
 
 ## Quick Start
 
@@ -52,7 +52,7 @@ Entry reads and writes share one payload format: relations as natural keys (`{"s
 
 | Category | Highlights |
 |----------|-----------|
-| [Content](docs/tools/content.md) | Entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), schema discovery via `describe_entry_schema`, assets, categories, users, globals |
+| [Content](docs/tools/content.md) | Entries (payload-format read/write, draft workflow with a pending-drafts review queue, publish/duplicate/copy to site), schema discovery via `describe_entry_schema`, assets, categories, users, globals |
 | [System](docs/tools/system.md) | System info, config, logs, caches, routes, console commands |
 | [Database](docs/tools/database.md) | Schema inspection, table counts, read-only queries |
 | [Debugging](docs/tools/debugging.md) | Queue jobs, project config diff, deprecations, EXPLAIN, event handlers, and a Tinker tool for executing PHP in the Craft context |

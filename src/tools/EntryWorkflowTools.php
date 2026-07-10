@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\behaviors\DraftBehavior;
 use craft\elements\Entry;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
@@ -21,7 +22,7 @@ use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
 
 /**
- * Entry workflow: publish, delete, duplicate, copy to site.
+ * Entry workflow: the pending-drafts review queue, publish, delete, duplicate, copy to site.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -33,6 +34,48 @@ class EntryWorkflowTools {
     public function __construct(?Reader $reader = null, ?Writer $writer = null) {
         $this->reader = $reader ?? ElementModule::reader();
         $this->writer = $writer ?? ElementModule::writer();
+    }
+
+    #[McpTool(
+        name: 'list_drafts',
+        description: 'List pending (non-provisional) entry drafts awaiting review, newest first. Filter by section, site, or creator username/email. Each row carries the draft element id publish_entry accepts and a cpEditUrl for human review.',
+    )]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
+    public function listDrafts(
+        ?string $section = null,
+        ?string $site = null,
+        ?string $creator = null,
+        int $limit = 20,
+        int $offset = 0,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($section, $site, $creator, $limit, $offset): array {
+            SiteResolver::resolve($site);
+
+            $query = Entry::find()
+                ->drafts()
+                ->provisionalDrafts(false)
+                ->status(null)
+                ->limit($limit)
+                ->offset($offset)
+                ->orderBy(['dateUpdated' => SORT_DESC]);
+
+            foreach (['section' => $section, 'site' => $site] as $method => $value) {
+                if ($value !== null) {
+                    $query->$method($value);
+                }
+            }
+
+            if ($creator !== null) {
+                $user = Craft::$app->getUsers()->getUserByUsernameOrEmail($creator)
+                    ?? throw new ToolCallException("No user found for '{$creator}'");
+                $query->draftCreator($user);
+            }
+
+            $drafts = array_map($this->draftSummary(...), $query->all());
+
+            return Response::paginated('drafts', $drafts, (int) $query->count(), $limit, $offset);
+        });
     }
 
     #[McpTool(
@@ -129,6 +172,32 @@ class EntryWorkflowTools {
                 ? ['success' => false] + $result->toArray()
                 : Response::success($result->toArray());
         });
+    }
+
+    /**
+     * One review-queue row: identifiers for the tools, a deep link for the
+     * human, and the draft note for context.
+     *
+     * @return array<string, mixed>
+     */
+    private function draftSummary(Entry $draft): array {
+        $behavior = $draft->getBehavior('draft');
+        $creator = $behavior instanceof DraftBehavior ? $behavior->getCreator() : null;
+        $notes = $behavior instanceof DraftBehavior ? $behavior->draftNotes : null;
+
+        return [
+            'draftElementId' => (int) $draft->id,
+            'canonicalId' => (int) $draft->getCanonicalId(),
+            'isNewEntry' => $draft->getIsUnpublishedDraft(),
+            'title' => (string) $draft->title,
+            'section' => $draft->getSection()?->handle,
+            'type' => $draft->getType()->handle,
+            'site' => $draft->getSite()->handle,
+            'creator' => $creator?->username,
+            'notes' => $notes,
+            'dateUpdated' => $draft->dateUpdated?->format('Y-m-d H:i:s'),
+            'cpEditUrl' => $draft->getCpEditUrl(),
+        ];
     }
 
     private function applyDraft(Entry $draft, ?string $site): array {

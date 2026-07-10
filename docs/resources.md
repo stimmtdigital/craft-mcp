@@ -300,7 +300,7 @@ Static reference guides agents can read on demand.
 
 ### craft://guides/content-writing
 
-The full content-writing contract as markdown: the natural-key payload format, Matrix block shape, draft-first workflow, schema discovery with per-field input shapes, and how structured warnings and validation errors behave. The server instructions point agents here; the same content lives in [Content Writing](content-writing.md) for humans.
+The full content-writing contract as markdown: the natural-key payload format, Matrix block shape, draft-first workflow, schema discovery with per-field input shapes, and how structured warnings and validation errors behave. The server instructions point agents here; it is served directly from the shipped [Content Writing](content-writing.md) page, so agents and humans always read the same contract.
 
 **Example URI:** `craft://guides/content-writing`
 
@@ -374,6 +374,8 @@ Get a specific entry by its section and slug, including all custom field values.
 }
 ```
 
+This is a lighter, raw view of the entry: relation fields serialize as plain numeric id arrays (or `{count, truncated}` once there are more than 10), not the natural-key payload format used by `get_entry` and the entry write tools. Use this resource for a quick read; use `get_entry` when you need the payload-compatible shape described in the [Content Writing guide](content-writing.md).
+
 ---
 
 ### craft://entries/{section}/stats
@@ -431,3 +433,7 @@ When a resource can't be found, it returns an error object:
 ```
 
 This allows AI assistants to gracefully handle missing data and provide helpful feedback.
+
+## Disabling Resources
+
+Individual resources, including resource templates, can be disabled by URI via the `disabledResources` option in `config/mcp.php`. See the [Configuration Guide](configuration.md#configuration-options).

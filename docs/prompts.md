@@ -127,12 +127,12 @@ create_entry_guide section="blog" entryType="article"
 
 **What it provides:**
 
-The prompt gathers the section's complete field layout and presents:
+The prompt gathers the section's structure and walks the schema-discovery flow:
 
-- Required vs optional fields for each entry type
-- Field types and validation constraints
-- Example JSON payloads for the `create_entry` tool
-- Common pitfalls to avoid
+- Calling `describe_entry_schema` first (with a golden-fixture `example`) so every field's `input` shape is known, not guessed
+- Natural-key payloads for relations and the Matrix block format
+- The draft-first flow: review via `cpEditUrl`, publish via `publish_entry`
+- Reading `warnings` and per-field validation errors on write responses
 
 This is particularly useful when you need to create entries programmatically and want to understand the exact field structure.
 
@@ -181,12 +181,28 @@ bulk_entry_operations section="news"
 
 **What it provides:**
 
-- Safe iteration patterns using pagination
-- Batch update strategies
-- Error handling and rollback considerations
-- Performance tips for large datasets
+- Safe iteration patterns using pagination and the search/site filters
+- Batch updates that land as drafts, so live content is untouched until each `publish_entry`
+- Drafts as the safety net: a wrong batch is discarded drafts, not corrupted content
+- When `duplicate_entry` or `copy_entry_to_site` fits better than editing in place
 
 ---
+
+### review_pending_drafts
+
+Walk through the pending entry drafts awaiting review: inspect each one, publish it, or reject it. Embeds the live count of non-provisional drafts and drives the list_drafts, get_entry, publish_entry, and delete_entry loop, sharing each draft's cpEditUrl for control panel review.
+
+**Arguments:**
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `section` | No | Limit the queue to one section handle |
+
+**Example:**
+
+```
+review_pending_drafts section="pages"
+```
 
 ## Schema Exploration
 
@@ -250,7 +266,7 @@ This is useful for understanding field dependencies before making changes, or fo
 
 ### explore_content_model
 
-Get a comprehensive overview of your entire content model—all sections, entry types, and their field relationships.
+Get a comprehensive overview of your entire content model: all sections, entry types, and their field relationships.
 
 **Parameters:** None
 
@@ -298,3 +314,5 @@ Prompts are available in AI assistants that support the MCP prompts capability. 
 **Cursor:** Access prompts through the Composer's MCP integration panel.
 
 Each prompt gathers fresh data from your Craft installation at the time it's invoked, ensuring you always get current information for analysis.
+
+Individual prompts can be disabled by name via the `disabledPrompts` option in `config/mcp.php`. See the [Configuration Guide](configuration.md#configuration-options).

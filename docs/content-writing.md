@@ -76,7 +76,7 @@ By default every write lands as a draft:
 - `publish_entry` applies the draft (pass the canonical entry id when there is a single pending draft, or the specific `draftElementId` when there are several).
 - Set `entryWriteMode: 'live'` in `config/mcp.php`, or pass `mode: "live"` per call, for immediate saves.
 
-The rest of the workflow: `delete_entry` soft-deletes to the trash (restorable), `duplicate_entry` clones as a draft with optional overrides ("like X but change these"), and `copy_entry_to_site` copies field values to another site's version as a draft for localization work.
+The rest of the workflow: `list_drafts` lists the pending review queue (newest first, filterable by section, site, or creator), `delete_entry` soft-deletes to the trash (restorable), `duplicate_entry` clones as a draft with optional overrides ("like X but change these"), and `copy_entry_to_site` copies field values to another site's version as a draft for localization work.
 
 ## Structured Feedback
 

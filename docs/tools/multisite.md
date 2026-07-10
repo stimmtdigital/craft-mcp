@@ -4,7 +4,7 @@ Multi-site tools help AI assistants understand and work with Craft's multi-site 
 
 ## Sites
 
-Sites in Craft represent distinct front-end experiences—different domains, languages, or content variations. Each site belongs to a site group and has its own base URL, language, and enabled status.
+Sites in Craft represent distinct front-end experiences, different domains, languages, or content variations. Each site belongs to a site group and has its own base URL, language, and enabled status.
 
 ### list_sites
 
@@ -126,7 +126,7 @@ get_site handle="german"
 
 ## Site Groups
 
-Site groups organize related sites together. Sites within the same group can share content through Craft's propagation settings—when you create an entry in one site, it can automatically propagate to other sites in the same group.
+Site groups organize related sites together. Sites within the same group can share content through Craft's propagation settings, when you create an entry in one site, it can automatically propagate to other sites in the same group.
 
 ### list_site_groups
 
@@ -164,4 +164,4 @@ list_site_groups
 }
 ```
 
-The `siteHandles` array shows which sites belong to each group. This is useful for understanding content propagation—entries created in any site within a group can be configured to automatically appear in the other sites in that group.
+The `siteHandles` array shows which sites belong to each group. This is useful for understanding content propagation, entries created in any site within a group can be configured to automatically appear in the other sites in that group.
