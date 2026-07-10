@@ -32,7 +32,7 @@ get_database_info
 }
 ```
 
-The `tablePrefix` is particularly important—most Craft installations use `craft_` as the prefix, which means the `entries` table is actually named `craft_entries`. You'll need to include this prefix in your SQL queries.
+The `tablePrefix` is particularly important: most Craft installations use `craft_` as the prefix, which means the `entries` table is actually named `craft_entries`. You'll need to include this prefix in your SQL queries.
 
 ---
 
@@ -144,7 +144,7 @@ get_table_counts
 }
 ```
 
-This is often the first thing to check when getting familiar with a new Craft installation—it immediately tells you whether you're dealing with a small portfolio site or a large content-heavy application.
+This is often the first thing to check when getting familiar with a new Craft installation: it immediately tells you whether you're dealing with a small portfolio site or a large content-heavy application.
 
 ---
 
@@ -170,7 +170,7 @@ Execute read-only SQL queries against your database. This is classified as a dan
 The tool enforces several safety measures:
 
 - Only `SELECT` queries are allowed
-- Blocked keywords: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`, `CREATE`, `GRANT`, `REVOKE`
+- Blocked keywords: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`, `CREATE`, `GRANT`, `REVOKE`, `INTO OUTFILE`
 - A `LIMIT` clause is automatically added if your query doesn't include one
 
 **Examples:**

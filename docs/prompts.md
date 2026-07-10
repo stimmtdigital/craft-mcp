@@ -314,3 +314,5 @@ Prompts are available in AI assistants that support the MCP prompts capability. 
 **Cursor:** Access prompts through the Composer's MCP integration panel.
 
 Each prompt gathers fresh data from your Craft installation at the time it's invoked, ensuring you always get current information for analysis.
+
+Individual prompts can be disabled by name via the `disabledPrompts` option in `config/mcp.php`. See the [Configuration Guide](configuration.md#configuration-options).

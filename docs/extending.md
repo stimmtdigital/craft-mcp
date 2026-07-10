@@ -179,7 +179,7 @@ class MyPluginTools
 }
 ```
 
-The `name` parameter defines how AI assistants will call the tool, while `description` helps them understand when to use it. Write clear, specific descriptions—they directly impact how well AI assistants choose the right tool for a task.
+The `name` parameter defines how AI assistants will call the tool, while `description` helps them understand when to use it. Write clear, specific descriptions: they directly impact how well AI assistants choose the right tool for a task.
 
 ## Tool Metadata
 
@@ -305,7 +305,7 @@ class CommerceTools implements ConditionalToolProvider
 }
 ```
 
-The `isAvailable()` method is called during tool registration. If it returns `false`, the entire class is skipped—none of its tools are registered.
+The `isAvailable()` method is called during tool registration. If it returns `false`, the entire class is skipped: none of its tools are registered.
 
 Common use cases:
 - Tools that require a specific plugin (Commerce, SEO, etc.)
@@ -720,6 +720,7 @@ class MyPluginResources
 | `SCHEMA` | Schema and structure information |
 | `CONFIG` | Configuration and settings |
 | `CONTENT` | Content data access |
+| `SYSTEM` | System status and diagnostic information |
 | `GENERAL` | Default category |
 
 ---

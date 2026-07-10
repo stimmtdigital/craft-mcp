@@ -14,7 +14,7 @@ return [
 ];
 ```
 
-This enables the MCP server with sensible defaults for development environments. The server will automatically disable dangerous tools when running in production.
+Production safety defaults are applied before this file is read: when `CRAFT_ENVIRONMENT` is `production`, `enabled` and `enableDangerousTools` both start out `false`. Values from `config/mcp.php` are then applied on top, key by key, and any key you set explicitly overrides the default for that key. In the minimal config above, only `enabled` is set, so in production the server turns on but `enableDangerousTools` stays at its safe default of `false`. To enable dangerous tools in production, set `'enableDangerousTools' => true` explicitly.
 
 ## Configuration Options
 
@@ -39,6 +39,14 @@ return [
         'tinker',
         'run_query',
     ],
+
+    // Disable specific prompts by name.
+    // Default: [] (no prompts disabled)
+    'disabledPrompts' => [],
+
+    // Disable specific resources by their URI (including resource templates).
+    // Default: [] (no resources disabled)
+    'disabledResources' => [],
 
     // Restrict MCP connections to specific IP addresses.
     // When empty, connections from any IP are allowed.
@@ -82,6 +90,8 @@ return [
 | `enabled` | `bool` | `false` (prod) / `true` (other) | Whether the MCP server accepts connections |
 | `enableDangerousTools` | `bool` | `false` (prod) / `true` (other) | Whether tools that modify data or execute code are available |
 | `disabledTools` | `array` | `[]` | List of tool names to disable regardless of other settings |
+| `disabledPrompts` | `array` | `[]` | List of prompt names to disable |
+| `disabledResources` | `array` | `[]` | List of resource URIs to disable |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
 | `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
@@ -121,18 +131,18 @@ This approach keeps sensitive configuration out of version control and makes it 
 
 ### Automatic Environment Detection
 
-The plugin automatically adjusts its defaults based on the `CRAFT_ENVIRONMENT` environment variable:
+The plugin automatically adjusts its defaults based on the `CRAFT_ENVIRONMENT` environment variable, applied before `config/mcp.php` is read:
 
 | Setting | Production | Other Environments |
 |---------|------------|-------------------|
 | `enabled` | `false` | `true` |
 | `enableDangerousTools` | `false` | `true` |
 
-This means you can safely deploy the plugin to production without worrying about accidentally exposing the MCP server: it's disabled by default unless you explicitly enable it.
+These defaults apply whether or not `config/mcp.php` exists. Once the file is read, any key it sets explicitly overrides the default for that key; keys it doesn't mention keep the default shown above. This means you can safely deploy the plugin to production without worrying about accidentally exposing the MCP server or its dangerous tools: both stay off unless you explicitly turn them on.
 
 ## Multi-Environment Configuration
 
-For more complex setups, you can use Craft's multi-environment config pattern to define different settings for each environment:
+For more complex setups, `config/mcp.php` supports Craft's multi-environment config pattern: a top-level `'*'` key holding settings shared by every environment, merged with a block matching the current `CRAFT_ENVIRONMENT`. `Mcp::resolveEnvironmentConfig()` performs this merge; keys in the environment-specific block override the same key in `'*'`, and keys present in only one of the two pass through unchanged. A config file without a `'*'` key is treated as flat and applied as-is, with no per-environment interpretation.
 
 ```php
 <?php
@@ -163,7 +173,7 @@ return [
 ];
 ```
 
-This pattern allows you to grant full access during development, restricted access on staging for testing, and keep production locked down.
+This pattern allows you to grant full access during development, restricted access on staging for testing, and keep production locked down. As always, production safety defaults are applied first; the resolved `production` block above only needs to set what should differ from those defaults.
 
 ## Security Considerations
 
@@ -185,10 +195,16 @@ The following tools are classified as "dangerous" because they can modify data o
 
 | Tool | Risk Level | Description |
 |------|------------|-------------|
-| `tinker` | High | Executes arbitrary PHP code in your application context |
+| `tinker` | High | Executes arbitrary PHP code in your application context. Blocklist-based only, not a secure sandbox: it can be bypassed (e.g. `call_user_func`, variable functions) |
+| `execute_graphql` | High | Executes GraphQL queries and mutations, which can modify data |
 | `run_query` | Medium | Executes SQL queries (restricted to SELECT, but still exposes data) |
 | `create_entry` | Medium | Creates new entries in your content |
 | `update_entry` | Medium | Modifies existing entry content |
+| `publish_entry` | Medium | Applies a draft to its canonical entry, or enables a disabled entry |
+| `delete_entry` | Medium | Moves an entry to the trash |
+| `duplicate_entry` | Medium | Creates a new draft entry from an existing one |
+| `copy_entry_to_site` | Medium | Writes a draft on another site from an entry's field values |
+| `create_backup` | Medium | Creates files on the server filesystem |
 | `clear_caches` | Low | Can temporarily impact site performance |
 
 When `enableDangerousTools` is `false`, these tools are hidden from AI assistants entirely. You can also disable them individually using the `disabledTools` array if you want finer control.

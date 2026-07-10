@@ -8,11 +8,11 @@ The tools are organized into logical categories based on what they do:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-| [Content](content.md) | 15 | Query and manage entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
+| [Content](content.md) | 16 | Query and manage entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
 | [System](system.md) | 7 | Access configuration, logs, caches, routes, and system information |
 | [Database](database.md) | 4 | Inspect database schema, run queries, and explore table structures |
 | [Debugging](debugging.md) | 7 | Monitor queue jobs, project config changes, deprecations, and more |
-| Schema | 5 | Inspect sections, fields, volumes, and plugins; discover an entry type's write schema |
+| Schema | 4 | Inspect sections, fields, and plugins; discover an entry type's write schema |
 | [Multi-Site](multisite.md) | 3 | Manage and inspect multi-site configurations |
 | [GraphQL](graphql.md) | 4 | Query schemas, tokens, and execute GraphQL operations |
 | [Backup](backup.md) | 2 | List and create database backups |
@@ -41,7 +41,8 @@ These tools let AI assistants work with your Craft content:
 | `list_assets` | Browse assets with filtering by volume, folder, filename, and kind |
 | `get_asset` | Get detailed asset information including dimensions, file size, and metadata |
 | `list_asset_folders` | List folder structure within a specific asset volume |
-| `list_categories` | Query categories by group with hierarchy and custom field values |
+| `list_volumes` | Inspect asset volume configurations and filesystem settings |
+| `list_categories` | Query categories by group |
 | `list_users` | List Craft users with filtering by group, status, and email |
 | `list_globals` | List all global sets with their current field values |
 
@@ -53,7 +54,6 @@ These tools help AI assistants understand your content architecture:
 |------|-------------|
 | `list_sections` | Get all sections with their entry types, handles, and field layouts |
 | `list_fields` | List all custom fields with types, settings, and group assignments |
-| `list_volumes` | Inspect asset volume configurations and filesystem settings |
 | `list_plugins` | Get installed plugins with versions, handles, and enabled status |
 | `describe_entry_schema` | Describe a section/entry type's fields, kinds, and per-field input shapes, for use with `create_entry`/`update_entry` |
 

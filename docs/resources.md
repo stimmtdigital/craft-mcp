@@ -374,6 +374,8 @@ Get a specific entry by its section and slug, including all custom field values.
 }
 ```
 
+This is a lighter, raw view of the entry: relation fields serialize as plain numeric id arrays (or `{count, truncated}` once there are more than 10), not the natural-key payload format used by `get_entry` and the entry write tools. Use this resource for a quick read; use `get_entry` when you need the payload-compatible shape described in the [Content Writing guide](content-writing.md).
+
 ---
 
 ### craft://entries/{section}/stats
@@ -431,3 +433,7 @@ When a resource can't be found, it returns an error object:
 ```
 
 This allows AI assistants to gracefully handle missing data and provide helpful feedback.
+
+## Disabling Resources
+
+Individual resources, including resource templates, can be disabled by URI via the `disabledResources` option in `config/mcp.php`. See the [Configuration Guide](configuration.md#configuration-options).

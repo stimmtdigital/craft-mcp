@@ -16,7 +16,7 @@ List entries. Filter by section, type, status, site handle, and full-text search
 |------|------|---------|-------------|
 | `section` | string | null | Filter by section handle (e.g., "news", "blog") |
 | `type` | string | null | Filter by entry type handle |
-| `status` | string | null | Filter by status: "live", "pending", "disabled", or "any" |
+| `status` | string | null | Filter by status: "live", "pending", "expired", "disabled", or "any" |
 | `site` | string | null | Site handle to query and read fields from (defaults to the primary site) |
 | `search` | string | null | Full-text search term |
 | `limit` | int | 20 | Maximum number of entries to return |
@@ -517,7 +517,7 @@ Query assets with filtering by volume, file type, or filename.
 | `kind` | string | null | Filter by file kind: "image", "video", "pdf", "document", etc. |
 | `filename` | string | null | Filter by filename (partial match) |
 | `folderId` | int | null | Filter by specific folder ID |
-| `limit` | int | 20 | Maximum assets to return |
+| `limit` | int | 50 | Maximum assets to return |
 | `offset` | int | 0 | Number of assets to skip |
 
 **Examples:**
@@ -539,6 +539,8 @@ list_assets kind="pdf"
 {
   "count": 10,
   "total": 234,
+  "limit": 50,
+  "offset": 0,
   "assets": [
     {
       "id": 456,
@@ -549,7 +551,10 @@ list_assets kind="pdf"
       "width": 1920,
       "height": 1080,
       "url": "https://example.com/uploads/hero-image.jpg",
-      "volumeHandle": "images"
+      "volumeId": 3,
+      "folderId": 12,
+      "dateCreated": "2024-01-15 10:30:00",
+      "dateModified": "2024-01-15 14:22:00"
     }
   ]
 }
@@ -604,13 +609,14 @@ get_asset id=456
 
 ### list_asset_folders
 
-List the folder structure within a specific asset volume. Useful for understanding how assets are organized.
+List the folder structure within a specific asset volume, or across every volume's root folders when `volume` is omitted.
 
 **Parameters:**
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `volume` | string | Yes | Volume handle |
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `volume` | string | null | Volume handle; when omitted, lists root folders across every volume (in which case `parentId` is ignored) |
+| `parentId` | int | null | List this folder's children instead of the volume's root folder; only used when `volume` is also given |
 
 **Example:**
 
@@ -622,18 +628,53 @@ list_asset_folders volume="images"
 
 ```json
 {
-  "volume": "images",
   "count": 5,
   "folders": [
     {
       "id": 1,
       "name": "Banners",
-      "path": "banners"
+      "path": "banners",
+      "volumeId": 3,
+      "parentId": null
     },
     {
       "id": 2,
       "name": "Team Photos",
-      "path": "team-photos"
+      "path": "team-photos",
+      "volumeId": 3,
+      "parentId": null
+    }
+  ]
+}
+```
+
+---
+
+### list_volumes
+
+List all asset volumes (storage locations) configured in Craft, including filesystem type and public URL.
+
+**Parameters:** None
+
+**Example:**
+
+```
+list_volumes
+```
+
+**Response:**
+
+```json
+{
+  "count": 2,
+  "volumes": [
+    {
+      "id": 1,
+      "handle": "images",
+      "name": "Images",
+      "type": "craft\\fs\\Local",
+      "hasUrls": true,
+      "rootUrl": "https://example.com/uploads"
     }
   ]
 }
@@ -647,14 +688,14 @@ Categories in Craft are hierarchical taxonomies for organizing content. Each cat
 
 ### list_categories
 
-List categories within a specific category group, including their hierarchy and custom field values.
+List categories. Filter by group handle; when omitted, returns categories across all groups.
 
 **Parameters:**
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `group` | string | Yes | Category group handle |
-| `limit` | int | No | Maximum categories to return (default: 100) |
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `group` | string | null | Category group handle |
+| `limit` | int | 100 | Maximum categories to return |
 
 **Example:**
 
@@ -667,31 +708,30 @@ list_categories group="topics"
 ```json
 {
   "count": 8,
-  "group": "topics",
   "categories": [
     {
       "id": 10,
       "title": "Technology",
       "slug": "technology",
       "level": 1,
-      "parentId": null,
-      "fields": {
-        "description": "Articles about technology"
-      }
+      "groupId": 3,
+      "groupHandle": "topics",
+      "url": "https://example.com/topics/technology"
     },
     {
       "id": 11,
       "title": "Software",
       "slug": "software",
       "level": 2,
-      "parentId": 10,
-      "fields": {}
+      "groupId": 3,
+      "groupHandle": "topics",
+      "url": "https://example.com/topics/technology/software"
     }
   ]
 }
 ```
 
-The `level` and `parentId` fields indicate the category's position in the hierarchy.
+`level` indicates the category's depth within its group's hierarchy. The response doesn't include a parent id or custom field values.
 
 ---
 
@@ -710,8 +750,7 @@ List Craft users with optional filtering by group, status, or email.
 | `group` | string | null | Filter by user group handle |
 | `status` | string | null | Filter by status: "active", "pending", "suspended" |
 | `email` | string | null | Filter by email (partial match) |
-| `limit` | int | 20 | Maximum users to return |
-| `offset` | int | 0 | Number of users to skip |
+| `limit` | int | 50 | Maximum users to return |
 
 **Examples:**
 
@@ -731,17 +770,17 @@ list_users group="admins" status="active"
 ```json
 {
   "count": 5,
-  "total": 12,
   "users": [
     {
       "id": 1,
-      "email": "admin@example.com",
       "username": "admin",
+      "email": "admin@example.com",
       "fullName": "Site Administrator",
+      "admin": true,
       "status": "active",
       "groups": ["admins", "editors"],
-      "dateCreated": "2023-06-01T00:00:00+00:00",
-      "lastLoginDate": "2024-01-15T10:30:00+00:00"
+      "lastLoginDate": "2024-01-15 10:30:00",
+      "dateCreated": "2023-06-01 00:00:00"
     }
   ]
 }
