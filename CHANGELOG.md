@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.5] - 2026-07-14
+
 ### Added
 - `count_entries` tool: totals and per-value breakdowns (attribute, date bucket, or field-value grouping) with the same filters as `list_entries`
 - Field-value `filters`, `relatedTo`, `author`, and date-range parameters on `list_entries`, with natural keys and `:empty:`/`:notempty:` support
