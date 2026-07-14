@@ -83,14 +83,37 @@ final class Buckets {
 
         $counts = [];
         foreach ($query->batch(100) as $batch) {
-            foreach ($batch as $entry) {
-                foreach ($this->keysFor($entry, $parsed) as $key) {
-                    $counts[$key] = ($counts[$key] ?? 0) + 1;
-                }
-            }
+            $counts = $this->tally($counts, $batch, $parsed);
         }
 
         return ['total' => $total] + $this->format($counts, $parsed['kind']);
+    }
+
+    /**
+     * @param array<string, int> $counts
+     * @param Entry[] $batch
+     * @param array{kind: string, target: string, granularity: ?string} $parsed
+     * @return array<string, int>
+     */
+    private function tally(array $counts, array $batch, array $parsed): array {
+        foreach ($batch as $entry) {
+            $counts = $this->increment($counts, $this->keysFor($entry, $parsed));
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @param array<string, int> $counts
+     * @param list<string> $keys
+     * @return array<string, int>
+     */
+    private function increment(array $counts, array $keys): array {
+        foreach ($keys as $key) {
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+        }
+
+        return $counts;
     }
 
     /**
@@ -137,7 +160,7 @@ final class Buckets {
             return $titles === [] ? [self::EMPTY_KEY] : $titles;
         }
 
-        if (is_iterable($value) && !is_string($value)) {
+        if (is_iterable($value)) {
             $keys = [];
             foreach ($value as $item) {
                 $keys[] = $this->scalarKey($item);
