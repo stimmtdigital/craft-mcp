@@ -102,12 +102,19 @@ final readonly class Filters {
     /**
      * A field filter value: scalars and :empty:/:notempty: pass through to
      * Craft's field query params; arrays are natural keys, resolved to the
-     * related element id (relation fields only). Craft reserves query-param
-     * names, so a validated field handle never collides with a query method.
+     * related element id (relation fields only). Handles that shadow a real
+     * query param would silently set that param instead of filtering the
+     * field, so they are refused outright.
      */
     private function fieldValue(string $handle, mixed $value, ?string $site): mixed {
         $field = Craft::$app->getFields()->getFieldByHandle($handle)
             ?? throw new InvalidArgumentException("Unknown field handle '{$handle}' in filters");
+
+        if (method_exists(EntryQuery::class, $handle) || property_exists(EntryQuery::class, $handle)) {
+            throw new InvalidArgumentException(
+                "Field handle '{$handle}' collides with an entry query parameter and cannot be used in filters; use search instead",
+            );
+        }
 
         if (!is_array($value)) {
             return $value;
@@ -147,6 +154,9 @@ final readonly class Filters {
         );
     }
 
+    /**
+     * @param array<string, string> $key
+     */
     private function matchesShape(string $type, array $key): bool {
         $shape = $this->keys->keyShape($type);
         if ($shape === null) {

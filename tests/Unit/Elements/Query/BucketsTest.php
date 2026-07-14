@@ -42,3 +42,12 @@ describe('Buckets::dateKey', function () {
         expect(Buckets::dateKey(null, 'month'))->toBe('(empty)');
     });
 });
+
+describe('Buckets eager loading', function () {
+    it('eager-loads relation fields across all statuses', function () {
+        $source = (string) file_get_contents((new ReflectionClass(Buckets::class))->getFileName());
+
+        expect($source)->toContain("['status' => null]")
+            ->and($source)->toContain('EagerLoadingFieldInterface');
+    });
+});

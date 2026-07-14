@@ -50,4 +50,10 @@ describe('Filters structure', function () {
             ->and($source)->toContain('getFieldByHandle(')
             ->and($source)->toContain('InvalidArgumentException');
     });
+
+    it('refuses field handles that collide with query params', function () {
+        $source = (string) file_get_contents((new ReflectionClass(Filters::class))->getFileName());
+
+        expect($source)->toContain('collides with an entry query parameter');
+    });
 });

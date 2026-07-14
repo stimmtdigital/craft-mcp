@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\elements\query;
 
 use Craft;
+use craft\base\EagerLoadingFieldInterface;
 use craft\base\ElementInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\db\EntryQuery;
@@ -125,7 +126,7 @@ final class Buckets {
             'attribute' => [$this->attributeKey($entry, $parsed['target'])],
             'date' => [self::dateKey($entry->{$parsed['target']}, (string) $parsed['granularity'])],
             'field' => $this->fieldKeys($entry, $parsed['target']),
-            default => [self::EMPTY_KEY],
+            default => throw new InvalidArgumentException("Unknown groupBy kind '{$parsed['kind']}'"),
         };
     }
 
@@ -136,7 +137,7 @@ final class Buckets {
             'section' => $entry->getSection()?->handle,
             'site' => $entry->getSite()->handle,
             'author' => $entry->getAuthor()?->username,
-            default => null,
+            default => throw new InvalidArgumentException("Unknown attribute target '{$target}'"),
         };
 
         return $value !== null && $value !== '' ? $value : self::EMPTY_KEY;
@@ -207,11 +208,14 @@ final class Buckets {
     }
 
     private function assertFieldExists(string $handle, EntryQuery $query): void {
-        if (Craft::$app->getFields()->getFieldByHandle($handle) === null) {
-            throw new InvalidArgumentException("Unknown groupBy '{$handle}': not an attribute, date bucket, or field handle");
-        }
+        $field = Craft::$app->getFields()->getFieldByHandle($handle)
+            ?? throw new InvalidArgumentException("Unknown groupBy '{$handle}': not an attribute, date bucket, or field handle");
 
-        // Eager-load relations so field-value bucketing does not query per entry.
-        $query->with([$handle]);
+        // Eager-load relation values across ALL statuses so bucketing does
+        // not query per entry and non-live related elements keep their
+        // titles instead of collapsing into the (empty) bucket.
+        if ($field instanceof EagerLoadingFieldInterface) {
+            $query->with([[$handle, ['status' => null]]]);
+        }
     }
 }
