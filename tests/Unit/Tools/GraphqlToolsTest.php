@@ -128,3 +128,34 @@ describe('query_graphql', function () {
             ->and($source)->toContain('OperationDefinitionNode');
     });
 });
+
+// Behavioral coverage for the security mechanism itself: assertReadOnly only
+// touches the GraphQL parser (pure PHP, no Craft boot), so it can run here.
+describe('query_graphql read-only guard', function () {
+    $guard = function (string $query): void {
+        $tools = (new ReflectionClass(GraphqlTools::class))->newInstanceWithoutConstructor();
+        (new ReflectionMethod(GraphqlTools::class, 'assertReadOnly'))->invoke($tools, $query);
+    };
+
+    it('rejects mutations before execution', function () use ($guard) {
+        $guard('mutation { deleteEntry(id: 1) }');
+    })->throws(\Mcp\Exception\ToolCallException::class, 'execute_graphql');
+
+    it('rejects subscriptions before execution', function () use ($guard) {
+        $guard('subscription { entryUpdated { id } }');
+    })->throws(\Mcp\Exception\ToolCallException::class);
+
+    it('rejects syntax errors with the parser message', function () use ($guard) {
+        $guard('query {');
+    })->throws(\Mcp\Exception\ToolCallException::class, 'GraphQL syntax error');
+
+    it('allows named, anonymous, and fragment-bearing queries', function (string $query) use ($guard) {
+        $guard($query);
+
+        expect(true)->toBeTrue();
+    })->with([
+        ['query Entries { entries { id } }'],
+        ['{ entries { id } }'],
+        ['query Entries { entries { ...ids } } fragment ids on EntryInterface { id }'],
+    ]);
+});

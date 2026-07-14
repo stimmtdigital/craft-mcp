@@ -87,6 +87,9 @@ describe('list_entries query surface', function () {
         expect($schema->type)->toBe('array');
     });
 
+});
+
+describe('get_entry lookups', function () {
     it('resolves revision ids on id lookups', function () {
         $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
 

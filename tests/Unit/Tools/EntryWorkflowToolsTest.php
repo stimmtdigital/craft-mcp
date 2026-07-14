@@ -33,7 +33,6 @@ describe('EntryWorkflowTools structure', function () {
     });
 });
 
-
 describe('list_revisions', function () {
     it('is registered read-only with id, site, and pagination parameters', function () {
         $method = new ReflectionMethod(EntryWorkflowTools::class, 'listRevisions');
