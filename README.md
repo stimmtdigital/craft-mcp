@@ -52,12 +52,12 @@ Entry reads and writes share one payload format: relations as natural keys (`{"s
 
 | Category | Highlights |
 |----------|-----------|
-| [Content](docs/tools/content.md) | Entries (payload-format read/write, draft workflow with a pending-drafts review queue, publish/duplicate/copy to site), schema discovery via `describe_entry_schema`, assets, categories, users, globals |
+| [Content](docs/tools/content.md) | Entries (payload-format read/write, field/relation/date filters, count and group-by breakdowns, draft workflow with a pending-drafts review queue and revision history, publish/duplicate/copy to site), schema discovery via `describe_entry_schema`, assets, categories, users, globals |
 | [System](docs/tools/system.md) | System info, config, logs, caches, routes, console commands |
 | [Database](docs/tools/database.md) | Schema inspection, table counts, read-only queries |
 | [Debugging](docs/tools/debugging.md) | Queue jobs, project config diff, deprecations, EXPLAIN, event handlers, and a Tinker tool for executing PHP in the Craft context |
 | [Multi-Site](docs/tools/multisite.md) | Sites, site groups, per-site details |
-| [GraphQL](docs/tools/graphql.md) | Schemas, SDL, query execution, tokens |
+| [GraphQL](docs/tools/graphql.md) | Schemas, SDL, read-only and mutating query execution, tokens |
 | [Backup](docs/tools/backup.md) | Create and list database backups |
 | [Self-Awareness](docs/tools/mcp.md) | Plugin info, tool listing with risk annotations, hot reload |
 | [Commerce](docs/tools/commerce.md) | Products, orders, and statuses (when Craft Commerce is installed) |

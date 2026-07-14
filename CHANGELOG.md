@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `count_entries` tool: totals and per-value breakdowns (attribute, date bucket, or field-value grouping) with the same filters as `list_entries`
+- Field-value `filters`, `relatedTo`, `author`, and date-range parameters on `list_entries`, with natural keys and `:empty:`/`:notempty:` support
+- `fields` projection on `list_entries` for slim rows when scanning many entries
+- `list_revisions` tool: an entry's saved history (who, when, notes); `get_entry` now reads revision ids
+- `query_graphql` tool: read-only GraphQL queries (mutations rejected at parse time), not gated by `enableDangerousTools`
+- Read-only and idempotent annotations on every non-dangerous tool
+- Tool-selection ladder in the server instructions, prompt guides, and the `tinker`/`run_query` descriptions
+
 ## [1.4.0-beta.4] - 2026-07-10
 
 ### Fixed

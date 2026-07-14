@@ -154,7 +154,7 @@ Sometimes you need to query the database directly. The `run_query` tool provides
 
 ### run_query
 
-Execute read-only SQL queries against your database. This is classified as a dangerous tool because it can expose data, but it's restricted to SELECT statements only.
+Execute read-only SQL queries against your database. Best suited for custom plugin tables and aggregate SQL that no structured tool covers; for table and column discovery use `get_database_schema` instead of hand-written `information_schema` queries, and for entry content prefer `list_entries`/`count_entries` over querying the content tables directly. This is classified as a dangerous tool because it can expose data, but it's restricted to SELECT statements only.
 
 > **Note:** This tool can be disabled via configuration. See the [Configuration Guide](../configuration.md).
 

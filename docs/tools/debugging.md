@@ -351,7 +351,7 @@ Sometimes you need to run arbitrary PHP code to debug an issue or inspect applic
 
 ### tinker
 
-Execute PHP code within your Craft application context. This is a powerful tool for debugging, inspection, and quick one-off operations. It's classified as dangerous and can be disabled via configuration.
+Execute PHP code within your Craft application context. Prefer a specific tool when one exists (content, schema, database tools); reach for `tinker` when none can express the job, such as cross-entry computation. This is a powerful tool for debugging, inspection, and quick one-off operations. It's classified as dangerous and can be disabled via configuration.
 
 > **Note:** This tool can be disabled via configuration. See the [Configuration Guide](../configuration.md).
 
