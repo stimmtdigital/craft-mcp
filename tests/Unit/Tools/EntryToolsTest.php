@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
+use Mcp\Schema\ToolAnnotations;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\tools\EntryTools;
 
@@ -46,9 +48,6 @@ describe('EntryTools structure', function () {
             ->and($source)->not->toContain('newParentId');
     });
 });
-
-use Mcp\Capability\Attribute\Schema;
-use Mcp\Schema\ToolAnnotations;
 
 describe('list_entries query surface', function () {
     it('accepts the shared filter parameters', function () {

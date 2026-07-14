@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\tools\GraphqlTools;
 
@@ -107,8 +108,6 @@ describe('GraphqlTools tool count', function () {
         expect($toolMethods)->toHaveCount(5);
     });
 });
-
-use stimmt\craft\Mcp\attributes\McpToolMeta;
 
 describe('query_graphql', function () {
     it('is registered read-only and not dangerous', function () {
