@@ -13,6 +13,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\query\Buckets;
 use stimmt\craft\Mcp\elements\query\Filters;
 use stimmt\craft\Mcp\elements\query\Projection;
 use stimmt\craft\Mcp\elements\Reader;
@@ -96,6 +97,49 @@ class EntryTools {
                 : array_map(fn (Entry $entry): array => $this->projection->row($entry, $fields, $site), $query->all());
 
             return Response::paginated('entries', $results, (int) $query->count(), $limit, $offset);
+        });
+    }
+
+    #[McpTool(
+        name: 'count_entries',
+        description: 'Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket ("month:dateUpdated", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under "(empty)"). Same filters as list_entries. One call answers "how many per X" without listing anything.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
+    )]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
+    public function countEntries(
+        ?string $section = null,
+        ?string $type = null,
+        ?string $status = null,
+        ?string $site = null,
+        ?string $search = null,
+        #[Schema(type: 'object', description: 'Field-value filters: {fieldHandle: value}. Values are scalars, ":empty:", ":notempty:", or a natural key object for relation fields.', additionalProperties: true)]
+        ?array $filters = null,
+        #[Schema(type: 'object', description: 'Only entries related to this element, as a natural key.', additionalProperties: true)]
+        ?array $relatedTo = null,
+        ?string $author = null,
+        ?string $updatedAfter = null,
+        ?string $updatedBefore = null,
+        ?string $createdAfter = null,
+        ?string $createdBefore = null,
+        ?string $groupBy = null,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $groupBy): array {
+            SiteResolver::resolve($site);
+
+            $query = Entry::find()->status($status);
+            foreach (['section' => $section, 'type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
+                if ($value !== null) {
+                    $query->$method($value);
+                }
+            }
+
+            $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+
+            $result = (new Buckets())->collect($query, $groupBy);
+            $result['groupBy'] = $groupBy;
+
+            return Response::success($result);
         });
     }
 

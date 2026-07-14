@@ -87,3 +87,16 @@ describe('list_entries query surface', function () {
         expect($schema->type)->toBe('array');
     });
 });
+
+describe('count_entries', function () {
+    it('is registered read-only with the shared filter parameters', function () {
+        $method = new ReflectionMethod(EntryTools::class, 'countEntries');
+        $tool = $method->getAttributes(McpTool::class)[0]->newInstance();
+        $params = array_map(fn (ReflectionParameter $p): string => $p->getName(), $method->getParameters());
+
+        expect($tool->name)->toBe('count_entries')
+            ->and($tool->annotations->readOnlyHint)->toBeTrue()
+            ->and($params)->toContain('groupBy')->toContain('filters')->toContain('relatedTo')
+            ->toContain('updatedAfter')->toContain('author');
+    });
+});
