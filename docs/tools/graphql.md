@@ -153,12 +153,11 @@ Same shape as `execute_graphql` below: `{"success": true, "data": {...}, "errors
 query_graphql query="mutation { save_news_default_Entry(title: \"x\") { id } }"
 ```
 
-```json
-{
-  "success": false,
-  "error": "Only query operations are allowed here; 'mutation' requires execute_graphql (dangerous tools)"
-}
+```text
+Error: Only query operations are allowed here; 'mutation' requires execute_graphql (dangerous tools)
 ```
+
+The rejection surfaces as an MCP error result (`isError: true`) carrying that message as text, not as a JSON body.
 
 Every operation in the query is parsed into a GraphQL AST and checked before Craft executes anything: any operation whose type is not `query` (a `mutation` or `subscription`) fails the call outright, before it ever reaches Craft's GraphQL executor. Because the check happens at parse time rather than through the permissions layer, `query_graphql` has no code path to a data-modifying mutation, so it stays available regardless of the `enableDangerousTools` setting, unlike `execute_graphql`.
 
