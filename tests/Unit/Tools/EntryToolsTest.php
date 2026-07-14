@@ -108,4 +108,10 @@ describe('count_entries', function () {
             ->and($params)->toContain('groupBy')->toContain('filters')->toContain('relatedTo')
             ->toContain('updatedAfter')->toContain('author');
     });
+
+    it('normalizes the any status instead of aborting the query', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect(substr_count($source, "=== 'any' ? null"))->toBe(2);
+    });
 });

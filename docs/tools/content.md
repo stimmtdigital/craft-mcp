@@ -104,7 +104,7 @@ When `fields` (the projection parameter) is given, each row is slimmed down to `
 
 ### count_entries
 
-Count entries, optionally grouped: by attribute (`status`, `type`, `section`, `site`, `author`), by date bucket (`"month:dateUpdated"`, any of `day`/`week`/`month`/`year` with `dateCreated`/`dateUpdated`/`postDate`), or by a field handle (relation fields bucket by related title; empty values fall under `"(empty)"`). Takes the same filters as `list_entries`. One call answers "how many per X" without listing anything.
+Count entries, optionally grouped: by attribute (`status`, `type`, `section`, `site`, `author`), by date bucket (`"month:dateUpdated"`, any of `day`/`week`/`month`/`year` with `dateCreated`/`dateUpdated`/`postDate`), or by a field handle (relation fields bucket by related title; empty values fall under `"(empty)"`). Takes the same filters as `list_entries`. Counts include every status by default, while list_entries defaults to live entries only; pass status to narrow either. One call answers "how many per X" without listing anything.
 
 **Parameters:**
 

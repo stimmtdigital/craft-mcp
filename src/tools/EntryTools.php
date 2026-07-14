@@ -84,7 +84,12 @@ class EntryTools {
             SiteResolver::resolve($site);
 
             $query = Entry::find()->limit($limit)->offset($offset);
-            foreach (['section' => $section, 'type' => $type, 'status' => $status, 'site' => $site, 'search' => $search] as $method => $value) {
+
+            if ($status !== null) {
+                $query->status($status === 'any' ? null : $status);
+            }
+
+            foreach (['section' => $section, 'type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
                 if ($value !== null) {
                     $query->$method($value);
                 }
@@ -102,7 +107,7 @@ class EntryTools {
 
     #[McpTool(
         name: 'count_entries',
-        description: 'Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket ("month:dateUpdated", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under "(empty)"). Same filters as list_entries. One call answers "how many per X" without listing anything.',
+        description: 'Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket ("month:dateUpdated", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under "(empty)"). Same filters as list_entries. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers "how many per X" without listing anything.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
@@ -127,7 +132,7 @@ class EntryTools {
         return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $groupBy): array {
             SiteResolver::resolve($site);
 
-            $query = Entry::find()->status($status);
+            $query = Entry::find()->status($status === 'any' ? null : $status);
             foreach (['section' => $section, 'type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
                 if ($value !== null) {
                     $query->$method($value);

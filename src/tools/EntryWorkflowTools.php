@@ -102,7 +102,7 @@ class EntryWorkflowTools {
                 ->status(null)
                 ->limit($limit)
                 ->offset($offset)
-                ->orderBy(['dateCreated' => SORT_DESC]);
+                ->orderBy(['dateCreated' => SORT_DESC, 'revisions.num' => SORT_DESC]);
             if ($site !== null) {
                 $query->site($site);
             }

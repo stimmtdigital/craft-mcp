@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fields` projection on `list_entries` for slim rows when scanning many entries
 - `list_revisions` tool: an entry's saved history (who, when, notes); `get_entry` now reads revision ids
 - `query_graphql` tool: read-only GraphQL queries (mutations rejected at parse time), not gated by `enableDangerousTools`
-- Read-only and idempotent annotations on every non-dangerous tool
+- Read-only and idempotent annotations on every non-dangerous tool (reload_mcp exempt)
 - Tool-selection ladder in the server instructions, prompt guides, and the `tinker`/`run_query` descriptions
 
 ## [1.4.0-beta.4] - 2026-07-10
