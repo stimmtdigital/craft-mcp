@@ -8,7 +8,7 @@ Entries are the primary content type in Craft CMS. Reads and writes share one pa
 
 ### list_entries
 
-List entries. Filter by section, type, status, site handle, and full-text search. Returns entries in the payload format described above.
+List entries. Filter by section, type, status, site handle, full-text search, field values (with `:empty:`/`:notempty:` and natural keys for relations), `relatedTo`, author, and date ranges. Returns entries in the payload format described above.
 
 **Parameters:**
 
@@ -19,6 +19,14 @@ List entries. Filter by section, type, status, site handle, and full-text search
 | `status` | string | null | Filter by status: "live", "pending", "expired", "disabled", or "any" |
 | `site` | string | null | Site handle to query and read fields from (defaults to the primary site) |
 | `search` | string | null | Full-text search term |
+| `filters` | object | null | Field-value filters: `{fieldHandle: value}`. Values are scalars, `":empty:"`, `":notempty:"`, or a natural key object for relation fields (e.g. `{"group": "...", "slug": "..."}`) |
+| `relatedTo` | object | null | Only entries related to this element, as a natural key: `{"section", "slug"}`, `{"volume", "filename"}`, `{"group", "slug"}`, or `{"username"}` |
+| `author` | string | null | Filter by the author's username or email |
+| `updatedAfter` | string | null | ISO date/datetime; only entries updated on or after this |
+| `updatedBefore` | string | null | ISO date/datetime; only entries updated before this |
+| `createdAfter` | string | null | ISO date/datetime; only entries created on or after this |
+| `createdBefore` | string | null | ISO date/datetime; only entries created before this |
+| `fields` | array of string | null | Projection: return only these attributes and field handles per entry (`id` and `title` always included) instead of the full payload. Ideal for scanning many entries |
 | `limit` | int | 20 | Maximum number of entries to return |
 | `offset` | int | 0 | Number of entries to skip (for pagination) |
 
@@ -36,6 +44,18 @@ list_entries section="news" search="product launch"
 
 # Paginate through results
 list_entries section="products" limit=20 offset=40
+
+# Field filters: a scalar, ":empty:", and a natural key, combined
+list_entries section="news" filters={"featured": true, "summary": ":empty:", "category": {"group": "topics", "slug": "company"}}
+
+# Only entries related to a specific asset
+list_entries relatedTo={"volume": "images", "filename": "hero.jpg"}
+
+# Entries by a specific author, updated since the start of the year
+list_entries author="anna@site.nl" updatedAfter="2024-01-01"
+
+# Slim rows for scanning many entries: id, title, plus these attributes/fields only
+list_entries section="news" fields=["slug", "status", "dateUpdated"] limit=200
 ```
 
 **Response:**
@@ -78,6 +98,87 @@ list_entries section="products" limit=20 offset=40
 
 `status` is the element's publish status (`live`, `pending`, `expired`, `disabled`); `state` is `draft` or `live`, i.e. whether this record is a draft awaiting `publish_entry` or the canonical version. `fields` holds custom field values in the payload format: relation fields as lists of natural keys, Matrix fields as block objects keyed by id. `warnings` lists any natural key in this entry's fields that failed to resolve to an element; see [Content Writing: Structured Feedback](../content-writing.md#structured-feedback).
 
+When `fields` (the projection parameter) is given, each row is slimmed down to `id`, `title`, the requested attributes, and a `fields` object holding only the requested field handles, instead of the full payload above.
+
+---
+
+### count_entries
+
+Count entries, optionally grouped: by attribute (`status`, `type`, `section`, `site`, `author`), by date bucket (`"month:dateUpdated"`, any of `day`/`week`/`month`/`year` with `dateCreated`/`dateUpdated`/`postDate`), or by a field handle (relation fields bucket by related title; empty values fall under `"(empty)"`). Takes the same filters as `list_entries`. Counts include every status by default, while list_entries defaults to live entries only; pass status to narrow either. One call answers "how many per X" without listing anything.
+
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `section` | string | null | Filter by section handle |
+| `type` | string | null | Filter by entry type handle |
+| `status` | string | null | Filter by status: "live", "pending", "expired", "disabled", or "any" |
+| `site` | string | null | Site handle to query (defaults to the primary site) |
+| `search` | string | null | Full-text search term |
+| `filters` | object | null | Field-value filters: `{fieldHandle: value}`. Values are scalars, `":empty:"`, `":notempty:"`, or a natural key object for relation fields |
+| `relatedTo` | object | null | Only entries related to this element, as a natural key |
+| `author` | string | null | Filter by the author's username or email |
+| `updatedAfter` | string | null | ISO date/datetime; only entries updated on or after this |
+| `updatedBefore` | string | null | ISO date/datetime; only entries updated before this |
+| `createdAfter` | string | null | ISO date/datetime; only entries created on or after this |
+| `createdBefore` | string | null | ISO date/datetime; only entries created before this |
+| `groupBy` | string | null | An attribute (`status`, `type`, `section`, `site`, `author`), a date bucket (`granularity:dateAttribute`, e.g. `"month:dateUpdated"`), or a field handle. Omit for a plain total |
+
+**Examples:**
+
+```
+# Plain total
+count_entries section="news"
+
+# Per-status breakdown
+count_entries section="news" groupBy="status"
+
+# Entries per month, by last update
+count_entries section="news" groupBy="month:dateUpdated"
+
+# Per-value breakdown on a relation field
+count_entries section="news" groupBy="category"
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "total": 245,
+  "groupBy": null
+}
+```
+
+With `groupBy`, a `buckets` list is added, one entry per distinct value, sorted by count descending (chronologically for date buckets):
+
+```json
+{
+  "success": true,
+  "total": 245,
+  "buckets": [
+    { "key": "2023-12", "count": 18 },
+    { "key": "2024-01", "count": 32 }
+  ],
+  "groupBy": "month:dateUpdated"
+}
+```
+
+```json
+{
+  "success": true,
+  "total": 5000,
+  "buckets": [
+    { "key": "Technology", "count": 120 },
+    { "key": "(empty)", "count": 40 }
+  ],
+  "truncated": true,
+  "groupBy": "category"
+}
+```
+
+`buckets` is capped at 200 entries; when a grouping produces more distinct values than that, only the top 200 are returned and `truncated` is `true`.
+
 ---
 
 ### get_entry
@@ -119,7 +220,7 @@ Returns a single entry object with the same structure as `list_entries` (see abo
 }
 ```
 
-An `id` lookup also matches drafts, so an agent can read back the draft a previous write just created.
+An `id` lookup also matches drafts and revisions, so an agent can read back the draft a previous write just created, or inspect a past revision's content using the `revisionElementId` from `list_revisions`.
 
 ---
 
@@ -352,6 +453,62 @@ list_drafts section="pages" creator="anna@site.nl"
 ```
 
 The `review_pending_drafts` prompt walks through this queue conversationally: inspect, publish, or reject each draft.
+
+---
+
+### list_revisions
+
+List an entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers "when did this change and by whom". Read a revision's full content with `get_entry` using its `revisionElementId`; the canonical entry id always holds the current content.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `id` | int | Yes | Canonical entry id whose revisions to list |
+| `site` | string | No | Site handle (defaults to the primary site) |
+| `limit` | int | No | Maximum revisions to return (default: 20) |
+| `offset` | int | No | Offset for pagination (default: 0) |
+
+**Example:**
+
+```
+list_revisions id=123
+```
+
+**Response:**
+
+```json
+{
+  "count": 2,
+  "total": 2,
+  "limit": 20,
+  "offset": 0,
+  "revisions": [
+    {
+      "revisionElementId": 512,
+      "canonicalId": 123,
+      "revisionNum": 4,
+      "title": "About Us",
+      "creator": "anna",
+      "notes": "Updated hero copy",
+      "dateCreated": "2024-01-15 14:22:00"
+    },
+    {
+      "revisionElementId": 498,
+      "canonicalId": 123,
+      "revisionNum": 3,
+      "title": "About Us",
+      "creator": "anna",
+      "notes": null,
+      "dateCreated": "2024-01-10 09:15:00"
+    }
+  ]
+}
+```
+
+`revisionElementId` is what `get_entry` accepts to read that revision's full content. `canonicalId` is the live entry the revision belongs to. `revisionNum` is Craft's sequential revision number for the entry. `creator` and `notes` come from whoever saved the revision and any note left at the time; either can be `null`.
+
+---
 
 ### publish_entry
 

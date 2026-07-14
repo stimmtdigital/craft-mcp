@@ -79,7 +79,7 @@ class TinkerTools {
      */
     #[McpTool(
         name: 'tinker',
-        description: 'Execute PHP code within Craft CMS context. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.',
+        description: 'Execute PHP code within Craft CMS context. Prefer a specific tool when one exists (content, schema, database tools); reach for tinker when none can express the job, such as cross-entry computation. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING, dangerous: true)]

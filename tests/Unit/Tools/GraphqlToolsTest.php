@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\tools\GraphqlTools;
 
@@ -96,7 +97,7 @@ describe('GraphqlTools dangerous tool', function () {
 });
 
 describe('GraphqlTools tool count', function () {
-    it('has exactly 4 public methods with McpTool attribute', function () {
+    it('has exactly 5 public methods with McpTool attribute', function () {
         $reflection = new ReflectionClass(GraphqlTools::class);
         $methods = $reflection->getMethods(ReflectionMethod::IS_PUBLIC);
 
@@ -104,6 +105,56 @@ describe('GraphqlTools tool count', function () {
             return !empty($method->getAttributes(McpTool::class));
         });
 
-        expect($toolMethods)->toHaveCount(4);
+        expect($toolMethods)->toHaveCount(5);
     });
+});
+
+describe('query_graphql', function () {
+    it('is registered read-only and not dangerous', function () {
+        $method = new ReflectionMethod(GraphqlTools::class, 'queryGraphql');
+        $tool = $method->getAttributes(McpTool::class)[0]->newInstance();
+        $meta = $method->getAttributes(McpToolMeta::class)[0]->newInstance();
+
+        expect($tool->name)->toBe('query_graphql')
+            ->and($tool->annotations->readOnlyHint)->toBeTrue()
+            ->and($meta->dangerous)->toBeFalse();
+    });
+
+    it('rejects non-query operations by parsing the document', function () {
+        $source = (string) file_get_contents((new ReflectionClass(GraphqlTools::class))->getFileName());
+
+        expect($source)->toContain('Parser::parse(')
+            ->and($source)->toContain('OperationDefinitionNode');
+    });
+});
+
+// Behavioral coverage for the security mechanism itself: assertReadOnly only
+// touches the GraphQL parser (pure PHP, no Craft boot), so it can run here.
+describe('query_graphql read-only guard', function () {
+    $guard = function (string $query): void {
+        $tools = (new ReflectionClass(GraphqlTools::class))->newInstanceWithoutConstructor();
+        (new ReflectionMethod(GraphqlTools::class, 'assertReadOnly'))->invoke($tools, $query);
+    };
+
+    it('rejects mutations before execution', function () use ($guard) {
+        $guard('mutation { deleteEntry(id: 1) }');
+    })->throws(\Mcp\Exception\ToolCallException::class, 'execute_graphql');
+
+    it('rejects subscriptions before execution', function () use ($guard) {
+        $guard('subscription { entryUpdated { id } }');
+    })->throws(\Mcp\Exception\ToolCallException::class);
+
+    it('rejects syntax errors with the parser message', function () use ($guard) {
+        $guard('query {');
+    })->throws(\Mcp\Exception\ToolCallException::class, 'GraphQL syntax error');
+
+    it('allows named, anonymous, and fragment-bearing queries', function (string $query) use ($guard) {
+        $guard($query);
+
+        expect(true)->toBeTrue();
+    })->with([
+        ['query Entries { entries { id } }'],
+        ['{ entries { id } }'],
+        ['query Entries { entries { ...ids } } fragment ids on EntryInterface { id }'],
+    ]);
 });

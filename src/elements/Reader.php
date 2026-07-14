@@ -19,6 +19,13 @@ use stimmt\craft\Mcp\elements\refs\Translator;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Reader {
+    private const array COMMON_ATTRIBUTES = [
+        'id', 'canonicalId', 'title', 'slug', 'status', 'state', 'draftId',
+        'siteId', 'siteHandle', 'dateCreated', 'dateUpdated', 'url', 'cpEditUrl',
+    ];
+
+    private const array ENTRY_ATTRIBUTES = ['sectionHandle', 'typeHandle', 'authorId', 'postDate', 'expiryDate'];
+
     public function __construct(
         private Translator $translator,
     ) {
@@ -42,29 +49,27 @@ final readonly class Reader {
         return $this->translator->toKeys($fields, $values, $context);
     }
 
-    private function attributes(ElementInterface $element): array {
-        $attributes = [
-            'id' => $element->id,
-            'canonicalId' => $element->getCanonicalId(),
-            'title' => $element->title,
-            'slug' => $element->slug,
-            'status' => $element->getStatus(),
-            'state' => $element->getIsDraft() ? WriteMode::Draft->value : WriteMode::Live->value,
-            'draftId' => $element->draftId ?? null,
-            'siteId' => $element->siteId,
-            'siteHandle' => $element->getSite()->handle,
-            'dateCreated' => $element->dateCreated?->format('Y-m-d H:i:s'),
-            'dateUpdated' => $element->dateUpdated?->format('Y-m-d H:i:s'),
-            'url' => $element->getUrl(),
-            'cpEditUrl' => $element->getCpEditUrl(),
-        ];
+    /**
+     * Payload-format values for a subset of an element's fields, for slim
+     * projections. Unknown handles are the caller's problem: filter first.
+     *
+     * @param string[] $handles
+     */
+    public function readFields(ElementInterface $element, array $handles, ?string $site = null): array {
+        $context = new Context($site ?? $element->getSite()->handle);
+        $fields = array_intersect_key(LayoutFields::of($element->getFieldLayout()), array_flip($handles));
 
-        if ($element instanceof Entry) {
-            $attributes['sectionHandle'] = $element->getSection()?->handle;
-            $attributes['typeHandle'] = $element->getType()->handle;
-            $attributes['authorId'] = $element->getAuthorId();
-            $attributes['postDate'] = $element->postDate?->format('Y-m-d H:i:s');
-            $attributes['expiryDate'] = $element->expiryDate?->format('Y-m-d H:i:s');
+        return $this->translateFields($fields, $this->serializedFields($element, $fields), $context);
+    }
+
+    private function attributes(ElementInterface $element): array {
+        $names = $element instanceof Entry
+            ? [...self::COMMON_ATTRIBUTES, ...self::ENTRY_ATTRIBUTES]
+            : self::COMMON_ATTRIBUTES;
+
+        $attributes = [];
+        foreach ($names as $name) {
+            $attributes[$name] = Attributes::value($element, $name);
         }
 
         return $attributes;

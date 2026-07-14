@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\behaviors\DraftBehavior;
+use craft\behaviors\RevisionBehavior;
 use craft\elements\Entry;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
@@ -39,6 +40,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'list_drafts',
         description: 'List pending (non-provisional) entry drafts awaiting review, newest first. Filter by section, site, or creator username/email. Each row carries the draft element id publish_entry accepts and a cpEditUrl for human review.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listDrafts(
@@ -75,6 +77,39 @@ class EntryWorkflowTools {
             $drafts = array_map($this->draftSummary(...), $query->all());
 
             return Response::paginated('drafts', $drafts, (int) $query->count(), $limit, $offset);
+        });
+    }
+
+    #[McpTool(
+        name: 'list_revisions',
+        description: 'List an entry\'s saved revisions, newest first: who saved each one, when, and with what notes. Answers "when did this change and by whom". Read a revision\'s full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
+    )]
+    #[McpToolMeta(category: ToolCategory::CONTENT)]
+    public function listRevisions(
+        int $id,
+        ?string $site = null,
+        int $limit = 20,
+        int $offset = 0,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($id, $site, $limit, $offset): array {
+            SiteResolver::resolve($site);
+
+            $query = Entry::find()
+                ->revisionOf($id)
+                ->revisions()
+                ->status(null)
+                ->limit($limit)
+                ->offset($offset)
+                ->orderBy(['dateCreated' => SORT_DESC, 'revisions.num' => SORT_DESC]);
+            if ($site !== null) {
+                $query->site($site);
+            }
+
+            $revisions = array_map($this->revisionSummary(...), $query->all());
+
+            return Response::paginated('revisions', $revisions, (int) $query->count(), $limit, $offset);
         });
     }
 
@@ -197,6 +232,29 @@ class EntryWorkflowTools {
             'notes' => $notes,
             'dateUpdated' => $draft->dateUpdated?->format('Y-m-d H:i:s'),
             'cpEditUrl' => $draft->getCpEditUrl(),
+        ];
+    }
+
+    /**
+     * One history row: identifiers, the human trail (creator, notes), and the
+     * timestamp the revision was saved.
+     *
+     * @return array<string, mixed>
+     */
+    private function revisionSummary(Entry $revision): array {
+        $behavior = $revision->getBehavior('revision');
+        $creator = $behavior instanceof RevisionBehavior ? $behavior->getCreator() : null;
+        $notes = $behavior instanceof RevisionBehavior ? $behavior->revisionNotes : null;
+        $num = $behavior instanceof RevisionBehavior ? $behavior->revisionNum : null;
+
+        return [
+            'revisionElementId' => (int) $revision->id,
+            'canonicalId' => (int) $revision->getCanonicalId(),
+            'revisionNum' => $num,
+            'title' => (string) $revision->title,
+            'creator' => $creator?->username,
+            'notes' => $notes,
+            'dateCreated' => $revision->dateCreated?->format('Y-m-d H:i:s'),
         ];
     }
 

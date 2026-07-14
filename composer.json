@@ -91,7 +91,7 @@
         "test:coverage": "pest --coverage --min=80",
         "test:type": "pest --type-coverage --min=90",
         "test:arch": "pest --filter=Arch",
-        "analyse": "phpstan analyse",
+        "analyse": "phpstan analyse --memory-limit=512M",
         "ci": [
             "@lint:test",
             "@analyse",

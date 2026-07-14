@@ -117,9 +117,55 @@ The `sdl` field contains the complete schema definition, this can be quite large
 
 ## Query Execution
 
+### query_graphql
+
+Run a read-only GraphQL query against Craft's GraphQL API. Mutations and subscriptions are rejected before execution, so this tool is safe for browsing any GraphQL-exposed data (assets, categories, users, plugin types) with exactly the response shape you ask for. Use `get_graphql_schema` to discover the available types first.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `query` | string | Yes | The GraphQL query to execute |
+| `variables` | string | No | JSON string containing query variables |
+| `operationName` | string | No | Name of the operation (when the query contains multiple) |
+| `schemaId` | int | No | Schema ID to use (defaults to the public schema) |
+
+**Examples:**
+
+```
+# Simple query
+query_graphql query="{ entries(section: \"news\", limit: 5) { title, slug } }"
+
+# Query with variables
+query_graphql query="query GetEntry($id: [QueryArgument]) { entry(id: $id) { title } }" variables='{"id": 123}'
+
+# Using a specific schema
+query_graphql query="{ entries { title } }" schemaId=2
+```
+
+**Response:**
+
+Same shape as `execute_graphql` below: `{"success": true, "data": {...}, "errors": null}`.
+
+**Rejected mutation:**
+
+```
+query_graphql query="mutation { save_news_default_Entry(title: \"x\") { id } }"
+```
+
+```text
+Error: Only query operations are allowed here; 'mutation' requires execute_graphql (dangerous tools)
+```
+
+The rejection surfaces as an MCP error result (`isError: true`) carrying that message as text, not as a JSON body.
+
+Every operation in the query is parsed into a GraphQL AST and checked before Craft executes anything: any operation whose type is not `query` (a `mutation` or `subscription`) fails the call outright, before it ever reaches Craft's GraphQL executor. Because the check happens at parse time rather than through the permissions layer, `query_graphql` has no code path to a data-modifying mutation, so it stays available regardless of the `enableDangerousTools` setting, unlike `execute_graphql`.
+
+---
+
 ### execute_graphql
 
-Execute a GraphQL query or mutation against your Craft installation. This tool lets AI assistants fetch data using the same API your front-end applications use.
+Execute a GraphQL query or mutation against your Craft installation. This tool lets AI assistants fetch data using the same API your front-end applications use. For read-only work, prefer `query_graphql`: it is always available, since mutations cannot reach it.
 
 > **Note:** This is a dangerous tool that can modify data via mutations. It can be disabled via configuration.
 

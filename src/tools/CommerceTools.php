@@ -10,6 +10,7 @@ use craft\commerce\elements\Product;
 use craft\commerce\Plugin as Commerce;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
@@ -62,6 +63,7 @@ class CommerceTools implements ConditionalToolProvider {
     #[McpTool(
         name: 'list_products',
         description: 'List products from Craft Commerce. Filter by product type handle.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listProducts(
@@ -100,6 +102,7 @@ class CommerceTools implements ConditionalToolProvider {
     #[McpTool(
         name: 'get_product',
         description: 'Get detailed information about a single Commerce product by ID',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function getProduct(int $id, ?RequestContext $context = null): array {
@@ -158,6 +161,7 @@ class CommerceTools implements ConditionalToolProvider {
     #[McpTool(
         name: 'list_orders',
         description: 'List orders from Craft Commerce. Filter by status handle.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listOrders(
@@ -212,6 +216,7 @@ class CommerceTools implements ConditionalToolProvider {
     #[McpTool(
         name: 'get_order',
         description: 'Get detailed information about a single Commerce order by ID or order number',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function getOrder(?int $id = null, ?string $number = null, ?RequestContext $context = null): array {
@@ -297,6 +302,7 @@ class CommerceTools implements ConditionalToolProvider {
     #[McpTool(
         name: 'list_order_statuses',
         description: 'List all order statuses configured in Craft Commerce',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listOrderStatuses(?RequestContext $context = null): array {
@@ -333,6 +339,7 @@ class CommerceTools implements ConditionalToolProvider {
     #[McpTool(
         name: 'list_product_types',
         description: 'List all product types configured in Craft Commerce',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listProductTypes(?RequestContext $context = null): array {

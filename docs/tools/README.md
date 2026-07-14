@@ -1,6 +1,6 @@
 # Tools Reference
 
-Craft MCP provides 56 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
+Craft MCP provides 59 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
 
 ## Tool Categories
 
@@ -8,13 +8,13 @@ The tools are organized into logical categories based on what they do:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-| [Content](content.md) | 16 | Query and manage entries (payload-format read/write, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
+| [Content](content.md) | 18 | Query and manage entries (payload-format read/write, filters, counts, revision history, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
 | [System](system.md) | 7 | Access configuration, logs, caches, routes, and system information |
 | [Database](database.md) | 4 | Inspect database schema, run queries, and explore table structures |
 | [Debugging](debugging.md) | 7 | Monitor queue jobs, project config changes, deprecations, and more |
 | Schema | 4 | Inspect sections, fields, and plugins; discover an entry type's write schema |
 | [Multi-Site](multisite.md) | 3 | Manage and inspect multi-site configurations |
-| [GraphQL](graphql.md) | 4 | Query schemas, tokens, and execute GraphQL operations |
+| [GraphQL](graphql.md) | 5 | Query schemas, tokens, and execute read-only or mutating GraphQL operations |
 | [Backup](backup.md) | 2 | List and create database backups |
 | [Self-Awareness](mcp.md) | 3 | Inspect MCP plugin status, available tools, and hot-reload |
 | [Commerce](commerce.md) | 6 | Product and order management (requires Craft Commerce) |
@@ -29,11 +29,13 @@ These tools let AI assistants work with your Craft content:
 
 | Tool | Description |
 |------|-------------|
-| `list_entries` | List entries, filtering by section, type, status, site, and full-text search; returns the payload format |
+| `list_entries` | List entries, filtering by section, type, status, site, full-text search, field values, relations, author, and date ranges; returns the payload format, optionally projected via `fields` |
+| `count_entries` | Count entries with the same filters as `list_entries`; optional `groupBy` for per-attribute, per-date-bucket, or per-field-value breakdowns |
 | `get_entry` | Get one entry by id or slug, in the payload format that `create_entry`/`update_entry` accept as `fields` |
 | `create_entry` | Create an entry from payload-format `fields`; saves as a draft by default |
 | `update_entry` | Update an entry by id from payload-format `fields`; drafts on top of a live entry by default |
 | `list_drafts` | List pending drafts awaiting review, newest first, with publish ids and control panel links |
+| `list_revisions` | List an entry's saved revisions, newest first: who saved each one, when, and with what notes |
 | `publish_entry` | Apply a pending draft to its canonical entry, or enable a disabled live entry |
 | `delete_entry` | Soft-delete an entry to the trash, restorable from the control panel |
 | `duplicate_entry` | Duplicate an entry as an unpublished draft, with optional field overrides |
@@ -116,6 +118,7 @@ These tools provide access to Craft's GraphQL API:
 |------|-------------|
 | `list_graphql_schemas` | List all GraphQL schemas with their scopes and permissions |
 | `get_graphql_schema` | Get schema details including the SDL (Schema Definition Language) |
+| `query_graphql` | Run a read-only GraphQL query; mutations and subscriptions are rejected before execution |
 | `execute_graphql` | Execute GraphQL queries and mutations against your Craft installation |
 | `list_graphql_tokens` | List API tokens with their associated schemas |
 

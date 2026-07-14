@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
+use Mcp\Schema\ToolAnnotations;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\tools\EntryTools;
 
@@ -44,5 +46,71 @@ describe('EntryTools structure', function () {
 
         expect($source)->toContain("\$attributes['parentId'] = \$parentId;")
             ->and($source)->not->toContain('newParentId');
+    });
+});
+
+describe('list_entries query surface', function () {
+    it('accepts the shared filter parameters', function () {
+        $params = array_map(
+            fn (ReflectionParameter $p): string => $p->getName(),
+            (new ReflectionMethod(EntryTools::class, 'listEntries'))->getParameters(),
+        );
+
+        expect($params)->toContain('filters')->toContain('relatedTo')->toContain('author')
+            ->toContain('updatedAfter')->toContain('updatedBefore')
+            ->toContain('createdAfter')->toContain('createdBefore');
+    });
+
+    it('declares JSON schemas on the object parameters', function (string $param) {
+        $parameters = (new ReflectionMethod(EntryTools::class, 'listEntries'))->getParameters();
+        $byName = array_combine(array_map(fn ($p) => $p->getName(), $parameters), $parameters);
+
+        expect($byName[$param]->getAttributes(Schema::class))->toHaveCount(1);
+    })->with([['filters'], ['relatedTo']]);
+
+    it('is annotated read-only and idempotent', function () {
+        $tool = (new ReflectionMethod(EntryTools::class, 'listEntries'))
+            ->getAttributes(McpTool::class)[0]->newInstance();
+
+        expect($tool->annotations)->toBeInstanceOf(ToolAnnotations::class)
+            ->and($tool->annotations->readOnlyHint)->toBeTrue()
+            ->and($tool->annotations->idempotentHint)->toBeTrue();
+    });
+
+    it('accepts a fields projection parameter with an array schema', function () {
+        $parameters = (new ReflectionMethod(EntryTools::class, 'listEntries'))->getParameters();
+        $byName = array_combine(array_map(fn ($p) => $p->getName(), $parameters), $parameters);
+
+        $schema = $byName['fields']->getAttributes(Schema::class)[0]->newInstance();
+
+        expect($schema->type)->toBe('array');
+    });
+
+});
+
+describe('get_entry lookups', function () {
+    it('resolves revision ids on id lookups', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect($source)->toContain('revisions(null)');
+    });
+});
+
+describe('count_entries', function () {
+    it('is registered read-only with the shared filter parameters', function () {
+        $method = new ReflectionMethod(EntryTools::class, 'countEntries');
+        $tool = $method->getAttributes(McpTool::class)[0]->newInstance();
+        $params = array_map(fn (ReflectionParameter $p): string => $p->getName(), $method->getParameters());
+
+        expect($tool->name)->toBe('count_entries')
+            ->and($tool->annotations->readOnlyHint)->toBeTrue()
+            ->and($params)->toContain('groupBy')->toContain('filters')->toContain('relatedTo')
+            ->toContain('updatedAfter')->toContain('author');
+    });
+
+    it('normalizes the any status instead of aborting the query', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect(substr_count($source, "=== 'any' ? null"))->toBe(2);
     });
 });

@@ -33,6 +33,7 @@ class SystemTools {
     #[McpTool(
         name: 'get_config',
         description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver")',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function getConfig(string $key, ?RequestContext $context = null): array {
@@ -73,6 +74,7 @@ class SystemTools {
     #[McpTool(
         name: 'read_logs',
         description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for human-readable colored output.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function readLogs(
@@ -135,6 +137,7 @@ class SystemTools {
     #[McpTool(
         name: 'get_last_error',
         description: 'Get the most recent error from Craft CMS log files',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function getLastError(?RequestContext $context = null): array {
@@ -202,6 +205,7 @@ class SystemTools {
     #[McpTool(
         name: 'list_console_commands',
         description: 'List all available Craft CMS console commands (like php craft <command>)',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function listConsoleCommands(?RequestContext $context = null): array {
@@ -222,6 +226,7 @@ class SystemTools {
     #[McpTool(
         name: 'list_routes',
         description: 'List all registered routes in Craft CMS',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function listRoutes(?RequestContext $context = null): array {

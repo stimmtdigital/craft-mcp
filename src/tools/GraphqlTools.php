@@ -6,6 +6,9 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\models\GqlSchema;
+use GraphQL\Error\SyntaxError;
+use GraphQL\Language\AST\OperationDefinitionNode;
+use GraphQL\Language\Parser;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -27,6 +30,7 @@ class GraphqlTools {
     #[McpTool(
         name: 'list_graphql_schemas',
         description: 'List all GraphQL schemas in Craft CMS with their scopes and permissions',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function listGraphqlSchemas(?RequestContext $context = null): array {
@@ -61,6 +65,7 @@ class GraphqlTools {
     #[McpTool(
         name: 'get_graphql_schema',
         description: 'Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function getGraphqlSchema(?int $id = null, ?string $uid = null, ?RequestContext $context = null): array {
@@ -102,6 +107,29 @@ class GraphqlTools {
     }
 
     /**
+     * Run a read-only GraphQL query.
+     */
+    #[McpTool(
+        name: 'query_graphql',
+        description: 'Run a read-only GraphQL query against Craft\'s GraphQL API. Mutations and subscriptions are rejected before execution, so this is safe for browsing any GraphQL-exposed data (assets, categories, users, plugin types) with exactly the response shape you ask for. Use get_graphql_schema to discover the available types first.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
+    )]
+    #[McpToolMeta(category: ToolCategory::GRAPHQL)]
+    public function queryGraphql(
+        string $query,
+        ?string $variables = null,
+        ?string $operationName = null,
+        ?int $schemaId = null,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($query, $variables, $operationName, $schemaId, $context): array {
+            $this->assertReadOnly($query);
+
+            return $this->execute($query, $variables, $operationName, $schemaId, $context);
+        });
+    }
+
+    /**
      * Execute a GraphQL query.
      */
     #[McpTool(
@@ -117,46 +145,71 @@ class GraphqlTools {
         ?int $schemaId = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($query, $variables, $operationName, $schemaId, $context): array {
-            $context?->getClientGateway()?->progress(0, 2, 'Executing GraphQL query...');
+        return SafeExecution::run(fn (): array => $this->execute($query, $variables, $operationName, $schemaId, $context));
+    }
 
-            $gql = Craft::$app->getGql();
+    /**
+     * Mutations are rejected at the AST level, before any execution: this is
+     * what lets query_graphql stay out of the dangerous-tools gate.
+     */
+    private function assertReadOnly(string $query): void {
+        try {
+            $document = Parser::parse($query);
+        } catch (SyntaxError $e) {
+            throw new ToolCallException('GraphQL syntax error: ' . $e->getMessage(), $e->getCode(), $e);
+        }
 
-            // Get the schema to use
-            $schema = $schemaId !== null
-                ? $gql->getSchemaById($schemaId)
-                : $gql->getPublicSchema();
-
-            if ($schema === null) {
-                $error = $schemaId !== null
-                    ? "Schema with ID {$schemaId} not found"
-                    : 'No public schema available. Provide a schemaId.';
-
-                throw new ToolCallException($error);
+        foreach ($document->definitions as $definition) {
+            if ($definition instanceof OperationDefinitionNode && $definition->operation !== 'query') {
+                throw new ToolCallException(
+                    "Only query operations are allowed here; '{$definition->operation}' requires execute_graphql (dangerous tools)",
+                );
             }
+        }
+    }
 
-            // Parse variables if provided
-            $parsedVariables = $this->parseVariables($variables);
-            if ($parsedVariables === false) {
-                throw new ToolCallException('Invalid JSON in variables: ' . json_last_error_msg());
-            }
+    /**
+     * @return array{success: bool, data: mixed, errors: mixed}
+     */
+    private function execute(string $query, ?string $variables, ?string $operationName, ?int $schemaId, ?RequestContext $context): array {
+        $context?->getClientGateway()?->progress(0, 2, 'Executing GraphQL query...');
 
-            // Execute the query
-            $result = $gql->executeQuery(
-                $schema,
-                $query,
-                $parsedVariables,
-                $operationName,
-            );
+        $gql = Craft::$app->getGql();
 
-            $context?->getClientGateway()?->progress(2, 2, 'Query complete');
+        // Get the schema to use
+        $schema = $schemaId !== null
+            ? $gql->getSchemaById($schemaId)
+            : $gql->getPublicSchema();
 
-            return [
-                'success' => true,
-                'data' => $result['data'] ?? null,
-                'errors' => $result['errors'] ?? null,
-            ];
-        });
+        if ($schema === null) {
+            $error = $schemaId !== null
+                ? "Schema with ID {$schemaId} not found"
+                : 'No public schema available. Provide a schemaId.';
+
+            throw new ToolCallException($error);
+        }
+
+        // Parse variables if provided
+        $parsedVariables = $this->parseVariables($variables);
+        if ($parsedVariables === false) {
+            throw new ToolCallException('Invalid JSON in variables: ' . json_last_error_msg());
+        }
+
+        // Execute the query
+        $result = $gql->executeQuery(
+            $schema,
+            $query,
+            $parsedVariables,
+            $operationName,
+        );
+
+        $context?->getClientGateway()?->progress(2, 2, 'Query complete');
+
+        return [
+            'success' => true,
+            'data' => $result['data'] ?? null,
+            'errors' => $result['errors'] ?? null,
+        ];
     }
 
     /**
@@ -165,6 +218,7 @@ class GraphqlTools {
     #[McpTool(
         name: 'list_graphql_tokens',
         description: 'List all GraphQL tokens (API keys) with their associated schemas',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function listGraphqlTokens(?RequestContext $context = null): array {

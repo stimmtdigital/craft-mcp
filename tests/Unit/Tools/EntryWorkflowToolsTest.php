@@ -32,3 +32,22 @@ describe('EntryWorkflowTools structure', function () {
             ->and($source)->toContain('nothing to publish');
     });
 });
+
+describe('list_revisions', function () {
+    it('is registered read-only with id, site, and pagination parameters', function () {
+        $method = new ReflectionMethod(EntryWorkflowTools::class, 'listRevisions');
+        $tool = $method->getAttributes(McpTool::class)[0]->newInstance();
+        $params = array_map(fn (ReflectionParameter $p): string => $p->getName(), $method->getParameters());
+
+        expect($tool->name)->toBe('list_revisions')
+            ->and($tool->annotations->readOnlyHint)->toBeTrue()
+            ->and($params)->toContain('id')->toContain('site')->toContain('limit')->toContain('offset');
+    });
+
+    it('summarizes revisions through the RevisionBehavior guard', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryWorkflowTools::class))->getFileName());
+
+        expect($source)->toContain('RevisionBehavior')
+            ->and($source)->toContain('revisionOf(');
+    });
+});

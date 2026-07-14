@@ -143,6 +143,7 @@ Please help me:
 3. Recommend tools to use (read_logs, get_last_error, get_deprecations, explain_query)
 4. Provide possible solutions or workarounds
 5. Identify if this might be a configuration, data, or code issue
+6. Work up the tool ladder: content tools first (list_entries filters, count_entries, list_revisions for "when did this change"), query_graphql for other element types, get_database_schema for structure, run_query for custom tables, tinker only when no tool can express it
 
 What additional information would you need to diagnose this issue?
 PROMPT);

@@ -11,6 +11,7 @@ use craft\models\VolumeFolder;
 use craft\services\Assets;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -29,6 +30,7 @@ class AssetTools {
     #[McpTool(
         name: 'list_assets',
         description: 'List assets from Craft CMS. Filter by volume, folder, kind (image, video, pdf, etc.), filename.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listAssets(
@@ -84,6 +86,7 @@ class AssetTools {
     #[McpTool(
         name: 'get_asset',
         description: 'Get a single asset by ID with full metadata',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function getAsset(int $id, ?RequestContext $context = null): array {
@@ -107,6 +110,7 @@ class AssetTools {
     #[McpTool(
         name: 'list_volumes',
         description: 'List all asset volumes (storage locations) in Craft CMS',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listVolumes(?RequestContext $context = null): array {
@@ -138,6 +142,7 @@ class AssetTools {
     #[McpTool(
         name: 'list_asset_folders',
         description: 'List asset folders in a volume',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listAssetFolders(?string $volume = null, ?int $parentId = null, ?RequestContext $context = null): array {
