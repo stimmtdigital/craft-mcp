@@ -46,3 +46,35 @@ describe('EntryTools structure', function () {
             ->and($source)->not->toContain('newParentId');
     });
 });
+
+use Mcp\Capability\Attribute\Schema;
+use Mcp\Schema\ToolAnnotations;
+
+describe('list_entries query surface', function () {
+    it('accepts the shared filter parameters', function () {
+        $params = array_map(
+            fn (ReflectionParameter $p): string => $p->getName(),
+            (new ReflectionMethod(EntryTools::class, 'listEntries'))->getParameters(),
+        );
+
+        expect($params)->toContain('filters')->toContain('relatedTo')->toContain('author')
+            ->toContain('updatedAfter')->toContain('updatedBefore')
+            ->toContain('createdAfter')->toContain('createdBefore');
+    });
+
+    it('declares JSON schemas on the object parameters', function (string $param) {
+        $parameters = (new ReflectionMethod(EntryTools::class, 'listEntries'))->getParameters();
+        $byName = array_combine(array_map(fn ($p) => $p->getName(), $parameters), $parameters);
+
+        expect($byName[$param]->getAttributes(Schema::class))->toHaveCount(1);
+    })->with([['filters'], ['relatedTo']]);
+
+    it('is annotated read-only and idempotent', function () {
+        $tool = (new ReflectionMethod(EntryTools::class, 'listEntries'))
+            ->getAttributes(McpTool::class)[0]->newInstance();
+
+        expect($tool->annotations)->toBeInstanceOf(ToolAnnotations::class)
+            ->and($tool->annotations->readOnlyHint)->toBeTrue()
+            ->and($tool->annotations->idempotentHint)->toBeTrue();
+    });
+});

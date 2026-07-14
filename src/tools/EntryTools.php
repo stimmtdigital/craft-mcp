@@ -8,10 +8,12 @@ use Craft;
 use craft\elements\Entry;
 use craft\elements\User;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\query\Filters;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\refs\Keys;
 use stimmt\craft\Mcp\elements\schema\Describer;
@@ -37,15 +39,19 @@ class EntryTools {
 
     private readonly Keys $keys;
 
-    public function __construct(?Reader $reader = null, ?Writer $writer = null, ?Keys $keys = null) {
+    private readonly Filters $filters;
+
+    public function __construct(?Reader $reader = null, ?Writer $writer = null, ?Keys $keys = null, ?Filters $filters = null) {
         $this->reader = $reader ?? ElementModule::reader();
         $this->writer = $writer ?? ElementModule::writer();
         $this->keys = $keys ?? new Keys();
+        $this->filters = $filters ?? new Filters();
     }
 
     #[McpTool(
         name: 'list_entries',
-        description: 'List entries. Filter by section, type, status, site handle, and full-text search. Returns entries in the payload format (natural keys for relations).',
+        description: 'List entries. Filter by section, type, status, site, full-text search, field values (with :empty:/:notempty: and natural keys for relations), relatedTo, author, and date ranges. Returns entries in the payload format (natural keys for relations).',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listEntries(
@@ -54,11 +60,20 @@ class EntryTools {
         ?string $status = null,
         ?string $site = null,
         ?string $search = null,
+        #[Schema(type: 'object', description: 'Field-value filters: {fieldHandle: value}. Values are scalars, ":empty:", ":notempty:", or a natural key object for relation fields (e.g. {"group": "...", "slug": "..."}).', additionalProperties: true)]
+        ?array $filters = null,
+        #[Schema(type: 'object', description: 'Only entries related to this element, as a natural key: {"section","slug"}, {"volume","filename"}, {"group","slug"}, or {"username"}.', additionalProperties: true)]
+        ?array $relatedTo = null,
+        ?string $author = null,
+        ?string $updatedAfter = null,
+        ?string $updatedBefore = null,
+        ?string $createdAfter = null,
+        ?string $createdBefore = null,
         int $limit = 20,
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $limit, $offset): array {
+        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $limit, $offset): array {
             SiteResolver::resolve($site);
 
             $query = Entry::find()->limit($limit)->offset($offset);
@@ -67,6 +82,8 @@ class EntryTools {
                     $query->$method($value);
                 }
             }
+
+            $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
 
             $results = array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all());
 
@@ -77,6 +94,7 @@ class EntryTools {
     #[McpTool(
         name: 'get_entry',
         description: 'Get one entry by id or slug, in the payload format: what this returns is exactly what create_entry/update_entry accept as fields.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function getEntry(
@@ -183,6 +201,7 @@ class EntryTools {
     #[McpTool(
         name: 'describe_entry_schema',
         description: 'Describe the fields a section/entry type accepts: handles, kinds, required flags, a per-field input shape (the exact payload each field takes: natural keys for relations, block types for matrix, link/option/table/container shapes for structured and third-party fields), native fields, writable meta attributes. Pass example (entry id or slug) to include a real entry payload as a golden fixture.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function describeEntrySchema(
