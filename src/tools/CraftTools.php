@@ -8,6 +8,7 @@ use Craft;
 use craft\base\FieldInterface;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -28,6 +29,7 @@ class CraftTools {
     #[McpTool(
         name: 'list_plugins',
         description: 'List all installed Craft CMS plugins with their enabled status, version, and handle',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listPlugins(?RequestContext $context = null): array {
@@ -62,6 +64,7 @@ class CraftTools {
     #[McpTool(
         name: 'list_sections',
         description: 'List all sections (channels, structures, singles) in Craft CMS with their entry types. Optionally filter by handle/name search term.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listSections(?string $search = null, ?RequestContext $context = null): array {
@@ -117,6 +120,7 @@ class CraftTools {
     #[McpTool(
         name: 'get_system_info',
         description: 'Get information about the Craft CMS installation including version, PHP version, and database info',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function getSystemInfo(?RequestContext $context = null): array {
@@ -159,6 +163,7 @@ class CraftTools {
     #[McpTool(
         name: 'list_fields',
         description: 'List all custom fields in Craft CMS with their type and group. Optionally filter by handle/name search term or field type.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listFields(?string $search = null, ?string $type = null, ?RequestContext $context = null): array {

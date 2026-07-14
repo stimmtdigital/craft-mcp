@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -26,6 +27,7 @@ class McpTools {
     #[McpTool(
         name: 'get_mcp_info',
         description: 'Get information about the Craft MCP plugin including version, status, and configuration',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function getMcpInfo(?RequestContext $context = null): array {
@@ -66,6 +68,7 @@ class McpTools {
     #[McpTool(
         name: 'list_mcp_tools',
         description: 'List all available MCP tools with their names, descriptions, and enabled status',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function listMcpTools(?RequestContext $context = null): array {

@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
@@ -25,6 +26,7 @@ class GlobalSetTools {
     #[McpTool(
         name: 'list_globals',
         description: 'List all global sets in Craft CMS with their field values',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listGlobals(?RequestContext $context = null): array {

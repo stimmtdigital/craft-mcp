@@ -40,6 +40,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'list_drafts',
         description: 'List pending (non-provisional) entry drafts awaiting review, newest first. Filter by section, site, or creator username/email. Each row carries the draft element id publish_entry accepts and a cpEditUrl for human review.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listDrafts(

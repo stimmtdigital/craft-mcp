@@ -28,6 +28,7 @@ class DatabaseTools {
     #[McpTool(
         name: 'get_database_schema',
         description: 'Get database schema information. Lists all tables, or details for a specific table including columns and indexes.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE)]
     public function getDatabaseSchema(?string $table = null, ?RequestContext $context = null): array {
@@ -162,6 +163,7 @@ class DatabaseTools {
     #[McpTool(
         name: 'get_database_info',
         description: 'Get database connection information including driver, server version, and connection details',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE)]
     public function getDatabaseInfo(?RequestContext $context = null): array {
@@ -187,6 +189,7 @@ class DatabaseTools {
     #[McpTool(
         name: 'get_table_counts',
         description: 'Get row counts for Craft CMS tables (entries, assets, users, etc.)',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE)]
     public function getTableCounts(?RequestContext $context = null): array {

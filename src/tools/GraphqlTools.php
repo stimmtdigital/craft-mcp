@@ -30,6 +30,7 @@ class GraphqlTools {
     #[McpTool(
         name: 'list_graphql_schemas',
         description: 'List all GraphQL schemas in Craft CMS with their scopes and permissions',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function listGraphqlSchemas(?RequestContext $context = null): array {
@@ -64,6 +65,7 @@ class GraphqlTools {
     #[McpTool(
         name: 'get_graphql_schema',
         description: 'Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function getGraphqlSchema(?int $id = null, ?string $uid = null, ?RequestContext $context = null): array {
@@ -216,6 +218,7 @@ class GraphqlTools {
     #[McpTool(
         name: 'list_graphql_tokens',
         description: 'List all GraphQL tokens (API keys) with their associated schemas',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function listGraphqlTokens(?RequestContext $context = null): array {

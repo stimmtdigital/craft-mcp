@@ -25,6 +25,7 @@ class BackupTools {
     #[McpTool(
         name: 'list_backups',
         description: 'List available database backups from storage/backups directory',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::BACKUP)]
     public function listBackups(?RequestContext $context = null): array {

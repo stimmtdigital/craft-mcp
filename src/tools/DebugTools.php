@@ -9,6 +9,7 @@ use Craft;
 use Generator;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use ReflectionClass;
 use ReflectionFunction;
@@ -32,6 +33,7 @@ class DebugTools {
     #[McpTool(
         name: 'get_queue_jobs',
         description: 'List queue jobs in Craft CMS. Filter by status: pending, reserved, failed, done. Shows job class, description, and failure reason if applicable.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function getQueueJobs(string $status = 'pending', int $limit = 50, ?RequestContext $context = null): array {
@@ -107,6 +109,7 @@ class DebugTools {
     #[McpTool(
         name: 'get_project_config_diff',
         description: 'Show pending project config changes that need to be applied. Returns differences between YAML files and database.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function getProjectConfigDiff(?RequestContext $context = null): array {
@@ -164,6 +167,7 @@ class DebugTools {
     #[McpTool(
         name: 'get_deprecations',
         description: 'Get deprecation warnings from Craft CMS logs. Shows deprecated code usage that should be updated.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function getDeprecations(int $limit = 50, ?RequestContext $context = null): array {
@@ -238,6 +242,7 @@ class DebugTools {
     #[McpTool(
         name: 'explain_query',
         description: 'Run EXPLAIN on a SELECT query to analyze performance. Shows query execution plan, indexes used, and estimated rows.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function explainQuery(string $sql, ?RequestContext $context = null): array {
@@ -283,6 +288,7 @@ class DebugTools {
     #[McpTool(
         name: 'get_environment',
         description: 'Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function getEnvironment(?RequestContext $context = null): array {
@@ -342,6 +348,7 @@ class DebugTools {
     #[McpTool(
         name: 'list_event_handlers',
         description: 'List registered event handlers/listeners in Craft CMS. Useful for debugging hooks and understanding what code runs on events.',
+        annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function listEventHandlers(?string $filter = null, ?RequestContext $context = null): array {
