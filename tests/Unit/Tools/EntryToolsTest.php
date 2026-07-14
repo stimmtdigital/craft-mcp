@@ -77,4 +77,13 @@ describe('list_entries query surface', function () {
             ->and($tool->annotations->readOnlyHint)->toBeTrue()
             ->and($tool->annotations->idempotentHint)->toBeTrue();
     });
+
+    it('accepts a fields projection parameter with an array schema', function () {
+        $parameters = (new ReflectionMethod(EntryTools::class, 'listEntries'))->getParameters();
+        $byName = array_combine(array_map(fn ($p) => $p->getName(), $parameters), $parameters);
+
+        $schema = $byName['fields']->getAttributes(Schema::class)[0]->newInstance();
+
+        expect($schema->type)->toBe('array');
+    });
 });

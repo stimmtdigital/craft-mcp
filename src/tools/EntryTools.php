@@ -14,6 +14,7 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\elements\query\Filters;
+use stimmt\craft\Mcp\elements\query\Projection;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\refs\Keys;
 use stimmt\craft\Mcp\elements\schema\Describer;
@@ -41,11 +42,14 @@ class EntryTools {
 
     private readonly Filters $filters;
 
-    public function __construct(?Reader $reader = null, ?Writer $writer = null, ?Keys $keys = null, ?Filters $filters = null) {
+    private readonly Projection $projection;
+
+    public function __construct(?Reader $reader = null, ?Writer $writer = null, ?Keys $keys = null, ?Filters $filters = null, ?Projection $projection = null) {
         $this->reader = $reader ?? ElementModule::reader();
         $this->writer = $writer ?? ElementModule::writer();
         $this->keys = $keys ?? new Keys();
         $this->filters = $filters ?? new Filters();
+        $this->projection = $projection ?? new Projection($this->reader);
     }
 
     #[McpTool(
@@ -69,11 +73,13 @@ class EntryTools {
         ?string $updatedBefore = null,
         ?string $createdAfter = null,
         ?string $createdBefore = null,
+        #[Schema(type: 'array', description: 'Projection: return only these attributes and field handles per entry (id and title always included) instead of the full payload. Ideal for scanning many entries.', items: ['type' => 'string'])]
+        ?array $fields = null,
         int $limit = 20,
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $limit, $offset): array {
+        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $fields, $limit, $offset): array {
             SiteResolver::resolve($site);
 
             $query = Entry::find()->limit($limit)->offset($offset);
@@ -85,7 +91,9 @@ class EntryTools {
 
             $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
 
-            $results = array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all());
+            $results = $fields === null
+                ? array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all())
+                : array_map(fn (Entry $entry): array => $this->projection->row($entry, $fields, $site), $query->all());
 
             return Response::paginated('entries', $results, (int) $query->count(), $limit, $offset);
         });

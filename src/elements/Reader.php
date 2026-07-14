@@ -42,6 +42,19 @@ final readonly class Reader {
         return $this->translator->toKeys($fields, $values, $context);
     }
 
+    /**
+     * Payload-format values for a subset of an element's fields, for slim
+     * projections. Unknown handles are the caller's problem: filter first.
+     *
+     * @param string[] $handles
+     */
+    public function readFields(ElementInterface $element, array $handles, ?string $site = null): array {
+        $context = new Context($site ?? $element->getSite()->handle);
+        $fields = array_intersect_key(LayoutFields::of($element->getFieldLayout()), array_flip($handles));
+
+        return $this->translateFields($fields, $this->serializedFields($element, $fields), $context);
+    }
+
     private function attributes(ElementInterface $element): array {
         $attributes = [
             'id' => $element->id,
