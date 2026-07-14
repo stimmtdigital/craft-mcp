@@ -28,6 +28,13 @@ describe('Projection structure', function () {
 
         expect($source)->toContain('InvalidArgumentException');
     });
+
+    it('sources attribute formulas from the shared Attributes class', function () {
+        $source = (string) file_get_contents((new ReflectionClass(Projection::class))->getFileName());
+
+        expect($source)->toContain('Attributes::value(')
+            ->and($source)->not->toContain("'Y-m-d H:i:s'");
+    });
 });
 
 describe('Reader::readFields', function () {

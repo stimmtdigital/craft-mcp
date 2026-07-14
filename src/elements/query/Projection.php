@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\elements\query;
 
 use craft\elements\Entry;
 use InvalidArgumentException;
+use stimmt\craft\Mcp\elements\Attributes;
 use stimmt\craft\Mcp\elements\LayoutFields;
 use stimmt\craft\Mcp\elements\Reader;
 
@@ -35,7 +36,7 @@ final readonly class Projection {
 
         $row = ['id' => $entry->id, 'title' => $entry->title];
         foreach ($attributes as $attribute) {
-            $row[$attribute] = $this->attribute($entry, $attribute);
+            $row[$attribute] = Attributes::value($entry, $attribute);
         }
 
         if ($handles !== []) {
@@ -66,23 +67,5 @@ final readonly class Projection {
         }
 
         return [$attributes, $handles];
-    }
-
-    private function attribute(Entry $entry, string $attribute): mixed {
-        return match ($attribute) {
-            'slug' => $entry->slug,
-            'status' => $entry->getStatus(),
-            'url' => $entry->getUrl(),
-            'cpEditUrl' => $entry->getCpEditUrl(),
-            'postDate' => $entry->postDate?->format('Y-m-d H:i:s'),
-            'expiryDate' => $entry->expiryDate?->format('Y-m-d H:i:s'),
-            'dateCreated' => $entry->dateCreated?->format('Y-m-d H:i:s'),
-            'dateUpdated' => $entry->dateUpdated?->format('Y-m-d H:i:s'),
-            'sectionHandle' => $entry->getSection()?->handle,
-            'typeHandle' => $entry->getType()->handle,
-            'siteHandle' => $entry->getSite()->handle,
-            'authorId' => $entry->getAuthorId(),
-            default => null,
-        };
     }
 }
