@@ -96,7 +96,7 @@ describe('GraphqlTools dangerous tool', function () {
 });
 
 describe('GraphqlTools tool count', function () {
-    it('has exactly 4 public methods with McpTool attribute', function () {
+    it('has exactly 5 public methods with McpTool attribute', function () {
         $reflection = new ReflectionClass(GraphqlTools::class);
         $methods = $reflection->getMethods(ReflectionMethod::IS_PUBLIC);
 
@@ -104,6 +104,27 @@ describe('GraphqlTools tool count', function () {
             return !empty($method->getAttributes(McpTool::class));
         });
 
-        expect($toolMethods)->toHaveCount(4);
+        expect($toolMethods)->toHaveCount(5);
+    });
+});
+
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+
+describe('query_graphql', function () {
+    it('is registered read-only and not dangerous', function () {
+        $method = new ReflectionMethod(GraphqlTools::class, 'queryGraphql');
+        $tool = $method->getAttributes(McpTool::class)[0]->newInstance();
+        $meta = $method->getAttributes(McpToolMeta::class)[0]->newInstance();
+
+        expect($tool->name)->toBe('query_graphql')
+            ->and($tool->annotations->readOnlyHint)->toBeTrue()
+            ->and($meta->dangerous)->toBeFalse();
+    });
+
+    it('rejects non-query operations by parsing the document', function () {
+        $source = (string) file_get_contents((new ReflectionClass(GraphqlTools::class))->getFileName());
+
+        expect($source)->toContain('Parser::parse(')
+            ->and($source)->toContain('OperationDefinitionNode');
     });
 });
