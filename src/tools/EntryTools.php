@@ -304,9 +304,10 @@ class EntryTools {
 
         $query = Entry::find()->status(null);
         if ($id !== null) {
-            // An id lookup must find drafts too: agents read back the draft
-            // a write just created. drafts(null) matches both.
-            $query->drafts(null);
+            // An id lookup must find drafts and revisions too: agents read
+            // back the draft a write just created, and revision ids come from
+            // list_revisions. null matches both states.
+            $query->drafts(null)->revisions(null);
         }
 
         foreach (['id' => $id, 'slug' => $slug, 'section' => $section, 'site' => $site] as $method => $value) {

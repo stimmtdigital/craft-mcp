@@ -86,6 +86,12 @@ describe('list_entries query surface', function () {
 
         expect($schema->type)->toBe('array');
     });
+
+    it('resolves revision ids on id lookups', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect($source)->toContain('revisions(null)');
+    });
 });
 
 describe('count_entries', function () {
