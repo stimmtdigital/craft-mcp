@@ -129,7 +129,7 @@ class DatabaseTools {
      */
     #[McpTool(
         name: 'run_query',
-        description: 'Execute a read-only SQL query (SELECT only). WARNING: Basic keyword security - for development only. May be bypassable with certain PDO configs.',
+        description: 'Execute a read-only SQL query (SELECT only). Best for custom plugin tables and aggregate SQL; for table and column discovery use get_database_schema, and for entry content prefer list_entries/count_entries. WARNING: Basic keyword security - for development only. May be bypassable with certain PDO configs.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, dangerous: true)]

@@ -114,8 +114,8 @@ I need to query entries from this Craft CMS section:
 ```
 
 Please provide guidance on:
-1. How to use the list_entries tool effectively for this section, including the full-text 'search' and multi-site 'site' parameters
-2. Available filter parameters based on the field types
+1. How to use the list_entries tool effectively for this section, including full-text `search`, the `site` parameter, field-value `filters` (with :empty:/:notempty: and natural keys), `relatedTo`, date ranges, and the `fields` projection for slim rows
+2. When count_entries answers the question without listing anything (totals, per-value breakdowns, per-month trends via groupBy)
 3. Pagination strategies for the {$entryCount} entries
 4. Performance optimization tips
 5. Example queries for common use cases
@@ -160,7 +160,7 @@ Current state:
 - Entry types: {$entryTypes}
 
 Please help me understand:
-1. How to safely iterate through all entries using list_entries with pagination (and the search/site filters)
+1. How to scope the batch first: count_entries with the same filters shows exactly how many entries a bulk operation will touch, then list_entries with those filters (and a `fields` projection) iterates them
 2. How to batch update entries using update_entry: each write lands as a draft on top of the live entry, so nothing changes for visitors until publish_entry runs per entry
 3. How drafts double as the safety net: a wrong batch is discarded drafts, not corrupted live content; review spot checks via each response's cpEditUrl before publishing
 4. When duplicate_entry ("like X but change these") or copy_entry_to_site fits the job better than editing in place

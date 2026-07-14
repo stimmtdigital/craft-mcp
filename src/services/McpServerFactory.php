@@ -168,12 +168,16 @@ This MCP server provides access to a Craft CMS installation.
 
 The full contract lives in the `craft://guides/content-writing` resource.
 
-## Best Practices
+## Choosing Tools
 
-1. Use `list_*` tools to explore available data before making changes
-2. Use `get_*` tools to inspect specific items
-3. Use read-only queries before mutations
-4. Tools marked with a destructive annotation modify data or execute code; prefer draft-mode writes and review flows
+Prefer the most specific tool and escalate only when none fits:
+
+1. Content questions: `list_entries` (field filters, `relatedTo`, `search`, date ranges, `fields` projection), `get_entry`, `count_entries` for totals and per-value breakdowns, `list_drafts` for the review queue, `list_revisions` for an entry's history, `describe_entry_schema` for payload shapes.
+2. Other element types and nested shapes: `query_graphql` reads anything Craft's GraphQL schema exposes (assets, categories, users, plugin types) with exactly the response shape you ask for.
+3. Database structure: `get_database_schema` and `get_table_counts`, never hand-written information_schema queries.
+4. `run_query` covers what no structured tool does: custom plugin tables and aggregate SQL (SELECT only).
+5. `tinker` is the last resort, for logic no tool can express (cross-entry computation, service calls). Keep analysis code read-only; write content through the entry tools so drafts, validation, and warnings stay in play.
+6. Tools marked with a destructive annotation modify data or execute code; prefer draft-mode writes and review flows.
 INSTRUCTIONS;
     }
 
