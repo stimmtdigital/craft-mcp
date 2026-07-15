@@ -109,18 +109,18 @@ final class Authorization {
     }
 
     private static function scopeEntries(EntryQuery $query): void {
-        $handles = self::viewableHandles('viewEntries', Craft::$app->getEntries()->getAllSections());
-        $handles === [] ? $query->id(0) : $query->section($handles);
+        $ids = self::viewableIds($query->sectionId, 'viewEntries', Craft::$app->getEntries()->getAllSections());
+        $ids === [] ? $query->id(0) : $query->sectionId($ids);
     }
 
     private static function scopeAssets(AssetQuery $query): void {
-        $handles = self::viewableHandles('viewAssets', Craft::$app->getVolumes()->getAllVolumes());
-        $handles === [] ? $query->id(0) : $query->volume($handles);
+        $ids = self::viewableIds($query->volumeId, 'viewAssets', Craft::$app->getVolumes()->getAllVolumes());
+        $ids === [] ? $query->id(0) : $query->volumeId($ids);
     }
 
     private static function scopeCategories(CategoryQuery $query): void {
-        $handles = self::viewableHandles('viewCategories', Craft::$app->getCategories()->getAllGroups());
-        $handles === [] ? $query->id(0) : $query->group($handles);
+        $ids = self::viewableIds($query->groupId, 'viewCategories', Craft::$app->getCategories()->getAllGroups());
+        $ids === [] ? $query->id(0) : $query->groupId($ids);
     }
 
     private static function scopeUsers(UserQuery $query): void {
@@ -131,22 +131,29 @@ final class Authorization {
     }
 
     /**
-     * Handles of the sources whose "{permission}:{uid}" the acting user holds.
-     * An empty result is a real, safe answer; the caller constrains the query
-     * to zero rows rather than leaving it unbounded.
+     * The source ids the acting user may view, INTERSECTED with the query's
+     * existing source constraint, so a caller's own section/volume/group
+     * filter can only narrow further, never widen past what the user can see.
+     * A null/non-list existing constraint means no caller filter, so the full
+     * viewable set applies. An empty result yields zero rows at the call site.
      *
-     * @param array<int, object{uid: string|null, handle: string|null}> $sources
-     * @return string[]
+     * @param mixed $current the query's current source-id constraint
+     * @param array<int, object{uid: string|null, id: int|null}> $sources
+     * @return int[]
      */
-    private static function viewableHandles(string $permission, array $sources): array {
-        $handles = [];
+    private static function viewableIds(mixed $current, string $permission, array $sources): array {
+        $viewable = [];
         foreach ($sources as $source) {
-            if ($source->uid !== null && $source->handle !== null && self::$user?->can("{$permission}:{$source->uid}")) {
-                $handles[] = $source->handle;
+            if ($source->id !== null && $source->uid !== null && self::$user?->can("{$permission}:{$source->uid}")) {
+                $viewable[] = $source->id;
             }
         }
 
-        return $handles;
+        if (!is_array($current) || $current === []) {
+            return $viewable;
+        }
+
+        return array_values(array_intersect($viewable, array_map(intval(...), $current)));
     }
 
     /**

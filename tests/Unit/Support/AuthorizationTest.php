@@ -38,4 +38,15 @@ describe('Authorization', function () {
             ->and($source)->toContain('viewUsers')
             ->and($source)->toContain('no view-scoping rule');
     });
+
+    // scopeQuery must INTERSECT the caller's own section/volume/group filter
+    // with the viewable set, never overwrite it (which would widen an explicit
+    // narrow filter up to the user's full ceiling).
+    it('scopeQuery narrows the caller filter by intersection, not overwrite', function () {
+        $source = (string) file_get_contents((new ReflectionClass(Authorization::class))->getFileName());
+        expect($source)->toContain('array_intersect(')
+            ->and($source)->toContain('$query->sectionId')
+            ->and($source)->toContain('$query->volumeId')
+            ->and($source)->toContain('$query->groupId');
+    });
 });
