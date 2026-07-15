@@ -87,7 +87,7 @@ class HttpController extends Controller {
 
         Craft::$app->getUser()->setIdentity($user);
 
-        if ($token->scope === Scope::Content) {
+        if ($token->scope === Scope::ReadOnly || $token->scope === Scope::Content) {
             Authorization::enforceFor($user);
         }
 
