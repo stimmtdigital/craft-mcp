@@ -26,8 +26,9 @@
                             <td>{{ userLabels[token.userId] ?? token.userId }}</td>
                         {% endif %}
                         <td>{{ token.scope.value|capitalize }}</td>
-                        <td>{{ token.lastUsedAt ? token.lastUsedAt|timestamp : 'Never' }}</td>
-                        <td>{{ token.expiryDate ? token.expiryDate|timestamp : 'Never' }}</td>
+                        {# Pass the Unix int, not the DateTimeImmutable: Craft's non-intl date formatter rejects DateTimeImmutable. #}
+                        <td>{{ token.lastUsedAt ? token.lastUsedAt.timestamp|timestamp : 'Never' }}</td>
+                        <td>{{ token.expiryDate ? token.expiryDate.timestamp|timestamp : 'Never' }}</td>
                         <td>
                             <form method="post" accept-charset="UTF-8">
                                 {{ csrfInput() }}
