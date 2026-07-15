@@ -3,20 +3,21 @@
 {% set regenerateAction = regenerateAction ?? 'mcp/cp-tokens/regenerate' %}
 
 {% if tokens is empty %}
-    <p class="zilch">No MCP tokens have been created yet.</p>
+    <p class="zilch">{{ 'No MCP tokens have been created yet.'|t('mcp') }}</p>
 {% else %}
     <div class="tableview">
         <table class="data fullwidth">
             <thead>
                 <tr>
-                    <th scope="col">Name</th>
+                    <th scope="col">{{ 'Name'|t('mcp') }}</th>
                     {% if showUser %}
-                        <th scope="col">User</th>
+                        <th scope="col">{{ 'User'|t('mcp') }}</th>
                     {% endif %}
-                    <th scope="col">Scope</th>
-                    <th scope="col">Last Used</th>
-                    <th scope="col">Expires</th>
-                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    <th scope="col">{{ 'Scope'|t('mcp') }}</th>
+                    <th scope="col">{{ 'Created'|t('mcp') }}</th>
+                    <th scope="col">{{ 'Last Used'|t('mcp') }}</th>
+                    <th scope="col">{{ 'Expires'|t('mcp') }}</th>
+                    <th scope="col"><span class="visually-hidden">{{ 'Actions'|t('mcp') }}</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -28,8 +29,9 @@
                         {% endif %}
                         <td>{{ token.scope.value|capitalize }}</td>
                         {# Pass the Unix int, not the DateTimeImmutable: Craft's non-intl date formatter rejects DateTimeImmutable. #}
-                        <td>{{ token.lastUsedAt ? token.lastUsedAt.timestamp|timestamp : 'Never' }}</td>
-                        <td>{{ token.expiryDate ? token.expiryDate.timestamp|timestamp : 'Never' }}</td>
+                        <td>{{ token.dateCreated ? token.dateCreated.timestamp|timestamp : '' }}</td>
+                        <td>{{ token.lastUsedAt ? token.lastUsedAt.timestamp|timestamp : 'Never'|t('mcp') }}</td>
+                        <td>{{ token.expiryDate ? token.expiryDate.timestamp|timestamp : 'Never'|t('mcp') }}</td>
                         <td>
                             <form method="post" accept-charset="UTF-8">
                                 {{ csrfInput() }}
@@ -38,19 +40,19 @@
                                 {{ tag('button', {
                                     type: 'button',
                                     class: ['btn', 'small', 'formsubmit'],
-                                    text: 'Regenerate',
+                                    text: 'Regenerate'|t('mcp'),
                                     data: {
                                         action: regenerateAction,
-                                        confirm: 'Regenerate this token? The current token stops working immediately and a new one is shown once.',
+                                        confirm: 'Regenerate this token? The current token stops working immediately and a new one is shown once.'|t('mcp'),
                                     },
                                 }) }}
                                 {{ tag('button', {
                                     type: 'button',
                                     class: ['btn', 'small', 'formsubmit'],
-                                    text: 'Revoke',
+                                    text: 'Revoke'|t('mcp'),
                                     data: {
                                         action: revokeAction,
-                                        confirm: 'Are you sure you want to revoke this token? This cannot be undone.',
+                                        confirm: 'Are you sure you want to revoke this token? This cannot be undone.'|t('mcp'),
                                     },
                                 }) }}
                             </form>

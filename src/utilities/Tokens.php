@@ -28,7 +28,7 @@ use stimmt\craft\Mcp\http\Tokens as TokenStore;
 final class Tokens extends Utility {
     #[Override]
     public static function displayName(): string {
-        return 'MCP Tokens';
+        return Craft::t('mcp', 'MCP Tokens');
     }
 
     #[Override]
@@ -49,12 +49,17 @@ final class Tokens extends Utility {
         }
 
         $tokens = (new TokenStore(new RecordStore()))->list();
+        $session = Craft::$app->getSession();
 
         return self::view()->renderTemplate('mcp/tokens/_utility', [
             'tokens' => $tokens,
             'userLabels' => self::userLabels($tokens),
             'revokeAction' => 'mcp/cp-tokens/revoke',
             'redirect' => Craft::$app->getRequest()->getPathInfo(),
+            // A token minted or regenerated from this panel redirects back
+            // here; the reveal modal reads these one-time flashes to show it.
+            'newToken' => $session->getFlash('newToken'),
+            'newTokenSnippet' => $session->getFlash('newTokenSnippet'),
         ]);
     }
 

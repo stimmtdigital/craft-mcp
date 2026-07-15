@@ -17,6 +17,7 @@ use Override;
  * @property string $scope
  * @property string|null $expiryDate
  * @property string|null $lastUsedAt
+ * @property string|null $dateCreated
  *
  * @author Max van Essen <support@stimmt.digital>
  */

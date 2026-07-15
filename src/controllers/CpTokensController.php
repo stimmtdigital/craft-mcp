@@ -80,13 +80,13 @@ final class CpTokensController extends Controller {
         $scope = Scope::fromInput((string) $this->request->getRequiredBodyParam('scope'));
 
         if ($name === '') {
-            throw new BadRequestHttpException('Name is required.');
+            throw new BadRequestHttpException(Craft::t('mcp', 'Name is required.'));
         }
 
         $this->authorizeCreate($userId, $scope);
 
         ['plaintext' => $plaintext] = $this->tokens()->create($userId, $scope, $name, $this->expiresInDays());
-        $this->reveal($plaintext, 'Token created.');
+        $this->reveal($plaintext, Craft::t('mcp', 'Token created.'));
 
         return $this->redirectToPostedUrl();
     }
@@ -95,14 +95,14 @@ final class CpTokensController extends Controller {
         $this->requirePostRequest();
 
         $token = $this->find((string) $this->request->getRequiredBodyParam('id'))
-            ?? throw new BadRequestHttpException('Token not found.');
+            ?? throw new BadRequestHttpException(Craft::t('mcp', 'Token not found.'));
 
         // Regenerating re-issues the same token, so gate it as creating one of
         // that scope for that user (covers self/manageAll and full-needs-admin).
         $this->authorizeCreate($token->userId, $token->scope);
 
         ['plaintext' => $plaintext] = $this->tokens()->regenerate($token);
-        $this->reveal($plaintext, 'Token regenerated.');
+        $this->reveal($plaintext, Craft::t('mcp', 'Token regenerated.'));
 
         return $this->redirectToPostedUrl();
     }
@@ -120,7 +120,7 @@ final class CpTokensController extends Controller {
         if ($token?->id !== null) {
             $this->tokens()->revokeById($token->id);
         }
-        $this->setSuccessFlash('Token revoked.');
+        $this->setSuccessFlash(Craft::t('mcp', 'Token revoked.'));
 
         return $this->redirectToPostedUrl();
     }
@@ -153,7 +153,7 @@ final class CpTokensController extends Controller {
         // code execution, so only an admin may hand it out; manageAllMcpTokens
         // alone is not enough to mint an admin-equivalent token.
         if ($scope === Scope::Full && !($currentUser->admin ?? false)) {
-            throw new ForbiddenHttpException('Only admins can mint full-scope MCP tokens.');
+            throw new ForbiddenHttpException(Craft::t('mcp', 'Only admins can mint full-scope MCP tokens.'));
         }
 
         $isSelf = $currentUser !== null && $currentUser->id === $userId;
@@ -189,13 +189,13 @@ final class CpTokensController extends Controller {
             }
         }
 
-        throw new ForbiddenHttpException('User is not authorized to perform this action.');
+        throw new ForbiddenHttpException(Craft::t('mcp', 'User is not authorized to perform this action.'));
     }
 
     private function cpUser(): CpUser {
         $user = Craft::$app->getUser();
         if (!$user instanceof CpUser) {
-            throw new ForbiddenHttpException('User is not authorized to perform this action.');
+            throw new ForbiddenHttpException(Craft::t('mcp', 'User is not authorized to perform this action.'));
         }
 
         return $user;

@@ -42,7 +42,7 @@ final class Cp {
                     return;
                 }
 
-                $event->screens['mcp-tokens'] = ['label' => 'MCP Tokens'];
+                $event->screens['mcp-tokens'] = ['label' => Craft::t('mcp', 'MCP Tokens')];
             },
         );
     }
@@ -77,10 +77,10 @@ final class Cp {
             UserPermissions::EVENT_REGISTER_PERMISSIONS,
             static function (RegisterUserPermissionsEvent $event): void {
                 $event->permissions[] = [
-                    'heading' => 'Craft MCP',
+                    'heading' => Craft::t('mcp', 'Craft MCP'),
                     'permissions' => [
-                        'manageOwnMcpTokens' => ['label' => 'Manage their own MCP tokens'],
-                        'manageAllMcpTokens' => ['label' => "Manage all users' MCP tokens"],
+                        'manageOwnMcpTokens' => ['label' => Craft::t('mcp', 'Manage their own MCP tokens')],
+                        'manageAllMcpTokens' => ['label' => Craft::t('mcp', "Manage all users' MCP tokens")],
                     ],
                 ];
             },

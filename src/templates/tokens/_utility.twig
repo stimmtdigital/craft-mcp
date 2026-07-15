@@ -1,8 +1,13 @@
 {% set userLabels = userLabels ?? [] %}
 
+{% include 'mcp/tokens/_reveal' with {
+    newToken: newToken ?? null,
+    newTokenSnippet: newTokenSnippet ?? null,
+} only %}
+
 {% if userLabels is not empty %}
     <p>
-        Manage tokens for:
+        {{ 'Manage tokens for:'|t('mcp') }}
         {% for userId, label in userLabels %}
             <a href="{{ url('users/' ~ userId ~ '/mcp-tokens') }}">{{ label }}</a>{{ not loop.last ? ',' }}
         {% endfor %}

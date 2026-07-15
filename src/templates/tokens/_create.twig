@@ -1,9 +1,9 @@
 {% import '_includes/forms' as forms %}
 
 {% set scopeDescriptions = {
-    'readonly': 'Browse and inspect: all non-destructive tools, no writes.',
-    'content': 'Everything in readonly, plus entry editing: create, update, publish, delete, duplicate.',
-    'full': 'Everything: adds code execution, SQL, GraphQL mutations, cache clearing, and backups.',
+    'readonly': 'Browse and inspect: all non-destructive tools, no writes.'|t('mcp'),
+    'content': 'Everything in readonly, plus entry editing: create, update, publish, delete, duplicate.'|t('mcp'),
+    'full': 'Everything: adds code execution, SQL, GraphQL mutations, cache clearing, and backups.'|t('mcp'),
 } %}
 
 {% set scopeOptions = [] %}
@@ -22,17 +22,18 @@
 
     {{ forms.textField({
         first: true,
-        label: 'Name',
-        instructions: 'What this token will be used for, for example a device or client name.',
+        label: 'Name'|t('mcp'),
+        instructions: 'What this token will be used for, for example a device or client name.'|t('mcp'),
         id: 'name',
         name: 'name',
+        placeholder: 'e.g. Claude Desktop'|t('mcp'),
         required: true,
         autofocus: true,
     }) }}
 
     {{ forms.selectField({
-        label: 'Scope',
-        instructions: 'What this token is allowed to do.',
+        label: 'Scope'|t('mcp'),
+        instructions: 'What this token is allowed to do.'|t('mcp'),
         id: 'scope',
         name: 'scope',
         options: scopeOptions,
@@ -40,14 +41,15 @@
 
     {{ forms.textField({
         type: 'number',
-        label: 'Expires in days',
-        instructions: 'Leave blank for a token that never expires.',
+        label: 'Expires in days'|t('mcp'),
+        instructions: 'Leave blank for a token that never expires.'|t('mcp'),
         id: 'expiresInDays',
         name: 'expiresInDays',
+        placeholder: 'e.g. 90'|t('mcp'),
         min: 1,
     }) }}
 
     <div class="buttons">
-        {{ forms.submitButton({label: 'Create token'}) }}
+        {{ forms.submitButton({label: 'Create token'|t('mcp')}) }}
     </div>
 </form>
