@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.6] - 2026-07-15
+
 ### Added
 - Content-scope HTTP tokens now respect the linked user's real Craft permissions on entry writes (create, update, publish, delete, duplicate, copy to site), checked live per request through Craft's element authorization (#34)
 - Publishing mirrors the control panel's apply-draft gate: the acting user must be allowed to save the draft itself (own draft or peer-draft permission) and its canonical version, on both the draft-id and canonical-id publish routes
