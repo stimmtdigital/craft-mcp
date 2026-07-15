@@ -97,6 +97,7 @@ class EntryTools {
             }
 
             $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+            Authorization::scopeQuery($query);
 
             $results = $fields === null
                 ? array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all())
@@ -141,6 +142,7 @@ class EntryTools {
             }
 
             $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+            Authorization::scopeQuery($query);
 
             $result = (new Buckets())->collect($query, $groupBy);
             $result['groupBy'] = $groupBy;
@@ -164,6 +166,7 @@ class EntryTools {
     ): array {
         return SafeExecution::run(function () use ($id, $slug, $section, $site): array {
             $entry = $this->find($id, $slug, $section, $site);
+            Authorization::assertCanView($entry);
 
             return Response::found('entry', $this->reader->read($entry, $site));
         });

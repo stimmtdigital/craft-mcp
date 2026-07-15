@@ -75,6 +75,7 @@ class EntryWorkflowTools {
                 $query->draftCreator($user);
             }
 
+            Authorization::scopeQuery($query);
             $drafts = array_map($this->draftSummary(...), $query->all());
 
             return Response::paginated('drafts', $drafts, (int) $query->count(), $limit, $offset);
@@ -108,6 +109,7 @@ class EntryWorkflowTools {
                 $query->site($site);
             }
 
+            Authorization::scopeQuery($query);
             $revisions = array_map($this->revisionSummary(...), $query->all());
 
             return Response::paginated('revisions', $revisions, (int) $query->count(), $limit, $offset);

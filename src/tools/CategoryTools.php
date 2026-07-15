@@ -10,6 +10,7 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 
@@ -36,6 +37,7 @@ class CategoryTools {
                 $query->group($group);
             }
 
+            Authorization::scopeQuery($query);
             $categories = $query->all();
             $results = array_map($this->serializeCategory(...), $categories);
 
