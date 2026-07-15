@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Content-scope HTTP tokens now respect the linked user's real Craft permissions on entry writes (create, update, publish, delete, duplicate, copy to site), checked live per request through Craft's element authorization (#34)
+
 ## [1.4.0-beta.5] - 2026-07-14
 
 ### Added

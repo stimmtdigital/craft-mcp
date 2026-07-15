@@ -11,10 +11,12 @@ use Mcp\Server\Session\FileSessionStore;
 use Psr\Log\LoggerInterface;
 use stimmt\craft\Mcp\http\Bridge;
 use stimmt\craft\Mcp\http\RecordStore;
+use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\http\Token;
 use stimmt\craft\Mcp\http\Tokens;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\support\Authorization;
 
 /**
  * The HTTP MCP endpoint. Bearer-token auth, per-user identity, then a
@@ -85,6 +87,10 @@ class HttpController extends Controller {
 
         Craft::$app->getUser()->setIdentity($user);
 
+        if ($token->scope === Scope::Content) {
+            Authorization::enforceFor($user);
+        }
+
         return $token;
     }
 
@@ -110,6 +116,10 @@ class HttpController extends Controller {
         try {
             $psr7 = $server->run($transport);
         } finally {
+            // Defense in depth for persistent-worker SAPIs: enforcement must
+            // never leak from a content-scope request into the next one.
+            Authorization::reset();
+
             $stray = ob_get_clean();
             if (is_string($stray) && $stray !== '') {
                 $logger->warning('Stray output during MCP HTTP handling', ['output' => $stray]);

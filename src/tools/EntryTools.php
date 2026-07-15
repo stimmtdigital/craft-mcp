@@ -24,6 +24,7 @@ use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
@@ -186,10 +187,18 @@ class EntryTools {
         ?RequestContext $context = null,
     ): array {
         return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent): array {
-            SiteResolver::resolve($site);
+            $siteModel = SiteResolver::resolve($site);
             $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
                 ?? throw new ToolCallException("Section '{$section}' not found");
             $entryType = $this->entryType($sectionModel, $type);
+
+            // Authorization probe: an unsaved entry carrying the target
+            // section/type/site is exactly what Craft's canSave inspects.
+            Authorization::assertCanSave(new Entry([
+                'sectionId' => $sectionModel->id,
+                'typeId' => $entryType->id,
+                'siteId' => $siteModel?->id ?? Craft::$app->getSites()->getPrimarySite()->id, // @phpstan-ignore nullsafe.neverNull
+            ]));
 
             $attributes = [
                 'type' => Entry::class,
@@ -232,6 +241,7 @@ class EntryTools {
     ): array {
         return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent): array {
             $entry = $this->find($id, null, null, $site);
+            Authorization::assertCanSave($entry);
 
             $attributes = array_filter([
                 'title' => $title,

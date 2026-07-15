@@ -75,6 +75,20 @@ Each token carries a scope that limits which tools the connected client can see 
 
 Scope is applied on top of the plugin's existing global settings (`enabled`, `enableDangerousTools`, `disabledTools`): a tool disabled globally stays disabled over HTTP regardless of scope.
 
+### User permissions
+
+Content-scope tokens now respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
+
+This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused. Revoking a user's control panel permissions takes effect immediately on the next request; there is no token rotation delay or grace period. Reads stay unrestricted on every scope; the permission check applies to entry writes only.
+
+If a write is refused, the error response carries a message like:
+
+```
+This token's user 'editor' is not allowed to save this entry on site 'default' (Craft user permissions, checked live). Ask an admin to widen the user's permissions or mint a token for a user who has them.
+```
+
+Full-scope tokens are deliberately exempt from this check: they carry code execution capability, so they trust the token holder completely and skip Craft permission lookups. Readonly tokens are unaffected since they do not write. Scope remains the outer ceiling; a tool must be included in the token's scope to be callable at all, regardless of Craft permissions.
+
 ## Connecting Claude Desktop
 
 1. Open your Claude Desktop configuration file:
@@ -125,7 +139,7 @@ Revocation and expiry both take effect immediately on the next request; there is
 - **HTTPS only.** Bearer tokens are sent as plain headers; only use this transport behind TLS. Do not enable it on a plain HTTP site.
 - **Tokens are credentials.** Treat a minted token like a password: store it in a secrets manager or your MCP client's own config, never in a repository or shared document.
 - **Scope minimally.** Grant `readonly` or `content` by default and reserve `full` for developers who genuinely need code execution and direct database access.
-- **Scope, not Craft permissions, bounds a token.** Tools call Craft services directly, so a `content` token can write to any section regardless of what its user may edit in the control panel. The user link governs draft authorship and auditing; per-permission enforcement is a possible future addition.
+- **Scope is the outer ceiling; Craft permissions are the inner boundary.** A tool must be in the token's scope to be callable, but a `content` token's entry writes are also gated by the linked user's real Craft permissions. Full-scope tokens skip Craft permission checks (they carry code execution, so they trust the token holder completely). See [User permissions](#user-permissions) for details.
 - **IP allowlisting applies.** When the plugin's `allowedIps` setting is non-empty, the endpoint rejects requests from any other IP with a 403 before authentication runs. An empty list (the default) allows all IPs.
 - **Sessions are server-side files.** Each connection's session state is written under Craft's runtime storage path (`storage/runtime/mcp-sessions/`) and expires after `httpSessionTtl` seconds of inactivity (default: 3600). No session data is kept client-side beyond the `Mcp-Session-Id` header.
 
