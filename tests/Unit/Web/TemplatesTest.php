@@ -66,4 +66,16 @@ describe('utilities\Tokens', function () {
         expect($source)->toContain("renderTemplate('mcp/tokens/_utility'")
             ->and($source)->toContain('http\Tokens as TokenStore');
     });
+
+    // The auto-generated utility:mcp-tokens permission is a separate grant
+    // from managing tokens, so contentHtml must gate cross-user disclosure on
+    // manageAllMcpTokens before it ever loads a token.
+    it('guards the utility content on manageAllMcpTokens', function () {
+        $source = (string) file_get_contents((new ReflectionClass(Tokens::class))->getFileName());
+        $body = substr($source, (int) strpos($source, 'function contentHtml'));
+        $body = substr($body, 0, (int) strpos($body, 'function view'));
+
+        expect($body)->toContain("checkPermission('manageAllMcpTokens')")
+            ->and($body)->toContain('return \'\';');
+    });
 });

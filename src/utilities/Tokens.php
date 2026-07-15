@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\utilities;
 use Craft;
 use craft\base\Utility;
 use craft\elements\User;
+use craft\web\User as CpUser;
 use craft\web\View;
 use Override;
 use RuntimeException;
@@ -16,10 +17,11 @@ use stimmt\craft\Mcp\http\Tokens as TokenStore;
 
 /**
  * Utilities panel audit of every MCP HTTP token across every user. Craft
- * gates access automatically via the `utility:mcp-tokens` permission it
- * derives from id(); web\Cp additionally only registers this class when
- * httpTransport is enabled on a CP request, so the utility never appears
- * when the transport is off.
+ * gates access via the `utility:mcp-tokens` permission it derives from id(),
+ * but that is a separate grant from managing tokens, so contentHtml() also
+ * requires `manageAllMcpTokens` before disclosing any cross-user token data.
+ * web\Cp additionally only registers this class when httpTransport is enabled
+ * on a CP request, so the utility never appears when the transport is off.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -41,6 +43,11 @@ final class Tokens extends Utility {
 
     #[Override]
     public static function contentHtml(): string {
+        $user = Craft::$app->getUser();
+        if (!$user instanceof CpUser || !$user->checkPermission('manageAllMcpTokens')) {
+            return '';
+        }
+
         $tokens = (new TokenStore(new RecordStore()))->list();
 
         return self::view()->renderTemplate('mcp/tokens/_utility', [
