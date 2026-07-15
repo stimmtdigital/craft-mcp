@@ -30,6 +30,15 @@ class McpToolMeta {
         public bool $dangerous = false,
 
         /**
+         * Whether this tool is a privileged install-introspection read (logs,
+         * config, database structure/contents, environment). Privileged tools
+         * are hidden from read-scoped HTTP tokens whose user is not an admin,
+         * unless the tool name is opened via the scopedTokenPrivilegedTools
+         * setting. Full scope and stdio are never gated on this axis.
+         */
+        public bool $privileged = false,
+
+        /**
          * Method name to call for conditional availability.
          * The method must exist on the same class and return bool.
          * If null, the tool is always available (subject to class-level conditions).

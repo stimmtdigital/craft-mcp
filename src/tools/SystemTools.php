@@ -35,7 +35,7 @@ class SystemTools {
         description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver")',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getConfig(string $key, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($key): array {
             $parts = explode('.', $key, 2);
@@ -76,7 +76,7 @@ class SystemTools {
         description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for human-readable colored output.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function readLogs(
         int $limit = 50,
         ?string $level = null,

@@ -264,6 +264,7 @@ class RegisterToolsEvent extends Event {
                 source: $source,
                 category: $meta?->category->value ?? ToolCategory::GENERAL->value,
                 dangerous: $meta !== null && $meta->dangerous,
+                privileged: $meta !== null && $meta->privileged,
                 condition: $meta?->condition,
             );
         }

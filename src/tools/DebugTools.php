@@ -111,7 +111,7 @@ class DebugTools {
         description: 'Show pending project config changes that need to be applied. Returns differences between YAML files and database.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING, privileged: true)]
     public function getProjectConfigDiff(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $projectConfig = Craft::$app->getProjectConfig();
@@ -290,7 +290,7 @@ class DebugTools {
         description: 'Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DEBUGGING)]
+    #[McpToolMeta(category: ToolCategory::DEBUGGING, privileged: true)]
     public function getEnvironment(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $general = Craft::$app->getConfig()->getGeneral();

@@ -30,7 +30,7 @@ class DatabaseTools {
         description: 'Get database schema information. Lists all tables, or details for a specific table including columns and indexes.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE)]
+    #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getDatabaseSchema(?string $table = null, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($table): array {
             $db = Craft::$app->getDb();
@@ -165,7 +165,7 @@ class DatabaseTools {
         description: 'Get database connection information including driver, server version, and connection details',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE)]
+    #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getDatabaseInfo(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $db = Craft::$app->getDb();
@@ -191,7 +191,7 @@ class DatabaseTools {
         description: 'Get row counts for Craft CMS tables (entries, assets, users, etc.)',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE)]
+    #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getTableCounts(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $db = Craft::$app->getDb();

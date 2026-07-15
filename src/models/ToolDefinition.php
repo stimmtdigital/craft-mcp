@@ -20,6 +20,7 @@ final readonly class ToolDefinition {
         public string $source,
         public string $category,
         public bool $dangerous,
+        public bool $privileged,
         public ?string $condition = null,
     ) {
     }
@@ -67,13 +68,14 @@ final readonly class ToolDefinition {
             'source' => $this->source,
             'category' => $this->category,
             'dangerous' => $this->dangerous,
+            'privileged' => $this->privileged,
         ];
     }
 
     /**
      * Create a ToolDefinition from extracted metadata.
      *
-     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, dangerous?: bool, condition?: string|null} $data
+     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, dangerous?: bool, privileged?: bool, condition?: string|null} $data
      */
     public static function fromArray(array $data): self {
         return new self(
@@ -84,6 +86,7 @@ final readonly class ToolDefinition {
             source: $data['source'] ?? 'plugin',
             category: $data['category'] ?? ToolCategory::GENERAL->value,
             dangerous: $data['dangerous'] ?? false,
+            privileged: $data['privileged'] ?? false,
             condition: $data['condition'] ?? null,
         );
     }

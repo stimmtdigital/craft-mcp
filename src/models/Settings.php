@@ -28,6 +28,16 @@ class Settings extends Model {
 
     public bool $enableDangerousTools = true;
 
+    /**
+     * Tool names opened for non-admin readonly/content HTTP tokens despite
+     * being privileged install-introspection reads (logs, config, database
+     * structure/contents, environment). Empty by default: secure by default,
+     * the site owner opts specific tools in.
+     *
+     * @var string[]
+     */
+    public array $scopedTokenPrivilegedTools = [];
+
     /** @var string[] */
     public array $allowedIps = [];
 
@@ -61,7 +71,7 @@ class Settings extends Model {
     public function defineRules(): array {
         return [
             [['enabled', 'enableDangerousTools', 'httpTransport'], 'boolean'],
-            [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps'], 'each', 'rule' => ['string']],
+            [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
             [['entryWriteMode'], 'in', 'range' => ['draft', 'live']],
             [['httpPath'], 'required'],

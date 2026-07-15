@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\services;
 
 use Craft;
+use craft\elements\User;
 use Mcp\Capability\Registry;
 use Mcp\Server;
 use Mcp\Server\Builder;
@@ -21,6 +22,7 @@ use Psr\Log\NullLogger;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
+use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\support\FileLogger;
 use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
 
@@ -122,12 +124,31 @@ class McpServerFactory {
     private function filterTools(Registry $registry, ?Scope $scope): void {
         foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
             $allowed = Mcp::isToolEnabled($definition->name)
-                && ($scope === null || $scope->allows($definition->category, $definition->dangerous));
+                && ($scope === null || $scope->allows($definition->category, $definition->dangerous))
+                && $this->privilegedAllowed($definition, $scope);
 
             if (!$allowed) {
                 $registry->unregisterTool($definition->name);
             }
         }
+    }
+
+    /**
+     * Privileged (install-introspection) tools are hidden from read-scoped
+     * tokens whose user is not an admin, unless the site owner opened the tool
+     * in config. Full scope and stdio are never gated on this axis.
+     */
+    private function privilegedAllowed(ToolDefinition $definition, ?Scope $scope): bool {
+        if (!$definition->privileged || $scope === null || $scope === Scope::Full) {
+            return true;
+        }
+
+        $identity = Craft::$app->getUser()->getIdentity();
+        if ($identity instanceof User && $identity->admin) {
+            return true;
+        }
+
+        return in_array($definition->name, Mcp::settings()->scopedTokenPrivilegedTools, true);
     }
 
     private function getInstructions(?Scope $scope = null): string {
