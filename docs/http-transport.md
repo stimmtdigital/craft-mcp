@@ -58,7 +58,7 @@ Claude Desktop config (claude_desktop_config.json):
 
 Copy and store the plaintext token securely; only the hash is saved in Craft. If you lose it, create a new token and revoke the old one.
 
-Admins and users with the **Manage all users' MCP tokens** permission can mint tokens for any user and grant any scope, including `full`, via the same screens.
+Users with the **Manage all users' MCP tokens** permission can mint `readonly` and `content` tokens for any user via the same screens. Minting a `full`-scope token requires an admin account, since full scope bypasses all read and write authorization and includes code execution.
 
 ### Console
 

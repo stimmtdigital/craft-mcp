@@ -125,6 +125,14 @@ final class CpTokensController extends Controller {
 
     private function authorizeCreate(int $userId, Scope $scope): void {
         $currentUser = self::currentUser();
+
+        // Full scope bypasses all read and write authorization and includes
+        // code execution, so only an admin may hand it out; manageAllMcpTokens
+        // alone is not enough to mint an admin-equivalent token.
+        if ($scope === Scope::Full && !($currentUser->admin ?? false)) {
+            throw new ForbiddenHttpException('Only admins can mint full-scope MCP tokens.');
+        }
+
         $isSelf = $currentUser !== null && $currentUser->id === $userId;
         $selfServiceScope = $scope === Scope::ReadOnly || $scope === Scope::Content;
 

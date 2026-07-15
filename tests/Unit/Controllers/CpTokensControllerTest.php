@@ -68,6 +68,16 @@ describe('CpTokensController', function () {
             ->and($source)->toContain("requireAnyPermission('manageOwnMcpTokens', 'manageAllMcpTokens')");
     });
 
+    // Full scope is code execution and bypasses all authorization, so only an
+    // admin may mint it; manageAllMcpTokens alone must not confer it.
+    it('requires admin to mint a full-scope token', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('Scope::Full')
+            ->and($source)->toContain('->admin')
+            ->and($source)->toContain('Only admins can mint full-scope');
+    });
+
     it('every authorization path can throw ForbiddenHttpException, never a silent redirect', function () {
         $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
 
