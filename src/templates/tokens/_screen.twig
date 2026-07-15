@@ -16,7 +16,7 @@
         }) }}
 
         <h3>Claude Desktop config</h3>
-        <pre><code>{{ newTokenSnippet }}</code></pre>
+        <pre style="overflow-x: auto;"><code>{{ newTokenSnippet }}</code></pre>
 
         <p class="buttons">
             <button type="button" class="btn" data-icon="clipboard" data-copy-config>Copy config</button>
@@ -25,32 +25,32 @@
     </div>
 
     {% js %}
-        (function() {
-            var $reveal = $('#mcp-token-reveal');
+        (() => {
+            const $reveal = $('#mcp-token-reveal');
             if (!$reveal.length) {
                 return;
             }
 
-            var snippet = {{ newTokenSnippet|json_encode|raw }};
-            var wireCopy = function($ctx) {
-                $ctx.on('click', '[data-copy-config]', function() {
-                    navigator.clipboard.writeText(snippet).then(function() {
+            const snippet = {{ newTokenSnippet|json_encode|raw }};
+            const wireCopy = ($ctx) => {
+                $ctx.on('click', '[data-copy-config]', () => {
+                    navigator.clipboard.writeText(snippet).then(() => {
                         Craft.cp.displayNotice(Craft.t('app', 'Copied to clipboard.'));
                     });
                 });
             };
 
             // Without Garnish the content stays inline (visible fallback for a
-            // one-time secret); with it, promote into a real .modal so it gets
-            // Craft's fixed, centered positioning.
+            // one-time secret); with it, promote into a real fitted .modal so it
+            // gets Craft's fixed, centered, content-sized positioning.
             if (typeof Garnish === 'undefined' || typeof Garnish.Modal === 'undefined') {
                 wireCopy($reveal);
                 return;
             }
 
-            var $modal = $(
-                '<div class="modal">' +
-                    '<div class="body"></div>' +
+            const $modal = $(
+                '<div class="modal fitted">' +
+                    '<div class="body" style="width: 44rem; max-width: calc(100vw - 4rem);"></div>' +
                     '<div class="footer"><div class="buttons right">' +
                         '<button type="button" class="btn submit" data-mcp-done>Done</button>' +
                     '</div></div>' +
@@ -61,8 +61,8 @@
             $reveal.remove();
             wireCopy($modal);
 
-            var modal = new Garnish.Modal($modal, { hideOnEsc: false, hideOnShadeClick: false });
-            $modal.on('click', '[data-mcp-done]', function() {
+            const modal = new Garnish.Modal($modal, { hideOnEsc: false, hideOnShadeClick: false });
+            $modal.on('click', '[data-mcp-done]', () => {
                 modal.hide();
             });
         })();
