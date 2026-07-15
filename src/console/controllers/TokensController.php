@@ -12,6 +12,7 @@ use InvalidArgumentException;
 use Override;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Scope;
+use stimmt\craft\Mcp\http\Snippet;
 use stimmt\craft\Mcp\http\Tokens;
 use stimmt\craft\Mcp\Mcp;
 use yii\console\ExitCode;
@@ -69,22 +70,11 @@ class TokensController extends Controller {
             ->create((int) $user->id, $scope, $name, $this->expires);
 
         $settings = Mcp::settings();
-        $base = $settings->httpPublicUrl ?? Craft::$app->getSites()->getPrimarySite()->getBaseUrl() ?? '';
-        $url = rtrim($base, '/') . '/' . $settings->httpPath;
+        $url = Snippet::url();
 
         $this->stdout("Token created (shown once, store it now):\n\n  {$plaintext}\n\n", Console::FG_GREEN);
         $this->stdout("Claude Desktop config (claude_desktop_config.json):\n");
-        $this->stdout(<<<JSON
-  {
-    "mcpServers": {
-      "craft-cms": {
-        "url": "{$url}",
-        "headers": { "Authorization": "Bearer {$plaintext}" }
-      }
-    }
-  }
-
-JSON);
+        $this->stdout(Snippet::json($plaintext, $url));
         if ($settings->httpPublicUrl === null) {
             $this->stdout("\nThe url host comes from the primary site. If Craft answers on a different domain (headless setups often serve the CMS on a separate host), set the httpPublicUrl setting to that domain, or edit the url by hand.\n", Console::FG_YELLOW);
         }

@@ -68,6 +68,16 @@ final readonly class Tokens {
         return $this->store->all();
     }
 
+    /**
+     * @return Token[]
+     */
+    public function listFor(int $userId): array {
+        return array_values(array_filter(
+            $this->list(),
+            static fn (Token $token): bool => $token->userId === $userId,
+        ));
+    }
+
     public static function hash(string $plaintext): string {
         return hash('sha256', $plaintext);
     }

@@ -67,4 +67,18 @@ describe('Tokens', function () {
             ->and($tokens->revoke('Nobody'))->toBeFalse()
             ->and($tokens->list())->toBe([]);
     });
+
+    it('lists only the tokens belonging to the given user', function () {
+        $store = new InMemoryTokenStore();
+        $tokens = new Tokens($store);
+        $tokens->create(7, Scope::Content, 'Anna');
+        ['token' => $bert] = $tokens->create(8, Scope::ReadOnly, 'Bert');
+        $tokens->create(7, Scope::Full, 'Anna Two');
+
+        $forSeven = $tokens->listFor(7);
+
+        expect(array_map(fn ($token) => $token->name, $forSeven))->toBe(['Anna', 'Anna Two'])
+            ->and($tokens->listFor(8))->toBe([$bert])
+            ->and($tokens->listFor(999))->toBe([]);
+    });
 });
