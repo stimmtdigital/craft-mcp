@@ -18,10 +18,10 @@
         <h3>Claude Desktop config</h3>
         <pre style="overflow-x: auto;"><code>{{ newTokenSnippet }}</code></pre>
 
-        <p class="buttons">
+        <div class="buttons" data-config-actions>
             <button type="button" class="btn" data-icon="clipboard" data-copy-config>Copy config</button>
             <a class="btn" data-icon="download" download="claude_desktop_config.json" href="data:application/json;charset=utf-8,{{ newTokenSnippet|url_encode }}">Download config</a>
-        </p>
+        </div>
     </div>
 
     {% js %}
@@ -51,13 +51,15 @@
             const $modal = $(
                 '<div class="modal fitted">' +
                     '<div class="body" style="width: 44rem; max-width: calc(100vw - 4rem);"></div>' +
-                    '<div class="footer"><div class="buttons right">' +
-                        '<button type="button" class="btn submit" data-mcp-done>Done</button>' +
-                    '</div></div>' +
+                    '<div class="footer" style="display: flex; align-items: center; justify-content: space-between; gap: 7px;"></div>' +
                 '</div>'
             ).appendTo(Garnish.$bod);
 
+            const $footer = $modal.find('.footer');
             $reveal.children().appendTo($modal.find('.body'));
+            // Config actions sit at the footer-left, Done at the footer-right.
+            $modal.find('[data-config-actions]').addClass('left').appendTo($footer);
+            $footer.append('<div class="buttons right"><button type="button" class="btn submit" data-mcp-done>Done</button></div>');
             $reveal.remove();
             wireCopy($modal);
 
