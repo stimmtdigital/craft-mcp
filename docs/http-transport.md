@@ -79,7 +79,7 @@ Scope is applied on top of the plugin's existing global settings (`enabled`, `en
 
 Content-scope tokens now respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
 
-This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused. Revoking a user's control panel permissions takes effect immediately on the next request; there is no token rotation delay or grace period.
+This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused. Revoking a user's control panel permissions takes effect immediately on the next request; there is no token rotation delay or grace period. Reads stay unrestricted on every scope; the permission check applies to entry writes only.
 
 If a write is refused, the error response carries a message like:
 

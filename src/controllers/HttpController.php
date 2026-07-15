@@ -116,6 +116,10 @@ class HttpController extends Controller {
         try {
             $psr7 = $server->run($transport);
         } finally {
+            // Defense in depth for persistent-worker SAPIs: enforcement must
+            // never leak from a content-scope request into the next one.
+            Authorization::reset();
+
             $stray = ob_get_clean();
             if (is_string($stray) && $stray !== '') {
                 $logger->warning('Stray output during MCP HTTP handling', ['output' => $stray]);

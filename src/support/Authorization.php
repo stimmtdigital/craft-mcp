@@ -9,6 +9,7 @@ use craft\base\ElementInterface;
 use craft\elements\User;
 use craft\services\Elements;
 use Mcp\Exception\ToolCallException;
+use Throwable;
 
 /**
  * Per-request acting-user authorization. Activated only for content-scope
@@ -87,7 +88,13 @@ final class Authorization {
             return;
         }
 
-        $site = $element->getSite()->handle;
+        // The refusal message must never be masked by a broken element
+        // (an unset siteId throws inside getSite()).
+        try {
+            $site = $element->getSite()->handle;
+        } catch (Throwable) {
+            $site = 'unknown';
+        }
         $noun = $element::lowerDisplayName();
 
         throw new ToolCallException(
