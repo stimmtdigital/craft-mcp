@@ -3,7 +3,9 @@
 {% set redirect = craft.app.request.getPathInfo() %}
 
 {% if newToken %}
-    <div class="pane">
+    {# Rendered inline as a fallback, then promoted to a Garnish modal by the
+       JS below. If JS ever fails, the one-time token is still visible here. #}
+    <div id="mcp-token-reveal" class="pane">
         <p class="warning with-icon">Copy this token now. For your security, it will not be shown again.</p>
 
         {{ forms.copytextField({
@@ -15,7 +17,36 @@
 
         <h3>Claude Desktop config</h3>
         <pre><code>{{ newTokenSnippet }}</code></pre>
+
+        <p class="buttons">
+            <button type="button" class="btn" data-icon="clipboard" data-copy-config>Copy config</button>
+            <a class="btn" data-icon="download" download="claude_desktop_config.json" href="data:application/json;charset=utf-8,{{ newTokenSnippet|url_encode }}">Download config</a>
+        </p>
     </div>
+
+    {% js %}
+        (function() {
+            var $reveal = $('#mcp-token-reveal');
+            if (!$reveal.length) {
+                return;
+            }
+
+            var snippet = {{ newTokenSnippet|json_encode|raw }};
+            $reveal.on('click', '[data-copy-config]', function() {
+                navigator.clipboard.writeText(snippet).then(function() {
+                    Craft.cp.displayNotice(Craft.t('app', 'Copied to clipboard.'));
+                });
+            });
+
+            if (typeof Garnish !== 'undefined') {
+                $reveal.append('<div class="footer"><div class="buttons right"><button type="button" class="btn submit" data-mcp-done>Done</button></div></div>');
+                var modal = new Garnish.Modal($reveal, { hideOnEsc: false, hideOnShadeClick: false });
+                $reveal.on('click', '[data-mcp-done]', function() {
+                    modal.hide();
+                });
+            }
+        })();
+    {% endjs %}
 
     <hr>
 {% endif %}
