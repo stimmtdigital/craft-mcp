@@ -486,6 +486,103 @@ public function getRecord(int $id): array
 }
 ```
 
+## Authorization
+
+When tools access elements (entries, assets, categories, users) or sensitive system data, permission checks ensure scoped tokens never expose data the acting user cannot view. Craft MCP provides three reusable seams for implementing authorization:
+
+### List Element Reads
+
+Tools that return lists of elements must call `Authorization::scopeQuery($query)` after building the element query but before executing it:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use stimmt\craft\Mcp\support\Authorization;
+use Mcp\Capability\Attribute\McpTool;
+
+class MyTools
+{
+    #[McpTool(name: 'list_my_entries', description: 'List entries with optional filters')]
+    public function listMyEntries(?string $section = null): array
+    {
+        $query = \craft\elements\Entry::find()
+            ->orderBy(['dateCreated' => SORT_DESC]);
+
+        if ($section) {
+            $query->section($section);
+        }
+
+        // Scope the query to the acting user's viewable sources
+        Authorization::scopeQuery($query);
+
+        return [
+            'count' => count($query),
+            'entries' => $query->all(),
+        ];
+    }
+}
+```
+
+The `scopeQuery` method is a no-op when not enforced (stdio and full scope) but restricts element queries to viewable sections, volumes, and groups when readonly or content-scope HTTP tokens are in use. It handles entries, assets, categories, and users; for other element types it throws `ToolCallException` so the oversight is caught immediately.
+
+### Single Element Reads
+
+Tools that fetch a single element by ID must call `Authorization::assertCanView($element)` after resolving the element but before reading its data:
+
+```php
+#[McpTool(name: 'get_my_entry', description: 'Get a specific entry by ID')]
+public function getMyEntry(int $id): array
+{
+    $entry = \craft\elements\Entry::find()->id($id)->one();
+
+    if ($entry === null) {
+        return ['found' => false, 'error' => "Entry {$id} not found"];
+    }
+
+    // Check permission before reading
+    Authorization::assertCanView($entry);
+
+    return [
+        'found' => true,
+        'entry' => $entry->toArray(),
+    ];
+}
+```
+
+This method throws `ToolCallException` if the acting user cannot view the element.
+
+### Privileged Tools
+
+Tools that expose install-level introspection (configuration, database structure, logs, environment) are inherently sensitive. Mark them with `privileged: true` on the `#[McpToolMeta]` attribute:
+
+```php
+use Mcp\Capability\Attribute\McpTool;
+use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ToolCategory;
+
+class MySystemTools
+{
+    #[McpTool(name: 'myplugin_read_config', description: 'Read plugin configuration')]
+    #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
+    public function readConfig(): array
+    {
+        // This tool is hidden from non-admin readonly/content tokens
+        // unless the site owner names it in scopedTokenPrivilegedTools
+        return $this->getPluginSettings();
+    }
+}
+```
+
+Privileged tools are filtered out at serve time for non-admin scoped tokens unless explicitly allowed in the plugin's `scopedTokenPrivilegedTools` config setting. Full scope and stdio bypass this filtering.
+
+### Architecture Tests
+
+The plugin includes structural tests (`tests/Unit/Tools/ReadAuthorizationTest.php`) that enforce these three seams: every element-backed read tool must pass through either `Authorization::scopeQuery()` or `Authorization::assertCanView()`, depending on whether it lists or fetches single elements. New tools that forget a seam turn the test red, preventing accidental permission leaks.
+
+Similarly, `tests/Unit/Tools/PrivilegedToolsTest.php` verifies that all install-introspection tools set `privileged: true`, so new tools cannot silently expose sensitive data. These tests are non-optional: they make permission checking an invariant of the tool architecture.
+
 ## Event Reference
 
 The `RegisterToolsEvent` class provides these methods for registering tools:

@@ -80,6 +80,14 @@ return [
     // on headless deployments where Craft answers on a different domain.
     // Default: null
     'httpPublicUrl' => null,
+
+    // Install-introspection tools to allow scoped (readonly/content) HTTP tokens.
+    // Privileged tools are locked to admins by default; site owners can open
+    // specific ones here for their scoped token users.
+    // Default: []
+    'scopedTokenPrivilegedTools' => [
+        'read_logs',
+    ],
 ];
 ```
 
@@ -99,6 +107,7 @@ return [
 | `httpPath` | `string` | `'mcp'` | Since 1.4.0. Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |
 | `httpSessionTtl` | `int` | `3600` | Since 1.4.0. HTTP session TTL in seconds; idle sessions are cleaned up after this long |
 | `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
+| `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 

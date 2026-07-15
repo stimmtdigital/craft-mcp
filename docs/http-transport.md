@@ -91,9 +91,34 @@ Scope is applied on top of the plugin's existing global settings (`enabled`, `en
 
 ### User permissions
 
-Content-scope tokens now respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
+Readonly and content-scope tokens respect the linked Craft user's real permissions on both reads and writes. The permission checks are enforced live per request; revoking a user's control panel permissions takes effect immediately on the next request with no token rotation delay or grace period.
 
-This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused. Revoking a user's control panel permissions takes effect immediately on the next request; there is no token rotation delay or grace period. Reads stay unrestricted on every scope; the permission check applies to entry writes only.
+#### Reads
+
+On readonly and content scopes, element reads are bounded by the acting user's view permissions:
+
+- **Entry reads** (`list_entries`, `count_entries`, `get_entry`) are restricted to sections the user can view (checked via `viewEntries:<section-uid>` permission). Entries in other sections are filtered from lists and single `get_entry` calls on non-viewable entries are refused.
+- **Asset reads** (`list_assets`, `get_asset`) are restricted to volumes the user can view (`viewAssets:<volume-uid>`).
+- **Category reads** (`list_categories`) are restricted to groups the user can view (`viewCategories:<group-uid>`).
+- **User reads** (`list_users`) require the `View Users` permission; users lacking it see only themselves.
+- **Revision and draft reads** (`list_revisions`, `list_drafts`) inherit the same view scoping as their parent entry elements.
+
+Install-introspection tools (read_logs, get_config, get_database_schema, get_database_info, get_table_counts, get_project_config_diff, get_environment) are locked to admins over readonly and content-scope tokens by default. The site owner can selectively open specific tools via the `scopedTokenPrivilegedTools` configuration setting:
+
+```php
+'scopedTokenPrivilegedTools' => [
+    'read_logs',        // Allow this token user to read MCP server logs
+    'get_config',       // Allow this token user to view Craft config
+],
+```
+
+Tools named in this array are shown to that scope's users; tools absent from the array stay hidden. Admin-linked tokens and full-scope tokens bypass this restriction and always see privileged tools. Scope remains the outer ceiling: a tool must be included in the token's scope to be callable at all.
+
+#### Writes
+
+Content-scope tokens respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
+
+This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused.
 
 If a write is refused, the error response carries a message like:
 
@@ -101,7 +126,9 @@ If a write is refused, the error response carries a message like:
 This token's user 'editor' is not allowed to save this entry on site 'default' (Craft user permissions, checked live). Ask an admin to widen the user's permissions or mint a token for a user who has them.
 ```
 
-Full-scope tokens are deliberately exempt from this check: they carry code execution capability, so they trust the token holder completely and skip Craft permission lookups. Readonly tokens are unaffected since they do not write. Scope remains the outer ceiling; a tool must be included in the token's scope to be callable at all, regardless of Craft permissions.
+#### Full scope and stdio
+
+Full-scope tokens are deliberately exempt from all permission checks: they carry code execution capability, so they trust the token holder completely and skip Craft permission lookups. Stdio connections have no token identity and are never permission-scoped.
 
 ## Connecting Claude Desktop
 
