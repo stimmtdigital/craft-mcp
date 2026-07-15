@@ -68,6 +68,18 @@ describe('Tokens', function () {
             ->and($tokens->list())->toBe([]);
     });
 
+    it('revokes by id only, never matching another token whose name equals that id', function () {
+        $store = new InMemoryTokenStore();
+        $tokens = new Tokens($store);
+        // Decoy created first, so it holds the smaller id and would win an
+        // ascending name-or-id scan; its name is the string form of the id we revoke.
+        $tokens->create(8, Scope::ReadOnly, '2');
+        ['token' => $victim] = $tokens->create(7, Scope::Content, 'Real');
+
+        expect($tokens->revokeById((int) $victim->id))->toBeTrue()
+            ->and(array_map(fn ($token) => $token->name, $tokens->list()))->toBe(['2']);
+    });
+
     it('lists only the tokens belonging to the given user', function () {
         $store = new InMemoryTokenStore();
         $tokens = new Tokens($store);

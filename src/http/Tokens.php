@@ -62,6 +62,16 @@ final readonly class Tokens {
     }
 
     /**
+     * Delete a token by its numeric id only. Callers that authorize against a
+     * specific resolved token (the control panel) must use this, never the
+     * name-or-id revoke(): a token whose name equals another token's id string
+     * would otherwise let the wrong row match under an authorized id.
+     */
+    public function revokeById(int $id): bool {
+        return $this->store->delete($id);
+    }
+
+    /**
      * @return Token[]
      */
     public function list(): array {

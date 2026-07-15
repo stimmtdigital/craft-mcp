@@ -99,9 +99,15 @@ final class CpTokensController extends Controller {
         $this->requirePostRequest();
 
         $id = (string) $this->request->getRequiredBodyParam('id');
-        $this->authorizeRevoke($this->find($id));
+        $token = $this->find($id);
+        $this->authorizeRevoke($token);
 
-        $this->tokens()->revoke($id);
+        // Revoke the resolved token by its own id, never the raw input: the
+        // authorization check above and the deletion must act on the same
+        // token (see Tokens::revokeById).
+        if ($token?->id !== null) {
+            $this->tokens()->revokeById($token->id);
+        }
         $this->setSuccessFlash('Token revoked.');
 
         return $this->redirectToPostedUrl();
