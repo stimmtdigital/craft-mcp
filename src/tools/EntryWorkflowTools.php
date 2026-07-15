@@ -17,6 +17,7 @@ use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
@@ -122,6 +123,7 @@ class EntryWorkflowTools {
     public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $site): array {
             $entry = $this->find($id, $site, withDrafts: true);
+            Authorization::assertCanPublish($entry);
 
             if ($entry->getIsDraft()) {
                 return $this->applyDraft($entry, $site);
@@ -140,6 +142,7 @@ class EntryWorkflowTools {
     public function deleteEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $site): array {
             $entry = $this->find($id, $site, withDrafts: true);
+            Authorization::assertCanDelete($entry);
 
             if (!Craft::$app->getElements()->deleteElement($entry)) {
                 throw new ToolCallException('Failed to delete entry');
@@ -165,6 +168,7 @@ class EntryWorkflowTools {
     ): array {
         return SafeExecution::run(function () use ($id, $site, $title, $slug, $fields): array {
             $entry = $this->find($id, $site);
+            Authorization::assertCanDuplicate($entry);
 
             $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
             $duplicate = Craft::$app->getElements()->duplicateElement($entry, $attributes, asUnpublishedDraft: true);
@@ -199,6 +203,7 @@ class EntryWorkflowTools {
             $source = $this->find($id, $fromSite);
             $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
                 ?? throw new ToolCallException("Entry {$id} does not exist on site '{$toSite}'; the section may not be enabled for it");
+            Authorization::assertCanSave($targetEntry);
 
             $payload = $this->reader->read($source, $fromSite);
             $result = $this->writer->update($targetEntry, [], $payload['fields'], WriteMode::Draft, $toSite);
