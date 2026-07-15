@@ -1,0 +1,52 @@
+{% set showUser = showUser ?? false %}
+{% set userLabels = userLabels ?? [] %}
+
+{% if tokens is empty %}
+    <p class="zilch">No MCP tokens have been created yet.</p>
+{% else %}
+    <div class="tableview">
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    {% if showUser %}
+                        <th scope="col">User</th>
+                    {% endif %}
+                    <th scope="col">Scope</th>
+                    <th scope="col">Last Used</th>
+                    <th scope="col">Expires</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for token in tokens %}
+                    <tr>
+                        <th scope="row">{{ token.name }}</th>
+                        {% if showUser %}
+                            <td>{{ userLabels[token.userId] ?? token.userId }}</td>
+                        {% endif %}
+                        <td>{{ token.scope.value|capitalize }}</td>
+                        <td>{{ token.lastUsedAt ? token.lastUsedAt|timestamp : 'Never' }}</td>
+                        <td>{{ token.expiryDate ? token.expiryDate|timestamp : 'Never' }}</td>
+                        <td>
+                            <form method="post" accept-charset="UTF-8">
+                                {{ csrfInput() }}
+                                {{ redirectInput(redirect) }}
+                                {{ hiddenInput('id', token.id) }}
+                                {{ tag('button', {
+                                    type: 'button',
+                                    class: ['btn', 'small', 'formsubmit'],
+                                    text: 'Revoke',
+                                    data: {
+                                        action: revokeAction,
+                                        confirm: 'Are you sure you want to revoke this token? This cannot be undone.',
+                                    },
+                                }) }}
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}

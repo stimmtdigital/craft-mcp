@@ -42,11 +42,11 @@ describe('web\Cp', function () {
             ->and($source)->toContain('manageAllMcpTokens');
     });
 
-    it('leaves a marked insertion point for the Task 4 utility registration', function () {
+    it('registers the Tokens utility class', function () {
         $source = (string) file_get_contents((new ReflectionClass(Cp::class))->getFileName());
 
         expect($source)->toContain('EVENT_REGISTER_UTILITIES')
-            ->and($source)->toContain('Task 4 insertion point');
+            ->and($source)->toContain('Tokens::class');
     });
 });
 

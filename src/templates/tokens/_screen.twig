@@ -1,0 +1,41 @@
+{% import '_includes/forms' as forms %}
+
+{% set redirect = craft.app.request.getPathInfo() %}
+
+{% if newToken %}
+    <div class="pane">
+        <p class="warning with-icon">Copy this token now. For your security, it will not be shown again.</p>
+
+        {{ forms.copytextField({
+            label: 'New Token',
+            instructions: 'Paste this into the Authorization header of your MCP client as a bearer token.',
+            id: 'new-token',
+            value: newToken,
+        }) }}
+
+        <h3>Claude Desktop config</h3>
+        <pre><code>{{ newTokenSnippet }}</code></pre>
+    </div>
+
+    <hr>
+{% endif %}
+
+<h2>Tokens</h2>
+
+{% include 'mcp/tokens/_table' with {
+    tokens: tokens,
+    showUser: false,
+    revokeAction: 'mcp/cp-tokens/revoke',
+    redirect: redirect,
+} only %}
+
+<hr>
+
+<h2>New Token</h2>
+
+{% include 'mcp/tokens/_create' with {
+    user: user,
+    allowedScopes: allowedScopes,
+    action: 'mcp/cp-tokens/create',
+    redirect: redirect,
+} only %}

@@ -14,6 +14,7 @@ use craft\services\UserPermissions;
 use craft\services\Utilities;
 use craft\web\UrlManager;
 use craft\web\User as CpUser;
+use stimmt\craft\Mcp\utilities\Tokens;
 use yii\base\Event;
 
 /**
@@ -91,7 +92,7 @@ final class Cp {
             Utilities::class,
             Utilities::EVENT_REGISTER_UTILITIES,
             static function (RegisterComponentTypesEvent $event): void {
-                // Task 4 insertion point: $event->types[] = Tokens::class;
+                $event->types[] = Tokens::class;
             },
         );
     }
