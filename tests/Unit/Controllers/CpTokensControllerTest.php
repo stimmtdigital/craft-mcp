@@ -63,7 +63,9 @@ describe('CpTokensController', function () {
         expect($source)->toContain('function authorizeCreate')
             ->and($source)->toContain('Scope::ReadOnly')
             ->and($source)->toContain('Scope::Content')
-            ->and($source)->toContain("requirePermission('manageOwnMcpTokens')");
+            // Self-service accepts manageOwn, but manageAll is a superset and
+            // must satisfy the self path too (coherent authorization matrix).
+            ->and($source)->toContain("requireAnyPermission('manageOwnMcpTokens', 'manageAllMcpTokens')");
     });
 
     it('every authorization path can throw ForbiddenHttpException, never a silent redirect', function () {

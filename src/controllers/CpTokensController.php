@@ -129,7 +129,7 @@ final class CpTokensController extends Controller {
         $selfServiceScope = $scope === Scope::ReadOnly || $scope === Scope::Content;
 
         if ($isSelf && $selfServiceScope) {
-            $this->requirePermission('manageOwnMcpTokens');
+            $this->requireAnyPermission('manageOwnMcpTokens', 'manageAllMcpTokens');
 
             return;
         }
@@ -142,7 +142,7 @@ final class CpTokensController extends Controller {
         $isOwn = $token !== null && $currentUser !== null && $token->userId === $currentUser->id;
 
         if ($isOwn) {
-            $this->requirePermission('manageOwnMcpTokens');
+            $this->requireAnyPermission('manageOwnMcpTokens', 'manageAllMcpTokens');
 
             return;
         }
