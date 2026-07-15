@@ -281,6 +281,10 @@ class EntryWorkflowTools {
         }
 
         if ($drafts !== []) {
+            // The draft is the element being applied, so the permission check
+            // must run against it (peer-draft rules), not only the canonical.
+            Authorization::assertCanPublish($drafts[0]);
+
             return $this->applyDraft($drafts[0], $site);
         }
 

@@ -43,7 +43,11 @@ final class Authorization {
     }
 
     public static function assertCanPublish(ElementInterface $element): void {
-        self::assert($element, 'publish', fn ($elements) => $elements->canSaveCanonical($element, self::$user));
+        // Mirrors the control panel's apply-draft gate (ElementsController):
+        // the user must be allowed to save this element itself (for drafts:
+        // own draft or the peer-draft permission) AND its canonical version.
+        self::assert($element, 'publish', fn ($elements) => $elements->canSave($element, self::$user)
+            && $elements->canSaveCanonical($element, self::$user));
     }
 
     public static function assertCanDelete(ElementInterface $element): void {

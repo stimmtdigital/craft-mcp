@@ -25,4 +25,7 @@ it('guards every entry-write tool with the acting-user authorization', function 
     [EntryWorkflowTools::class, 'deleteEntry', 'assertCanDelete'],
     [EntryWorkflowTools::class, 'duplicateEntry', 'assertCanDuplicate'],
     [EntryWorkflowTools::class, 'copyEntryToSite', 'assertCanSave'],
+    // The canonical-id publish path applies drafts[0]; the guard must check
+    // that draft object itself (peer-draft permissions), not only the canonical.
+    [EntryWorkflowTools::class, 'publishCanonical', 'assertCanPublish'],
 ]);
