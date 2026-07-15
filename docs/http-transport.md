@@ -30,20 +30,15 @@ Enabling `httpTransport` registers this route only; it has no effect if `enabled
 
 ## Minting a Token
 
-Tokens are managed through the plugin's console commands, run on the server that hosts your Craft install:
+### Control Panel
 
-```bash
-php craft mcp/tokens/create --user=editor@example.com --scope=content --name="Anna's Laptop" --expires=90
-```
+Users can mint tokens for themselves via the control panel's My Account screen. Navigate to **My Account** and select **MCP Tokens** from the sidebar, then click **New Token**. Fill in:
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--user` | Yes | Email or username of the Craft user the token acts as |
-| `--scope` | No | `readonly`, `content`, or `full` (default: `content`) |
-| `--name` | No | Display name for the token, shown in `mcp/tokens/list` (default: `<username> token`) |
-| `--expires` | No | Days until the token expires; omit for a token that never expires |
+- **Name** (required): A display name for this token (e.g., "Anna's Laptop")
+- **Scope**: `readonly` or `content` (default: `content`). Self-service users cannot mint `full`-scope tokens; admins or token managers can.
+- **Expires in**: Optional number of days until the token expires; leave blank for a token that never expires.
 
-The command prints the token's plaintext value once, along with a ready-to-paste Claude Desktop configuration snippet:
+Click **Create** and the plaintext token appears once, along with a ready-to-paste Claude Desktop configuration snippet:
 
 ```
 Token created (shown once, store it now):
@@ -61,7 +56,26 @@ Claude Desktop config (claude_desktop_config.json):
   }
 ```
 
-"Shown once" means exactly that: only the hash of the token is stored, never the plaintext. If you lose it, there is no way to recover it; create a new token and revoke the old one.
+Copy and store the plaintext token securely; only the hash is saved in Craft. If you lose it, create a new token and revoke the old one.
+
+Admins and users with the **Manage all users' MCP tokens** permission can mint tokens for any user and grant any scope, including `full`, via the same screens.
+
+### Console
+
+Tokens can also be minted via console command on the server:
+
+```bash
+php craft mcp/tokens/create --user=editor@example.com --scope=content --name="Anna's Laptop" --expires=90
+```
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--user` | Yes | Email or username of the Craft user the token acts as |
+| `--scope` | No | `readonly`, `content`, or `full` (default: `content`) |
+| `--name` | No | Display name for the token, shown in `mcp/tokens/list` (default: `<username> token`) |
+| `--expires` | No | Days until the token expires; omit for a token that never expires |
+
+The command prints the same plaintext value and Claude Desktop snippet.
 
 ## Scopes
 
@@ -120,17 +134,27 @@ The printed `url` host comes from the primary site's base URL unless the `httpPu
 
 ## Managing Tokens
 
-List every token, including which user it acts as, its scope, expiry, and last use:
+### Control Panel
+
+Users can revoke their own tokens via **My Account > MCP Tokens**. Each token row shows its name, scope, expiry date (if set), and last used time; click **Revoke** to delete it immediately.
+
+Admins and users with the **Manage all users' MCP tokens** permission can access a **Utilities > MCP Tokens** panel that lists every token across all users, with the user's name, scope, expiry, and last used time. Click **Manage** on any user row to view and revoke their tokens, or use **Revoke** inline to delete a token immediately.
+
+### Console
+
+Tokens can also be managed via console command:
 
 ```bash
 php craft mcp/tokens/list
 ```
 
-Revoke a token by name or id:
+Lists every token, including which user it acts as, its scope, expiry, and last use.
 
 ```bash
 php craft mcp/tokens/revoke "Anna's Laptop"
 ```
+
+Revoke a token by name or id.
 
 Revocation and expiry both take effect immediately on the next request; there is no grace period. If a client is mid-session when its token is revoked or expires, its next request (even one carrying a valid session id) gets a 401 response rather than being served, since the token is checked before the session.
 
