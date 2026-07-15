@@ -20,6 +20,7 @@ use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\services\PromptRegistry;
 use stimmt\craft\Mcp\services\ResourceRegistry;
 use stimmt\craft\Mcp\services\ToolRegistry;
+use stimmt\craft\Mcp\web\Cp;
 use yii\base\Event;
 
 /**
@@ -94,6 +95,7 @@ class Mcp extends BasePlugin {
         parent::init();
 
         $this->registerHttpEndpoint();
+        $this->registerCp();
 
         Craft::info('Craft MCP plugin loaded', __METHOD__);
     }
@@ -223,6 +225,23 @@ class Mcp extends BasePlugin {
                 $event->rules[$settings->httpPath] = 'mcp/http/handle';
             },
         );
+    }
+
+    /**
+     * Registers the CP token-management surface when enabled. Off by
+     * default: no setting, no screen, no route, no permission, no surface.
+     */
+    private function registerCp(): void {
+        $request = Craft::$app->getRequest();
+        if (!$request instanceof WebRequest || !$request->getIsCpRequest()) {
+            return;
+        }
+
+        if (!self::settings()->httpTransport) {
+            return;
+        }
+
+        Cp::register();
     }
 
     /**
