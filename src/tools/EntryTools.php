@@ -302,7 +302,9 @@ class EntryTools {
             ];
 
             if ($example !== null) {
-                $schema['example'] = $this->reader->read($this->example($example, $sectionModel->handle));
+                $entry = $this->example($example, $sectionModel->handle);
+                Authorization::assertCanView($entry);
+                $schema['example'] = $this->reader->read($entry);
             }
 
             return $schema;

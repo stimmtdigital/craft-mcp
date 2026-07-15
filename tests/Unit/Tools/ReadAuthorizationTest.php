@@ -23,6 +23,7 @@ it('routes every element read through an Authorization seam', function (string $
     [EntryTools::class, 'listEntries', 'scopeQuery'],
     [EntryTools::class, 'countEntries', 'scopeQuery'],
     [EntryTools::class, 'getEntry', 'assertCanView'],
+    [EntryTools::class, 'describeEntrySchema', 'assertCanView'],
     [EntryWorkflowTools::class, 'listDrafts', 'scopeQuery'],
     [EntryWorkflowTools::class, 'listRevisions', 'scopeQuery'],
     [AssetTools::class, 'listAssets', 'scopeQuery'],

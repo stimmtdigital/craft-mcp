@@ -5,9 +5,11 @@ declare(strict_types=1);
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\tools\BackupTools;
 use stimmt\craft\Mcp\tools\CommerceTools;
 use stimmt\craft\Mcp\tools\DatabaseTools;
 use stimmt\craft\Mcp\tools\DebugTools;
+use stimmt\craft\Mcp\tools\GlobalSetTools;
 use stimmt\craft\Mcp\tools\GraphqlTools;
 use stimmt\craft\Mcp\tools\SystemTools;
 
@@ -44,6 +46,12 @@ it('flags the install-introspection reads privileged', function (string $class, 
     [CommerceTools::class, 'getOrder'],
     [CommerceTools::class, 'listProducts'],
     [CommerceTools::class, 'getProduct'],
+    // get_last_error returns a log line (bypasses the read_logs lock otherwise);
+    // list_globals returns stored global content; list_backups exposes absolute
+    // filesystem paths. All locked for scoped tokens.
+    [SystemTools::class, 'getLastError'],
+    [GlobalSetTools::class, 'listGlobals'],
+    [BackupTools::class, 'listBackups'],
 ]);
 
 it('filters privileged tools for enforced scopes in the factory', function () {

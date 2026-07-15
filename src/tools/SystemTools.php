@@ -139,7 +139,7 @@ class SystemTools {
         description: 'Get the most recent error from Craft CMS log files',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::SYSTEM)]
+    #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getLastError(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $result = $this->readLogs(1, 'error');
