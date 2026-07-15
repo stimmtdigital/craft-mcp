@@ -1,0 +1,81 @@
+<?php
+
+declare(strict_types=1);
+
+use craft\controllers\EditUserTrait;
+use craft\web\Controller;
+use stimmt\craft\Mcp\controllers\CpTokensController;
+
+// CpTokensController extends craft\web\Controller, which requires a booted
+// yii\base\Module to construct. Craft and Twig are never booted in these
+// tests, so assertions are structural: reflection over the class shape and
+// source-string checks over the authorization contract, mirroring
+// tests/Unit/Web/CpTest.php.
+describe('CpTokensController', function () {
+    it('extends craft\web\Controller and uses EditUserTrait', function () {
+        $class = new ReflectionClass(CpTokensController::class);
+
+        expect($class->isSubclassOf(Controller::class))->toBeTrue()
+            ->and(array_key_exists(EditUserTrait::class, $class->getTraits()))->toBeTrue();
+    });
+
+    it('is not accessible anonymously', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('$allowAnonymous = false');
+    });
+
+    it('gates every action behind a CP request and httpTransport, 404 otherwise', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('getIsCpRequest()')
+            ->and($source)->toContain('httpTransport')
+            ->and($source)->toContain('NotFoundHttpException');
+    });
+
+    it('exposes actionIndex, actionCreate, and actionRevoke', function () {
+        $class = new ReflectionClass(CpTokensController::class);
+
+        expect($class->hasMethod('actionIndex'))->toBeTrue()
+            ->and($class->hasMethod('actionCreate'))->toBeTrue()
+            ->and($class->hasMethod('actionRevoke'))->toBeTrue();
+    });
+
+    it('renders the account screen via asEditUserScreen with the mcp-tokens screen id', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('asEditUserScreen($user, \'mcp-tokens\')')
+            ->and($source)->toContain('contentTemplate(\'mcp/tokens/_screen\'');
+    });
+
+    it('requires manageOwnMcpTokens or manageAllMcpTokens to view your own screen, else manageAllMcpTokens', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function authorizeIndex')
+            ->and($source)->toContain('getIsCurrent()')
+            ->and($source)->toContain("requireAnyPermission('manageOwnMcpTokens', 'manageAllMcpTokens')")
+            ->and($source)->toContain("requirePermission('manageAllMcpTokens')");
+    });
+
+    it('restricts self-service minting to readonly and content scopes', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function authorizeCreate')
+            ->and($source)->toContain('Scope::ReadOnly')
+            ->and($source)->toContain('Scope::Content')
+            ->and($source)->toContain("requirePermission('manageOwnMcpTokens')");
+    });
+
+    it('every authorization path can throw ForbiddenHttpException, never a silent redirect', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('ForbiddenHttpException');
+    });
+
+    it('checks ownership before revoking so someone else\'s token requires manageAllMcpTokens', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function authorizeRevoke')
+            ->and($source)->toContain('$token->userId === $currentUser->id');
+    });
+});
