@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\elements;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\elements\User;
 use craft\models\FieldLayout;
 use stimmt\craft\Mcp\elements\refs\Translator;
 
@@ -64,7 +65,12 @@ final readonly class Writer {
     }
 
     private function saveAsDraft(ElementInterface $element): bool {
-        Craft::$app->getDrafts()->saveElementAsDraft($element, null, null, null, false);
+        // Attribute the draft to the acting user (HTTP token identity), so
+        // Craft's own-draft permission logic applies to it; identityless
+        // runs (stdio console) keep a null creator as before.
+        $identity = Craft::$app->getUser()->getIdentity();
+        $creatorId = $identity instanceof User ? $identity->id : null;
+        Craft::$app->getDrafts()->saveElementAsDraft($element, $creatorId, null, null, false);
 
         return !$element->hasErrors();
     }

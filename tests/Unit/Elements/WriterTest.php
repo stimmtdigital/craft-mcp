@@ -46,3 +46,12 @@ describe('Writer', function () {
         expect($source)->toContain('draftElementId: $element->getIsDraft() ? $element->id : null');
     });
 });
+
+// Drafts must carry the acting user as creator, or Craft's own-draft
+// permission logic (publish without peer-draft rights) can never match.
+it('attributes drafts to the acting user', function () {
+    $source = (string) file_get_contents((new ReflectionClass(stimmt\craft\Mcp\elements\Writer::class))->getFileName());
+
+    expect($source)->toContain('instanceof User ? $identity->id : null')
+        ->and($source)->toContain('saveElementAsDraft($element, $creatorId');
+});
