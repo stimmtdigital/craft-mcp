@@ -33,11 +33,12 @@ describe('CpTokensController', function () {
             ->and($source)->toContain('NotFoundHttpException');
     });
 
-    it('exposes actionIndex, actionCreate, and actionRevoke', function () {
+    it('exposes actionIndex, actionCreate, actionRegenerate, and actionRevoke', function () {
         $class = new ReflectionClass(CpTokensController::class);
 
         expect($class->hasMethod('actionIndex'))->toBeTrue()
             ->and($class->hasMethod('actionCreate'))->toBeTrue()
+            ->and($class->hasMethod('actionRegenerate'))->toBeTrue()
             ->and($class->hasMethod('actionRevoke'))->toBeTrue();
     });
 
@@ -66,6 +67,17 @@ describe('CpTokensController', function () {
             // Self-service accepts manageOwn, but manageAll is a superset and
             // must satisfy the self path too (coherent authorization matrix).
             ->and($source)->toContain("requireAnyPermission('manageOwnMcpTokens', 'manageAllMcpTokens')");
+    });
+
+    // Regenerating re-issues the same token, so it must carry the same
+    // create-capability gate (self/manageAll and full-needs-admin).
+    it('gates regenerate as re-creating the token', function () {
+        $method = new ReflectionMethod(CpTokensController::class, 'actionRegenerate');
+        $body = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($method->isPublic())->toBeTrue()
+            ->and($body)->toContain('->regenerate(')
+            ->and($body)->toContain('$this->authorizeCreate($token->userId, $token->scope)');
     });
 
     // Full scope is code execution and bypasses all authorization, so only an

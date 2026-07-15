@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Manage MCP tokens from the control panel: an "MCP Tokens" screen on My Account (mint readonly/content tokens for yourself, view and revoke your own), the same screen on other users' pages for token managers, and a Utilities panel listing every token. Gated by two new user permissions; visible only when `httpTransport` is enabled.
+- Manage MCP tokens from the control panel: an "MCP Tokens" screen on My Account (mint readonly/content tokens for yourself, view, regenerate, and revoke your own), the same screen on other users' pages for token managers, and a Utilities panel listing every token. New tokens reveal once in a modal with copy and download buttons; regenerate re-issues a token in place (fresh secret, same name/scope/user/expiry, old one invalidated). Gated by two new user permissions; visible only when `httpTransport` is enabled.
 - readonly and content HTTP tokens now read only what their linked Craft user may view: entries, assets, and categories are filtered to the sections, volumes, and groups the user can view, and user listing requires the View Users permission
 - Install-introspection and unbounded-read tools (read_logs, get_last_error, get_config, get_database_schema/info, get_table_counts, get_project_config_diff, get_environment, query_graphql, list_graphql_tokens, list_globals, list_backups, and the Commerce order/product reads) are locked to admins over read/content-scope tokens; open specific ones with the new `scopedTokenPrivilegedTools` config setting
 

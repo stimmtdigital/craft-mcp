@@ -86,11 +86,23 @@ final class CpTokensController extends Controller {
         $this->authorizeCreate($userId, $scope);
 
         ['plaintext' => $plaintext] = $this->tokens()->create($userId, $scope, $name, $this->expiresInDays());
+        $this->reveal($plaintext, 'Token created.');
 
-        $session = Craft::$app->getSession();
-        $session->setFlash('newToken', $plaintext);
-        $session->setFlash('newTokenSnippet', Snippet::json($plaintext, Snippet::url()));
-        $this->setSuccessFlash('Token created.');
+        return $this->redirectToPostedUrl();
+    }
+
+    public function actionRegenerate(): Response {
+        $this->requirePostRequest();
+
+        $token = $this->find((string) $this->request->getRequiredBodyParam('id'))
+            ?? throw new BadRequestHttpException('Token not found.');
+
+        // Regenerating re-issues the same token, so gate it as creating one of
+        // that scope for that user (covers self/manageAll and full-needs-admin).
+        $this->authorizeCreate($token->userId, $token->scope);
+
+        ['plaintext' => $plaintext] = $this->tokens()->regenerate($token);
+        $this->reveal($plaintext, 'Token regenerated.');
 
         return $this->redirectToPostedUrl();
     }
@@ -111,6 +123,17 @@ final class CpTokensController extends Controller {
         $this->setSuccessFlash('Token revoked.');
 
         return $this->redirectToPostedUrl();
+    }
+
+    /**
+     * Flash a freshly minted plaintext token and its client snippet for the
+     * show-once reveal, then a success message.
+     */
+    private function reveal(string $plaintext, string $message): void {
+        $session = Craft::$app->getSession();
+        $session->setFlash('newToken', $plaintext);
+        $session->setFlash('newTokenSnippet', Snippet::json($plaintext, Snippet::url()));
+        $this->setSuccessFlash($message);
     }
 
     private function authorizeIndex(User $user): void {
