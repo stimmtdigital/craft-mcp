@@ -23,7 +23,7 @@
                     <tr>
                         <th scope="row">{{ token.name }}</th>
                         {% if showUser %}
-                            <td>{{ userLabels[token.userId] ?? token.userId }}</td>
+                            <td><a href="{{ url('users/' ~ token.userId ~ '/mcp-tokens') }}">{{ userLabels[token.userId] ?? token.userId }}</a></td>
                         {% endif %}
                         <td>{{ token.scope.value|capitalize }}</td>
                         {# Pass the Unix int, not the DateTimeImmutable: Craft's non-intl date formatter rejects DateTimeImmutable. #}
