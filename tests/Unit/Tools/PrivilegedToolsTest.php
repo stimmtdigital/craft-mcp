@@ -7,6 +7,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\tools\DatabaseTools;
 use stimmt\craft\Mcp\tools\DebugTools;
+use stimmt\craft\Mcp\tools\GraphqlTools;
 use stimmt\craft\Mcp\tools\SystemTools;
 
 // Install-introspection reads (logs, config, db schema/contents,
@@ -29,6 +30,12 @@ it('flags the install-introspection reads privileged', function (string $class, 
     [DatabaseTools::class, 'getTableCounts'],
     [DebugTools::class, 'getProjectConfigDiff'],
     [DebugTools::class, 'getEnvironment'],
+    // GraphQL reads authorize via the schema's own scope, not the acting
+    // user's Craft view permissions, so they are unbounded relative to a
+    // scoped token and locked the same way. list_graphql_tokens also inventories
+    // the install's API-credential surface.
+    [GraphqlTools::class, 'queryGraphql'],
+    [GraphqlTools::class, 'listGraphqlTokens'],
 ]);
 
 it('filters privileged tools for enforced scopes in the factory', function () {
