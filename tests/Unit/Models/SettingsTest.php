@@ -20,8 +20,8 @@ describe('Settings entryWriteMode', function () {
     });
 });
 
-it('defaults paginationLimit to the SDK default of 50', function () {
-    expect((new Settings())->paginationLimit)->toBe(50);
+it('defaults paginationLimit to 100 so one page covers all registered tools', function () {
+    expect((new Settings())->paginationLimit)->toBe(100);
 });
 
 it('rejects a paginationLimit below 1', function () {

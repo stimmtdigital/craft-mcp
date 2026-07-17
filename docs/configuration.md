@@ -63,9 +63,11 @@ return [
     'logLevel' => 'error',
 
     // Page size for MCP list endpoints (tools/prompts/resources list calls).
-    // Raise this if a client does not follow `nextCursor` pagination.
-    // Default: 50
-    'paginationLimit' => 50,
+    // 100 covers every tool the plugin registers in one page, so clients that
+    // don't follow `nextCursor` pagination still see the full list. Raise it
+    // further if you register enough external tools to exceed that.
+    // Default: 100
+    'paginationLimit' => 100,
 
     'entryWriteMode' => 'draft',
 
@@ -116,7 +118,7 @@ return [
 | `disabledResources` | `array` | `[]` | List of resource URIs to disable |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
-| `paginationLimit` | `int` | `50` | Page size of MCP list endpoints (`tools/list`, `prompts/list`, `resources/list`). Useful when a client does not follow `nextCursor` pagination |
+| `paginationLimit` | `int` | `100` | Page size of MCP list endpoints (`tools/list`, `prompts/list`, `resources/list`); 100 covers every registered tool in one page. Useful when a client does not follow `nextCursor` pagination |
 | `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
 | `httpTransport` | `bool` | `false` | Since 1.4.0. Whether the MCP server is also served over HTTP with per-user bearer tokens |
 | `httpPath` | `string` | `'mcp'` | Since 1.4.0. Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |

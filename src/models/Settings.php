@@ -43,8 +43,12 @@ class Settings extends Model {
 
     public string $logLevel = 'error';
 
-    /** Page size for MCP list endpoints (tools/prompts/resources list calls). */
-    public int $paginationLimit = 50;
+    /**
+     * Page size for MCP list endpoints (tools/prompts/resources list calls).
+     * 100 covers every tool the plugin registers in a single page, so clients
+     * that ignore nextCursor still see the full list.
+     */
+    public int $paginationLimit = 100;
 
     /**
      * Default save mode for entry writes: 'draft' (reviewable) or 'live'.
