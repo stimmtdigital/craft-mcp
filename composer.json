@@ -96,6 +96,7 @@
         "analyse": "phpstan analyse --memory-limit=512M",
         "ci": [
             "@lint:test",
+            "@refactor:dry",
             "@analyse",
             "@test"
         ],

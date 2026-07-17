@@ -17,10 +17,10 @@ use Symfony\Component\Uid\Uuid;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class DbSessionStore implements SessionStoreInterface {
-    private const TABLE = '{{%mcp_sessions}}';
+final readonly class DbSessionStore implements SessionStoreInterface {
+    private const string TABLE = '{{%mcp_sessions}}';
 
-    public function __construct(private readonly int $ttl = 3600) {
+    public function __construct(private int $ttl = 3600) {
     }
 
     public function exists(Uuid $id): bool {
@@ -73,7 +73,7 @@ final class DbSessionStore implements SessionStoreInterface {
             Craft::$app->getDb()->createCommand()->delete(self::TABLE, ['id' => $expired])->execute();
         }
 
-        return array_map(static fn (string $id): Uuid => Uuid::fromString($id), $expired);
+        return array_map(Uuid::fromString(...), $expired);
     }
 
     private function oldestAlive(): string {

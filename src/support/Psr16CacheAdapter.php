@@ -23,12 +23,12 @@ use yii\caching\TagDependency;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Psr16CacheAdapter implements SimpleCacheInterface {
-    public const TAG = 'mcp-discovery';
+final readonly class Psr16CacheAdapter implements SimpleCacheInterface {
+    public const string TAG = 'mcp-discovery';
 
     public function __construct(
-        private readonly YiiCacheInterface $cache,
-        private readonly string $prefix = 'mcp-discovery:',
+        private YiiCacheInterface $cache,
+        private string $prefix = 'mcp-discovery:',
     ) {
     }
 
