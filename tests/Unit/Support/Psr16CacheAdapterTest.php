@@ -97,4 +97,42 @@ describe('Psr16CacheAdapter', function () {
         expect($first->get('key'))->toBe('from-first')
             ->and($second->get('key'))->toBe('from-second');
     });
+
+    it('treats zero TTL as immediate expiry per PSR-16', function () {
+        $adapter = new Psr16CacheAdapter(new ArrayCache());
+
+        $adapter->set('key', 'value', 0);
+
+        expect($adapter->get('key', 'default'))->toBe('default');
+    });
+
+    it('treats negative TTL as immediate expiry per PSR-16', function () {
+        $adapter = new Psr16CacheAdapter(new ArrayCache());
+
+        $adapter->set('key', 'value', -5);
+
+        expect($adapter->get('key', 'default'))->toBe('default');
+    });
+
+
+    it('still stores indefinitely when TTL is null (not explicitly zero)', function () {
+        $adapter = new Psr16CacheAdapter(new ArrayCache());
+
+        $adapter->set('key', 'value', null);
+
+        expect($adapter->get('key', 'default'))->toBe('value');
+    });
+
+    it('applies zero TTL expiry through setMultiple', function () {
+        $adapter = new Psr16CacheAdapter(new ArrayCache());
+
+        $adapter->setMultiple(['a' => 1, 'b' => 2]);
+        expect($adapter->get('a'))->toBe(1)
+            ->and($adapter->get('b'))->toBe(2);
+
+        $adapter->setMultiple(['a' => 10, 'b' => 20], 0);
+
+        expect($adapter->get('a', 'expired'))->toBe('expired')
+            ->and($adapter->get('b', 'expired'))->toBe('expired');
+    });
 });

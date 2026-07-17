@@ -42,10 +42,17 @@ final class Psr16CacheAdapter implements SimpleCacheInterface {
     }
 
     public function set(string $key, mixed $value, null|int|DateInterval $ttl = null): bool {
+        $normalizedTtl = $this->normalizeTtl($ttl);
+
+        // PSR-16: Zero or negative TTL means immediate expiry (delete the key)
+        if ($ttl !== null && $normalizedTtl <= 0) {
+            return $this->delete($key);
+        }
+
         return $this->cache->set(
             $this->prefix . $key,
             ['v' => $value],
-            $this->normalizeTtl($ttl),
+            $normalizedTtl,
             new TagDependency(['tags' => self::TAG]),
         );
     }
