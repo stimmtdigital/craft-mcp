@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Manage MCP tokens from the control panel: an "MCP Tokens" screen on My Account (mint readonly/content tokens for yourself, view, regenerate, and revoke your own), the same screen on other users' pages for token managers, and a Utilities panel listing every token. New tokens reveal once in a modal with copy and download buttons; regenerate re-issues a token in place (fresh secret, same name/scope/user/expiry, old one invalidated). Gated by two new user permissions; visible only when `httpTransport` is enabled.
 - readonly and content HTTP tokens now read only what their linked Craft user may view: entries, assets, and categories are filtered to the sections, volumes, and groups the user can view, and user listing requires the View Users permission
 - Install-introspection and unbounded-read tools (read_logs, get_last_error, get_config, get_database_schema/info, get_table_counts, get_project_config_diff, get_environment, query_graphql, list_graphql_tokens, list_globals, list_backups, and the Commerce order/product reads) are locked to admins over read/content-scope tokens; open specific ones with the new `scopedTokenPrivilegedTools` config setting
+- `paginationLimit` setting for the MCP list page size, defaulting to 100 so a single unpaginated `tools/list` call sees every registered tool (#40)
+- HTTP transport sessions are stored in the database (new `mcp_sessions` table), so they survive load-balanced, multi-instance hosting; the new `httpSessionStore` setting accepts a class name or callable for custom stores such as Redis (#41)
+- Attribute discovery is cached through Craft's cache component, so HTTP requests skip the full per-request reflection scan; `reload_mcp` invalidates the cache
+- The tinker, database, and debug tools stream diagnostics to the client at the log level it negotiates via `logging/setLevel`
+- Resource subscriptions now deliver: subscribed clients receive `resources/updated` when a live write or publish changes an entry, or when an external project config change refreshes the config resources, and `reload_mcp` pushes `tools/list_changed`
+- The tool registry is wired to a real event dispatcher, so the list-changed server capabilities advertise truthfully
+- Documented that Matrix-family blocks are directly addressable by their own id in `update_entry`, `delete_entry`, and `publish_entry` (#39)
+
+### Fixed
+- Long-lived MCP processes now pick up custom fields added by another process (for example `project-config/apply`): the config freshness probe patches the compiled `CustomFieldBehavior` handle map and flushes the GraphQL schema caches instead of leaving the process stale until restart
 
 ## [1.4.0-beta.6] - 2026-07-15
 
