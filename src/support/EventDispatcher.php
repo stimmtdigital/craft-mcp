@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\support;
 
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\EventDispatcher\StoppableEventInterface;
 
 /**
  * Minimal PSR-14 dispatcher: listeners register against an exact event
- * class and run in registration order. No propagation stopping, no
+ * class and run in registration order, honoring StoppableEventInterface. No
  * inheritance matching; the SDK's own events are final, so exact-class
  * lookup is all the MCP server's list-changed capabilities need.
  *
@@ -29,6 +30,10 @@ final class EventDispatcher implements EventDispatcherInterface {
 
     public function dispatch(object $event): object {
         foreach ($this->listeners[$event::class] ?? [] as $listener) {
+            if ($event instanceof StoppableEventInterface && $event->isPropagationStopped()) {
+                break;
+            }
+
             $listener($event);
         }
 
