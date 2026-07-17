@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\Notification\ToolListChangedNotification;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
@@ -134,7 +135,7 @@ class McpTools {
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function reloadMcp(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
+        return SafeExecution::run(function () use ($context): array {
             // 1. Reload Composer classmap (detects new plugin classes)
             PluginReloader::reloadComposerClassmap();
 
@@ -157,6 +158,10 @@ class McpTools {
             Mcp::resetToolRegistry();
 
             $summary = Mcp::getToolRegistry()->getSummary();
+
+            // 8. The connected client's own tool list may now be stale;
+            // push the real notification instead of leaving it to guess.
+            $context?->getClientGateway()->notify(new ToolListChangedNotification());
 
             return Response::success([
                 'message' => 'MCP plugin state reloaded',
