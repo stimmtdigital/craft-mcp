@@ -30,6 +30,7 @@
         "php": "^8.3",
         "craftcms/cms": "^5.0",
         "mcp/sdk": "^0.6",
+        "psr/event-dispatcher": "^1.0",
         "psr/simple-cache": "^2.0 || ^3.0",
         "psy/psysh": "^0.12",
         "symfony/finder": "^6.4 || ^7.3 || ^8.0",

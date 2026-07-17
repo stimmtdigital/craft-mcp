@@ -23,6 +23,7 @@ use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\models\ToolDefinition;
+use stimmt\craft\Mcp\support\EventDispatcher;
 use stimmt\craft\Mcp\support\FileLogger;
 use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
@@ -46,7 +47,13 @@ class McpServerFactory {
      * the HTTP path. A session store overrides the SDK in-memory default.
      */
     public function create(?Scope $scope = null, ?SessionStoreInterface $sessionStore = null): Server {
-        $registry = new Registry(null, $this->logger ?? new NullLogger());
+        $logger = $this->logger ?? new NullLogger();
+        // Shared between the Registry and the Builder: capabilities (e.g.
+        // toolsListChanged) are only advertised as true when the Builder's
+        // own eventDispatcher is set, and Registry mutations only actually
+        // fire events through the instance it was constructed with.
+        $eventDispatcher = new EventDispatcher();
+        $registry = new Registry($eventDispatcher, $logger);
 
         $builder = Server::builder()
             ->setServerInfo(
@@ -62,6 +69,7 @@ class McpServerFactory {
             )
             ->setContainer($this->container)
             ->setRegistry($registry)
+            ->setEventDispatcher($eventDispatcher)
             ->setPaginationLimit(Mcp::settings()->paginationLimit);
 
         if ($sessionStore !== null) {
