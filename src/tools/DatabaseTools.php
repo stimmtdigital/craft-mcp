@@ -138,19 +138,24 @@ class DatabaseTools {
             $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
 
             $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
+            $context?->getClientLogger()?->info('SQL query validated by the read guard');
 
             // Add LIMIT if not present
             if (!preg_match('/\bLIMIT\b/i', $trimmedSql)) {
                 $sql = rtrim($trimmedSql, ';') . " LIMIT {$limit}";
             }
 
+            $context?->getClientLogger()?->debug("SQL query text: {$sql}");
+
             $db = Craft::$app->getDb();
             $results = $db->createCommand($sql)->queryAll();
+            $rowCount = count($results);
 
+            $context?->getClientLogger()?->info("SQL query returned {$rowCount} rows");
             $context?->getClientGateway()?->progress(2, 2, 'Query complete');
 
             return Response::success([
-                'count' => count($results),
+                'count' => $rowCount,
                 'columns' => empty($results) ? [] : array_keys($results[0]),
                 'rows' => $results,
             ]);

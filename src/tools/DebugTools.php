@@ -171,7 +171,7 @@ class DebugTools {
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function getDeprecations(int $limit = 50, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($limit): array {
+        return SafeExecution::run(function () use ($limit, $context): array {
             $logPath = Craft::$app->getPath()->getLogPath();
             $webLog = $logPath . '/web.log';
 
@@ -179,6 +179,9 @@ class DebugTools {
 
             if (file_exists($webLog)) {
                 $lines = FileHelper::tail($webLog, $limit * 5);
+                $logFile = basename($webLog);
+                $lineCount = count($lines);
+                $context?->getClientLogger()?->info("Log window read: {$logFile}, last {$lineCount} lines");
 
                 foreach ($lines as $line) {
                     // Look for deprecation warnings
@@ -246,9 +249,11 @@ class DebugTools {
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
     public function explainQuery(string $sql, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($sql): array {
+        return SafeExecution::run(function () use ($sql, $context): array {
             // Security: only allow read-only SELECT queries
             $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
+            $context?->getClientLogger()?->info('SQL query validated by the read guard');
+            $context?->getClientLogger()?->debug("SQL query text: {$trimmedSql}");
 
             $db = Craft::$app->getDb();
             $driver = $db->getDriverName();
@@ -259,6 +264,8 @@ class DebugTools {
                 'pgsql' => "EXPLAIN (ANALYZE false, FORMAT JSON) {$trimmedSql}",
                 default => "EXPLAIN {$trimmedSql}",
             };
+
+            $context?->getClientLogger()?->info("EXPLAIN issued for driver: {$driver}");
 
             $results = $db->createCommand($explainSql)->queryAll();
 
