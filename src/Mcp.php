@@ -68,7 +68,7 @@ class Mcp extends BasePlugin {
         'execute_graphql',
     ];
 
-    public string $schemaVersion = '1.0.0';
+    public string $schemaVersion = '1.4.0';
 
     public bool $hasCpSettings = false;
 
