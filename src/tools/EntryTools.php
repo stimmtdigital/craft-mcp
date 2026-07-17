@@ -30,7 +30,6 @@ use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
-use Throwable;
 
 /**
  * Entry tools: payload-format reads, draft-first writes, schema discovery.
@@ -221,8 +220,8 @@ class EntryTools {
 
             $result = $this->writer->create($attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
 
-            if (!$result->isFailure()) {
-                $this->notifyEntryChanged($result->elementId, $site, $context);
+            if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
+                ResourceChangeNotifier::notifyEntry($context, $result->elementId);
             }
 
             return $result->isFailure()
@@ -268,8 +267,8 @@ class EntryTools {
 
             $result = $this->writer->update($entry, $attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
 
-            if (!$result->isFailure()) {
-                $this->notifyEntryChanged($result->elementId, $site, $context);
+            if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
+                ResourceChangeNotifier::notifyEntry($context, $result->elementId);
             }
 
             return $result->isFailure()
@@ -408,39 +407,5 @@ class EntryTools {
         $user = Craft::$app->getUser()->getIdentity() ?? User::find()->admin()->one();
 
         return $user?->id;
-    }
-
-    /**
-     * Best-effort push for a subscribed client: resolve the written entry's
-     * section/slug and notify craft://entries/{section}/{slug} if anyone
-     * subscribed to it. A missing section or slug (e.g. a nested Matrix
-     * block entry with no slug of its own) has no meaningful single-entry
-     * URI, so this silently skips rather than guessing. Wrapped so a broken
-     * refetch or push never turns an already-successful write into a
-     * reported tool failure.
-     */
-    private function notifyEntryChanged(?int $elementId, ?string $site, ?RequestContext $context): void {
-        if ($context === null || $elementId === null) {
-            return;
-        }
-
-        try {
-            $query = Entry::find()->id($elementId)->status(null);
-            if ($site !== null) {
-                $query->site($site);
-            }
-
-            $entry = $query->one();
-            $section = $entry?->getSection()?->handle;
-            $slug = $entry?->slug;
-
-            if ($section === null || $slug === null) {
-                return;
-            }
-
-            ResourceChangeNotifier::notify($context, "craft://entries/{$section}/{$slug}");
-        } catch (Throwable $e) {
-            Craft::warning('Entry change notification failed: ' . $e->getMessage(), __METHOD__);
-        }
     }
 }

@@ -33,6 +33,29 @@ describe('EntryWorkflowTools structure', function () {
     });
 });
 
+describe('publish_entry resource notification', function () {
+    // publish_entry is the true canonical-change moment for the default
+    // draft-first flow: applyDraft() merges the draft into the canonical
+    // entry, and the enable() branch flips a disabled live entry on. Both
+    // are real changes to what craft://entries/{section}/{slug} serves, so
+    // both notify through the shared ResourceChangeNotifier.
+    it('notifies through the shared ResourceChangeNotifier once a draft is applied and once an entry is enabled', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryWorkflowTools::class))->getFileName());
+
+        expect(substr_count($source, 'ResourceChangeNotifier::notifyEntry('))->toBe(2);
+    });
+
+    it('threads the RequestContext from publishEntry into both applyDraft and publishCanonical', function () {
+        $applyDraft = new ReflectionMethod(EntryWorkflowTools::class, 'applyDraft');
+        $publishCanonical = new ReflectionMethod(EntryWorkflowTools::class, 'publishCanonical');
+
+        expect(array_map(fn (ReflectionParameter $p): string => $p->getName(), $applyDraft->getParameters()))
+            ->toContain('context')
+            ->and(array_map(fn (ReflectionParameter $p): string => $p->getName(), $publishCanonical->getParameters()))
+            ->toContain('context');
+    });
+});
+
 describe('list_revisions', function () {
     it('is registered read-only with id, site, and pagination parameters', function () {
         $method = new ReflectionMethod(EntryWorkflowTools::class, 'listRevisions');

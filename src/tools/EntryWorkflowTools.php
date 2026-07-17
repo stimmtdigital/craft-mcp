@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
@@ -123,15 +124,15 @@ class EntryWorkflowTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $site): array {
+        return SafeExecution::run(function () use ($id, $site, $context): array {
             $entry = $this->find($id, $site, withDrafts: true);
             Authorization::assertCanPublish($entry);
 
             if ($entry->getIsDraft()) {
-                return $this->applyDraft($entry, $site);
+                return $this->applyDraft($entry, $site, $context);
             }
 
-            return $this->publishCanonical($entry, $site);
+            return $this->publishCanonical($entry, $site, $context);
         });
     }
 
@@ -265,13 +266,19 @@ class EntryWorkflowTools {
         ];
     }
 
-    private function applyDraft(Entry $draft, ?string $site): array {
+    /**
+     * Applies a draft onto its canonical entry: the moment the canonical
+     * craft://entries/{section}/{slug} content actually changes for the
+     * default draft-first flow, so this is where the resource push belongs.
+     */
+    private function applyDraft(Entry $draft, ?string $site, ?RequestContext $context): array {
         $applied = Craft::$app->getDrafts()->applyDraft($draft);
+        ResourceChangeNotifier::notifyEntry($context, (int) $applied->id);
 
         return Response::success(['entry' => $this->reader->read($applied, $site)]);
     }
 
-    private function publishCanonical(Entry $entry, ?string $site): array {
+    private function publishCanonical(Entry $entry, ?string $site, ?RequestContext $context): array {
         $drafts = $this->pendingDrafts($entry, $site);
 
         if (count($drafts) > 1) {
@@ -287,11 +294,12 @@ class EntryWorkflowTools {
             // must run against it (peer-draft rules), not only the canonical.
             Authorization::assertCanPublish($drafts[0]);
 
-            return $this->applyDraft($drafts[0], $site);
+            return $this->applyDraft($drafts[0], $site, $context);
         }
 
         if (!$entry->enabled) {
             $this->enable($entry);
+            ResourceChangeNotifier::notifyEntry($context, (int) $entry->id);
 
             return Response::success(['entry' => $this->reader->read($entry, $site)]);
         }

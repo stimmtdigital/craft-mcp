@@ -89,11 +89,22 @@ describe('list_entries query surface', function () {
 });
 
 describe('entry write notifications', function () {
-    it('notifies resource subscribers after both create_entry and update_entry succeed', function () {
+    it('notifies resource subscribers through the shared ResourceChangeNotifier after both create_entry and update_entry', function () {
         $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
 
-        expect(substr_count($source, 'notifyEntryChanged('))->toBe(3)
-            ->and($source)->toContain('ResourceChangeNotifier::notify($context, "craft://entries/{$section}/{$slug}")');
+        expect(substr_count($source, 'ResourceChangeNotifier::notifyEntry('))->toBe(2);
+    });
+
+    // A draft write (the default entryWriteMode) never touches the canonical
+    // craft://entries/{section}/{slug} content, so it must not fire a
+    // notification for it; only a live write actually changes what that
+    // resource serves. Guards the false-positive the reviewer caught: create/
+    // update refetching the draft/stale canonical row and pushing regardless
+    // of whether canonical content changed.
+    it('gates the notification on a live write, not merely a successful one', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect(substr_count($source, '$result->state === WriteMode::Live && $result->elementId !== null'))->toBe(2);
     });
 
     it('threads the RequestContext through to SafeExecution::run() on the write tools', function () {

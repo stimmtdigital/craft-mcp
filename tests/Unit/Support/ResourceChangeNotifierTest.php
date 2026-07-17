@@ -72,3 +72,16 @@ describe('ResourceChangeNotifier', function () {
         expect(true)->toBeTrue();
     });
 });
+
+describe('ResourceChangeNotifier::notifyEntry()', function () {
+    // The Craft-touching refetch (Entry::find()) only happens past the null
+    // check, so this is the one behavior of notifyEntry() this suite can
+    // exercise without a booted Craft app; the rest is covered structurally
+    // in EntryToolsTest and EntryWorkflowToolsTest (source-level checks on
+    // where and how callers gate the call).
+    it('is a safe no-op without a request context, short-circuiting before touching Craft', function () {
+        ResourceChangeNotifier::notifyEntry(null, 123);
+
+        expect(true)->toBeTrue();
+    });
+});
