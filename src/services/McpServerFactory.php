@@ -25,6 +25,7 @@ use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\support\FileLogger;
 use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
+use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 
 /**
  * Factory for creating MCP Server instances.
@@ -57,6 +58,7 @@ class McpServerFactory {
                 basePath: dirname(__DIR__),
                 scanDirs: ['tools', 'prompts', 'resources'],
                 excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts', 'elements', 'http', 'records', 'migrations', 'controllers', 'console', 'installer'],
+                cache: new Psr16CacheAdapter(Craft::$app->getCache()),
             )
             ->setContainer($this->container)
             ->setRegistry($registry)

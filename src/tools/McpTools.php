@@ -12,8 +12,10 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\PluginReloader;
+use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
+use yii\caching\TagDependency;
 
 /**
  * Self-awareness tools for the MCP plugin.
@@ -148,7 +150,10 @@ class McpTools {
             // 5. Reload Craft plugins
             Craft::$app->getPlugins()->loadPlugins();
 
-            // 6. Reset tool registry to re-collect tools
+            // 6. Invalidate the cached attribute discovery so it rescans
+            TagDependency::invalidate(Craft::$app->getCache(), Psr16CacheAdapter::TAG);
+
+            // 7. Reset tool registry to re-collect tools
             Mcp::resetToolRegistry();
 
             $summary = Mcp::getToolRegistry()->getSummary();
