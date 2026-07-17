@@ -22,9 +22,10 @@ use Throwable;
  * a no-op. Element checks run through Craft's element authorization (the same
  * canSave/canView logic the control panel enforces) and work for ANY element
  * type, so multi-site, peer, and draft nuances come from core, live per
- * request. Three reusable seams: assertCan* for single elements, assertCan()
- * for raw permissions, and scopeQuery() to bound a list query to viewable
- * sources. New tools opt in with one call.
+ * request. Four reusable seams: assertCan* for single elements, assertCan()
+ * for raw permissions, scopeQuery() to bound a list query to viewable
+ * sources, and assertPrivileged() to admin-lock a resource or tool outright.
+ * New tools and resources opt in with one call.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -82,6 +83,25 @@ final class Authorization {
             "This token's user '" . self::$user->username . "' is not allowed to {$action}"
             . " (missing Craft permission '{$permission}', checked live). Ask an admin to widen the"
             . " user's permissions or mint a token for a user who has them.",
+        );
+    }
+
+    /**
+     * Gate for privileged install-introspection resources (config, routes,
+     * sites, volumes, plugins). Mirrors the McpToolMeta privileged flag the
+     * tool surface uses, but resources are never filtered out of a list, so
+     * the read itself refuses instead. No-op until enforced (stdio/full) and
+     * a no-op for admins; $what names the resource in the denial message.
+     */
+    public static function assertPrivileged(string $what): void {
+        if (self::$user === null || self::$user->admin) {
+            return;
+        }
+
+        throw new ToolCallException(
+            "This token's user '" . self::$user->username . "' is not allowed to read {$what}"
+            . ' (privileged install-introspection resource, admin only, checked live). Ask an admin'
+            . " to widen the user's permissions or mint a token for a user who has them.",
         );
     }
 

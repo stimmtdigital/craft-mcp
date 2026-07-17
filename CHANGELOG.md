@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Long-lived MCP processes now pick up custom fields added by another process (for example `project-config/apply`): the config freshness probe patches the compiled `CustomFieldBehavior` handle map and flushes the GraphQL schema caches instead of leaving the process stale until restart
+- MCP resource reads now respect the same authorization as tools: entry resources (`craft://entries/...`) are bounded by the acting user's view permissions and config resources (`craft://config/...`) are admin-only over readonly and content-scope tokens, closing a read path that previously bypassed the tool-surface guarantees entirely
 
 ## [1.4.0-beta.6] - 2026-07-15
 

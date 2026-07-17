@@ -49,4 +49,15 @@ describe('Authorization', function () {
             ->and($source)->toContain('$query->volumeId')
             ->and($source)->toContain('$query->groupId');
     });
+
+    it('exposes the assertPrivileged resource-gate seam', function () {
+        expect(method_exists(Authorization::class, 'assertPrivileged'))->toBeTrue();
+    });
+
+    it('assertPrivileged is a no-op until enforced and admin-gated when enforced', function () {
+        $source = (string) file_get_contents((new ReflectionClass(Authorization::class))->getFileName());
+        expect($source)->toContain('function assertPrivileged')
+            ->and($source)->toContain('self::$user === null || self::$user->admin')
+            ->and($source)->toContain('ToolCallException');
+    });
 });

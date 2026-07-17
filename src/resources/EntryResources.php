@@ -19,6 +19,7 @@ use Mcp\Exception\ResourceReadException;
 use stimmt\craft\Mcp\attributes\McpResourceMeta;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\ResourceCategory;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\SafeResourceExecution;
 
 /**
@@ -88,6 +89,7 @@ final class EntryResources {
             if ($entry === null) {
                 throw new ResourceReadException("Entry with slug '{$slug}' not found in section '{$section}'");
             }
+            Authorization::assertCanView($entry);
 
             return [
                 'entry' => $this->buildEntryDetail($entry),
@@ -145,13 +147,15 @@ final class EntryResources {
      * @return list<Entry>
      */
     private function fetchEntries(string $section): array {
-        /** @var Entry[] $entries */
-        $entries = Entry::find()
+        $query = Entry::find()
             ->section($section)
             ->status(null)
             ->limit(self::DEFAULT_LIMIT)
-            ->orderBy(['dateUpdated' => SORT_DESC])
-            ->all();
+            ->orderBy(['dateUpdated' => SORT_DESC]);
+        Authorization::scopeQuery($query);
+
+        /** @var Entry[] $entries */
+        $entries = $query->all();
 
         return array_values($entries);
     }
@@ -160,10 +164,12 @@ final class EntryResources {
      * Count entries in a section.
      */
     private function countEntries(string $section, ?string $status = null): int {
-        return (int) Entry::find()
+        $query = Entry::find()
             ->section($section)
-            ->status($status)
-            ->count();
+            ->status($status);
+        Authorization::scopeQuery($query);
+
+        return (int) $query->count();
     }
 
     /**
@@ -267,10 +273,12 @@ final class EntryResources {
      * Count drafts in a section.
      */
     private function countDrafts(string $section): int {
-        return (int) Entry::find()
+        $query = Entry::find()
             ->section($section)
-            ->drafts()
-            ->count();
+            ->drafts();
+        Authorization::scopeQuery($query);
+
+        return (int) $query->count();
     }
 
     /**
@@ -300,11 +308,13 @@ final class EntryResources {
      * Count entries by section and entry type.
      */
     private function countEntriesByType(string $section, string $type): int {
-        return (int) Entry::find()
+        $query = Entry::find()
             ->section($section)
             ->type($type)
-            ->status(null)
-            ->count();
+            ->status(null);
+        Authorization::scopeQuery($query);
+
+        return (int) $query->count();
     }
 
     /**

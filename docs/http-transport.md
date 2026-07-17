@@ -114,6 +114,8 @@ Install-introspection tools (read_logs, get_config, get_database_schema, get_dat
 
 Tools named in this array are shown to that scope's users; tools absent from the array stay hidden. Admin-linked tokens and full-scope tokens bypass this restriction and always see privileged tools. Scope remains the outer ceiling: a tool must be included in the token's scope to be callable at all.
 
+MCP resources follow the same rules as their tool equivalents: `craft://entries/{section}` and `craft://entries/{section}/{slug}` are bounded by the acting user's view permissions exactly like `list_entries` and `get_entry`, and every `craft://config/*` resource is locked to admins over readonly and content-scope tokens, matching `get_config`.
+
 #### Writes
 
 Content-scope tokens respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
