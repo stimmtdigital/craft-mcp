@@ -202,6 +202,18 @@ Sessions are stored in the `mcp_sessions` table, so they are shared across every
 
 If you need a different backend (for example Redis), set `httpSessionStore` in `config/mcp.php` to a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable that returns one. See [Configuration](configuration.md) for details. Tracked in issue [#41](https://github.com/stimmtdigital/craft-mcp/issues/41).
 
+## Control panel on the root domain
+
+Some installs serve the control panel from the root of its own domain (`cpTrigger` set to `null` plus a `baseCpUrl` such as `https://cms.example.com`). On such a host every request counts as a control panel request, and the plugin registers the endpoint as a CP URL rule so it stays reachable.
+
+One Craft behavior cannot be worked around: for guests, Craft intercepts any CP request whose first URL segment matches a plugin handle before routing runs, and the default `httpPath` (`mcp`) is exactly this plugin's handle. With the control panel on the root domain you must therefore pick a different path in `config/mcp.php`, and avoid paths that shadow real control panel routes (`entries`, `settings`, and so on):
+
+```php
+'httpPath' => 'mcp-http',
+```
+
+The token reveal and the console command build their endpoint URL from `httpPublicUrl` (or the primary site URL) plus `httpPath`, so once the path is configured the printed URL is correct. On plugin versions without CP rule support, `https://cms.example.com/index.php?action=mcp/http/handle` reaches the endpoint as an action request and works with the same bearer token.
+
 ## Troubleshooting
 
 ### 401 Unauthorized

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The HTTP endpoint now works on installs that serve the control panel from the root of its domain (`cpTrigger` null): the endpoint registers as a CP URL rule there, since such hosts never consult site URL rules. Craft intercepts the default `mcp` path for guests on those hosts (it matches the plugin handle, a Craft core behavior that runs before routing), so a different `httpPath` (for example `mcp-http`) is required and the new "Control panel on the root domain" section in the HTTP transport guide explains the setup.
+
 ## [1.4.0-beta.7] - 2026-07-17
 
 ### Added
