@@ -61,6 +61,14 @@ class Settings extends Model {
     public int $httpSessionTtl = 3600;
 
     /**
+     * Session storage for the HTTP transport. Null uses the built-in
+     * database-backed store. Set a class name implementing
+     * Mcp\Server\Session\SessionStoreInterface, or a callable returning one,
+     * to supply a custom store (for example Redis).
+     */
+    public mixed $httpSessionStore = null;
+
+    /**
      * Base URL clients should reach the endpoint on, e.g. 'https://cms.example.com'.
      * Null derives it from the primary site, which is wrong on headless
      * deployments where Craft answers on a different domain than the site.

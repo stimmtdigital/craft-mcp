@@ -192,7 +192,13 @@ Revocation and expiry both take effect immediately on the next request; there is
 - **Scope minimally.** Grant `readonly` or `content` by default and reserve `full` for developers who genuinely need code execution and direct database access.
 - **Scope is the outer ceiling; Craft permissions are the inner boundary.** A tool must be in the token's scope to be callable, but a `content` token's entry writes are also gated by the linked user's real Craft permissions. Full-scope tokens skip Craft permission checks (they carry code execution, so they trust the token holder completely). See [User permissions](#user-permissions) for details.
 - **IP allowlisting applies.** When the plugin's `allowedIps` setting is non-empty, the endpoint rejects requests from any other IP with a 403 before authentication runs. An empty list (the default) allows all IPs.
-- **Sessions are server-side files.** Each connection's session state is written under Craft's runtime storage path (`storage/runtime/mcp-sessions/`) and expires after `httpSessionTtl` seconds of inactivity (default: 3600). No session data is kept client-side beyond the `Mcp-Session-Id` header.
+- **Sessions are server-side.** Each connection's session state is stored in the `mcp_sessions` database table and expires after `httpSessionTtl` seconds of inactivity (default: 3600). No session data is kept client-side beyond the `Mcp-Session-Id` header.
+
+## Load balancers and multiple instances
+
+Sessions are stored in the `mcp_sessions` table, so they are shared across every app instance behind a load balancer: a request can be served by any instance regardless of which one handled the connection's earlier requests. Earlier versions stored sessions as instance-local files under `storage/runtime/mcp-sessions/`, which broke on multi-instance deployments since a session created on one instance was invisible to the others.
+
+If you need a different backend (for example Redis), set `httpSessionStore` in `config/mcp.php` to a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable that returns one. See [Configuration](configuration.md) for details. Tracked in issue [#41](https://github.com/stimmtdigital/craft-mcp/issues/41).
 
 ## Troubleshooting
 

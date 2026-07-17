@@ -31,3 +31,7 @@ it('rejects a paginationLimit below 1', function () {
 
     expect($settings->hasErrors('paginationLimit'))->toBeTrue();
 });
+
+it('defaults httpSessionStore to null (built-in DB store)', function () {
+    expect((new Settings())->httpSessionStore)->toBeNull();
+});
