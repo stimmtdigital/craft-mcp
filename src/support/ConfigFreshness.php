@@ -9,6 +9,7 @@ use craft\behaviors\CustomFieldBehavior;
 use craft\db\Query;
 use craft\db\Table;
 use craft\models\FieldLayout;
+use Mcp\Server\RequestContext;
 use Throwable;
 
 /**
@@ -25,7 +26,28 @@ use Throwable;
  * @author Max van Essen <support@stimmt.digital>
  */
 final class ConfigFreshness {
-    public static function ensure(): void {
+    /**
+     * Static config resources this refresh can invalidate, kept in sync with
+     * the #[McpResource] URIs declared on ConfigResources. A refresh cannot
+     * tell which of these actually changed, so every subscriber to any of
+     * them gets a chance to re-read.
+     *
+     * @var string[]
+     */
+    private const array CONFIG_RESOURCE_URIS = [
+        'craft://config/general',
+        'craft://config/routes',
+        'craft://config/sites',
+        'craft://config/volumes',
+        'craft://config/plugins',
+    ];
+
+    /**
+     * $context is optional and only supplied by call sites that thread a
+     * RequestContext through SafeExecution::run(); without it a detected
+     * refresh still happens, it just has no session to notify.
+     */
+    public static function ensure(?RequestContext $context = null): void {
         try {
             if (!self::applicable()) {
                 return;
@@ -33,7 +55,7 @@ final class ConfigFreshness {
 
             $loaded = Craft::$app->getInfo()->configVersion;
             if (self::isStale(self::storedVersion(), $loaded)) {
-                self::refresh();
+                self::refresh($context);
             }
         } catch (Throwable $e) {
             Craft::warning('Config freshness probe failed: ' . $e->getMessage(), __METHOD__);
@@ -59,7 +81,7 @@ final class ConfigFreshness {
         return is_string($version) && $version !== '' ? $version : null;
     }
 
-    private static function refresh(): void {
+    private static function refresh(?RequestContext $context): void {
         PluginReloader::resetProjectConfig();
         Craft::$app->getFields()->refreshFields();
         self::syncCustomFieldHandles();
@@ -77,6 +99,23 @@ final class ConfigFreshness {
         // mismatches on the next call and the refresh retries itself.
         Craft::$app->getIsInstalled(true);
         Craft::info('Project config changed externally; refreshed in-process state', __METHOD__);
+
+        self::notifySubscribers($context);
+    }
+
+    /**
+     * A refresh cannot tell which config resource changed, so it offers
+     * every one of them to the subscription check; ResourceChangeNotifier
+     * only actually sends to URIs the session subscribed to.
+     */
+    private static function notifySubscribers(?RequestContext $context): void {
+        if ($context === null) {
+            return;
+        }
+
+        foreach (self::CONFIG_RESOURCE_URIS as $uri) {
+            ResourceChangeNotifier::notify($context, $uri);
+        }
     }
 
     /**

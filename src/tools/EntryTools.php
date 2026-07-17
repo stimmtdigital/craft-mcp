@@ -26,9 +26,11 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
+use Throwable;
 
 /**
  * Entry tools: payload-format reads, draft-first writes, schema discovery.
@@ -189,7 +191,7 @@ class EntryTools {
         ?string $parent = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent): array {
+        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent, $context): array {
             $siteModel = SiteResolver::resolve($site);
             $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
                 ?? throw new ToolCallException("Section '{$section}' not found");
@@ -219,10 +221,14 @@ class EntryTools {
 
             $result = $this->writer->create($attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
 
+            if (!$result->isFailure()) {
+                $this->notifyEntryChanged($result->elementId, $site, $context);
+            }
+
             return $result->isFailure()
                 ? ['success' => false] + $result->toArray()
                 : Response::success($result->toArray());
-        });
+        }, $context);
     }
 
     #[McpTool(
@@ -242,7 +248,7 @@ class EntryTools {
         ?string $parent = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent): array {
+        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent, $context): array {
             $entry = $this->find($id, null, null, $site);
             Authorization::assertCanSave($entry);
 
@@ -262,10 +268,14 @@ class EntryTools {
 
             $result = $this->writer->update($entry, $attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
 
+            if (!$result->isFailure()) {
+                $this->notifyEntryChanged($result->elementId, $site, $context);
+            }
+
             return $result->isFailure()
                 ? ['success' => false] + $result->toArray()
                 : Response::success($result->toArray());
-        });
+        }, $context);
     }
 
     #[McpTool(
@@ -398,5 +408,39 @@ class EntryTools {
         $user = Craft::$app->getUser()->getIdentity() ?? User::find()->admin()->one();
 
         return $user?->id;
+    }
+
+    /**
+     * Best-effort push for a subscribed client: resolve the written entry's
+     * section/slug and notify craft://entries/{section}/{slug} if anyone
+     * subscribed to it. A missing section or slug (e.g. a nested Matrix
+     * block entry with no slug of its own) has no meaningful single-entry
+     * URI, so this silently skips rather than guessing. Wrapped so a broken
+     * refetch or push never turns an already-successful write into a
+     * reported tool failure.
+     */
+    private function notifyEntryChanged(?int $elementId, ?string $site, ?RequestContext $context): void {
+        if ($context === null || $elementId === null) {
+            return;
+        }
+
+        try {
+            $query = Entry::find()->id($elementId)->status(null);
+            if ($site !== null) {
+                $query->site($site);
+            }
+
+            $entry = $query->one();
+            $section = $entry?->getSection()?->handle;
+            $slug = $entry?->slug;
+
+            if ($section === null || $slug === null) {
+                return;
+            }
+
+            ResourceChangeNotifier::notify($context, "craft://entries/{$section}/{$slug}");
+        } catch (Throwable $e) {
+            Craft::warning('Entry change notification failed: ' . $e->getMessage(), __METHOD__);
+        }
     }
 }

@@ -6,6 +6,8 @@ require_once dirname(__DIR__, 3) . '/tests/Fixtures/CraftStub.php';
 require_once dirname(__DIR__, 3) . '/tests/Fixtures/CustomFieldBehaviorStub.php';
 
 use craft\behaviors\CustomFieldBehavior;
+use Mcp\Capability\Attribute\McpResource;
+use stimmt\craft\Mcp\resources\ConfigResources;
 use stimmt\craft\Mcp\support\ConfigFreshness;
 
 describe('ConfigFreshness', function () {
@@ -28,6 +30,32 @@ describe('ConfigFreshness', function () {
 
         Craft::$app = $original;
         expect(true)->toBeTrue();
+    });
+
+    it('accepts an optional RequestContext without changing the no-op behaviour', function () {
+        $original = Craft::$app;
+        Craft::$app = null;
+
+        ConfigFreshness::ensure(null);
+
+        Craft::$app = $original;
+        expect(true)->toBeTrue();
+    });
+
+    it('lists exactly the craft:// URIs ConfigResources declares, so a refresh notifies every config resource it could have changed', function () {
+        $declared = [];
+        foreach ((new ReflectionClass(ConfigResources::class))->getMethods() as $method) {
+            foreach ($method->getAttributes(McpResource::class) as $attribute) {
+                $declared[] = $attribute->newInstance()->uri;
+            }
+        }
+
+        $tracked = (new ReflectionClassConstant(ConfigFreshness::class, 'CONFIG_RESOURCE_URIS'))->getValue();
+
+        sort($declared);
+        sort($tracked);
+
+        expect($tracked)->toBe($declared);
     });
 });
 

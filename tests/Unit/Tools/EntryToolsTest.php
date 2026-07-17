@@ -88,6 +88,21 @@ describe('list_entries query surface', function () {
 
 });
 
+describe('entry write notifications', function () {
+    it('notifies resource subscribers after both create_entry and update_entry succeed', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect(substr_count($source, 'notifyEntryChanged('))->toBe(3)
+            ->and($source)->toContain('ResourceChangeNotifier::notify($context, "craft://entries/{$section}/{$slug}")');
+    });
+
+    it('threads the RequestContext through to SafeExecution::run() on the write tools', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
+
+        expect(substr_count($source, '}, $context);'))->toBe(2);
+    });
+});
+
 describe('get_entry lookups', function () {
     it('resolves revision ids on id lookups', function () {
         $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
