@@ -62,10 +62,52 @@ final readonly class Tokens {
     }
 
     /**
+     * Delete a token by its numeric id only. Callers that authorize against a
+     * specific resolved token (the control panel) must use this, never the
+     * name-or-id revoke(): a token whose name equals another token's id string
+     * would otherwise let the wrong row match under an authorized id.
+     */
+    public function revokeById(int $id): bool {
+        return $this->store->delete($id);
+    }
+
+    /**
+     * Issue a fresh secret for an existing token, preserving its name, user,
+     * scope, and exact expiry, then invalidate the old one. Inserts the new
+     * token before deleting the old so a failed delete leaves the old still
+     * working rather than leaving the user with nothing.
+     *
+     * @return array{token: Token, plaintext: string}
+     */
+    public function regenerate(Token $token): array {
+        $plaintext = self::PREFIX . $this->secret();
+        $fresh = $this->store->insert(
+            new Token($token->name, $token->userId, $token->scope, $token->expiryDate),
+            self::hash($plaintext),
+        );
+
+        if ($token->id !== null) {
+            $this->store->delete($token->id);
+        }
+
+        return ['token' => $fresh, 'plaintext' => $plaintext];
+    }
+
+    /**
      * @return Token[]
      */
     public function list(): array {
         return $this->store->all();
+    }
+
+    /**
+     * @return Token[]
+     */
+    public function listFor(int $userId): array {
+        return array_values(array_filter(
+            $this->list(),
+            static fn (Token $token): bool => $token->userId === $userId,
+        ));
     }
 
     public static function hash(string $plaintext): string {

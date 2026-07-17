@@ -7,16 +7,19 @@ namespace stimmt\craft\Mcp\controllers;
 use Craft;
 use craft\web\Controller;
 use craft\web\Response;
-use Mcp\Server\Session\FileSessionStore;
+use Mcp\Server\Session\SessionStoreInterface;
 use Psr\Log\LoggerInterface;
 use stimmt\craft\Mcp\http\Bridge;
+use stimmt\craft\Mcp\http\DbSessionStore;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\http\Token;
 use stimmt\craft\Mcp\http\Tokens;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\models\Settings;
 use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\support\Authorization;
+use yii\base\InvalidConfigException;
 
 /**
  * The HTTP MCP endpoint. Bearer-token auth, per-user identity, then a
@@ -87,7 +90,7 @@ class HttpController extends Controller {
 
         Craft::$app->getUser()->setIdentity($user);
 
-        if ($token->scope === Scope::Content) {
+        if ($token->scope === Scope::ReadOnly || $token->scope === Scope::Content) {
             Authorization::enforceFor($user);
         }
 
@@ -100,10 +103,7 @@ class HttpController extends Controller {
         Craft::$container->setSingleton(LoggerInterface::class, fn () => $logger);
 
         $factory = new McpServerFactory(logger: $logger);
-        $store = new FileSessionStore(
-            Craft::$app->getPath()->getRuntimePath() . '/mcp-sessions',
-            $settings->httpSessionTtl,
-        );
+        $store = $this->sessionStore($settings);
 
         $bridge = new Bridge();
         $server = $factory->create(scope: $token->scope, sessionStore: $store);
@@ -127,6 +127,22 @@ class HttpController extends Controller {
         }
 
         return $bridge->apply($psr7, $this->response);
+    }
+
+    private function sessionStore(Settings $settings): SessionStoreInterface {
+        $configured = $settings->httpSessionStore;
+
+        if ($configured === null) {
+            return new DbSessionStore($settings->httpSessionTtl);
+        }
+
+        $store = is_callable($configured) ? $configured($settings) : Craft::createObject($configured);
+
+        if (!$store instanceof SessionStoreInterface) {
+            throw new InvalidConfigException('httpSessionStore must resolve to a ' . SessionStoreInterface::class);
+        }
+
+        return $store;
     }
 
     private function bearer(): ?string {

@@ -30,7 +30,7 @@ class DatabaseTools {
         description: 'Get database schema information. Lists all tables, or details for a specific table including columns and indexes.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE)]
+    #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getDatabaseSchema(?string $table = null, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($table): array {
             $db = Craft::$app->getDb();
@@ -138,19 +138,24 @@ class DatabaseTools {
             $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
 
             $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
+            $context?->getClientLogger()?->info('SQL query validated by the read guard');
 
             // Add LIMIT if not present
             if (!preg_match('/\bLIMIT\b/i', $trimmedSql)) {
                 $sql = rtrim($trimmedSql, ';') . " LIMIT {$limit}";
             }
 
+            $context?->getClientLogger()?->debug("SQL query text: {$sql}");
+
             $db = Craft::$app->getDb();
             $results = $db->createCommand($sql)->queryAll();
+            $rowCount = count($results);
 
+            $context?->getClientLogger()?->info("SQL query returned {$rowCount} rows");
             $context?->getClientGateway()?->progress(2, 2, 'Query complete');
 
             return Response::success([
-                'count' => count($results),
+                'count' => $rowCount,
                 'columns' => empty($results) ? [] : array_keys($results[0]),
                 'rows' => $results,
             ]);
@@ -165,7 +170,7 @@ class DatabaseTools {
         description: 'Get database connection information including driver, server version, and connection details',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE)]
+    #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getDatabaseInfo(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $db = Craft::$app->getDb();
@@ -191,7 +196,7 @@ class DatabaseTools {
         description: 'Get row counts for Craft CMS tables (entries, assets, users, etc.)',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::DATABASE)]
+    #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getTableCounts(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $db = Craft::$app->getDb();

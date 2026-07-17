@@ -30,20 +30,15 @@ Enabling `httpTransport` registers this route only; it has no effect if `enabled
 
 ## Minting a Token
 
-Tokens are managed through the plugin's console commands, run on the server that hosts your Craft install:
+### Control Panel
 
-```bash
-php craft mcp/tokens/create --user=editor@example.com --scope=content --name="Anna's Laptop" --expires=90
-```
+Users can mint tokens for themselves via the control panel's My Account screen. Navigate to **My Account** and select **MCP Tokens** from the sidebar, then click **New Token**. Fill in:
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--user` | Yes | Email or username of the Craft user the token acts as |
-| `--scope` | No | `readonly`, `content`, or `full` (default: `content`) |
-| `--name` | No | Display name for the token, shown in `mcp/tokens/list` (default: `<username> token`) |
-| `--expires` | No | Days until the token expires; omit for a token that never expires |
+- **Name** (required): A display name for this token (e.g., "Anna's Laptop")
+- **Scope**: `readonly` or `content` (default: `content`). Self-service users cannot mint `full`-scope tokens; admins or token managers can.
+- **Expires in**: Optional number of days until the token expires; leave blank for a token that never expires.
 
-The command prints the token's plaintext value once, along with a ready-to-paste Claude Desktop configuration snippet:
+Click **Create** and the plaintext token appears once, along with a ready-to-paste Claude Desktop configuration snippet:
 
 ```
 Token created (shown once, store it now):
@@ -61,7 +56,26 @@ Claude Desktop config (claude_desktop_config.json):
   }
 ```
 
-"Shown once" means exactly that: only the hash of the token is stored, never the plaintext. If you lose it, there is no way to recover it; create a new token and revoke the old one.
+Copy and store the plaintext token securely; only the hash is saved in Craft. If you lose it, create a new token and revoke the old one.
+
+Users with the **Manage all users' MCP tokens** permission can mint `readonly` and `content` tokens for any user via the same screens. Minting a `full`-scope token requires an admin account, since full scope bypasses all read and write authorization and includes code execution.
+
+### Console
+
+Tokens can also be minted via console command on the server:
+
+```bash
+php craft mcp/tokens/create --user=editor@example.com --scope=content --name="Anna's Laptop" --expires=90
+```
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--user` | Yes | Email or username of the Craft user the token acts as |
+| `--scope` | No | `readonly`, `content`, or `full` (default: `content`) |
+| `--name` | No | Display name for the token, shown in `mcp/tokens/list` (default: `<username> token`) |
+| `--expires` | No | Days until the token expires; omit for a token that never expires |
+
+The command prints the same plaintext value and Claude Desktop snippet.
 
 ## Scopes
 
@@ -77,9 +91,36 @@ Scope is applied on top of the plugin's existing global settings (`enabled`, `en
 
 ### User permissions
 
-Content-scope tokens now respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
+Readonly and content-scope tokens respect the linked Craft user's real permissions on both reads and writes. The permission checks are enforced live per request; revoking a user's control panel permissions takes effect immediately on the next request with no token rotation delay or grace period.
 
-This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused. Revoking a user's control panel permissions takes effect immediately on the next request; there is no token rotation delay or grace period. Reads stay unrestricted on every scope; the permission check applies to entry writes only.
+#### Reads
+
+On readonly and content scopes, element reads are bounded by the acting user's view permissions:
+
+- **Entry reads** (`list_entries`, `count_entries`, `get_entry`) are restricted to sections the user can view (checked via `viewEntries:<section-uid>` permission). Entries in other sections are filtered from lists and single `get_entry` calls on non-viewable entries are refused.
+- **Asset reads** (`list_assets`, `get_asset`) are restricted to volumes the user can view (`viewAssets:<volume-uid>`).
+- **Category reads** (`list_categories`) are restricted to groups the user can view (`viewCategories:<group-uid>`).
+- **User reads** (`list_users`) require the `View Users` permission; users lacking it see only themselves.
+- **Revision and draft reads** (`list_revisions`, `list_drafts`) inherit the same view scoping as their parent entry elements.
+
+Install-introspection tools (read_logs, get_config, get_database_schema, get_database_info, get_table_counts, get_project_config_diff, get_environment) are locked to admins over readonly and content-scope tokens by default. The site owner can selectively open specific tools via the `scopedTokenPrivilegedTools` configuration setting:
+
+```php
+'scopedTokenPrivilegedTools' => [
+    'read_logs',        // Allow this token user to read MCP server logs
+    'get_config',       // Allow this token user to view Craft config
+],
+```
+
+Tools named in this array are shown to that scope's users; tools absent from the array stay hidden. Admin-linked tokens and full-scope tokens bypass this restriction and always see privileged tools. Scope remains the outer ceiling: a tool must be included in the token's scope to be callable at all.
+
+MCP resources follow the same rules as their tool equivalents: `craft://entries/{section}` and `craft://entries/{section}/{slug}` are bounded by the acting user's view permissions exactly like `list_entries` and `get_entry`, and every `craft://config/*` resource is locked to admins over readonly and content-scope tokens, matching `get_config`.
+
+#### Writes
+
+Content-scope tokens respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
+
+This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused.
 
 If a write is refused, the error response carries a message like:
 
@@ -87,7 +128,9 @@ If a write is refused, the error response carries a message like:
 This token's user 'editor' is not allowed to save this entry on site 'default' (Craft user permissions, checked live). Ask an admin to widen the user's permissions or mint a token for a user who has them.
 ```
 
-Full-scope tokens are deliberately exempt from this check: they carry code execution capability, so they trust the token holder completely and skip Craft permission lookups. Readonly tokens are unaffected since they do not write. Scope remains the outer ceiling; a tool must be included in the token's scope to be callable at all, regardless of Craft permissions.
+#### Full scope and stdio
+
+Full-scope tokens are deliberately exempt from all permission checks: they carry code execution capability, so they trust the token holder completely and skip Craft permission lookups. Stdio connections have no token identity and are never permission-scoped.
 
 ## Connecting Claude Desktop
 
@@ -120,17 +163,27 @@ The printed `url` host comes from the primary site's base URL unless the `httpPu
 
 ## Managing Tokens
 
-List every token, including which user it acts as, its scope, expiry, and last use:
+### Control Panel
+
+Users can revoke their own tokens via **My Account > MCP Tokens**. Each token row shows its name, scope, expiry date (if set), and last used time; click **Revoke** to delete it immediately.
+
+Admins and users with the **Manage all users' MCP tokens** permission can access a **Utilities > MCP Tokens** panel that lists every token across all users, with the user's name, scope, expiry, and last used time. Click **Manage** on any user row to view and revoke their tokens, or use **Revoke** inline to delete a token immediately.
+
+### Console
+
+Tokens can also be managed via console command:
 
 ```bash
 php craft mcp/tokens/list
 ```
 
-Revoke a token by name or id:
+Lists every token, including which user it acts as, its scope, expiry, and last use.
 
 ```bash
 php craft mcp/tokens/revoke "Anna's Laptop"
 ```
+
+Revoke a token by name or id.
 
 Revocation and expiry both take effect immediately on the next request; there is no grace period. If a client is mid-session when its token is revoked or expires, its next request (even one carrying a valid session id) gets a 401 response rather than being served, since the token is checked before the session.
 
@@ -141,7 +194,13 @@ Revocation and expiry both take effect immediately on the next request; there is
 - **Scope minimally.** Grant `readonly` or `content` by default and reserve `full` for developers who genuinely need code execution and direct database access.
 - **Scope is the outer ceiling; Craft permissions are the inner boundary.** A tool must be in the token's scope to be callable, but a `content` token's entry writes are also gated by the linked user's real Craft permissions. Full-scope tokens skip Craft permission checks (they carry code execution, so they trust the token holder completely). See [User permissions](#user-permissions) for details.
 - **IP allowlisting applies.** When the plugin's `allowedIps` setting is non-empty, the endpoint rejects requests from any other IP with a 403 before authentication runs. An empty list (the default) allows all IPs.
-- **Sessions are server-side files.** Each connection's session state is written under Craft's runtime storage path (`storage/runtime/mcp-sessions/`) and expires after `httpSessionTtl` seconds of inactivity (default: 3600). No session data is kept client-side beyond the `Mcp-Session-Id` header.
+- **Sessions are server-side.** Each connection's session state is stored in the `mcp_sessions` database table and expires after `httpSessionTtl` seconds of inactivity (default: 3600). No session data is kept client-side beyond the `Mcp-Session-Id` header.
+
+## Load balancers and multiple instances
+
+Sessions are stored in the `mcp_sessions` table, so they are shared across every app instance behind a load balancer: a request can be served by any instance regardless of which one handled the connection's earlier requests. Earlier versions stored sessions as instance-local files under `storage/runtime/mcp-sessions/`, which broke on multi-instance deployments since a session created on one instance was invisible to the others.
+
+If you need a different backend (for example Redis), set `httpSessionStore` in `config/mcp.php` to a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable that returns one. See [Configuration](configuration.md) for details. Tracked in issue [#41](https://github.com/stimmtdigital/craft-mcp/issues/41).
 
 ## Troubleshooting
 

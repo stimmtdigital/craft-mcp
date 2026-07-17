@@ -15,6 +15,7 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\Serializer;
 
@@ -63,6 +64,7 @@ class AssetTools {
                 $query->filename('*' . $filename . '*');
             }
 
+            Authorization::scopeQuery($query);
             $assets = $query->all();
             $results = [];
 
@@ -96,6 +98,8 @@ class AssetTools {
             if ($asset === null) {
                 throw new ToolCallException("Asset with ID {$id} not found");
             }
+
+            Authorization::assertCanView($asset);
 
             return [
                 'found' => true,

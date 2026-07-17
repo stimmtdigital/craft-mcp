@@ -61,6 +61,14 @@ return [
     // Valid values: 'debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'
     // Default: 'error'
     'logLevel' => 'error',
+
+    // Page size for MCP list endpoints (tools/prompts/resources list calls).
+    // 100 covers every tool the plugin registers in one page, so clients that
+    // don't follow `nextCursor` pagination still see the full list. Raise it
+    // further if you register enough external tools to exceed that.
+    // Default: 100
+    'paginationLimit' => 100,
+
     'entryWriteMode' => 'draft',
 
     // Serve the MCP server over HTTP with per-user bearer tokens, in addition to stdio.
@@ -75,11 +83,27 @@ return [
     // Default: 3600
     'httpSessionTtl' => 3600,
 
+    // Session storage for the HTTP transport. Null uses the built-in
+    // database-backed store (the mcp_sessions table), shared across app
+    // instances. Set a class name implementing
+    // Mcp\Server\Session\SessionStoreInterface, or a callable returning one,
+    // to supply a custom store (for example Redis).
+    // Default: null
+    'httpSessionStore' => null,
+
     // Base URL clients reach the HTTP endpoint on, for the snippet printed by
     // mcp/tokens/create. Null derives it from the primary site, which is wrong
     // on headless deployments where Craft answers on a different domain.
     // Default: null
     'httpPublicUrl' => null,
+
+    // Install-introspection tools to allow scoped (readonly/content) HTTP tokens.
+    // Privileged tools are locked to admins by default; site owners can open
+    // specific ones here for their scoped token users.
+    // Default: []
+    'scopedTokenPrivilegedTools' => [
+        'read_logs',
+    ],
 ];
 ```
 
@@ -94,11 +118,14 @@ return [
 | `disabledResources` | `array` | `[]` | List of resource URIs to disable |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
+| `paginationLimit` | `int` | `100` | Page size of MCP list endpoints (`tools/list`, `prompts/list`, `resources/list`); 100 covers every registered tool in one page. Useful when a client does not follow `nextCursor` pagination |
 | `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
 | `httpTransport` | `bool` | `false` | Since 1.4.0. Whether the MCP server is also served over HTTP with per-user bearer tokens |
 | `httpPath` | `string` | `'mcp'` | Since 1.4.0. Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |
 | `httpSessionTtl` | `int` | `3600` | Since 1.4.0. HTTP session TTL in seconds; idle sessions are cleaned up after this long |
+| `httpSessionStore` | `mixed` | `null` | Session storage for the HTTP transport. Null uses the built-in database-backed store; set a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable returning one, for a custom store |
 | `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
+| `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 

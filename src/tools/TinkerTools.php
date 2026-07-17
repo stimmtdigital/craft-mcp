@@ -92,7 +92,7 @@ class TinkerTools {
         // SafeExecution is the outer safety net for unexpected failures
         // (e.g. CodeCleaner instantiation). The inner try/catch handles
         // expected errors with REPL-style formatting.
-        return SafeExecution::run(function () use ($code, $output): TextContent {
+        return SafeExecution::run(function () use ($code, $output, $context): TextContent {
             $outputMode = OutputMode::tryFrom($output) ?? OutputMode::DUMP;
 
             $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
@@ -103,12 +103,16 @@ class TinkerTools {
                 }
 
                 $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
+                $context?->getClientLogger()?->warning("Tinker code rejected by security pattern: {$pattern}");
 
                 return $this->response(
                     $code,
                     $this->formatError('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
                 );
             }
+
+            $context?->getClientLogger()?->info('Tinker code accepted for execution');
+            $context?->getClientLogger()?->debug("Tinker code: {$code}");
 
             $baseLevel = ob_get_level();
 
@@ -123,6 +127,7 @@ class TinkerTools {
                 $stdout = $this->drainCapturedOutput($baseLevel);
 
                 $this->logger->debug('Tinker completed');
+                $context?->getClientLogger()?->info('Tinker execution completed');
 
                 return $this->response(
                     $code,
@@ -133,12 +138,14 @@ class TinkerTools {
                 $this->drainCapturedOutput($baseLevel);
 
                 $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+                $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
 
                 return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
             } catch (Throwable $e) {
                 $this->drainCapturedOutput($baseLevel);
 
                 $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+                $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
 
                 return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
             } finally {

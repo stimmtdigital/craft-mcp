@@ -63,6 +63,7 @@ final class RecordStore implements TokenStore {
             $record->expiryDate === null ? null : new DateTimeImmutable($record->expiryDate),
             $record->lastUsedAt === null ? null : new DateTimeImmutable($record->lastUsedAt),
             (int) $record->id,
+            $record->dateCreated === null ? null : new DateTimeImmutable($record->dateCreated),
         );
     }
 }

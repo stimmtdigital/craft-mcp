@@ -19,3 +19,19 @@ describe('Settings entryWriteMode', function () {
         expect($settings->validate(['entryWriteMode']))->toBeFalse();
     });
 });
+
+it('defaults paginationLimit to 100 so one page covers all registered tools', function () {
+    expect((new Settings())->paginationLimit)->toBe(100);
+});
+
+it('rejects a paginationLimit below 1', function () {
+    $settings = new Settings();
+    $settings->paginationLimit = 0;
+    $settings->validate();
+
+    expect($settings->hasErrors('paginationLimit'))->toBeTrue();
+});
+
+it('defaults httpSessionStore to null (built-in DB store)', function () {
+    expect((new Settings())->httpSessionStore)->toBeNull();
+});

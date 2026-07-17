@@ -28,7 +28,7 @@ class GlobalSetTools {
         description: 'List all global sets in Craft CMS with their field values',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::CONTENT)]
+    #[McpToolMeta(category: ToolCategory::CONTENT, privileged: true)]
     public function listGlobals(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $globalSets = Craft::$app->getGlobals()->getAllSets();

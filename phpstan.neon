@@ -27,6 +27,9 @@ parameters:
         - '#craft\\commerce\\#'
         # Missing class reference (if class doesn't exist)
         - '#Class stimmt\\craft\\Mcp\\tools\\SchemaTools not found#'
+        # CustomFieldBehavior only exists as an uncompiled template in vendor;
+        # Craft::autoload() compiles the real class into memory at runtime
+        - '#Access to static property \$fieldHandles on an unknown class craft\\behaviors\\CustomFieldBehavior\.#'
         # Dead catch - ReflectionException
         - '#Dead catch#'
         # array_values on list is intentional for re-indexing

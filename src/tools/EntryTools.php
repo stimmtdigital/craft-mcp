@@ -26,6 +26,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
@@ -97,6 +98,7 @@ class EntryTools {
             }
 
             $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+            Authorization::scopeQuery($query);
 
             $results = $fields === null
                 ? array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all())
@@ -141,6 +143,7 @@ class EntryTools {
             }
 
             $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+            Authorization::scopeQuery($query);
 
             $result = (new Buckets())->collect($query, $groupBy);
             $result['groupBy'] = $groupBy;
@@ -164,6 +167,7 @@ class EntryTools {
     ): array {
         return SafeExecution::run(function () use ($id, $slug, $section, $site): array {
             $entry = $this->find($id, $slug, $section, $site);
+            Authorization::assertCanView($entry);
 
             return Response::found('entry', $this->reader->read($entry, $site));
         });
@@ -186,7 +190,7 @@ class EntryTools {
         ?string $parent = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent): array {
+        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent, $context): array {
             $siteModel = SiteResolver::resolve($site);
             $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
                 ?? throw new ToolCallException("Section '{$section}' not found");
@@ -216,15 +220,19 @@ class EntryTools {
 
             $result = $this->writer->create($attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
 
+            if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
+                ResourceChangeNotifier::notifyEntry($context, $result->elementId);
+            }
+
             return $result->isFailure()
                 ? ['success' => false] + $result->toArray()
                 : Response::success($result->toArray());
-        });
+        }, $context);
     }
 
     #[McpTool(
         name: 'update_entry',
-        description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change.',
+        description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change. Matrix-family blocks are entries too: pass a block\'s own id to edit just that block without touching its siblings.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
@@ -239,7 +247,7 @@ class EntryTools {
         ?string $parent = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent): array {
+        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent, $context): array {
             $entry = $this->find($id, null, null, $site);
             Authorization::assertCanSave($entry);
 
@@ -259,10 +267,14 @@ class EntryTools {
 
             $result = $this->writer->update($entry, $attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
 
+            if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
+                ResourceChangeNotifier::notifyEntry($context, $result->elementId);
+            }
+
             return $result->isFailure()
                 ? ['success' => false] + $result->toArray()
                 : Response::success($result->toArray());
-        });
+        }, $context);
     }
 
     #[McpTool(
@@ -299,7 +311,9 @@ class EntryTools {
             ];
 
             if ($example !== null) {
-                $schema['example'] = $this->reader->read($this->example($example, $sectionModel->handle));
+                $entry = $this->example($example, $sectionModel->handle);
+                Authorization::assertCanView($entry);
+                $schema['example'] = $this->reader->read($entry);
             }
 
             return $schema;

@@ -114,7 +114,7 @@ class GraphqlTools {
         description: 'Run a read-only GraphQL query against Craft\'s GraphQL API. Mutations and subscriptions are rejected before execution, so this is safe for browsing any GraphQL-exposed data (assets, categories, users, plugin types) with exactly the response shape you ask for. Use get_graphql_schema to discover the available types first.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::GRAPHQL)]
+    #[McpToolMeta(category: ToolCategory::GRAPHQL, privileged: true)]
     public function queryGraphql(
         string $query,
         ?string $variables = null,
@@ -220,7 +220,7 @@ class GraphqlTools {
         description: 'List all GraphQL tokens (API keys) with their associated schemas',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::GRAPHQL)]
+    #[McpToolMeta(category: ToolCategory::GRAPHQL, privileged: true)]
     public function listGraphqlTokens(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $gql = Craft::$app->getGql();

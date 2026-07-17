@@ -65,7 +65,7 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'List products from Craft Commerce. Filter by product type handle.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function listProducts(
         ?string $type = null,
         int $limit = 20,
@@ -104,7 +104,7 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'Get detailed information about a single Commerce product by ID',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function getProduct(int $id, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id): array {
             $this->assertCommerceAvailable();
@@ -163,7 +163,7 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'List orders from Craft Commerce. Filter by status handle.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function listOrders(
         ?string $status = null,
         int $limit = 20,
@@ -218,7 +218,7 @@ class CommerceTools implements ConditionalToolProvider {
         description: 'Get detailed information about a single Commerce order by ID or order number',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::COMMERCE)]
+    #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function getOrder(?int $id = null, ?string $number = null, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $number): array {
             $this->assertCommerceAvailable();

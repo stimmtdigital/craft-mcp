@@ -1,0 +1,55 @@
+{% import '_includes/forms' as forms %}
+
+{% set scopeDescriptions = {
+    'readonly': 'Browse and inspect: all non-destructive tools, no writes.'|t('mcp'),
+    'content': 'Everything in readonly, plus entry editing: create, update, publish, delete, duplicate.'|t('mcp'),
+    'full': 'Everything: adds code execution, SQL, GraphQL mutations, cache clearing, and backups.'|t('mcp'),
+} %}
+
+{% set scopeOptions = [] %}
+{% for scope in allowedScopes %}
+    {% set scopeOptions = scopeOptions|merge([{
+        value: scope.value,
+        label: scope.value|capitalize ~ ': ' ~ (scopeDescriptions[scope.value] ?? scope.value),
+    }]) %}
+{% endfor %}
+
+<form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    {{ actionInput(action) }}
+    {{ redirectInput(redirect) }}
+    {{ hiddenInput('userId', user.id) }}
+
+    {{ forms.textField({
+        first: true,
+        label: 'Name'|t('mcp'),
+        instructions: 'What this token will be used for, for example a device or client name.'|t('mcp'),
+        id: 'name',
+        name: 'name',
+        placeholder: 'e.g. Claude Desktop'|t('mcp'),
+        required: true,
+        autofocus: true,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Scope'|t('mcp'),
+        instructions: 'What this token is allowed to do.'|t('mcp'),
+        id: 'scope',
+        name: 'scope',
+        options: scopeOptions,
+    }) }}
+
+    {{ forms.textField({
+        type: 'number',
+        label: 'Expires in days'|t('mcp'),
+        instructions: 'Leave blank for a token that never expires.'|t('mcp'),
+        id: 'expiresInDays',
+        name: 'expiresInDays',
+        placeholder: 'e.g. 90'|t('mcp'),
+        min: 1,
+    }) }}
+
+    <div class="buttons">
+        {{ forms.submitButton({label: 'Create token'|t('mcp')}) }}
+    </div>
+</form>

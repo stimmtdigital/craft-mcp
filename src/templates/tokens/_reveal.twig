@@ -1,0 +1,84 @@
+{% import '_includes/forms' as forms %}
+
+{% if newToken %}
+    {# Rendered inline as a fallback, then promoted to a Garnish modal by the
+       JS below. If JS ever fails, the one-time token is still visible here.
+       Shared by the account screen and the Utilities audit panel, so a token
+       minted or regenerated from either place reveals the same way. #}
+    <div id="mcp-token-reveal" class="pane">
+        {{ forms.copytextField({
+            instructions: 'Paste this into the Authorization header of your MCP client as a bearer token.'|t('mcp'),
+            id: 'new-token',
+            value: newToken,
+        }) }}
+
+        <h3>{{ 'Claude Desktop config'|t('mcp') }}</h3>
+        <div class="mcp-code">
+            <button type="button" class="btn mcp-code-copy" data-icon="clipboard" data-copy-config aria-label="{{ 'Copy'|t('mcp') }}"></button>
+            <pre class="code"><code>{{ newTokenSnippet }}</code></pre>
+        </div>
+
+        <div class="buttons">
+            <a class="btn" data-icon="download" download="claude_desktop_config.json" href="data:application/json;charset=utf-8,{{ newTokenSnippet|url_encode }}">{{ 'Download'|t('mcp') }}</a>
+        </div>
+
+        <p class="warning with-icon" data-token-warning style="margin: 0;">{{ 'Copy this token now. For your security, it will not be shown again.'|t('mcp') }}</p>
+    </div>
+
+    {% css %}
+        [data-token-warning].with-icon:before { margin-inline-end: 6px; }
+        .mcp-code { position: relative; }
+        .mcp-code pre { background: var(--gray-050); border: 1px solid var(--border-hairline); border-radius: var(--radius-sm); padding: 14px; margin: 0; overflow-x: auto; }
+        .mcp-code-copy { position: absolute; top: 8px; inset-inline-end: 8px; z-index: 1; }
+    {% endcss %}
+
+    {% js %}
+        (() => {
+            const $reveal = $('#mcp-token-reveal');
+            if (!$reveal.length) {
+                return;
+            }
+
+            const snippet = {{ newTokenSnippet|json_encode|raw }};
+            const wireCopy = ($ctx) => {
+                $ctx.on('click', '[data-copy-config]', () => {
+                    navigator.clipboard.writeText(snippet).then(() => {
+                        Craft.cp.displayNotice(Craft.t('app', 'Copied to clipboard.'));
+                    });
+                });
+            };
+
+            // Without Garnish the content stays inline (visible fallback for a
+            // one-time secret); with it, promote into a real fitted .modal so it
+            // gets Craft's fixed, centered, content-sized positioning.
+            if (typeof Garnish === 'undefined' || typeof Garnish.Modal === 'undefined') {
+                wireCopy($reveal);
+                return;
+            }
+
+            const $modal = $(
+                '<div class="modal fitted">' +
+                    '<div class="body" style="width: 44rem; max-width: calc(100vw - 4rem);"></div>' +
+                    '<div class="footer" style="display: flex; align-items: center; justify-content: space-between; gap: 14px;"></div>' +
+                '</div>'
+            ).appendTo(Garnish.$bod);
+
+            const $footer = $modal.find('.footer');
+            $reveal.children().appendTo($modal.find('.body'));
+            // The warning sits at the footer-left, next to the acknowledgment
+            // button on the right: closing is an explicit "I saved it", not a
+            // passive dismiss.
+            $modal.find('[data-token-warning]').appendTo($footer);
+            const $ack = $('<div class="buttons right"><button type="button" class="btn submit" data-mcp-done></button></div>');
+            $ack.find('button').text({{ "I have saved my token"|t('mcp')|json_encode|raw }});
+            $footer.append($ack);
+            $reveal.remove();
+            wireCopy($modal);
+
+            const modal = new Garnish.Modal($modal, { hideOnEsc: false, hideOnShadeClick: false });
+            $modal.on('click', '[data-mcp-done]', () => {
+                modal.hide();
+            });
+        })();
+    {% endjs %}
+{% endif %}

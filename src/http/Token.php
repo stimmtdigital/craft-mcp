@@ -20,6 +20,7 @@ final readonly class Token {
         public ?DateTimeImmutable $expiryDate = null,
         public ?DateTimeImmutable $lastUsedAt = null,
         public ?int $id = null,
+        public ?DateTimeImmutable $dateCreated = null,
     ) {
     }
 

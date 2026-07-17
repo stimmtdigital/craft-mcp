@@ -67,4 +67,48 @@ describe('Tokens', function () {
             ->and($tokens->revoke('Nobody'))->toBeFalse()
             ->and($tokens->list())->toBe([]);
     });
+
+    it('revokes by id only, never matching another token whose name equals that id', function () {
+        $store = new InMemoryTokenStore();
+        $tokens = new Tokens($store);
+        // Decoy created first, so it holds the smaller id and would win an
+        // ascending name-or-id scan; its name is the string form of the id we revoke.
+        $tokens->create(8, Scope::ReadOnly, '2');
+        ['token' => $victim] = $tokens->create(7, Scope::Content, 'Real');
+
+        expect($tokens->revokeById((int) $victim->id))->toBeTrue()
+            ->and(array_map(fn ($token) => $token->name, $tokens->list()))->toBe(['2']);
+    });
+
+    it('regenerates a token: fresh secret, same name/user/scope/expiry, old id gone', function () {
+        $store = new InMemoryTokenStore();
+        $tokens = new Tokens($store);
+        ['token' => $original, 'plaintext' => $originalPlaintext] = $tokens->create(7, Scope::Content, 'Timed', 365);
+
+        ['token' => $fresh, 'plaintext' => $newPlaintext] = $tokens->regenerate($original);
+
+        expect($newPlaintext)->not->toBe($originalPlaintext)
+            ->and($fresh->name)->toBe('Timed')
+            ->and($fresh->userId)->toBe(7)
+            ->and($fresh->scope)->toBe(Scope::Content)
+            ->and($fresh->expiryDate)->toEqual($original->expiryDate)
+            ->and($fresh->id)->not->toBe($original->id)
+            ->and($tokens->authenticate($newPlaintext))->not->toBeNull()
+            ->and($tokens->authenticate($originalPlaintext))->toBeNull()
+            ->and(array_map(fn ($t) => $t->id, $tokens->list()))->toBe([$fresh->id]);
+    });
+
+    it('lists only the tokens belonging to the given user', function () {
+        $store = new InMemoryTokenStore();
+        $tokens = new Tokens($store);
+        $tokens->create(7, Scope::Content, 'Anna');
+        ['token' => $bert] = $tokens->create(8, Scope::ReadOnly, 'Bert');
+        $tokens->create(7, Scope::Full, 'Anna Two');
+
+        $forSeven = $tokens->listFor(7);
+
+        expect(array_map(fn ($token) => $token->name, $forSeven))->toBe(['Anna', 'Anna Two'])
+            ->and($tokens->listFor(8))->toBe([$bert])
+            ->and($tokens->listFor(999))->toBe([]);
+    });
 });

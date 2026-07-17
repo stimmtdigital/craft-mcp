@@ -1,0 +1,26 @@
+{% set redirect = craft.app.request.getPathInfo() %}
+
+{% include 'mcp/tokens/_reveal' with {
+    newToken: newToken,
+    newTokenSnippet: newTokenSnippet,
+} only %}
+
+<h2>{{ 'Tokens'|t('mcp') }}</h2>
+
+{% include 'mcp/tokens/_table' with {
+    tokens: tokens,
+    showUser: false,
+    revokeAction: 'mcp/cp-tokens/revoke',
+    redirect: redirect,
+} only %}
+
+<hr>
+
+<h2>{{ 'New Token'|t('mcp') }}</h2>
+
+{% include 'mcp/tokens/_create' with {
+    user: user,
+    allowedScopes: allowedScopes,
+    action: 'mcp/cp-tokens/create',
+    redirect: redirect,
+} only %}

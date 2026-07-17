@@ -6,14 +6,17 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\Notification\ToolListChangedNotification;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\PluginReloader;
+use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
+use yii\caching\TagDependency;
 
 /**
  * Self-awareness tools for the MCP plugin.
@@ -132,7 +135,7 @@ class McpTools {
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function reloadMcp(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
+        return SafeExecution::run(function () use ($context): array {
             // 1. Reload Composer classmap (detects new plugin classes)
             PluginReloader::reloadComposerClassmap();
 
@@ -148,10 +151,17 @@ class McpTools {
             // 5. Reload Craft plugins
             Craft::$app->getPlugins()->loadPlugins();
 
-            // 6. Reset tool registry to re-collect tools
+            // 6. Invalidate the cached attribute discovery so it rescans
+            TagDependency::invalidate(Craft::$app->getCache(), Psr16CacheAdapter::TAG);
+
+            // 7. Reset tool registry to re-collect tools
             Mcp::resetToolRegistry();
 
             $summary = Mcp::getToolRegistry()->getSummary();
+
+            // 8. The connected client's own tool list may now be stale;
+            // push the real notification instead of leaving it to guess.
+            $context?->getClientGateway()->notify(new ToolListChangedNotification());
 
             return Response::success([
                 'message' => 'MCP plugin state reloaded',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\services;
 
 use Craft;
+use craft\elements\User;
 use Mcp\Capability\Registry;
 use Mcp\Server;
 use Mcp\Server\Builder;
@@ -21,8 +22,11 @@ use Psr\Log\NullLogger;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
+use stimmt\craft\Mcp\models\ToolDefinition;
+use stimmt\craft\Mcp\support\EventDispatcher;
 use stimmt\craft\Mcp\support\FileLogger;
 use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
+use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 
 /**
  * Factory for creating MCP Server instances.
@@ -43,7 +47,13 @@ class McpServerFactory {
      * the HTTP path. A session store overrides the SDK in-memory default.
      */
     public function create(?Scope $scope = null, ?SessionStoreInterface $sessionStore = null): Server {
-        $registry = new Registry(null, $this->logger ?? new NullLogger());
+        $logger = $this->logger ?? new NullLogger();
+        // Shared between the Registry and the Builder: capabilities (e.g.
+        // toolsListChanged) are only advertised as true when the Builder's
+        // own eventDispatcher is set, and Registry mutations only actually
+        // fire events through the instance it was constructed with.
+        $eventDispatcher = new EventDispatcher();
+        $registry = new Registry($eventDispatcher, $logger);
 
         $builder = Server::builder()
             ->setServerInfo(
@@ -55,9 +65,12 @@ class McpServerFactory {
                 basePath: dirname(__DIR__),
                 scanDirs: ['tools', 'prompts', 'resources'],
                 excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts', 'elements', 'http', 'records', 'migrations', 'controllers', 'console', 'installer'],
+                cache: new Psr16CacheAdapter(Craft::$app->getCache()),
             )
             ->setContainer($this->container)
-            ->setRegistry($registry);
+            ->setRegistry($registry)
+            ->setEventDispatcher($eventDispatcher)
+            ->setPaginationLimit(Mcp::settings()->paginationLimit);
 
         if ($sessionStore !== null) {
             $builder->setSession(sessionStore: $sessionStore);
@@ -122,12 +135,31 @@ class McpServerFactory {
     private function filterTools(Registry $registry, ?Scope $scope): void {
         foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
             $allowed = Mcp::isToolEnabled($definition->name)
-                && ($scope === null || $scope->allows($definition->category, $definition->dangerous));
+                && ($scope === null || $scope->allows($definition->category, $definition->dangerous))
+                && $this->privilegedAllowed($definition, $scope);
 
             if (!$allowed) {
                 $registry->unregisterTool($definition->name);
             }
         }
+    }
+
+    /**
+     * Privileged (install-introspection) tools are hidden from read-scoped
+     * tokens whose user is not an admin, unless the site owner opened the tool
+     * in config. Full scope and stdio are never gated on this axis.
+     */
+    private function privilegedAllowed(ToolDefinition $definition, ?Scope $scope): bool {
+        if (!$definition->privileged || $scope === null || $scope === Scope::Full) {
+            return true;
+        }
+
+        $identity = Craft::$app->getUser()->getIdentity();
+        if ($identity instanceof User && $identity->admin) {
+            return true;
+        }
+
+        return in_array($definition->name, Mcp::settings()->scopedTokenPrivilegedTools, true);
     }
 
     private function getInstructions(?Scope $scope = null): string {

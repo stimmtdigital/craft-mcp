@@ -10,6 +10,7 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 
@@ -48,6 +49,7 @@ class UserTools {
                 $query->email($email);
             }
 
+            Authorization::scopeQuery($query);
             $users = $query->all();
             $results = array_map($this->serializeUser(...), $users);
 

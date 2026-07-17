@@ -27,7 +27,7 @@ class BackupTools {
         description: 'List available database backups from storage/backups directory',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
-    #[McpToolMeta(category: ToolCategory::BACKUP)]
+    #[McpToolMeta(category: ToolCategory::BACKUP, privileged: true)]
     public function listBackups(?RequestContext $context = null): array {
         return SafeExecution::run(function (): array {
             $backupPath = Craft::$app->getPath()->getDbBackupPath();
