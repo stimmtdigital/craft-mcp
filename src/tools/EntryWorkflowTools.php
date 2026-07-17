@@ -137,7 +137,7 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'delete_entry',
-        description: 'Soft-delete an entry (moves to trash, restorable in the control panel).',
+        description: 'Soft-delete an entry (moves to trash, restorable in the control panel). Matrix-family blocks are entries too: pass a block\'s own id to delete just that block without touching its siblings.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]

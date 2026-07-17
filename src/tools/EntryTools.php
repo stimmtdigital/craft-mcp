@@ -227,7 +227,7 @@ class EntryTools {
 
     #[McpTool(
         name: 'update_entry',
-        description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change.',
+        description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change. Matrix-family blocks are entries too: pass a block\'s own id to edit just that block without touching its siblings.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]

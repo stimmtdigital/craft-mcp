@@ -285,6 +285,8 @@ Update an entry by id. In draft mode (the default) a live entry gets a draft on 
 
 > **Note:** This is a dangerous tool that can be disabled via configuration.
 
+> **Note:** `id` doesn't have to be a top-level entry. Any Matrix-family block is addressable by its own id (the block key `get_entry` returned) and editing it directly leaves the owner's field value, and every sibling block, untouched. See [Content Writing: Editing one block directly](../content-writing.md#editing-one-block-directly).
+
 **Parameters:**
 
 | Name | Type | Required | Description |
@@ -551,6 +553,8 @@ publish_entry id=123
 Soft-delete an entry: moves it to the trash, restorable from the control panel.
 
 > **Note:** This is a dangerous tool that can be disabled via configuration.
+
+> **Note:** `id` can be a single Matrix-family block's own id, removing just that block without touching the owner entry's field value or any sibling block. See [Content Writing: Editing one block directly](../content-writing.md#editing-one-block-directly).
 
 **Parameters:**
 

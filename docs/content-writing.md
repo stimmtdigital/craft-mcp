@@ -40,6 +40,20 @@ Matrix values are objects keyed by block id (use `new1`, `new2`, ... for new blo
 
 Disabled blocks are preserved on round trips, never silently dropped.
 
+### Editing one block directly
+
+The block key in the Matrix object above (`new1` in that example) is a placeholder only for a block that doesn't exist yet. For a block `get_entry` already returned, that same key is the block's own entry id, since every Matrix-family block is a real, independently-addressable entry in Craft 5, not a row inside the owner's field.
+
+That id works directly with the entry tools, same as any other entry id:
+
+- `update_entry id=<blockId> fields='{...}'` edits that one block. Sibling blocks and the owner's own field value are untouched.
+- `delete_entry id=<blockId>` removes that one block.
+- `publish_entry id=<blockId>` applies that block's own pending draft in place.
+
+This is the safer default for a single-block change. Sending the owner's Matrix field through `update_entry` replaces the field's entire value; any block left out of the payload is deleted. Targeting a block's own id skips that risk entirely, since the owner's field value and every sibling block are never touched.
+
+One limit: this only reaches a block whose type already appears somewhere in the field. Adding the first-ever block of a brand new type still needs the full owner-field payload.
+
 ## Discover the Shape First: describe_entry_schema
 
 Call `describe_entry_schema` for a section and entry type before writing. It returns everything needed to construct a valid entry on the first attempt:
