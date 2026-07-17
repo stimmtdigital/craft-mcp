@@ -19,3 +19,15 @@ describe('Settings entryWriteMode', function () {
         expect($settings->validate(['entryWriteMode']))->toBeFalse();
     });
 });
+
+it('defaults paginationLimit to the SDK default of 50', function () {
+    expect((new Settings())->paginationLimit)->toBe(50);
+});
+
+it('rejects a paginationLimit below 1', function () {
+    $settings = new Settings();
+    $settings->paginationLimit = 0;
+    $settings->validate();
+
+    expect($settings->hasErrors('paginationLimit'))->toBeTrue();
+});

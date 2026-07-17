@@ -43,6 +43,9 @@ class Settings extends Model {
 
     public string $logLevel = 'error';
 
+    /** Page size for MCP list endpoints (tools/prompts/resources list calls). */
+    public int $paginationLimit = 50;
+
     /**
      * Default save mode for entry writes: 'draft' (reviewable) or 'live'.
      */
@@ -73,6 +76,7 @@ class Settings extends Model {
             [['enabled', 'enableDangerousTools', 'httpTransport'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
+            [['paginationLimit'], 'integer', 'min' => 1],
             [['entryWriteMode'], 'in', 'range' => ['draft', 'live']],
             [['httpPath'], 'required'],
             [['httpPath'], 'match', 'pattern' => '/^[a-z0-9\-\/]+$/i'],

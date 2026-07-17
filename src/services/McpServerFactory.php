@@ -59,7 +59,8 @@ class McpServerFactory {
                 excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts', 'elements', 'http', 'records', 'migrations', 'controllers', 'console', 'installer'],
             )
             ->setContainer($this->container)
-            ->setRegistry($registry);
+            ->setRegistry($registry)
+            ->setPaginationLimit(Mcp::settings()->paginationLimit);
 
         if ($sessionStore !== null) {
             $builder->setSession(sessionStore: $sessionStore);
