@@ -6,6 +6,15 @@ rules:
 
 parameters:
     level: 5
+
+    # Analyse against the whole supported PHP range (matches the CI matrix), so
+    # use of a symbol or syntax outside 8.3 to 8.5 is flagged on the host
+    # regardless of the local PHP version. This is the "compatibility" gate that
+    # runs locally via composer analyse and the pre-push hook.
+    phpVersion:
+        min: 80300
+        max: 80500
+
     paths:
         - src
     tmpDir: .phpstan.cache

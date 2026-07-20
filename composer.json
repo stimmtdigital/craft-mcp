@@ -103,6 +103,13 @@
         "pre-commit": [
             "@fix",
             "@ci"
+        ],
+        "lefthook:install": "command -v lefthook >/dev/null 2>&1 && lefthook install || true",
+        "post-install-cmd": [
+            "@lefthook:install"
+        ],
+        "post-update-cmd": [
+            "@lefthook:install"
         ]
     }
 }
