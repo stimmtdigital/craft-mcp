@@ -19,6 +19,8 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\enums\ToolAction;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
@@ -133,15 +135,40 @@ class McpServerFactory {
      * external event-registered tools are covered too.
      */
     private function filterTools(Registry $registry, ?Scope $scope): void {
+        $showLocked = Mcp::settings()->showLockedProTools;
+        $current = Mcp::currentEdition();
+
         foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
-            $allowed = Mcp::isToolEnabled($definition->name)
+            $otherwiseAllowed = Mcp::isToolEnabled($definition->name)
                 && ($scope === null || $scope->allows($definition->category, $definition->dangerous))
                 && $this->privilegedAllowed($definition, $scope);
+            $editionAllows = $current->atLeast($definition->requiredEdition);
 
-            if (!$allowed) {
+            $action = self::decide($otherwiseAllowed, $editionAllows, $showLocked);
+
+            if ($action === ToolAction::Hide || $action === ToolAction::Lock) {
+                // Lock is upgraded to a visible stub in Task 8; until then it is
+                // treated as Hide so a Pro tool is never left callable.
                 $registry->unregisterTool($definition->name);
             }
         }
+    }
+
+    /**
+     * Decide what to do with one tool given whether it is otherwise allowed
+     * (enabled, in scope, privilege-ok), whether the active edition permits it,
+     * and whether the site owner keeps locked tools visible.
+     */
+    private static function decide(bool $otherwiseAllowed, bool $editionAllows, bool $showLocked): ToolAction {
+        if (!$otherwiseAllowed) {
+            return ToolAction::Hide;
+        }
+
+        if ($editionAllows) {
+            return ToolAction::Keep;
+        }
+
+        return $showLocked ? ToolAction::Lock : ToolAction::Hide;
     }
 
     /**
