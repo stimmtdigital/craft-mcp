@@ -12,6 +12,7 @@ use craft\services\Path;
 use craft\web\Request as WebRequest;
 use craft\web\UrlManager;
 use Override;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\events\RegisterPromptsEvent;
 use stimmt\craft\Mcp\events\RegisterResourcesEvent;
 use stimmt\craft\Mcp\events\RegisterToolsEvent;
@@ -88,6 +89,22 @@ class Mcp extends BasePlugin {
         return [
             'components' => [],
         ];
+    }
+
+    /**
+     * @return string[]
+     */
+    #[Override]
+    public static function editions(): array {
+        return Edition::ordered();
+    }
+
+    /**
+     * The plugin's active edition, defaulting to Standard when the plugin is
+     * not yet loaded or the stored handle is unknown.
+     */
+    public static function currentEdition(): Edition {
+        return Edition::fromHandle(self::getInstance()?->edition);
     }
 
     #[Override]
