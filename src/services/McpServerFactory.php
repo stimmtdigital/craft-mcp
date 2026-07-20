@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\services;
 use Craft;
 use craft\elements\User;
 use Mcp\Capability\Registry;
+use Mcp\Schema\Tool;
 use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\SessionStoreInterface;
@@ -146,9 +147,12 @@ class McpServerFactory {
 
             $action = self::decide($otherwiseAllowed, $editionAllows, $showLocked);
 
-            if ($action === ToolAction::Hide || $action === ToolAction::Lock) {
-                // Lock is upgraded to a visible stub in Task 8; until then it is
-                // treated as Hide so a Pro tool is never left callable.
+            if ($action === ToolAction::Lock) {
+                $this->lockTool($registry, $definition->name);
+                continue;
+            }
+
+            if ($action === ToolAction::Hide) {
                 $registry->unregisterTool($definition->name);
             }
         }
@@ -169,6 +173,31 @@ class McpServerFactory {
         }
 
         return $showLocked ? ToolAction::Lock : ToolAction::Hide;
+    }
+
+    /**
+     * Keep an edition-locked tool visible but inert: mark its description and
+     * replace its handler with the upgrade message. Overwrites the existing
+     * registry entry in place.
+     */
+    private function lockTool(Registry $registry, string $name): void {
+        if (!$registry->hasTool($name)) {
+            return;
+        }
+
+        $existing = $registry->getTool($name)->tool;
+        $locked = new Tool(
+            name: $existing->name,
+            title: $existing->title,
+            inputSchema: $existing->inputSchema,
+            description: '[Pro] ' . ($existing->description ?? ''),
+            annotations: $existing->annotations,
+            icons: $existing->icons,
+            meta: $existing->meta,
+            outputSchema: $existing->outputSchema,
+        );
+
+        $registry->registerTool($locked, static fn (): string => Edition::proUpgradeMessage());
     }
 
     /**

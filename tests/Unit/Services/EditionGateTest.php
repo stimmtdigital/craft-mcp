@@ -30,3 +30,24 @@ describe('edition gate decision', function () {
             ->and(decide(false, false, true))->toBe(ToolAction::Hide);
     });
 });
+
+it('lockTool replaces the handler with an upgrade message and marks the description', function () {
+    $eventDispatcher = new \stimmt\craft\Mcp\support\EventDispatcher();
+    $registry = new \Mcp\Capability\Registry($eventDispatcher, new \Psr\Log\NullLogger());
+
+    $tool = new \Mcp\Schema\Tool(
+        name: 'create_entry',
+        title: null,
+        inputSchema: ['type' => 'object'],
+        description: 'Create an entry.',
+        annotations: null,
+    );
+    $registry->registerTool($tool, static fn (): array => ['created' => true]);
+
+    $factory = new \stimmt\craft\Mcp\services\McpServerFactory();
+    (new ReflectionMethod($factory, 'lockTool'))->invoke($factory, $registry, 'create_entry');
+
+    $ref = $registry->getTool('create_entry');
+    expect($ref->tool->description)->toStartWith('[Pro]')
+        ->and(($ref->handler)())->toBe(\stimmt\craft\Mcp\enums\Edition::proUpgradeMessage());
+});
