@@ -90,3 +90,73 @@ function initializeCapabilities(Server $server): Mcp\Schema\ServerCapabilities {
 
     throw new RuntimeException('InitializeHandler not found among the built Protocol request handlers.');
 }
+
+/**
+ * mcp/sdk 0.7 defers loader-based element loading to the first registry
+ * read, and Registry::unregisterTool() silently no-ops for elements that
+ * are not loaded yet. McpServerFactory::filterTools() unregisters scoped
+ * and privileged tools right after Builder::build(), so it depends on the
+ * SDK's documented exception: a registry supplied via setRegistry() is
+ * loaded eagerly at build time. These tests pin that contract; if a future
+ * SDK release breaks it, scope filtering would silently stop working and
+ * this suite must fail loudly.
+ */
+describe('eager loading of a custom registry (SDK 0.7 contract)', function () {
+    $tool = static fn (string $name): Mcp\Schema\Tool => new Mcp\Schema\Tool(
+        name: $name,
+        title: null,
+        inputSchema: ['type' => 'object'],
+        description: null,
+        annotations: null,
+    );
+
+    it('loads a setRegistry() registry eagerly at build time', function () use ($tool) {
+        $registry = new Registry(null);
+        $loader = new class ($tool('loaded-tool')) implements Mcp\Capability\Registry\Loader\LoaderInterface {
+            public function __construct(private readonly Mcp\Schema\Tool $tool) {
+            }
+
+            public function load(Mcp\Capability\RegistryInterface $registry): void {
+                $registry->registerTool($this->tool, static fn (): string => 'ok');
+            }
+        };
+
+        Server::builder()
+            ->setServerInfo(name: 'test', version: '1.0.0')
+            ->setRegistry($registry)
+            ->addLoader($loader)
+            ->build();
+
+        expect($registry->hasTools())->toBeTrue();
+    });
+
+    it('keeps post-build unregistration effective across later reads', function () use ($tool) {
+        $registry = new Registry(null);
+        $loader = new class ($tool('privileged-tool'), $tool('plain-tool')) implements Mcp\Capability\Registry\Loader\LoaderInterface {
+            /** @var list<Mcp\Schema\Tool> */
+            private readonly array $tools;
+
+            public function __construct(Mcp\Schema\Tool ...$tools) {
+                $this->tools = array_values($tools);
+            }
+
+            public function load(Mcp\Capability\RegistryInterface $registry): void {
+                foreach ($this->tools as $tool) {
+                    $registry->registerTool($tool, static fn (): string => 'ok');
+                }
+            }
+        };
+
+        Server::builder()
+            ->setServerInfo(name: 'test', version: '1.0.0')
+            ->setRegistry($registry)
+            ->addLoader($loader)
+            ->build();
+
+        $registry->unregisterTool('privileged-tool');
+        $names = array_map(static fn ($t) => $t->name, $registry->getTools()->references);
+
+        expect($names)->toContain('plain-tool')
+            ->and($names)->not->toContain('privileged-tool');
+    });
+});

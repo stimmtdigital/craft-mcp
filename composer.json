@@ -29,7 +29,7 @@
     "require": {
         "php": "^8.3",
         "craftcms/cms": "^5.0",
-        "mcp/sdk": "^0.6",
+        "mcp/sdk": "^0.7",
         "psr/event-dispatcher": "^1.0",
         "psr/simple-cache": "^2.0 || ^3.0",
         "psy/psysh": "^0.12",
@@ -39,7 +39,7 @@
     },
     "require-dev": {
         "laravel/pint": "^1.18",
-        "rector/rector": "2.5.5",
+        "rector/rector": "2.5.7",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-type-coverage": "^4.0",
         "phpstan/phpstan": "^2.0",
