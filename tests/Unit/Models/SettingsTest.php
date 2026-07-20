@@ -35,3 +35,11 @@ it('rejects a paginationLimit below 1', function () {
 it('defaults httpSessionStore to null (built-in DB store)', function () {
     expect((new Settings())->httpSessionStore)->toBeNull();
 });
+
+it('defaults showLockedProTools to false and validates it as boolean', function () {
+    $settings = new \stimmt\craft\Mcp\models\Settings();
+    expect($settings->showLockedProTools)->toBeFalse();
+
+    $settings->showLockedProTools = true;
+    expect($settings->validate())->toBeTrue();
+});

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\events\RegisterToolsEvent;
 use stimmt\craft\Mcp\Tests\Fixtures\AbstractToolClass;
 use stimmt\craft\Mcp\Tests\Fixtures\InvalidToolClass;
@@ -157,5 +158,34 @@ describe('RegisterToolsEvent::getErrors()', function () {
 describe('RegisterToolsEvent as yii Event', function () {
     it('extends yii base Event', function () {
         expect($this->event)->toBeInstanceOf(yii\base\Event::class);
+    });
+});
+
+describe('RequiresEdition extraction', function () {
+    it('reads a class-level Pro mark onto every tool', function () {
+        $event = new RegisterToolsEvent();
+        $event->addTool(\stimmt\craft\Mcp\Tests\Fixtures\ProToolClass::class, 'test-plugin');
+
+        $defs = $event->getDefinitions();
+        expect($defs['fixture_pro_a']->requiredEdition)->toBe(Edition::Pro)
+            ->and($defs['fixture_pro_b']->requiredEdition)->toBe(Edition::Pro);
+    });
+
+    it('lets a method-level mark override the class-level one', function () {
+        $event = new RegisterToolsEvent();
+        $event->addTool(\stimmt\craft\Mcp\Tests\Fixtures\MixedEditionToolClass::class, 'test-plugin');
+
+        $defs = $event->getDefinitions();
+        expect($defs['fixture_mixed_free']->requiredEdition)->toBe(Edition::Standard)
+            ->and($defs['fixture_mixed_pro']->requiredEdition)->toBe(Edition::Pro);
+    });
+
+    it('defaults unmarked tools to Standard', function () {
+        $event = new RegisterToolsEvent();
+        $event->addTool(\stimmt\craft\Mcp\Tests\Fixtures\ValidToolClass::class, 'test-plugin');
+
+        foreach ($event->getDefinitions() as $def) {
+            expect($def->requiredEdition)->toBe(Edition::Standard);
+        }
     });
 });

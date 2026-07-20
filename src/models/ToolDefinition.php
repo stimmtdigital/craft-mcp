@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\models;
 
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 
 /**
@@ -21,6 +22,7 @@ final readonly class ToolDefinition {
         public string $category,
         public bool $dangerous,
         public bool $privileged,
+        public Edition $requiredEdition = Edition::Standard,
         public ?string $condition = null,
     ) {
     }
@@ -69,13 +71,14 @@ final readonly class ToolDefinition {
             'category' => $this->category,
             'dangerous' => $this->dangerous,
             'privileged' => $this->privileged,
+            'requiredEdition' => $this->requiredEdition->value,
         ];
     }
 
     /**
      * Create a ToolDefinition from extracted metadata.
      *
-     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, dangerous?: bool, privileged?: bool, condition?: string|null} $data
+     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, dangerous?: bool, privileged?: bool, requiredEdition?: Edition, condition?: string|null} $data
      */
     public static function fromArray(array $data): self {
         return new self(
@@ -87,6 +90,7 @@ final readonly class ToolDefinition {
             category: $data['category'] ?? ToolCategory::GENERAL->value,
             dangerous: $data['dangerous'] ?? false,
             privileged: $data['privileged'] ?? false,
+            requiredEdition: $data['requiredEdition'] ?? Edition::Standard,
             condition: $data['condition'] ?? null,
         );
     }

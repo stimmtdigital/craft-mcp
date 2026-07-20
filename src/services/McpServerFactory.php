@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\services;
 use Craft;
 use craft\elements\User;
 use Mcp\Capability\Registry;
+use Mcp\Schema\Tool;
 use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\SessionStoreInterface;
@@ -19,6 +20,8 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\enums\ToolAction;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
@@ -133,15 +136,71 @@ class McpServerFactory {
      * external event-registered tools are covered too.
      */
     private function filterTools(Registry $registry, ?Scope $scope): void {
+        $showLocked = Mcp::settings()->showLockedProTools;
+        $current = Mcp::currentEdition();
+
         foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
-            $allowed = Mcp::isToolEnabled($definition->name)
+            $otherwiseAllowed = Mcp::isToolEnabled($definition->name)
                 && ($scope === null || $scope->allows($definition->category, $definition->dangerous))
                 && $this->privilegedAllowed($definition, $scope);
+            $editionAllows = $current->atLeast($definition->requiredEdition);
 
-            if (!$allowed) {
+            $action = $this->decide($otherwiseAllowed, $editionAllows, $showLocked);
+
+            if ($action === ToolAction::Lock) {
+                $this->lockTool($registry, $definition->name);
+                continue;
+            }
+
+            if ($action === ToolAction::Hide) {
                 $registry->unregisterTool($definition->name);
             }
         }
+    }
+
+    /**
+     * Decide what to do with one tool given whether it is otherwise allowed
+     * (enabled, in scope, privilege-ok), whether the active edition permits it,
+     * and whether the site owner keeps locked tools visible.
+     */
+    private function decide(bool $otherwiseAllowed, bool $editionAllows, bool $showLocked): ToolAction {
+        if (!$otherwiseAllowed) {
+            return ToolAction::Hide;
+        }
+
+        if ($editionAllows) {
+            return ToolAction::Keep;
+        }
+
+        return $showLocked ? ToolAction::Lock : ToolAction::Hide;
+    }
+
+    /**
+     * Keep an edition-locked tool visible but inert: mark its description and
+     * replace its handler with the upgrade message. Overwrites the existing
+     * registry entry in place.
+     */
+    private function lockTool(Registry $registry, string $name): void {
+        if (!$registry->hasTool($name)) {
+            return;
+        }
+
+        $existing = $registry->getTool($name)->tool;
+        // Permissive schema so any call reaches the upgrade-message stub; the
+        // real schema would make the SDK reject malformed calls with a
+        // validation error before the caller ever sees why the tool is locked.
+        $locked = new Tool(
+            name: $existing->name,
+            title: $existing->title,
+            inputSchema: ['type' => 'object', 'properties' => [], 'required' => []],
+            description: '[Pro] ' . ($existing->description ?? ''),
+            annotations: $existing->annotations,
+            icons: $existing->icons,
+            meta: $existing->meta,
+            outputSchema: $existing->outputSchema,
+        );
+
+        $registry->registerTool($locked, static fn (): string => Edition::proUpgradeMessage());
     }
 
     /**
@@ -163,7 +222,7 @@ class McpServerFactory {
     }
 
     private function getInstructions(?Scope $scope = null): string {
-        return $this->baseInstructions() . $this->scopeNote($scope);
+        return $this->baseInstructions() . $this->scopeNote($scope) . $this->editionNoteFor(Mcp::currentEdition());
     }
 
     /**
@@ -177,6 +236,24 @@ class McpServerFactory {
             Scope::Content => "\n\n## This Connection\n\nThis connection has CONTENT scope: read everything, and write entries through the draft-first flow above (create, update, publish, delete, duplicate, copy to site). Code execution, raw SQL, GraphQL mutation, cache, and backup tools are not available.",
             Scope::Full => "\n\n## This Connection\n\nThis connection has FULL scope: every tool the server exposes is available, including code execution and database tools. Prefer draft-mode writes and read-only queries unless the task requires more.",
         };
+    }
+
+    /**
+     * Instruction note appended for non-Pro installs. It retracts the
+     * write-tool guidance in the base instructions and the Content-scope note,
+     * so an agent is never told about tools that are not registered here.
+     */
+    private function editionNoteFor(Edition $edition): string {
+        if ($edition->atLeast(Edition::Pro)) {
+            return '';
+        }
+
+        return "\n\n## Edition\n\n"
+            . 'This install runs the Standard edition. The content-writing tools '
+            . '(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site) '
+            . 'are a Pro feature and are not available here, so any write instructions above do not apply. '
+            . 'Reading, browsing, and inspection are fully available. '
+            . Edition::UPGRADE_CTA;
     }
 
     private function baseInstructions(): string {

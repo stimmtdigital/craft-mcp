@@ -10,7 +10,9 @@ use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\models\ToolDefinition;
 use yii\base\Event;
@@ -244,6 +246,11 @@ class RegisterToolsEvent extends Event {
             return [];
         }
 
+        $classEditionAttrs = $reflection->getAttributes(RequiresEdition::class);
+        $classEdition = $classEditionAttrs === []
+            ? null
+            : $classEditionAttrs[0]->newInstance()->edition;
+
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             $mcpToolAttrs = $method->getAttributes(McpTool::class);
             if (empty($mcpToolAttrs)) {
@@ -256,6 +263,11 @@ class RegisterToolsEvent extends Event {
             $metaAttrs = $method->getAttributes(McpToolMeta::class);
             $meta = empty($metaAttrs) ? null : $metaAttrs[0]->newInstance();
 
+            $methodEditionAttrs = $method->getAttributes(RequiresEdition::class);
+            $requiredEdition = empty($methodEditionAttrs)
+                ? ($classEdition ?? Edition::Standard)
+                : $methodEditionAttrs[0]->newInstance()->edition;
+
             $definitions[] = new ToolDefinition(
                 name: $mcpTool->name ?? '',
                 description: $mcpTool->description ?? '',
@@ -265,6 +277,7 @@ class RegisterToolsEvent extends Event {
                 category: $meta?->category->value ?? ToolCategory::GENERAL->value,
                 dangerous: $meta !== null && $meta->dangerous,
                 privileged: $meta !== null && $meta->privileged,
+                requiredEdition: $requiredEdition,
                 condition: $meta?->condition,
             );
         }
