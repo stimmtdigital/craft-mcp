@@ -209,7 +209,7 @@ class Mcp extends BasePlugin {
      */
     private function registerHttpEndpoint(): void {
         $request = Craft::$app->getRequest();
-        if (!$request instanceof WebRequest || !$request->getIsSiteRequest()) {
+        if (!$request instanceof WebRequest) {
             return;
         }
 
@@ -221,6 +221,38 @@ class Mcp extends BasePlugin {
         Event::on(
             UrlManager::class,
             UrlManager::EVENT_REGISTER_SITE_URL_RULES,
+            static function (RegisterUrlRulesEvent $event) use ($settings): void {
+                $event->rules[$settings->httpPath] = 'mcp/http/handle';
+            },
+        );
+
+        $this->registerCpEndpointRule($settings);
+    }
+
+    /**
+     * With the control panel on the root of its domain (empty cpTrigger),
+     * every request on that host is a CP request and site URL rules are
+     * never consulted, so the endpoint must exist as a CP rule too. Craft
+     * additionally intercepts guest CP requests whose first segment matches
+     * a plugin handle (plugin template routing) BEFORE any URL rule runs,
+     * so the default path, which equals this plugin's handle, cannot be
+     * served on such hosts; the site owner must pick another httpPath.
+     */
+    private function registerCpEndpointRule(Settings $settings): void {
+        $trigger = Craft::$app->getConfig()->getGeneral()->cpTrigger;
+        if ($trigger !== null && $trigger !== '') {
+            return;
+        }
+
+        if ($settings->httpPath === $this->id) {
+            Craft::warning(sprintf('httpPath "%s" matches the plugin handle; with the control panel on the root domain, Craft intercepts that path for guests before routing. Set httpPath to a different value (for example "mcp-http") to serve the MCP endpoint on this host.', $settings->httpPath), __METHOD__);
+
+            return;
+        }
+
+        Event::on(
+            UrlManager::class,
+            UrlManager::EVENT_REGISTER_CP_URL_RULES,
             static function (RegisterUrlRulesEvent $event) use ($settings): void {
                 $event->rules[$settings->httpPath] = 'mcp/http/handle';
             },
