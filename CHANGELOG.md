@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.9] - 2026-07-20
+
 ### Changed
 - Upgraded `mcp/sdk` from `^0.6` to `^0.7`. Scope-based tool filtering keeps working under the SDK's new deferred element loading, since a registry supplied via `setRegistry()` is loaded eagerly at build time; a test pins that contract so a future SDK change that breaks it fails loudly.
 - Upgraded `rector/rector` from `2.5.5` to `2.5.7`.
