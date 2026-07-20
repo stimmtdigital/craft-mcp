@@ -8,7 +8,7 @@ use stimmt\craft\Mcp\services\McpServerFactory;
 function decide(bool $otherwiseAllowed, bool $editionAllows, bool $showLocked): ToolAction {
     $method = new ReflectionMethod(McpServerFactory::class, 'decide');
 
-    return $method->invoke(null, $otherwiseAllowed, $editionAllows, $showLocked);
+    return $method->invoke(new McpServerFactory(), $otherwiseAllowed, $editionAllows, $showLocked);
 }
 
 describe('edition gate decision', function () {
@@ -50,6 +50,6 @@ it('lockTool marks the description, relaxes the schema, and returns the upgrade 
 
     $ref = $registry->getTool('create_entry');
     expect($ref->tool->description)->toStartWith('[Pro]')
-        ->and($ref->tool->inputSchema)->toBe(['type' => 'object'])
+        ->and($ref->tool->inputSchema)->toBe(['type' => 'object', 'properties' => [], 'required' => []])
         ->and(($ref->handler)())->toBe(\stimmt\craft\Mcp\enums\Edition::proUpgradeMessage());
 });

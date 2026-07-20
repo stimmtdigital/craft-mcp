@@ -145,7 +145,7 @@ class McpServerFactory {
                 && $this->privilegedAllowed($definition, $scope);
             $editionAllows = $current->atLeast($definition->requiredEdition);
 
-            $action = self::decide($otherwiseAllowed, $editionAllows, $showLocked);
+            $action = $this->decide($otherwiseAllowed, $editionAllows, $showLocked);
 
             if ($action === ToolAction::Lock) {
                 $this->lockTool($registry, $definition->name);
@@ -163,7 +163,7 @@ class McpServerFactory {
      * (enabled, in scope, privilege-ok), whether the active edition permits it,
      * and whether the site owner keeps locked tools visible.
      */
-    private static function decide(bool $otherwiseAllowed, bool $editionAllows, bool $showLocked): ToolAction {
+    private function decide(bool $otherwiseAllowed, bool $editionAllows, bool $showLocked): ToolAction {
         if (!$otherwiseAllowed) {
             return ToolAction::Hide;
         }
@@ -192,7 +192,7 @@ class McpServerFactory {
         $locked = new Tool(
             name: $existing->name,
             title: $existing->title,
-            inputSchema: ['type' => 'object'],
+            inputSchema: ['type' => 'object', 'properties' => [], 'required' => []],
             description: '[Pro] ' . ($existing->description ?? ''),
             annotations: $existing->annotations,
             icons: $existing->icons,
@@ -222,7 +222,7 @@ class McpServerFactory {
     }
 
     private function getInstructions(?Scope $scope = null): string {
-        return $this->baseInstructions() . $this->scopeNote($scope) . self::editionNoteFor(Mcp::currentEdition());
+        return $this->baseInstructions() . $this->scopeNote($scope) . $this->editionNoteFor(Mcp::currentEdition());
     }
 
     /**
@@ -243,16 +243,16 @@ class McpServerFactory {
      * write-tool guidance in the base instructions and the Content-scope note,
      * so an agent is never told about tools that are not registered here.
      */
-    private static function editionNoteFor(Edition $edition): string {
+    private function editionNoteFor(Edition $edition): string {
         if ($edition->atLeast(Edition::Pro)) {
             return '';
         }
 
         return "\n\n## Edition\n\n"
-            . "This install runs the Standard edition. The content-writing tools "
-            . "(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site) "
-            . "are a Pro feature and are not available here, so any write instructions above do not apply. "
-            . "Reading, browsing, and inspection are fully available. "
+            . 'This install runs the Standard edition. The content-writing tools '
+            . '(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site) '
+            . 'are a Pro feature and are not available here, so any write instructions above do not apply. '
+            . 'Reading, browsing, and inspection are fully available. '
             . Edition::UPGRADE_CTA;
     }
 

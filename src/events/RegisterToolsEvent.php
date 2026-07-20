@@ -247,7 +247,7 @@ class RegisterToolsEvent extends Event {
         }
 
         $classEditionAttrs = $reflection->getAttributes(RequiresEdition::class);
-        $classEdition = empty($classEditionAttrs)
+        $classEdition = $classEditionAttrs === []
             ? null
             : $classEditionAttrs[0]->newInstance()->edition;
 
