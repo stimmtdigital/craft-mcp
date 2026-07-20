@@ -29,6 +29,13 @@ class Settings extends Model {
     public bool $enableDangerousTools = true;
 
     /**
+     * Show Pro-locked tools on a non-Pro install as visible-but-locked (their
+     * description marked, their handler returning an upgrade message) instead
+     * of hiding them entirely. Off by default: quiet and uncluttered.
+     */
+    public bool $showLockedProTools = false;
+
+    /**
      * Tool names opened for non-admin readonly/content HTTP tokens despite
      * being privileged install-introspection reads (logs, config, database
      * structure/contents, environment). Empty by default: secure by default,
@@ -85,7 +92,7 @@ class Settings extends Model {
     #[Override]
     public function defineRules(): array {
         return [
-            [['enabled', 'enableDangerousTools', 'httpTransport'], 'boolean'],
+            [['enabled', 'enableDangerousTools', 'httpTransport', 'showLockedProTools'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
             [['paginationLimit'], 'integer', 'min' => 1],
