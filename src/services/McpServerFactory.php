@@ -186,10 +186,13 @@ class McpServerFactory {
         }
 
         $existing = $registry->getTool($name)->tool;
+        // Permissive schema so any call reaches the upgrade-message stub; the
+        // real schema would make the SDK reject malformed calls with a
+        // validation error before the caller ever sees why the tool is locked.
         $locked = new Tool(
             name: $existing->name,
             title: $existing->title,
-            inputSchema: $existing->inputSchema,
+            inputSchema: ['type' => 'object'],
             description: '[Pro] ' . ($existing->description ?? ''),
             annotations: $existing->annotations,
             icons: $existing->icons,
@@ -250,7 +253,7 @@ class McpServerFactory {
             . "(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site) "
             . "are a Pro feature and are not available here, so any write instructions above do not apply. "
             . "Reading, browsing, and inspection are fully available. "
-            . "Upgrade in the Craft control panel under Settings > Plugins.";
+            . Edition::UPGRADE_CTA;
     }
 
     private function baseInstructions(): string {

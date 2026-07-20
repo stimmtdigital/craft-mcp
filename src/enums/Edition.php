@@ -16,6 +16,12 @@ enum Edition: string {
     case Pro = 'pro';
 
     /**
+     * Call to action shared by the upgrade message and the Standard-edition
+     * instructions note.
+     */
+    public const UPGRADE_CTA = 'Upgrade in the Craft control panel under Settings > Plugins.';
+
+    /**
      * Edition handles ordered lowest to highest, for Craft's editions() list.
      *
      * @return string[]
@@ -36,13 +42,6 @@ enum Edition: string {
         return self::tryFrom($handle) ?? self::Standard;
     }
 
-    public function label(): string {
-        return match ($this) {
-            self::Standard => 'Standard',
-            self::Pro => 'Pro',
-        };
-    }
-
     /**
      * True when this edition is at least as high as $other in the ordering.
      */
@@ -59,6 +58,6 @@ enum Edition: string {
     public static function proUpgradeMessage(): string {
         return 'This tool requires the Pro edition of the Craft MCP plugin. '
             . 'The current edition does not include content-writing tools. '
-            . 'Upgrade in the Craft control panel under Settings > Plugins.';
+            . self::UPGRADE_CTA;
     }
 }

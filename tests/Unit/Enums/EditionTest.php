@@ -23,8 +23,7 @@ describe('Edition', function () {
             ->and(Edition::fromHandle(null))->toBe(Edition::Standard);
     });
 
-    it('exposes labels and an upgrade message', function () {
-        expect(Edition::Pro->label())->toBe('Pro')
-            ->and(Edition::proUpgradeMessage())->toContain('Pro edition');
+    it('exposes an upgrade message', function () {
+        expect(Edition::proUpgradeMessage())->toContain('Pro edition');
     });
 });

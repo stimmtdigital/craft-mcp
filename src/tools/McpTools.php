@@ -13,6 +13,7 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\support\PluginReloader;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Response;
@@ -67,6 +68,20 @@ class McpTools {
     }
 
     /**
+     * Edition-related fields for a tool-listing row: the tool's required
+     * edition and whether the active edition locks it. Extracted so the
+     * mapping can be unit-tested without booting the full tool registry.
+     *
+     * @return array{requiredEdition: string, locked: bool}
+     */
+    public static function editionFields(ToolDefinition $definition): array {
+        return [
+            'requiredEdition' => $definition->requiredEdition->value,
+            'locked' => !Mcp::currentEdition()->atLeast($definition->requiredEdition),
+        ];
+    }
+
+    /**
      * List all available MCP tools with their descriptions.
      */
     #[McpTool(
@@ -89,8 +104,7 @@ class McpTools {
                     'category' => $definition->category,
                     'dangerous' => $definition->dangerous,
                     'enabled' => Mcp::isToolEnabled($definition->name),
-                    'requiredEdition' => $definition->requiredEdition->value,
-                    'locked' => !Mcp::currentEdition()->atLeast($definition->requiredEdition),
+                    ...McpTools::editionFields($definition),
                 ];
             }
 

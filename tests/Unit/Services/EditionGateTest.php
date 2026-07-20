@@ -31,14 +31,15 @@ describe('edition gate decision', function () {
     });
 });
 
-it('lockTool replaces the handler with an upgrade message and marks the description', function () {
+it('lockTool marks the description, relaxes the schema, and returns the upgrade message', function () {
     $eventDispatcher = new \stimmt\craft\Mcp\support\EventDispatcher();
     $registry = new \Mcp\Capability\Registry($eventDispatcher, new \Psr\Log\NullLogger());
 
+    // A restrictive source schema, so relaxing it to a permissive object is observable.
     $tool = new \Mcp\Schema\Tool(
         name: 'create_entry',
         title: null,
-        inputSchema: ['type' => 'object'],
+        inputSchema: ['type' => 'object', 'required' => ['section'], 'properties' => ['section' => ['type' => 'string']]],
         description: 'Create an entry.',
         annotations: null,
     );
@@ -49,5 +50,6 @@ it('lockTool replaces the handler with an upgrade message and marks the descript
 
     $ref = $registry->getTool('create_entry');
     expect($ref->tool->description)->toStartWith('[Pro]')
+        ->and($ref->tool->inputSchema)->toBe(['type' => 'object'])
         ->and(($ref->handler)())->toBe(\stimmt\craft\Mcp\enums\Edition::proUpgradeMessage());
 });

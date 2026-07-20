@@ -2,19 +2,24 @@
 
 declare(strict_types=1);
 
+// Mcp::currentEdition() touches Yii::$app; load the plugin's Yii bootstrap,
+// matching the convention used by the other unit tests (for example
+// tests/Unit/McpEditionsTest.php). Booting a full Craft app here would clash
+// with that bootstrap (redeclare of class Yii), so listMcpTools() itself is not
+// invoked; its edition columns are produced by McpTools::editionFields(), which
+// is what this test exercises directly.
+require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
+
+use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\tools\McpTools;
 
-// listMcpTools() builds its rows from Mcp::getToolRegistry(), which needs a
-// booted Craft app (ConfigFreshness, isToolEnabled). Booting a full Craft app
-// in a unit test collides with the plugin's lightweight Yii bootstrap used by
-// the rest of the suite (redeclare of class Yii). So this task is guarded
-// structurally, the same way PrivilegedToolsTest guards the factory filter.
-// The runtime correctness of the two values is covered by their building
-// blocks: ToolDefinition->requiredEdition (ToolDefinitionTest) and
-// Edition::atLeast()/Mcp::currentEdition() (EditionTest, McpEditionsTest).
-it('emits requiredEdition and a locked flag in the tool listing', function () {
-    $src = (string) file_get_contents((new ReflectionClass(McpTools::class))->getFileName());
+it('maps requiredEdition and a locked flag onto a tool row', function () {
+    $pro = ToolDefinition::fromArray(['name' => 'create_entry', 'requiredEdition' => Edition::Pro]);
+    $free = ToolDefinition::fromArray(['name' => 'get_entry']);
 
-    expect($src)->toContain("'requiredEdition' => \$definition->requiredEdition->value")
-        ->and($src)->toContain("'locked' => !Mcp::currentEdition()->atLeast(\$definition->requiredEdition)");
+    // No plugin instance is loaded in a unit test, so the active edition is
+    // Standard: a Pro tool is locked, a Standard tool is not.
+    expect(McpTools::editionFields($pro))->toBe(['requiredEdition' => 'pro', 'locked' => true])
+        ->and(McpTools::editionFields($free))->toBe(['requiredEdition' => 'standard', 'locked' => false]);
 });
