@@ -13,9 +13,11 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
@@ -123,6 +125,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $site, $context): array {
             $entry = $this->find($id, $site, withDrafts: true);
@@ -142,6 +145,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function deleteEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $site): array {
             $entry = $this->find($id, $site, withDrafts: true);
@@ -161,6 +165,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function duplicateEntry(
         int $id,
         ?string $site = null,
@@ -198,6 +203,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {
         return SafeExecution::run(function () use ($id, $fromSite, $toSite): array {
             SiteResolver::resolve($fromSite);

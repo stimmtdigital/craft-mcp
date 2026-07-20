@@ -13,6 +13,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\elements\query\Buckets;
 use stimmt\craft\Mcp\elements\query\Filters;
 use stimmt\craft\Mcp\elements\query\Projection;
@@ -22,6 +23,7 @@ use stimmt\craft\Mcp\elements\schema\Describer;
 use stimmt\craft\Mcp\elements\schema\Meta;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\Authorization;
@@ -179,6 +181,7 @@ class EntryTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function createEntry(
         string $section,
         string $type,
@@ -236,6 +239,7 @@ class EntryTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function updateEntry(
         int $id,
         ?string $site = null,
