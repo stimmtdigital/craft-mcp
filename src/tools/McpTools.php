@@ -10,6 +10,7 @@ use Mcp\Schema\Notification\ToolListChangedNotification;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\PluginReloader;
@@ -88,6 +89,8 @@ class McpTools {
                     'category' => $definition->category,
                     'dangerous' => $definition->dangerous,
                     'enabled' => Mcp::isToolEnabled($definition->name),
+                    'requiredEdition' => $definition->requiredEdition->value,
+                    'locked' => !Mcp::currentEdition()->atLeast($definition->requiredEdition),
                 ];
             }
 
