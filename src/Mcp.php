@@ -15,6 +15,7 @@ use Override;
 use stimmt\craft\Mcp\events\RegisterPromptsEvent;
 use stimmt\craft\Mcp\events\RegisterResourcesEvent;
 use stimmt\craft\Mcp\events\RegisterToolsEvent;
+use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\models\Settings;
 use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\services\PromptRegistry;
@@ -376,6 +377,18 @@ class Mcp extends BasePlugin {
             : in_array($toolName, self::DANGEROUS_TOOLS, true); // Fallback for backwards compat
 
         return !$isDangerous || $settings->enableDangerousTools;
+    }
+
+    /**
+     * Check whether a token scope may be minted in this environment.
+     *
+     * Deliberately independent of who is asking: a scope switched off in
+     * config is off for admins too, which is the point of being able to close
+     * it per environment. Gates issuance only; tokens minted before the scope
+     * was disabled keep authenticating.
+     */
+    public static function isScopeEnabled(Scope $scope): bool {
+        return !in_array($scope->value, self::settings()->disabledScopes, true);
     }
 
     /**

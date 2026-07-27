@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `disabledScopes` closes a token scope per environment, alongside `enabled` and `enableDangerousTools`. It applies to admins too, blocks minting in the control panel and in `mcp/tokens/create`, drops the scope from the control panel's scope menu, and rejects existing tokens of that scope at authentication, so disabling a scope closes it rather than only narrowing who may mint one.
+
 ## [1.4.0-beta.9] - 2026-07-20
 
 ### Changed

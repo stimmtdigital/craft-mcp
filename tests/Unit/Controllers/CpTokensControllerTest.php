@@ -102,4 +102,22 @@ describe('CpTokensController', function () {
         expect($source)->toContain('function authorizeRevoke')
             ->and($source)->toContain('$token->userId === $currentUser->id');
     });
+
+    // disabledScopes has to be checked ahead of the admin gate: the point of
+    // closing a scope per environment is that being an admin is no longer
+    // enough to reopen it.
+    it('refuses a scope disabled in config before considering admin status', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('Mcp::isScopeEnabled($scope)')
+            ->and(strpos($source, 'Mcp::isScopeEnabled($scope)'))
+            ->toBeLessThan(strpos($source, 'Only admins can mint full-scope'));
+    });
+
+    it('offers only mintable scopes in the form, matching what authorizeCreate accepts', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function allowedScopes')
+            ->and($source)->toContain('static fn (Scope $scope): bool => Mcp::isScopeEnabled($scope)');
+    });
 });

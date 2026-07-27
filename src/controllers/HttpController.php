@@ -83,6 +83,14 @@ class HttpController extends Controller {
             return null;
         }
 
+        // Disabling a scope has to close tokens minted before it was disabled
+        // too, otherwise the setting only narrows who can mint one and leaves
+        // every existing token working -- which is the opposite of what
+        // turning a scope off in an environment is for.
+        if (!Mcp::isScopeEnabled($token->scope)) {
+            return null;
+        }
+
         $user = Craft::$app->getUsers()->getUserById($token->userId);
         if ($user === null || $user->suspended || !$user->enabled) {
             return null;

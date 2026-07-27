@@ -116,6 +116,7 @@ return [
 | `disabledTools` | `array` | `[]` | List of tool names to disable regardless of other settings |
 | `disabledPrompts` | `array` | `[]` | List of prompt names to disable |
 | `disabledResources` | `array` | `[]` | List of resource URIs to disable |
+| `disabledScopes` | `array` | `[]` | Token scopes switched off in this environment (`'readonly'`, `'content'`, `'full'`). Applies to admins too, blocks minting in both the control panel and `mcp/tokens/create`, and rejects existing tokens of that scope on every request |
 | `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
 | `paginationLimit` | `int` | `100` | Page size of MCP list endpoints (`tools/list`, `prompts/list`, `resources/list`); 100 covers every registered tool in one page. Useful when a client does not follow `nextCursor` pagination |
@@ -263,6 +264,20 @@ If you want to allow most tools but restrict a few specific ones, use the `disab
 ```
 
 Tools listed here are disabled regardless of the `enableDangerousTools` setting. Use the snake_case tool name as shown in the [Tools Reference](tools/README.md).
+
+### Disabling Token Scopes
+
+A `full`-scope token carries code execution and skips Craft permission checks, so some environments want it unmintable rather than merely restricted to admins. `disabledScopes` closes a scope per environment:
+
+```php
+'production' => [
+    'disabledScopes' => ['full'],
+],
+```
+
+A disabled scope is refused for everyone, admins included, in the control panel and in `mcp/tokens/create` alike, and it stops being offered in the control panel's scope menu.
+
+It is also checked on every HTTP request, so a token minted before its scope was disabled stops authenticating instead of being grandfathered in. That makes the setting a real guarantee about what can reach the server in an environment, the same way `disabledTools` is for tools, rather than a rule about who may press the button. Re-enabling the scope makes those tokens work again; `mcp/tokens/revoke` still applies if you want them gone permanently.
 
 ## Debugging
 

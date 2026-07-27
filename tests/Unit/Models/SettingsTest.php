@@ -35,3 +35,22 @@ it('rejects a paginationLimit below 1', function () {
 it('defaults httpSessionStore to null (built-in DB store)', function () {
     expect((new Settings())->httpSessionStore)->toBeNull();
 });
+
+describe('Settings disabledScopes', function () {
+    it('defaults to empty, leaving every scope mintable', function () {
+        expect((new Settings())->disabledScopes)->toBe([]);
+    });
+
+    it('accepts Scope values and rejects anything else', function (array $scopes, bool $valid) {
+        $settings = new Settings();
+        $settings->disabledScopes = $scopes;
+
+        expect($settings->validate(['disabledScopes']))->toBe($valid);
+    })->with([
+        [['full'], true],
+        [['readonly', 'content'], true],
+        [[], true],
+        [['admin'], false],
+        [['Full'], false],
+    ]);
+});

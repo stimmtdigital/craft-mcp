@@ -35,7 +35,7 @@ Enabling `httpTransport` registers this route only; it has no effect if `enabled
 Users can mint tokens for themselves via the control panel's My Account screen. Navigate to **My Account** and select **MCP Tokens** from the sidebar, then click **New Token**. Fill in:
 
 - **Name** (required): A display name for this token (e.g., "Anna's Laptop")
-- **Scope**: `readonly` or `content` (default: `content`). Self-service users cannot mint `full`-scope tokens; admins or token managers can.
+- **Scope**: `readonly` or `content` (default: `content`). Self-service users cannot mint `full`-scope tokens; admins or token managers can. Any scope listed in the [`disabledScopes`](configuration.md#disabling-token-scopes) setting is closed in that environment, admins included: it cannot be minted, and existing tokens carrying it are rejected at authentication.
 - **Expires in**: Optional number of days until the token expires; leave blank for a token that never expires.
 
 Click **Create** and the plaintext token appears once, along with a ready-to-paste Claude Desktop configuration snippet:

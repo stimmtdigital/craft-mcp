@@ -26,6 +26,20 @@ class Settings extends Model {
     /** @var string[] */
     public array $disabledResources = [];
 
+    /**
+     * Token scopes switched off in this environment, as Scope values
+     * ('readonly', 'content', 'full'). Applies to everyone including admins,
+     * so a scope can be closed per environment the way `enabled` and
+     * `enableDangerousTools` already are.
+     *
+     * Checked at issuance and again on every HTTP request, so a token minted
+     * before its scope was disabled stops authenticating rather than being
+     * grandfathered in -- the same hard guarantee `disabledTools` gives.
+     *
+     * @var string[]
+     */
+    public array $disabledScopes = [];
+
     public bool $enableDangerousTools = true;
 
     /**
@@ -87,6 +101,7 @@ class Settings extends Model {
         return [
             [['enabled', 'enableDangerousTools', 'httpTransport'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
+            [['disabledScopes'], 'each', 'rule' => ['in', 'range' => ['readonly', 'content', 'full']]],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
             [['paginationLimit'], 'integer', 'min' => 1],
             [['entryWriteMode'], 'in', 'range' => ['draft', 'live']],

@@ -149,6 +149,13 @@ final class CpTokensController extends Controller {
     private function authorizeCreate(int $userId, Scope $scope): void {
         $currentUser = self::currentUser();
 
+        // Checked before the admin gate below, and independently of it: a
+        // scope disabled in config is closed to admins too, so the guarantee
+        // does not rest on who happens to hold an admin account.
+        if (!Mcp::isScopeEnabled($scope)) {
+            throw new ForbiddenHttpException(Craft::t('mcp', 'The {scope} scope is disabled in this environment.', ['scope' => $scope->value]));
+        }
+
         // Full scope bypasses all read and write authorization and includes
         // code execution, so only an admin may hand it out; manageAllMcpTokens
         // alone is not enough to mint an admin-equivalent token.
@@ -220,7 +227,9 @@ final class CpTokensController extends Controller {
             $scopes[] = Scope::Full;
         }
 
-        return $scopes;
+        // Keep the form in step with authorizeCreate(): a scope that would be
+        // rejected on submit should not be offered in the first place.
+        return array_values(array_filter($scopes, static fn (Scope $scope): bool => Mcp::isScopeEnabled($scope)));
     }
 
     private function expiresInDays(): ?int {

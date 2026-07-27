@@ -65,6 +65,15 @@ class TokensController extends Controller {
             return ExitCode::USAGE;
         }
 
+        // The console runs unauthenticated as whoever has shell access, so
+        // without this check disabledScopes would be a control-panel-only
+        // guardrail that a `php craft` call walks straight past.
+        if (!Mcp::isScopeEnabled($scope)) {
+            $this->stderr("The '{$scope->value}' scope is disabled in this environment (disabledScopes).\n", Console::FG_RED);
+
+            return ExitCode::CONFIG;
+        }
+
         $name = $this->name ?? ($user->username . ' token');
         ['plaintext' => $plaintext] = (new Tokens(new RecordStore()))
             ->create((int) $user->id, $scope, $name, $this->expires);
