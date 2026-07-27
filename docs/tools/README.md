@@ -33,6 +33,8 @@ These tools let AI assistants work with your Craft content:
 | `count_entries` | Count entries with the same filters as `list_entries`; optional `groupBy` for per-attribute, per-date-bucket, or per-field-value breakdowns |
 | `get_entry` | Get one entry by id or slug, in the payload format that `create_entry`/`update_entry` accept as `fields` |
 | `create_entry` | Create an entry from payload-format `fields`; saves as a draft by default |
+| `create_nested_entry` | Create a block in a Matrix field, targeted by owner id, field handle, and entry type, without resending the owner's field value |
+| `move_nested_entry` | Move a block to a position within its Matrix field, without resending the owner's field value |
 | `update_entry` | Update an entry by id from payload-format `fields`; drafts on top of a live entry by default |
 | `list_drafts` | List pending drafts awaiting review, newest first, with publish ids and control panel links |
 | `list_revisions` | List an entry's saved revisions, newest first: who saved each one, when, and with what notes |
@@ -164,6 +166,8 @@ Some tools can modify data or execute code, which may not be appropriate in all 
 | `execute_graphql` | High | Executes GraphQL queries/mutations that can modify data |
 | `run_query` | Medium | Executes SQL queries (limited to SELECT, but still exposes data) |
 | `create_entry` | Medium | Creates new entries in your content |
+| `create_nested_entry` | Medium | Creates new blocks inside an entry's Matrix field |
+| `move_nested_entry` | Medium | Reorders blocks inside an entry's Matrix field |
 | `update_entry` | Medium | Modifies existing entry content and fields |
 | `publish_entry` | Medium | Applies a draft to its canonical entry, or enables a disabled entry |
 | `delete_entry` | Medium | Moves an entry to the trash |

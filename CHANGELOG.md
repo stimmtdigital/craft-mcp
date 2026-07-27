@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `create_nested_entry` creates a block inside a Matrix field, targeted by owner id, field handle, and entry type. A nested entry has no section of its own, so `create_entry` could not address one, and adding the first block of a type left no option but resending the owner's whole field value. An optional `position` places the block instead of appending it.
+- `move_nested_entry` moves a block to a position within its field without resending the owner's field value. Positions are 1-based and clamp to last, and the response reports the position actually taken. Order belongs to the owner rather than to the block, so a drafted reorder is a draft of the owner and `publish_entry` applies it, like any other draft-first write.
+
+### Fixed
+- Editing a single Matrix block no longer moves it to the end of its field. Applying a draft of a lone nested element cannot recover the previous `sortOrder` and falls through to `max+1`, and rows left behind by trashed blocks inflate that maximum further, so a block edited through its own id silently jumped past its siblings. The position is now read before the draft is applied and restored afterwards.
+
 ## [1.4.0-beta.9] - 2026-07-20
 
 ### Changed

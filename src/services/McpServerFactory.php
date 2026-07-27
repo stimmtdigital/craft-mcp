@@ -194,9 +194,10 @@ This MCP server provides access to a Craft CMS installation.
 1. Call `describe_entry_schema` for the section first; pass `example` (an entry id or slug) to get a real entry as a golden fixture. Every field carries an `input` shape describing the exact payload it accepts.
 2. The payload format is symmetric: what `get_entry` returns is exactly what `create_entry`/`update_entry` accept. Read one, tweak it, write it back.
 3. Use natural keys, never numeric ids: relations are `{"section": "...", "slug": "..."}`, assets `{"volume": "...", "filename": "..."}`, categories/tags `{"group": "...", "slug": "..."}`, users `{"username": "..."}`. Matrix blocks are keyed objects (`new1`, `new2`, ...) with the entry-type handle as `type`.
-4. Writes land as DRAFTS by default: the response carries `draftElementId` and a `cpEditUrl` deep link for human review; `publish_entry` makes them live. Nothing touches live content until published.
-5. Always read the `warnings` list on write responses: unresolvable natural keys become warnings, never guesses or silent drops. Validation failures return per-field errors.
-6. Multi-site installs: pass the `site` handle parameter; `copy_entry_to_site` moves content between sites.
+4. Matrix blocks are entries, so target one directly instead of resending the owner's field, which deletes any block left out: `update_entry` on a block id edits it, `create_nested_entry` adds one, `move_nested_entry` reorders, `delete_entry` removes one. Siblings stay untouched.
+5. Writes land as DRAFTS by default: the response carries `draftElementId` and a `cpEditUrl` deep link for human review; `publish_entry` makes them live. Nothing touches live content until published.
+6. Always read the `warnings` list on write responses: unresolvable natural keys become warnings, never guesses or silent drops. Validation failures return per-field errors.
+7. Multi-site installs: pass the `site` handle parameter; `copy_entry_to_site` moves content between sites.
 
 The full contract lives in the `craft://guides/content-writing` resource.
 

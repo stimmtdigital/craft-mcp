@@ -7,6 +7,8 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use craft\elements\Entry;
 use craft\elements\User;
+use craft\fields\Matrix;
+use craft\models\EntryType;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
@@ -26,6 +28,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\NestedOrder;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
@@ -231,6 +234,112 @@ class EntryTools {
     }
 
     #[McpTool(
+        name: 'create_nested_entry',
+        description: 'Create a block inside a Matrix field on an owner entry, without resending the owner\'s whole field value. Takes the owner entry id, the Matrix field handle, and the block entry type. Saves as a draft unless mode or the entryWriteMode setting says live; publish_entry attaches it, appended after the existing blocks. Use this instead of read-modify-write via update_entry, which drops any block left out of the payload.',
+        annotations: new ToolAnnotations(destructiveHint: true),
+    )]
+    #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    public function createNestedEntry(
+        int $owner,
+        string $field,
+        string $type,
+        ?string $title = null,
+        ?string $site = null,
+        ?string $fields = null,
+        ?string $mode = null,
+        ?int $position = null,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($owner, $field, $type, $title, $site, $fields, $mode, $position, $context): array {
+            $ownerEntry = $this->find($owner, null, null, $site);
+
+            // The block lives in the owner's content, so the owner is what
+            // authorization is actually about; the block has no section of
+            // its own to check.
+            Authorization::assertCanSave($ownerEntry);
+
+            $matrixField = $this->matrixField($ownerEntry, $field);
+            $entryType = $this->nestedEntryType($matrixField, $type);
+
+            $attributes = array_filter([
+                'type' => Entry::class,
+                'fieldId' => $matrixField->id,
+                'primaryOwnerId' => $ownerEntry->getCanonicalId(),
+                'ownerId' => $ownerEntry->getCanonicalId(),
+                'typeId' => $entryType->id,
+                'siteId' => $ownerEntry->siteId,
+                'title' => $title,
+            ], static fn (mixed $v): bool => $v !== null);
+
+            $result = $this->writer->create($attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
+
+            if (!$result->isFailure() && $position !== null) {
+                $this->placeBlock($result->draftElementId ?? $result->elementId, $position);
+            }
+
+            if (!$result->isFailure() && $result->state === WriteMode::Live) {
+                ResourceChangeNotifier::notifyEntry($context, $ownerEntry->getCanonicalId());
+            }
+
+            return $result->isFailure()
+                ? ['success' => false] + $result->toArray()
+                : Response::success($result->toArray());
+        }, $context);
+    }
+
+    #[McpTool(
+        name: 'move_nested_entry',
+        description: 'Move a block to a 1-based position within its Matrix field, without resending the owner\'s field value. Position 1 is first; anything past the end lands last. Draft-first like the other write tools: the reorder lands on a draft of the owner unless mode or the entryWriteMode setting says live, and publish_entry applies it.',
+        annotations: new ToolAnnotations(destructiveHint: true),
+    )]
+    #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    public function moveNestedEntry(
+        int $id,
+        int $position,
+        ?string $site = null,
+        ?string $mode = null,
+        ?RequestContext $context = null,
+    ): array {
+        return SafeExecution::run(function () use ($id, $position, $site, $mode, $context): array {
+            if ($position < 1) {
+                throw new ToolCallException("Position must be 1 or greater, got {$position}");
+            }
+
+            $block = $this->find($id, null, null, $site);
+            if ($block->getOwnerId() === null) {
+                throw new ToolCallException("Entry {$id} is not a block inside a Matrix field; only nested entries have a position");
+            }
+
+            // Authorized against the owner, like create_nested_entry: reordering
+            // changes the owner's content, not the block's own field values.
+            $ownerEntry = $this->find($block->getOwnerId(), null, null, $site);
+            Authorization::assertCanSave($ownerEntry);
+
+            // Order is stored per owner, so drafting a reorder means drafting
+            // the owner and renumbering that draft's rows. The canonical keeps
+            // its order until publish_entry applies the draft.
+            $draft = $this->mode($mode) === WriteMode::Draft && !$ownerEntry->getIsDraft()
+                ? Craft::$app->getDrafts()->createDraft($ownerEntry, $this->authorId())
+                : null;
+
+            $placed = NestedOrder::place($block, $position, $draft === null ? null : (int) $draft->id);
+
+            if ($draft === null) {
+                ResourceChangeNotifier::notifyEntry($context, $ownerEntry->getCanonicalId());
+            }
+
+            return Response::success([
+                'moved' => $id,
+                'owner' => $ownerEntry->getCanonicalId(),
+                'position' => $placed,
+                'state' => $draft === null ? WriteMode::Live->value : WriteMode::Draft->value,
+                'draftElementId' => $draft?->id,
+                'cpEditUrl' => ($draft ?? $ownerEntry)->getCpEditUrl(),
+            ]);
+        }, $context);
+    }
+
+    #[McpTool(
         name: 'update_entry',
         description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change. Matrix-family blocks are entries too: pass a block\'s own id to edit just that block without touching its siblings.',
         annotations: new ToolAnnotations(destructiveHint: true),
@@ -363,6 +472,56 @@ class EntryTools {
         }
 
         throw new ToolCallException("Entry type '{$handle}' not found in section '{$section->handle}'");
+    }
+
+    /**
+     * Position a freshly created block. Ordering lives in the ownership row,
+     * which exists as soon as the block is saved, so this works on a draft
+     * too: publish_entry preserves the position instead of re-appending.
+     */
+    private function placeBlock(?int $id, int $position): void {
+        $block = $id === null
+            ? null
+            : Entry::find()->id($id)->drafts(null)->status(null)->one();
+
+        if ($block instanceof Entry) {
+            NestedOrder::place($block, $position);
+        }
+    }
+
+    private function matrixField(Entry $owner, string $handle): Matrix {
+        $layout = $owner->getFieldLayout();
+        $available = [];
+
+        foreach ($layout?->getCustomFields() ?? [] as $field) {
+            if (!$field instanceof Matrix) {
+                continue;
+            }
+
+            if ($field->handle === $handle) {
+                return $field;
+            }
+
+            $available[] = $field->handle;
+        }
+
+        $hint = $available === [] ? 'it has none' : 'available: ' . implode(', ', $available);
+
+        throw new ToolCallException("Matrix field '{$handle}' not found on entry {$owner->id} ({$hint})");
+    }
+
+    private function nestedEntryType(Matrix $field, string $handle): EntryType {
+        $available = [];
+
+        foreach ($field->getEntryTypes() as $entryType) {
+            if ($entryType->handle === $handle) {
+                return $entryType;
+            }
+
+            $available[] = $entryType->handle;
+        }
+
+        throw new ToolCallException("Entry type '{$handle}' is not allowed in field '{$field->handle}' (available: " . implode(', ', $available) . ')');
     }
 
     private function fieldsPayload(?string $fields): array {
