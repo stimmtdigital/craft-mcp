@@ -31,6 +31,23 @@ describe('EntryWorkflowTools structure', function () {
             ->and($source)->toContain('multiple pending drafts')
             ->and($source)->toContain('nothing to publish');
     });
+
+    // A nested element's position lives in elements_owners, which applying a
+    // draft rewrites from max+1 because it cannot recover the previous value.
+    // Without reading it first and putting it back, publishing an edit to one
+    // block silently moves that block to the end of its field.
+    it('preserves a nested block\'s position across applyDraft', function () {
+        $source = (string) file_get_contents((new ReflectionClass(EntryWorkflowTools::class))->getFileName());
+
+        $capture = strpos($source, 'NestedOrder::capture($draft)');
+        $apply = strpos($source, 'applyDraft($draft)');
+        $restore = strpos($source, 'NestedOrder::restore($applied');
+
+        expect($capture)->not->toBeFalse()
+            ->and($restore)->not->toBeFalse()
+            ->and($capture)->toBeLessThan($apply)
+            ->and($restore)->toBeGreaterThan($apply);
+    });
 });
 
 describe('publish_entry resource notification', function () {

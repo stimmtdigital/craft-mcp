@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\NestedOrder;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
@@ -272,7 +273,13 @@ class EntryWorkflowTools {
      * default draft-first flow, so this is where the resource push belongs.
      */
     private function applyDraft(Entry $draft, ?string $site, ?RequestContext $context): array {
+        // Read the position before applying: for a nested element, applying
+        // cannot recover it and appends instead, so editing one block would
+        // silently move it to the end of its field.
+        $sortOrder = NestedOrder::capture($draft);
         $applied = Craft::$app->getDrafts()->applyDraft($draft);
+        NestedOrder::restore($applied, $sortOrder);
+
         ResourceChangeNotifier::notifyEntry($context, (int) $applied->id);
 
         return Response::success(['entry' => $this->reader->read($applied, $site)]);

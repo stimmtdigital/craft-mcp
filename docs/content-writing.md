@@ -52,7 +52,9 @@ That id works directly with the entry tools, same as any other entry id:
 
 This is the safer default for a single-block change. Sending the owner's Matrix field through `update_entry` replaces the field's entire value; any block left out of the payload is deleted. Targeting a block's own id skips that risk entirely, since the owner's field value and every sibling block are never touched.
 
-One limit: this only reaches a block whose type already appears somewhere in the field. Adding the first-ever block of a brand new type still needs the full owner-field payload.
+Adding a block works the same way, through `create_nested_entry owner=<ownerId> field=<matrixFieldHandle> type=<entryTypeHandle>`. It creates the block against the owner's field directly. `publish_entry` then attaches it, appended after the existing blocks, or at `position` when one is given.
+
+Reordering is `move_nested_entry id=<blockId> position=<n>`, which also leaves sibling content untouched. Order belongs to the owner rather than to the block, so a drafted reorder lands on a draft of the owner: the response carries that draft's id, the live page keeps its order, and `publish_entry` applies it like any other write.
 
 ## Discover the Shape First: describe_entry_schema
 

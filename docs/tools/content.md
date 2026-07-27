@@ -279,6 +279,107 @@ create_entry section="pages" type="page" title="Team" parent="about"
 
 ---
 
+### create_nested_entry
+
+Create a block inside a Matrix field on an owner entry. A nested entry has no section of its own, so `create_entry` cannot address one; this tool targets the block by owner entry id, Matrix field handle, and block entry-type handle instead. Saves as a draft unless `mode` or the `entryWriteMode` setting says `live`; `publish_entry` then attaches it, appended after the existing blocks.
+
+Prefer this over rebuilding the owner's whole field value with `update_entry`: that payload has to carry every sibling block, and any block left out is removed. 
+
+> **Note:** This is a dangerous tool that can be disabled via configuration.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `owner` | int | Yes | Id of the entry that owns the Matrix field |
+| `field` | string | Yes | Matrix field handle on the owner's field layout |
+| `type` | string | Yes | Entry type handle for the new block, which the field must allow |
+| `title` | string | No | Block title, for block types that have a title field |
+| `site` | string | No | Site to create the block on (defaults to the owner's site) |
+| `fields` | string | No | JSON string in the payload format, containing the block's field values |
+| `mode` | string | No | `"draft"` or `"live"`, overriding the `entryWriteMode` setting for this call |
+| `position` | int | No | 1-based position within the field; appends when omitted, and clamps to last when past the end |
+
+**Examples:**
+
+```
+# Add a block, then attach it
+create_nested_entry owner=231592 field="cards" type="textCard"
+publish_entry id=231719
+
+# Add a block with field values in one call
+create_nested_entry owner=231592 field="cards" type="textCard" fields='{"heading": "Our approach"}'
+
+# Insert as the second block rather than appending
+create_nested_entry owner=231592 field="cards" type="textCard" position=2
+
+# Attach immediately, skipping the draft step
+create_nested_entry owner=231592 field="cards" type="mediaCard" mode="live"
+```
+
+**Response:**
+
+Same shape as `create_entry`. `elementId` is the block's own id, which `get_entry`, `update_entry`, and `delete_entry` all accept directly.
+
+Authorization is checked against the owner entry, since the block is written into the owner's content. Unknown handles are rejected with the valid options listed: a wrong `field` reports the owner's Matrix field handles, and a wrong `type` reports the entry types that field allows.
+
+---
+
+### move_nested_entry
+
+Move a block to a different position within its Matrix field, without resending the owner's field value.
+
+Positions are 1-based, and anything past the end lands last, so "make this the final block" does not require counting the field first. The response reports the position actually taken.
+
+Order belongs to the owner rather than to the block: each owner keeps its own record of where its blocks sit, and a draft of an entry carries its own copy. So a drafted reorder is a draft *of the owner*. The live entry keeps its order until `publish_entry` applies it, exactly like any other draft-first write.
+
+> **Note:** This is a dangerous tool that can be disabled via configuration.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `id` | int | Yes | The block's own entry id |
+| `position` | int | Yes | 1-based target position within the field; clamped to last when past the end |
+| `site` | string | No | Site to resolve the block on |
+| `mode` | string | No | `"draft"` or `"live"`, overriding the `entryWriteMode` setting for this call |
+
+**Examples:**
+
+```
+# Make a block the first in its field, then apply it
+move_nested_entry id=231596 position=1
+publish_entry id=231767
+
+# Send a block to the end
+move_nested_entry id=231594 position=999
+
+# Reorder the live entry immediately, skipping the draft step
+move_nested_entry id=231596 position=1 mode="live"
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "moved": 231596,
+  "owner": 231592,
+  "position": 1,
+  "state": "draft",
+  "draftElementId": 231767,
+  "cpEditUrl": "https://example.com/admin/content/entries/pages/231592-about?draftId=23838"
+}
+```
+
+`draftElementId` is the owner's draft, which is what `publish_entry` takes; it is `null` and `state` is `"live"` when the reorder went straight to the canonical entry.
+
+Authorization is checked against the owner, as with `create_nested_entry`, because reordering changes the owner's content rather than the block's own values. Passing an entry that is not a block returns an error naming the id.
+
+Reordering renumbers the field's live blocks contiguously. Blocks in the trash keep their ownership records, so a field that has had blocks deleted may start with gaps; a move closes them.
+
+---
+
 ### update_entry
 
 Update an entry by id. In draft mode (the default) a live entry gets a draft on top rather than being changed directly; `publish_entry` applies it. `fields` is payload-format JSON; only the values you supply change.
