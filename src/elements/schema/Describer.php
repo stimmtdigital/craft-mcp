@@ -15,9 +15,13 @@ use craft\models\FieldLayout;
  * Walks a field layout into a schema description: custom fields with their
  * layout-level overrides, native layout fields, Matrix block types with
  * depth-limited expansion (depth > 0 expands sub-fields one level shallower
- * per recursion; a top-level matrix at depth 0 still names its block types).
+ * per recursion; a matrix whose depth budget is exhausted still names its
+ * block types, at any nesting level, not only at the top).
  * Every field also carries a machine-readable input shape from Shape, which
- * is the single source of the field's kind.
+ * is the single source of the field's kind. For Matrix fields, `blockTypes`
+ * is the ONLY place nested block-type structure (fields, instructions) is
+ * expanded; the field's own `input` carries just a flat set of block-type
+ * handles, never a second recursive copy of the same tree.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -29,7 +33,7 @@ final readonly class Describer {
     }
 
     public function describe(?FieldLayout $layout, int $depth = 1): array {
-        return $this->fields($layout, $depth, top: true);
+        return $this->fields($layout, $depth);
     }
 
     public function natives(?FieldLayout $layout): array {
@@ -51,18 +55,18 @@ final readonly class Describer {
         return $natives;
     }
 
-    private function fields(?FieldLayout $layout, int $depth, bool $top): array {
+    private function fields(?FieldLayout $layout, int $depth): array {
         if ($layout === null) {
             return [];
         }
 
         return array_map(
-            fn (CustomField $element): array => $this->field($element, $depth, $top),
+            fn (CustomField $element): array => $this->field($element, $depth),
             array_values($layout->getCustomFieldElements()),
         );
     }
 
-    private function field(CustomField $element, int $depth, bool $top): array {
+    private function field(CustomField $element, int $depth): array {
         $field = $element->getField();
         $input = $this->shape->of($field, $depth + 1);
 
@@ -90,7 +94,7 @@ final readonly class Describer {
         if ($field instanceof Matrix) {
             $described['blockTypes'] = $depth > 0
                 ? $this->expandedBlockTypes($field, $depth - 1)
-                : ($top ? $this->namedBlockTypes($field) : []);
+                : $this->namedBlockTypes($field);
         }
 
         return $described;
@@ -102,7 +106,7 @@ final readonly class Describer {
                 'handle' => (string) $type->handle,
                 'name' => (string) $type->name,
                 'hasTitleField' => $type->hasTitleField,
-                'fields' => $this->fields($type->getFieldLayout(), $depth, top: false),
+                'fields' => $this->fields($type->getFieldLayout(), $depth),
             ],
             $field->getEntryTypes(),
         );

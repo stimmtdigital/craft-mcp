@@ -407,19 +407,18 @@ describe_entry_schema section="pages" type="page" example="about"
         "kind": "matrix",
         "payload": "{blockKey: {type, enabled, title?, fields}}",
         "blockTypes": {
-          "contentBlock": {
-            "hasTitleField": false,
-            "fields": {
-              "natives": [],
-              "fields": {
-                "contentExtensive": { "input": { "kind": "scalar", "valueType": "..." } }
-              }
-            }
-          }
+          "contentBlock": { "hasTitleField": false }
         }
       },
       "blockTypes": [
-        { "handle": "contentBlock", "name": "Content Block", "hasTitleField": false, "fields": [] }
+        {
+          "handle": "contentBlock",
+          "name": "Content Block",
+          "hasTitleField": false,
+          "fields": [
+            { "handle": "contentExtensive", "name": "Content", "kind": "scalar", "required": false, "input": { "kind": "scalar", "valueType": "..." } }
+          ]
+        }
       ]
     }
   ]
@@ -428,7 +427,7 @@ describe_entry_schema section="pages" type="page" example="about"
 
 `meta` lists the entry's writable native attributes: everything Craft's own validation allows on save, minus internal bookkeeping attributes (`id`, `uid`, `siteId`, `siteSettingsId`, `fieldLayoutId`, `contentId`, `canonicalId`, `dateCreated`, `dateUpdated`, `dateDeleted`, `dateLastMerged`, `draftId`, `revisionId`, structure attributes, and similar) and custom field handles, which are covered separately under `fields`. The exact list is inferred per entry type and Craft version; call this tool for the section you're writing to rather than assuming.
 
-Relation fields carry both a top-level `target` (the related element type and its configured sources) and an `input.item` key shape. Matrix fields carry both a top-level `blockTypes` list (depth-expanded, in the same shape as this response's own `fields`) and an `input.blockTypes` map used purely to describe the write payload. See [Content Writing: Discover the Shape First](../content-writing.md#discover-the-shape-first-describe_entry_schema) for the full table of `kind` values and what each `input` shape means.
+Relation fields carry both a top-level `target` (the related element type and its configured sources) and an `input.item` key shape. Matrix fields carry a top-level `blockTypes` list, the single depth-expanded representation of each type's sub-fields (same shape as this response's own `fields`, including per-field `instructions`), plus a flat `input.blockTypes` map (`{handle: {hasTitleField}}`) that only enumerates the valid block-type handles for the write payload. See [Content Writing: Discover the Shape First](../content-writing.md#discover-the-shape-first-describe_entry_schema) for the full table of `kind` values and what each `input` shape means.
 
 ---
 

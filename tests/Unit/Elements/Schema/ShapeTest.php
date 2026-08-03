@@ -158,17 +158,13 @@ describe('Shape::of', function () {
             ->and($out['columns']['col1']['handle'])->toBe('label');
     });
 
-    it('expands matrix block types into per-type field shapes', function () {
-        $layout = Layouts::with([new CustomField(new PlainText(['handle' => 'text']))]);
-        $type = new class ($layout) extends EntryType {
-            public function __construct(private readonly FieldLayout $blockLayout) {
-                parent::__construct(['handle' => 'contentBlock', 'hasTitleField' => true]);
-            }
-
-            public function getFieldLayout(): FieldLayout {
-                return $this->blockLayout;
-            }
-        };
+    it('names matrix block types without expanding their fields', function () {
+        // Deliberately not recursing into each block type's field layout:
+        // Describer's own `blockTypes` list is the one place that expansion
+        // happens (handle, name, instructions, nested input per field).
+        // Shape's job here is only to name the block types, so kind and the
+        // sibling Describer list stay accurate without doing that walk twice.
+        $type = new EntryType(['handle' => 'contentBlock', 'hasTitleField' => true]);
         $matrix = new class ($type) extends Matrix {
             public function __construct(private readonly EntryType $only) {
                 parent::__construct(['handle' => 'builder']);
@@ -182,8 +178,7 @@ describe('Shape::of', function () {
         $out = (new Shape())->of($matrix);
 
         expect($out['kind'])->toBe('matrix')
-            ->and($out['blockTypes']['contentBlock']['hasTitleField'])->toBeTrue()
-            ->and($out['blockTypes']['contentBlock']['fields']['fields'])->toHaveKey('text');
+            ->and($out['blockTypes'])->toBe(['contentBlock' => ['hasTitleField' => true]]);
     });
 
     it('walks a layout into native attributes and recursed custom fields', function () {

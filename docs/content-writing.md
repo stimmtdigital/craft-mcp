@@ -70,7 +70,7 @@ The `input` shape is the key to third-party fields. Kinds and what their input l
 |------|-------|
 | `scalar` | Plain value; `valueType` names the PHP type, with hints for dates (ISO 8601 string) and rich-text fields (HTML string) |
 | `relation` | List of natural-key maps; `item` gives the key shape, `elementType` the target |
-| `matrix` | Block objects as above; `blockTypes` expands each type's sub-fields |
+| `matrix` | Block objects as above; `blockTypes` lists the valid block-type handles (`{handle: {hasTitleField}}`); each type's sub-fields are expanded once in the field's top-level `blockTypes` list |
 | `link` | Single link object for the core Link field; `types` maps each configured type to its key shape |
 | `links` | List of link objects (Hyper-style fields); `linkTypes` expands each type's native attributes and custom sub-fields; put native attributes at the link object's top level and custom sub-fields under a nested `fields` object |
 | `options` | One (or a list, when `multiple`) of `allowedValues` |

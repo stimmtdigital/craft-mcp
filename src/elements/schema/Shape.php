@@ -104,7 +104,7 @@ final readonly class Shape {
     private function core(FieldInterface $field, int $depth): ?array {
         return match (true) {
             $field instanceof BaseRelationField => $this->relation($field),
-            $field instanceof Matrix => $this->matrix($field, $depth),
+            $field instanceof Matrix => $this->matrix($field),
             $field instanceof LinkField => $this->link($field),
             $field instanceof BaseOptionsField => $this->options($field),
             $field instanceof Table => $this->table($field),
@@ -167,15 +167,19 @@ final readonly class Shape {
     }
 
     /**
+     * A flat block-type summary, deliberately not recursed: Describer already
+     * walks the same field layout to build its own `blockTypes` list (handle,
+     * name, instructions, nested `input` per field), so expanding fields here
+     * too would redo that whole walk a second time for every Matrix field.
+     * This keeps Shape's own contract of naming block handles for Matrix
+     * without becoming a second source of nested structure.
+     *
      * @return array<string, mixed>
      */
-    private function matrix(Matrix $field, int $depth): array {
+    private function matrix(Matrix $field): array {
         $blockTypes = [];
         foreach ($field->getEntryTypes() as $type) {
-            $blockTypes[(string) $type->handle] = [
-                'hasTitleField' => (bool) $type->hasTitleField,
-                'fields' => $this->ofLayout($type->getFieldLayout(), $depth - 1),
-            ];
+            $blockTypes[(string) $type->handle] = ['hasTitleField' => (bool) $type->hasTitleField];
         }
 
         return ['kind' => 'matrix', 'payload' => '{blockKey: {type, enabled, title?, fields}}', 'blockTypes' => $blockTypes];
