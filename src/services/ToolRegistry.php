@@ -228,7 +228,7 @@ final class ToolRegistry {
         $this->ensureInitialized();
 
         $bySource = array_map(
-            static fn (array $definitions): int => count($definitions),
+            count(...),
             $this->getDefinitionsBySource(),
         );
 

@@ -210,8 +210,8 @@ class McpServerFactory {
 
         return $this->baseInstructions()
             . $this->scopeNote($scope)
-            . self::availabilityNote($disabledCited)
-            . self::installNote(Mcp::settings()->additionalInstructions);
+            . $this->availabilityNote($disabledCited)
+            . $this->installNote(Mcp::settings()->additionalInstructions);
     }
 
     /**
@@ -235,7 +235,7 @@ class McpServerFactory {
      *
      * @param string[] $disabledCited
      */
-    private static function availabilityNote(array $disabledCited): string {
+    private function availabilityNote(array $disabledCited): string {
         if ($disabledCited === []) {
             return '';
         }
@@ -251,7 +251,7 @@ class McpServerFactory {
      * which is the owner's call and their token budget. Pure and static so
      * it tests without Craft settings; blank input means nothing to add.
      */
-    private static function installNote(string $additionalInstructions): string {
+    private function installNote(string $additionalInstructions): string {
         $trimmed = trim($additionalInstructions);
         if ($trimmed === '') {
             return '';

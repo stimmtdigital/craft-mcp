@@ -93,7 +93,7 @@ final readonly class Shape {
             return ['kind' => 'nested', 'truncated' => true];
         }
 
-        return $this->core($field, $depth) ?? $this->probed($field, $depth) ?? $this->scalar($field);
+        return $this->core($field) ?? $this->probed($field, $depth) ?? $this->scalar($field);
     }
 
     /**
@@ -101,7 +101,7 @@ final readonly class Shape {
      *
      * @return array<string, mixed>|null
      */
-    private function core(FieldInterface $field, int $depth): ?array {
+    private function core(FieldInterface $field): ?array {
         return match (true) {
             $field instanceof BaseRelationField => $this->relation($field),
             $field instanceof Matrix => $this->matrix($field),
