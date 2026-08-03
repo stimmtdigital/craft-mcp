@@ -102,4 +102,43 @@ describe('CpTokensController', function () {
         expect($source)->toContain('function authorizeRevoke')
             ->and($source)->toContain('$token->userId === $currentUser->id');
     });
+
+    // #48: the dropdown (allowedScopes()) used to offer Full whenever the
+    // current user held manageAllMcpTokens, while authorizeCreate() only
+    // accepted Full for real admins. A manager without the admin flag could
+    // see Full listed and still get a 403 on submit. Both call sites must
+    // now consult the same admin predicate so they can never disagree again.
+    it('gates Full via one shared admin predicate consumed by both the dropdown and creation', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function fullScopeAllowed')
+            ->and($source)->toContain('$this->fullScopeAllowed(self::currentUser())')
+            ->and($source)->toContain('$this->fullScopeAllowed($currentUser)')
+            ->and($source)->not->toContain("checkPermission('manageAllMcpTokens')");
+    });
+
+    // #48: disabledScopes is a per-environment guardrail that beats every
+    // permission, admin included. The dropdown drops a disabled scope
+    // entirely (reporter's stated preference over a submit-time 403), and
+    // creation rejects it server-side too, in case a request bypasses the
+    // dropdown. Both consult the same Scope::isDisabled() predicate.
+    it('drops disabled scopes from the dropdown and rejects them at create time for everyone', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function authorizeScopeEnabled')
+            ->and($source)->toContain('->isDisabled(Mcp::settings()->disabledScopes)')
+            ->and($source)->toContain('scope is disabled on this install')
+            ->and($source)->toContain('!$scope->isDisabled($disabled)');
+    });
+
+    // #48: existing tokens of a now-disabled scope must keep regenerating,
+    // so disabledScopes only gates *new* minting. authorizeScopeEnabled()
+    // must appear exactly twice in the file: its own declaration and the one
+    // call site in actionCreate(). A third occurrence would mean
+    // actionRegenerate() started gating on it too.
+    it('does not gate regenerate on disabledScopes', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect(substr_count($source, 'authorizeScopeEnabled'))->toBe(2);
+    });
 });
