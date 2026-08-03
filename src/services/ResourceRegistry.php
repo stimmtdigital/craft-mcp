@@ -10,6 +10,7 @@ use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\resources\ConfigResources;
 use stimmt\craft\Mcp\resources\EntryResources;
+use stimmt\craft\Mcp\resources\GuideResources;
 use stimmt\craft\Mcp\resources\SchemaResources;
 
 /**
@@ -30,6 +31,7 @@ final class ResourceRegistry {
     private const array CORE_RESOURCES = [
         ConfigResources::class,
         EntryResources::class,
+        GuideResources::class,
         SchemaResources::class,
     ];
 

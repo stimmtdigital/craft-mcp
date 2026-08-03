@@ -85,6 +85,8 @@ class McpServerFactory {
 
         $server = $builder->build();
         $this->filterTools($registry, $scope);
+        $this->filterPrompts($registry);
+        $this->filterResources($registry);
 
         return $server;
     }
@@ -175,6 +177,87 @@ class McpServerFactory {
         }
 
         return in_array($definition->name, Mcp::settings()->scopedTokenPrivilegedTools, true);
+    }
+
+    /**
+     * Unregister every prompt disabledPrompts disallows and, mirroring
+     * filterTools()'s deny-by-default sweep, any SDK-registered prompt with
+     * no informational definition. Attribute discovery registers every
+     * #[McpPrompt] method it finds unconditionally, including ones the
+     * informational PromptRegistry omits, so an undefined prompt has not
+     * passed the check above and is denied by default rather than left live.
+     * Prompts carry no scope semantics; that stays a tool-only axis.
+     */
+    private function filterPrompts(Registry $registry): void {
+        $definitions = Mcp::getPromptRegistry()->getDefinitions();
+
+        foreach ($definitions as $definition) {
+            if (!Mcp::isPromptEnabled($definition->name)) {
+                $registry->unregisterPrompt($definition->name);
+            }
+        }
+
+        foreach (array_keys($registry->getPrompts()->references) as $name) {
+            if (!isset($definitions[$name])) {
+                $registry->unregisterPrompt($name);
+            }
+        }
+    }
+
+    /**
+     * Same enforcement as filterPrompts(), for resources. Static resources
+     * and resource templates are separate SDK collections (keyed by URI and
+     * uriTemplate respectively), so both are checked against
+     * disabledResources and swept for deny-by-default independently.
+     */
+    private function filterResources(Registry $registry): void {
+        $definitions = Mcp::getResourceRegistry()->getDefinitions();
+
+        foreach ($definitions as $definition) {
+            if (Mcp::isResourceEnabled($definition->uri)) {
+                continue;
+            }
+
+            $definition->isTemplate
+                ? $registry->unregisterResourceTemplate($definition->uri)
+                : $registry->unregisterResource($definition->uri);
+        }
+
+        $this->sweepResources($registry, $definitions);
+    }
+
+    /**
+     * Deny-by-default sweep for both SDK resource collections. The
+     * informational ResourceRegistry keys template definitions by name (see
+     * RegisterResourcesEvent), so definitions are re-indexed by URI here
+     * rather than matched against their array keys directly.
+     *
+     * @param array<string, ResourceDefinition> $definitions
+     */
+    private function sweepResources(Registry $registry, array $definitions): void {
+        $staticUris = [];
+        $templateUris = [];
+        foreach ($definitions as $definition) {
+            if ($definition->isTemplate) {
+                $templateUris[$definition->uri] = true;
+
+                continue;
+            }
+
+            $staticUris[$definition->uri] = true;
+        }
+
+        foreach (array_keys($registry->getResources()->references) as $uri) {
+            if (!isset($staticUris[$uri])) {
+                $registry->unregisterResource($uri);
+            }
+        }
+
+        foreach (array_keys($registry->getResourceTemplates()->references) as $uriTemplate) {
+            if (!isset($templateUris[$uriTemplate])) {
+                $registry->unregisterResourceTemplate($uriTemplate);
+            }
+        }
     }
 
     /**
