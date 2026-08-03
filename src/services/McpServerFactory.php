@@ -133,13 +133,28 @@ class McpServerFactory {
      * external event-registered tools are covered too.
      */
     private function filterTools(Registry $registry, ?Scope $scope): void {
-        foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
+        $definitions = Mcp::getToolRegistry()->getDefinitions();
+
+        foreach ($definitions as $definition) {
             $allowed = Mcp::isToolEnabled($definition->name)
                 && ($scope === null || $scope->allows($definition->category, $definition->dangerous))
                 && $this->privilegedAllowed($definition, $scope);
 
             if (!$allowed) {
                 $registry->unregisterTool($definition->name);
+            }
+        }
+
+        // SDK attribute discovery (setDiscovery() in create()) registers every
+        // #[McpTool] method it finds unconditionally, including
+        // ConditionalToolProvider classes whose isAvailable() is false, which
+        // the informational registry above deliberately omits. Anything the
+        // SDK registered that has no definition here has not passed any of
+        // the checks in the loop above, so deny it by default rather than
+        // leaving it live and ungoverned.
+        foreach (array_keys($registry->getTools()->references) as $name) {
+            if (!isset($definitions[$name])) {
+                $registry->unregisterTool($name);
             }
         }
     }
