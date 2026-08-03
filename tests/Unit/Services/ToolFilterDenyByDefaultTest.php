@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
-require_once dirname(__DIR__, 3) . '/vendor/craftcms/cms/src/Craft.php';
+if (!class_exists('Craft', false)) {
+    require dirname(__DIR__, 3) . '/vendor/craftcms/cms/src/Craft.php';
+}
 
 use Mcp\Capability\Registry;
 use Mcp\Schema\Tool;

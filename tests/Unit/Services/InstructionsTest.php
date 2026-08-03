@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
-require_once dirname(__DIR__, 3) . '/vendor/craftcms/cms/src/Craft.php';
+if (!class_exists('Craft', false)) {
+    require dirname(__DIR__, 3) . '/vendor/craftcms/cms/src/Craft.php';
+}
 
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
@@ -32,12 +34,12 @@ it('softens the Full scope note to admit only what this install exposes', functi
 it('returns an empty availability note when nothing cited is disabled', function () {
     $method = new ReflectionMethod(McpServerFactory::class, 'availabilityNote');
 
-    expect($method->invoke(null, []))->toBe('');
+    expect($method->invoke(new McpServerFactory(), []))->toBe('');
 });
 
 it('lists exactly the given disabled tool names in the availability note', function () {
     $method = new ReflectionMethod(McpServerFactory::class, 'availabilityNote');
-    $note = $method->invoke(null, ['run_query', 'tinker']);
+    $note = $method->invoke(new McpServerFactory(), ['run_query', 'tinker']);
 
     expect($note)->toContain('## Availability')
         ->toContain('`run_query`')
@@ -55,13 +57,13 @@ it('leaves the install note absent from getInstructions() when additionalInstruc
 it('returns an empty install note for blank additionalInstructions', function () {
     $method = new ReflectionMethod(McpServerFactory::class, 'installNote');
 
-    expect($method->invoke(null, ''))->toBe('')
-        ->and($method->invoke(null, '   '))->toBe('');
+    expect($method->invoke(new McpServerFactory(), ''))->toBe('')
+        ->and($method->invoke(new McpServerFactory(), '   '))->toBe('');
 });
 
 it('renders non-empty additionalInstructions under a This Install heading', function () {
     $method = new ReflectionMethod(McpServerFactory::class, 'installNote');
-    $note = $method->invoke(null, 'Read the house style guide before writing content.');
+    $note = $method->invoke(new McpServerFactory(), 'Read the house style guide before writing content.');
 
     expect($note)->toContain('## This Install')
         ->toContain('Read the house style guide before writing content.');
