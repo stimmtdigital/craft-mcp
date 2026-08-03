@@ -35,3 +35,12 @@ it('rejects a paginationLimit below 1', function () {
 it('defaults httpSessionStore to null (built-in DB store)', function () {
     expect((new Settings())->httpSessionStore)->toBeNull();
 });
+
+it('defaults additionalInstructions to an empty string and validates as a string', function () {
+    $settings = new Settings();
+
+    expect($settings->additionalInstructions)->toBe('');
+
+    $settings->additionalInstructions = 'Read the house style guide before writing content.';
+    expect($settings->validate(['additionalInstructions']))->toBeTrue();
+});

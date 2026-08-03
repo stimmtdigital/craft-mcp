@@ -104,6 +104,14 @@ return [
     'scopedTokenPrivilegedTools' => [
         'read_logs',
     ],
+
+    // Text appended to the server instructions, on every transport, after
+    // everything else the plugin adds. The only channel that reaches an
+    // agent unconditionally on connect, so it's the place for guidance an
+    // agent must know before its first write: a house style guide, staging
+    // vs. production framing, an internal approval step.
+    // Default: '' (nothing added)
+    'additionalInstructions' => '',
 ];
 ```
 
@@ -126,6 +134,7 @@ return [
 | `httpSessionStore` | `mixed` | `null` | Session storage for the HTTP transport. Null uses the built-in database-backed store; set a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable returning one, for a custom store |
 | `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
 | `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
+| `additionalInstructions` | `string` | `''` | Since 1.4.0. Text appended to the server instructions, on every transport (stdio and HTTP alike), after everything else the plugin adds |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 

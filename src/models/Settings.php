@@ -80,6 +80,14 @@ class Settings extends Model {
     public ?string $httpPublicUrl = null;
 
     /**
+     * Install-owner text appended to the server instructions, on every
+     * transport, absolutely last (after every other note the plugin
+     * computes). Empty by default, so it costs nothing on installs that
+     * don't set it.
+     */
+    public string $additionalInstructions = '';
+
+    /**
      * @return array<int, array<int|string, mixed>>
      */
     #[Override]
@@ -94,6 +102,7 @@ class Settings extends Model {
             [['httpPath'], 'match', 'pattern' => '/^[a-z0-9\-\/]+$/i'],
             [['httpSessionTtl'], 'integer', 'min' => 60],
             [['httpPublicUrl'], 'url', 'skipOnEmpty' => true],
+            [['additionalInstructions'], 'string'],
         ];
     }
 }

@@ -2,7 +2,12 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
+require_once dirname(__DIR__, 3) . '/vendor/craftcms/cms/src/Craft.php';
+
 use stimmt\craft\Mcp\http\Scope;
+use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\models\Settings;
 use stimmt\craft\Mcp\services\McpServerFactory;
 
 it('teaches the tool-selection ladder in the base instructions', function () {
@@ -38,4 +43,48 @@ it('lists exactly the given disabled tool names in the availability note', funct
         ->toContain('`run_query`')
         ->toContain('`tinker`')
         ->not->toContain('`get_entry`');
+});
+
+it('leaves the install note absent from getInstructions() when additionalInstructions is unset', function () {
+    $method = new ReflectionMethod(McpServerFactory::class, 'getInstructions');
+    $instructions = $method->invoke(new McpServerFactory());
+
+    expect($instructions)->not->toContain('## This Install');
+});
+
+it('returns an empty install note for blank additionalInstructions', function () {
+    $method = new ReflectionMethod(McpServerFactory::class, 'installNote');
+
+    expect($method->invoke(null, ''))->toBe('')
+        ->and($method->invoke(null, '   '))->toBe('');
+});
+
+it('renders non-empty additionalInstructions under a This Install heading', function () {
+    $method = new ReflectionMethod(McpServerFactory::class, 'installNote');
+    $note = $method->invoke(null, 'Read the house style guide before writing content.');
+
+    expect($note)->toContain('## This Install')
+        ->toContain('Read the house style guide before writing content.');
+});
+
+it('appends the install note absolutely last, after the availability note', function () {
+    $settingsProperty = new ReflectionProperty(Mcp::class, 'loadedSettings');
+    $original = $settingsProperty->getValue();
+
+    try {
+        $settings = new Settings();
+        $settings->disabledTools = ['run_query'];
+        $settings->additionalInstructions = 'Read the house style guide before writing content.';
+        $settingsProperty->setValue(null, $settings);
+
+        $method = new ReflectionMethod(McpServerFactory::class, 'getInstructions');
+        $instructions = $method->invoke(new McpServerFactory());
+
+        expect($instructions)->toContain('## Availability')
+            ->toContain('## This Install')
+            ->toContain('Read the house style guide before writing content.')
+            ->and(strpos($instructions, '## Availability'))->toBeLessThan(strpos($instructions, '## This Install'));
+    } finally {
+        $settingsProperty->setValue(null, $original);
+    }
 });

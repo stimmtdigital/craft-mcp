@@ -208,7 +208,10 @@ class McpServerFactory {
             static fn (string $name): bool => !Mcp::isToolEnabled($name),
         ));
 
-        return $this->baseInstructions() . $this->scopeNote($scope) . self::availabilityNote($disabledCited);
+        return $this->baseInstructions()
+            . $this->scopeNote($scope)
+            . self::availabilityNote($disabledCited)
+            . self::installNote(Mcp::settings()->additionalInstructions);
     }
 
     /**
@@ -240,6 +243,21 @@ class McpServerFactory {
         $names = implode(', ', array_map(static fn (string $name): string => "`{$name}`", $disabledCited));
 
         return "\n\n## Availability\n\nThe following tools mentioned above are disabled on this install and not available: {$names}.";
+    }
+
+    /**
+     * The site owner's own text, appended absolutely last: after every note
+     * this class computes, so it can contextualize or even contradict them,
+     * which is the owner's call and their token budget. Pure and static so
+     * it tests without Craft settings; blank input means nothing to add.
+     */
+    private static function installNote(string $additionalInstructions): string {
+        $trimmed = trim($additionalInstructions);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        return "\n\n## This Install\n\n{$trimmed}";
     }
 
     private function baseInstructions(): string {
