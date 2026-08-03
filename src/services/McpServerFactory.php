@@ -177,8 +177,38 @@ class McpServerFactory {
         return in_array($definition->name, Mcp::settings()->scopedTokenPrivilegedTools, true);
     }
 
+    /**
+     * Tool names the base instructions recommend by name. Disabling one of
+     * these via disabledTools makes the recommendation wrong for that
+     * connection, so getInstructions() checks the set against
+     * Mcp::isToolEnabled() and appends an availabilityNote() when any are
+     * unavailable.
+     */
+    private const array CITED_TOOLS = [
+        'describe_entry_schema',
+        'get_entry',
+        'create_entry',
+        'update_entry',
+        'publish_entry',
+        'copy_entry_to_site',
+        'list_entries',
+        'count_entries',
+        'list_drafts',
+        'list_revisions',
+        'query_graphql',
+        'get_database_schema',
+        'get_table_counts',
+        'run_query',
+        'tinker',
+    ];
+
     private function getInstructions(?Scope $scope = null): string {
-        return $this->baseInstructions() . $this->scopeNote($scope);
+        $disabledCited = array_values(array_filter(
+            self::CITED_TOOLS,
+            static fn (string $name): bool => !Mcp::isToolEnabled($name),
+        ));
+
+        return $this->baseInstructions() . $this->scopeNote($scope) . self::availabilityNote($disabledCited);
     }
 
     /**
@@ -190,8 +220,26 @@ class McpServerFactory {
             null => '',
             Scope::ReadOnly => "\n\n## This Connection\n\nThis connection is READ-ONLY: no write, publish, or destructive tools are available, and the Writing Content section above does not apply here. Focus on browsing and inspection (`list_*`, `get_*`, `describe_entry_schema`).",
             Scope::Content => "\n\n## This Connection\n\nThis connection has CONTENT scope: read everything, and write entries through the draft-first flow above (create, update, publish, delete, duplicate, copy to site). Code execution, raw SQL, GraphQL mutation, cache, and backup tools are not available.",
-            Scope::Full => "\n\n## This Connection\n\nThis connection has FULL scope: every tool the server exposes is available, including code execution and database tools. Prefer draft-mode writes and read-only queries unless the task requires more.",
+            Scope::Full => "\n\n## This Connection\n\nThis connection has FULL scope: every tool the server exposes on this install is available, including code execution and database tools. Prefer draft-mode writes and read-only queries unless the task requires more.",
         };
+    }
+
+    /**
+     * Reconciles the base instructions with disabledTools: the base text
+     * recommends CITED_TOOLS by name, and a disabled one among them is a
+     * dead recommendation for this connection. Pure and static so it tests
+     * without Craft settings; empty input means nothing to correct.
+     *
+     * @param string[] $disabledCited
+     */
+    private static function availabilityNote(array $disabledCited): string {
+        if ($disabledCited === []) {
+            return '';
+        }
+
+        $names = implode(', ', array_map(static fn (string $name): string => "`{$name}`", $disabledCited));
+
+        return "\n\n## Availability\n\nThe following tools mentioned above are disabled on this install and not available: {$names}.";
     }
 
     private function baseInstructions(): string {
