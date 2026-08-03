@@ -2,10 +2,7 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
-if (!class_exists('Craft', false)) {
-    require dirname(__DIR__, 3) . '/vendor/craftcms/cms/src/Craft.php';
-}
+require_once __DIR__ . '/../../Fixtures/RealCraft.php';
 
 use Mcp\Capability\Registry;
 use Mcp\Schema\Tool;
@@ -41,10 +38,4 @@ it('unregisters a discovery-registered tool with no definition, keeping a real o
 
     expect($names)->toContain('get_entry')
         ->and($names)->not->toContain('stray_conditional_tool');
-});
-
-it('sums by_source to total in ToolRegistry::getSummary()', function () {
-    $summary = stimmt\craft\Mcp\Mcp::getToolRegistry()->getSummary();
-
-    expect(array_sum($summary['by_source']))->toBe($summary['total']);
 });

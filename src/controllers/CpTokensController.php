@@ -230,9 +230,10 @@ final class CpTokensController extends Controller {
     /**
      * The scopes this user may mint right now: the self-service pair always
      * offered, Full added only when fullScopeAllowed() agrees, then anything
-     * in the disabledScopes config setting dropped regardless. Single source
-     * of truth for both this dropdown and authorizeCreate() below, so the
-     * two can never disagree on what a given user may mint (#48).
+     * in the disabledScopes config setting dropped regardless. This dropdown
+     * and the create/regenerate gates share the same two predicates,
+     * fullScopeAllowed() and Scope::isDisabled(), so what is offered and
+     * what is accepted can never disagree (#48).
      *
      * @return Scope[]
      */

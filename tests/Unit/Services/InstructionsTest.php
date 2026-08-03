@@ -2,10 +2,7 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
-if (!class_exists('Craft', false)) {
-    require dirname(__DIR__, 3) . '/vendor/craftcms/cms/src/Craft.php';
-}
+require_once __DIR__ . '/../../Fixtures/RealCraft.php';
 
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
@@ -67,6 +64,23 @@ it('renders non-empty additionalInstructions under a This Install heading', func
 
     expect($note)->toContain('## This Install')
         ->toContain('Read the house style guide before writing content.');
+});
+
+// Drift guard for #50: CITED_TOOLS must stay a bijection with the tool names
+// the base instructions actually cite, or the availability note silently
+// stops covering a newly cited tool and the instructions lie again.
+it('keeps CITED_TOOLS in sync with the tool names cited in the base instructions', function () {
+    $base = (new ReflectionMethod(McpServerFactory::class, 'baseInstructions'))->invoke(new McpServerFactory());
+    preg_match_all('/`([a-z0-9_]+)`/', $base, $matches);
+
+    $registryNames = array_keys(Mcp::getToolRegistry()->getDefinitions());
+    $cited = array_values(array_unique(array_intersect($matches[1], $registryNames)));
+    $declared = (new ReflectionClassConstant(McpServerFactory::class, 'CITED_TOOLS'))->getValue();
+
+    sort($cited);
+    sort($declared);
+
+    expect($cited)->toBe($declared);
 });
 
 it('appends the install note absolutely last, after the availability note', function () {

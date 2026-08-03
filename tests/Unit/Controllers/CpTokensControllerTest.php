@@ -132,13 +132,21 @@ describe('CpTokensController', function () {
     });
 
     // #48: existing tokens of a now-disabled scope must keep regenerating,
-    // so disabledScopes only gates *new* minting. authorizeScopeEnabled()
-    // must appear exactly twice in the file: its own declaration and the one
-    // call site in actionCreate(). A third occurrence would mean
-    // actionRegenerate() started gating on it too.
+    // so disabledScopes only gates *new* minting: actionCreate() calls
+    // authorizeScopeEnabled(), actionRegenerate() must not. Assert against
+    // each method body rather than whole-file occurrence counts, so comments
+    // naming the method cannot mask or fake a call site.
     it('does not gate regenerate on disabledScopes', function () {
         $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+        $body = static function (string $method) use ($source): string {
+            $start = strpos($source, 'function ' . $method);
+            expect($start)->not->toBeFalse();
+            $end = strpos($source, 'public function', $start + 1);
 
-        expect(substr_count($source, 'authorizeScopeEnabled'))->toBe(2);
+            return substr($source, $start, ($end === false ? strlen($source) : $end) - $start);
+        };
+
+        expect($body('actionCreate'))->toContain('authorizeScopeEnabled(')
+            ->and($body('actionRegenerate'))->not->toContain('authorizeScopeEnabled(');
     });
 });
