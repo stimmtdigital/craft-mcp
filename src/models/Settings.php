@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\models;
 
 use craft\base\Model;
 use Override;
+use stimmt\craft\Mcp\http\Scope;
 
 /**
  * MCP Plugin Settings.
@@ -37,6 +38,20 @@ class Settings extends Model {
      * @var string[]
      */
     public array $scopedTokenPrivilegedTools = [];
+
+    /**
+     * Scopes that may not be minted on this install (e.g. ['full'] in
+     * production), no matter who is asking, admins included: a deliberate
+     * per-environment guardrail rather than a Craft permission, since
+     * permissions bend to whoever happens to hold them and this must not.
+     * Existing tokens of a disabled scope keep working and can still be
+     * regenerated; this only blocks minting new ones. Case-sensitive: each
+     * entry must exactly match a Scope enum value ('readonly', 'content',
+     * or 'full'), see stimmt\craft\Mcp\http\Scope.
+     *
+     * @var string[]
+     */
+    public array $disabledScopes = [];
 
     /** @var string[] */
     public array $allowedIps = [];
@@ -95,6 +110,7 @@ class Settings extends Model {
         return [
             [['enabled', 'enableDangerousTools', 'httpTransport'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
+            [['disabledScopes'], 'each', 'rule' => ['in', 'range' => array_column(Scope::cases(), 'value')]],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
             [['paginationLimit'], 'integer', 'min' => 1],
             [['entryWriteMode'], 'in', 'range' => ['draft', 'live']],
