@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Rector\CodeQuality\Rector\Identical\FlipTypeControlToUseExclusiveTypeRector;
-use Rector\CodeQuality\Rector\If_\ExplicitBoolCompareRector;
 use Rector\Config\RectorConfig;
 use Rector\Php84\Rector\Class_\DeprecatedAnnotationToDeprecatedAttributeRector;
 use Rector\Set\ValueObject\SetList;
@@ -25,7 +24,6 @@ return RectorConfig::configure()
     ])
     ->withSkip([
         // Skip overly aggressive rules
-        ExplicitBoolCompareRector::class,
         FlipTypeControlToUseExclusiveTypeRector::class,
 
         // Keep @deprecated as documentation only. The #[\Deprecated] attribute
