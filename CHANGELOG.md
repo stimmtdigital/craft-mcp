@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.10] - 2026-08-06
+
 ### Added
 - `disabledScopes` config setting: block minting specific token scopes per environment (for example `'production' => ['disabledScopes' => ['full']]`), enforced for everyone including admins, in the control panel dropdown, the control panel create action, and the console command through one shared predicate; existing tokens of a disabled scope keep working and keep regenerating (#48)
 - `additionalInstructions` config setting: install-owner text appended to the end of the server instructions on every transport, for deployment-specific guidance an agent must see before its first write (house style guides, staging warnings, approval workflows); empty by default (#52)
