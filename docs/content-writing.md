@@ -85,7 +85,7 @@ Shapes whose parent field the writer does not translate (Hyper-style links, gene
 
 By default every write lands as a draft:
 
-- `create_entry` saves a new entry as a draft; `update_entry` on a live entry creates a draft on top, leaving the live version untouched.
+- `create_entry` saves a new entry as a draft; `update_entry` on a live entry creates a draft on top, leaving the live version untouched. Created drafts appear in the CP Entries list like a human-saved draft.
 - The response carries `draftId`, `draftElementId`, and a `cpEditUrl` deep link so a human can review in the control panel.
 - `publish_entry` applies the draft (pass the canonical entry id when there is a single pending draft, or the specific `draftElementId` when there are several).
 - Set `entryWriteMode: 'live'` in `config/mcp.php`, or pass `mode: "live"` per call, for immediate saves.

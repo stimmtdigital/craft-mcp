@@ -71,3 +71,16 @@ describe('Settings disabledScopes', function () {
         expect($settings->validate(['disabledScopes']))->toBeFalse();
     });
 });
+
+describe('Settings showClientConfigSnippet', function () {
+    it('defaults to true', function () {
+        expect((new Settings())->showClientConfigSnippet)->toBeTrue();
+    });
+
+    it('validates as boolean', function () {
+        $settings = new Settings();
+        $settings->showClientConfigSnippet = false;
+
+        expect($settings->validate(['showClientConfigSnippet']))->toBeTrue();
+    });
+});

@@ -128,12 +128,14 @@ final class CpTokensController extends Controller {
 
     /**
      * Flash a freshly minted plaintext token and its client snippet for the
-     * show-once reveal, then a success message.
+     * show-once reveal, then a success message. Snippet::jsonIfEnabled()
+     * is null when showClientConfigSnippet is off (#62); the reveal
+     * template skips the whole config block when the flash is empty.
      */
     private function reveal(string $plaintext, string $message): void {
         $session = Craft::$app->getSession();
         $session->setFlash('newToken', $plaintext);
-        $session->setFlash('newTokenSnippet', Snippet::json($plaintext, Snippet::url()));
+        $session->setFlash('newTokenSnippet', Snippet::jsonIfEnabled($plaintext, Snippet::url()));
         $this->setSuccessFlash($message);
     }
 
