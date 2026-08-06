@@ -40,6 +40,29 @@ describe('Tokens', function () {
             ->and($later->authenticate($plaintext))->toBeNull();
     });
 
+    // #56: disabledScopes is enforced at authentication too, so a token
+    // minted before its scope was disabled stops working, instead of being
+    // grandfathered past the guardrail. The rejection is indistinguishable
+    // from an unknown token (null), and re-enabling the scope restores the
+    // token without any recreation.
+    it('rejects a token whose scope is disabled on this install', function () {
+        $tokens = new Tokens(new InMemoryTokenStore());
+        ['plaintext' => $plaintext] = $tokens->create(7, Scope::Full, 'Ops');
+
+        expect($tokens->authenticate($plaintext, ['full']))->toBeNull()
+            ->and($tokens->authenticate($plaintext, ['readonly']))->not->toBeNull()
+            ->and($tokens->authenticate($plaintext))->not->toBeNull();
+    });
+
+    it('leaves lastUsedAt untouched when rejecting a disabled scope', function () {
+        $tokens = new Tokens(new InMemoryTokenStore());
+        ['plaintext' => $plaintext] = $tokens->create(7, Scope::Full, 'Ops');
+
+        $tokens->authenticate($plaintext, ['full']);
+
+        expect($tokens->list()[0]->lastUsedAt)->toBeNull();
+    });
+
     it('stamps lastUsedAt at most once per hour', function () {
         $store = new InMemoryTokenStore();
         $now = new DateTimeImmutable('2026-07-09 12:00:00');

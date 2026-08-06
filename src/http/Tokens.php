@@ -40,9 +40,22 @@ final readonly class Tokens {
         return ['token' => $token, 'plaintext' => $plaintext];
     }
 
-    public function authenticate(string $plaintext): ?Token {
+    /**
+     * @param string[] $disabledScopes Scope values closed on this install
+     *                                 (#56). A token of a disabled scope is
+     *                                 rejected exactly like an unknown token,
+     *                                 before the last-used stamp, so the
+     *                                 rejection leaves no trace on the token
+     *                                 and leaks nothing about why. Re-enabling
+     *                                 the scope makes the token work again.
+     */
+    public function authenticate(string $plaintext, array $disabledScopes = []): ?Token {
         $token = $this->store->findByHash(self::hash($plaintext));
         if ($token === null || $token->expired($this->now())) {
+            return null;
+        }
+
+        if ($token->scope->isDisabled($disabledScopes)) {
             return null;
         }
 
