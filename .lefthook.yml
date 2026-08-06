@@ -1,0 +1,26 @@
+output:
+  - summary
+  - failure
+
+# The PHP toolchain runs on the host (composer, pint, rector, phpstan, pest),
+# so hooks call composer directly, no DDEV wrapper. Run `lefthook install` once
+# per clone to wire .git/hooks; `composer install` does it automatically via the
+# post-install-cmd script (guarded, no-ops when the lefthook binary is absent).
+
+# Auto-fix staged PHP on commit so nothing unformatted lands. `composer fix`
+# applies rector then pint; stage_fixed re-stages the files it changed.
+pre-commit:
+  jobs:
+    - name: fix
+      glob: "*.php"
+      run: composer fix
+      stage_fixed: true
+
+# Full CI parity before the code leaves the machine: pint check, rector dry-run,
+# phpstan, and the test suite. Mirrors .github/workflows/ci.yml so a red CI is
+# caught here first. Note: the host runs one PHP version, so the 8.3/8.4/8.5
+# compatibility matrix still only runs in CI.
+pre-push:
+  jobs:
+    - name: ci
+      run: composer ci
