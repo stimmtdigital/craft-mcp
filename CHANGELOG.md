@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `showClientConfigSnippet` config setting: when off, the ready-to-paste Claude Desktop config block is not built or shown on the control panel token-reveal screen, and the `mcp/tokens/create` console command prints the plaintext token without it; the setting is consulted in exactly one place, so the two surfaces can never disagree (#62)
+
+### Fixed
+- Entries created by `create_entry` in draft mode now land as saved drafts, visible in the control panel Entries list, search, and the Drafts status filter for every user with access, exactly where a human's "+ New entry" then "Save draft" lands. Previously they stayed in Craft's "still being composed" autosave state forever: invisible to reviewers everywhere except the creator's own dashboard widget, and subject to Craft's stale unsaved-draft garbage collection. They remain unpublished drafts either way (no public URL until `publish_entry`). Drafts created by earlier versions stay in the old state; a no-op `update_entry` on such a draft's element id flips it to saved with no content changes (#61)
+
 ## [1.4.0-beta.10] - 2026-08-06
 
 ### Added
