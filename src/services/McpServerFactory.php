@@ -85,6 +85,8 @@ class McpServerFactory {
 
         $server = $builder->build();
         $this->filterTools($registry, $scope);
+        $this->filterPrompts($registry);
+        $this->filterResources($registry);
 
         return $server;
     }
@@ -133,13 +135,28 @@ class McpServerFactory {
      * external event-registered tools are covered too.
      */
     private function filterTools(Registry $registry, ?Scope $scope): void {
-        foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
+        $definitions = Mcp::getToolRegistry()->getDefinitions();
+
+        foreach ($definitions as $definition) {
             $allowed = Mcp::isToolEnabled($definition->name)
                 && ($scope === null || $scope->allows($definition->category, $definition->dangerous))
                 && $this->privilegedAllowed($definition, $scope);
 
             if (!$allowed) {
                 $registry->unregisterTool($definition->name);
+            }
+        }
+
+        // SDK attribute discovery (setDiscovery() in create()) registers every
+        // #[McpTool] method it finds unconditionally, including
+        // ConditionalToolProvider classes whose isAvailable() is false, which
+        // the informational registry above deliberately omits. Anything the
+        // SDK registered that has no definition here has not passed any of
+        // the checks in the loop above, so deny it by default rather than
+        // leaving it live and ungoverned.
+        foreach (array_keys($registry->getTools()->references) as $name) {
+            if (!isset($definitions[$name])) {
+                $registry->unregisterTool($name);
             }
         }
     }
@@ -162,8 +179,122 @@ class McpServerFactory {
         return in_array($definition->name, Mcp::settings()->scopedTokenPrivilegedTools, true);
     }
 
+    /**
+     * Unregister every prompt disabledPrompts disallows and, mirroring
+     * filterTools()'s deny-by-default sweep, any SDK-registered prompt with
+     * no informational definition. Attribute discovery registers every
+     * #[McpPrompt] method it finds unconditionally, including ones the
+     * informational PromptRegistry omits, so an undefined prompt has not
+     * passed the check above and is denied by default rather than left live.
+     * Prompts carry no scope semantics; that stays a tool-only axis.
+     */
+    private function filterPrompts(Registry $registry): void {
+        $definitions = Mcp::getPromptRegistry()->getDefinitions();
+
+        foreach ($definitions as $definition) {
+            if (!Mcp::isPromptEnabled($definition->name)) {
+                $registry->unregisterPrompt($definition->name);
+            }
+        }
+
+        foreach (array_keys($registry->getPrompts()->references) as $name) {
+            if (!isset($definitions[$name])) {
+                $registry->unregisterPrompt($name);
+            }
+        }
+    }
+
+    /**
+     * Same enforcement as filterPrompts(), for resources. Static resources
+     * and resource templates are separate SDK collections (keyed by URI and
+     * uriTemplate respectively), so both are checked against
+     * disabledResources and swept for deny-by-default independently.
+     */
+    private function filterResources(Registry $registry): void {
+        $definitions = Mcp::getResourceRegistry()->getDefinitions();
+
+        foreach ($definitions as $definition) {
+            if (Mcp::isResourceEnabled($definition->uri)) {
+                continue;
+            }
+
+            $definition->isTemplate
+                ? $registry->unregisterResourceTemplate($definition->uri)
+                : $registry->unregisterResource($definition->uri);
+        }
+
+        $this->sweepResources($registry, $definitions);
+    }
+
+    /**
+     * Deny-by-default sweep for both SDK resource collections. The
+     * informational ResourceRegistry keys template definitions by name (see
+     * RegisterResourcesEvent), so definitions are re-indexed by URI here
+     * rather than matched against their array keys directly.
+     *
+     * @param array<string, ResourceDefinition> $definitions
+     */
+    private function sweepResources(Registry $registry, array $definitions): void {
+        $staticUris = [];
+        $templateUris = [];
+        foreach ($definitions as $definition) {
+            if ($definition->isTemplate) {
+                $templateUris[$definition->uri] = true;
+
+                continue;
+            }
+
+            $staticUris[$definition->uri] = true;
+        }
+
+        foreach (array_keys($registry->getResources()->references) as $uri) {
+            if (!isset($staticUris[$uri])) {
+                $registry->unregisterResource($uri);
+            }
+        }
+
+        foreach (array_keys($registry->getResourceTemplates()->references) as $uriTemplate) {
+            if (!isset($templateUris[$uriTemplate])) {
+                $registry->unregisterResourceTemplate($uriTemplate);
+            }
+        }
+    }
+
+    /**
+     * Tool names the base instructions recommend by name. Disabling one of
+     * these via disabledTools makes the recommendation wrong for that
+     * connection, so getInstructions() checks the set against
+     * Mcp::isToolEnabled() and appends an availabilityNote() when any are
+     * unavailable.
+     */
+    private const array CITED_TOOLS = [
+        'describe_entry_schema',
+        'get_entry',
+        'create_entry',
+        'update_entry',
+        'publish_entry',
+        'copy_entry_to_site',
+        'list_entries',
+        'count_entries',
+        'list_drafts',
+        'list_revisions',
+        'query_graphql',
+        'get_database_schema',
+        'get_table_counts',
+        'run_query',
+        'tinker',
+    ];
+
     private function getInstructions(?Scope $scope = null): string {
-        return $this->baseInstructions() . $this->scopeNote($scope);
+        $disabledCited = array_values(array_filter(
+            self::CITED_TOOLS,
+            static fn (string $name): bool => !Mcp::isToolEnabled($name),
+        ));
+
+        return $this->baseInstructions()
+            . $this->scopeNote($scope)
+            . $this->availabilityNote($disabledCited)
+            . $this->installNote(Mcp::settings()->additionalInstructions);
     }
 
     /**
@@ -175,8 +306,41 @@ class McpServerFactory {
             null => '',
             Scope::ReadOnly => "\n\n## This Connection\n\nThis connection is READ-ONLY: no write, publish, or destructive tools are available, and the Writing Content section above does not apply here. Focus on browsing and inspection (`list_*`, `get_*`, `describe_entry_schema`).",
             Scope::Content => "\n\n## This Connection\n\nThis connection has CONTENT scope: read everything, and write entries through the draft-first flow above (create, update, publish, delete, duplicate, copy to site). Code execution, raw SQL, GraphQL mutation, cache, and backup tools are not available.",
-            Scope::Full => "\n\n## This Connection\n\nThis connection has FULL scope: every tool the server exposes is available, including code execution and database tools. Prefer draft-mode writes and read-only queries unless the task requires more.",
+            Scope::Full => "\n\n## This Connection\n\nThis connection has FULL scope: every tool the server exposes on this install is available, including code execution and database tools. Prefer draft-mode writes and read-only queries unless the task requires more.",
         };
+    }
+
+    /**
+     * Reconciles the base instructions with disabledTools: the base text
+     * recommends CITED_TOOLS by name, and a disabled one among them is a
+     * dead recommendation for this connection. Pure and static so it tests
+     * without Craft settings; empty input means nothing to correct.
+     *
+     * @param string[] $disabledCited
+     */
+    private function availabilityNote(array $disabledCited): string {
+        if ($disabledCited === []) {
+            return '';
+        }
+
+        $names = implode(', ', array_map(static fn (string $name): string => "`{$name}`", $disabledCited));
+
+        return "\n\n## Availability\n\nThe following tools mentioned above are disabled on this install and not available: {$names}.";
+    }
+
+    /**
+     * The site owner's own text, appended absolutely last: after every note
+     * this class computes, so it can contextualize or even contradict them,
+     * which is the owner's call and their token budget. Pure and static so
+     * it tests without Craft settings; blank input means nothing to add.
+     */
+    private function installNote(string $additionalInstructions): string {
+        $trimmed = trim($additionalInstructions);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        return "\n\n## This Install\n\n{$trimmed}";
     }
 
     private function baseInstructions(): string {

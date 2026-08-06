@@ -227,10 +227,10 @@ final class ToolRegistry {
     public function getSummary(): array {
         $this->ensureInitialized();
 
-        $bySource = [];
-        foreach ($this->tools as $source => $tools) {
-            $bySource[$source] = count($tools);
-        }
+        $bySource = array_map(
+            count(...),
+            $this->getDefinitionsBySource(),
+        );
 
         $byCategory = [];
         foreach ($this->definitions as $definition) {

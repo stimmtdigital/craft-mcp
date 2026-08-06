@@ -65,6 +65,14 @@ class TokensController extends Controller {
             return ExitCode::USAGE;
         }
 
+        // disabledScopes beats everything, including CLI access: a scope
+        // listed there cannot be minted by anyone on this install (#48).
+        if ($scope->isDisabled(Mcp::settings()->disabledScopes)) {
+            $this->stderr("The '{$scope->value}' scope is disabled on this install (see the disabledScopes setting in config/mcp.php).\n", Console::FG_RED);
+
+            return ExitCode::USAGE;
+        }
+
         $name = $this->name ?? ($user->username . ' token');
         ['plaintext' => $plaintext] = (new Tokens(new RecordStore()))
             ->create((int) $user->id, $scope, $name, $this->expires);
