@@ -103,12 +103,22 @@ class Settings extends Model {
     public string $additionalInstructions = '';
 
     /**
+     * Whether the token-reveal screen (My Account -> MCP Tokens) shows the
+     * ready-to-paste Claude Desktop config block alongside the new token.
+     * True by default, matching existing behavior. Installs that provision
+     * MCP clients their own way (a custom prompt and skill, a different
+     * client entirely) can turn this off to leave just the token and its
+     * copy/warning UI.
+     */
+    public bool $showClientConfigSnippet = true;
+
+    /**
      * @return array<int, array<int|string, mixed>>
      */
     #[Override]
     public function defineRules(): array {
         return [
-            [['enabled', 'enableDangerousTools', 'httpTransport'], 'boolean'],
+            [['enabled', 'enableDangerousTools', 'httpTransport', 'showClientConfigSnippet'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
             [['disabledScopes'], 'each', 'rule' => ['in', 'range' => array_column(Scope::cases(), 'value')]],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],

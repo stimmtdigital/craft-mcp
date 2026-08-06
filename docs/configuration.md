@@ -120,6 +120,12 @@ return [
     // vs. production framing, an internal approval step.
     // Default: '' (nothing added)
     'additionalInstructions' => '',
+
+    // Whether the token-reveal screen (My Account -> MCP Tokens) shows the
+    // ready-to-paste Claude Desktop config block alongside the new token.
+    // Turn off on installs that provision MCP clients their own way.
+    // Default: true
+    'showClientConfigSnippet' => true,
 ];
 ```
 
@@ -144,6 +150,7 @@ return [
 | `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
 | `disabledScopes` | `array` | `[]` | Since 1.4.0. Scope names (`readonly`, `content`, `full`) that cannot be minted on this install by anyone, admin included; existing tokens of a disabled scope keep working and can still be regenerated |
 | `additionalInstructions` | `string` | `''` | Since 1.4.0. Text appended to the server instructions, on every transport (stdio and HTTP alike), after everything else the plugin adds |
+| `showClientConfigSnippet` | `bool` | `true` | Since 1.4.0. Whether the token-reveal screen (My Account -> MCP Tokens) shows the ready-to-paste Claude Desktop config block alongside the new token |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 

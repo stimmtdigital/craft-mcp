@@ -149,4 +149,15 @@ describe('CpTokensController', function () {
         expect($body('actionCreate'))->toContain('authorizeScopeEnabled(')
             ->and($body('actionRegenerate'))->not->toContain('authorizeScopeEnabled(');
     });
+
+    // #62: showClientConfigSnippet lets an install skip the Claude Desktop
+    // config block on the token-reveal screen entirely. Gating at the
+    // controller (rather than the template) means the snippet is never
+    // built when the setting is off, not just hidden from view.
+    it('builds the client config snippet only when showClientConfigSnippet allows it', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function reveal')
+            ->and($source)->toContain('Mcp::settings()->showClientConfigSnippet ? Snippet::json($plaintext, Snippet::url()) : null');
+    });
 });
