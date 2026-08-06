@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.12] - 2026-08-06
+
 ### Fixed
 - `disabledScopes` is now enforced at authentication too: a token minted before its scope was disabled stops working (rejected exactly like an unknown token, leaving no trace on the token) until the scope is re-enabled, which restores it without recreation. Previously the setting only gated new minting, so a pre-existing token of a disabled scope kept working, exactly the loophole the guardrail exists to close, as argued in #56 (#48, #56)
 
