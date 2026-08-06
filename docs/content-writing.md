@@ -70,7 +70,7 @@ The `input` shape is the key to third-party fields. Kinds and what their input l
 |------|-------|
 | `scalar` | Plain value; `valueType` names the PHP type, with hints for dates (ISO 8601 string) and rich-text fields (HTML string) |
 | `relation` | List of natural-key maps; `item` gives the key shape, `elementType` the target |
-| `matrix` | Block objects as above; `blockTypes` expands each type's sub-fields |
+| `matrix` | Block objects as above; `blockTypes` lists the valid block-type handles (`{handle: {hasTitleField}}`); each type's sub-fields are expanded once in the field's top-level `blockTypes` list |
 | `link` | Single link object for the core Link field; `types` maps each configured type to its key shape |
 | `links` | List of link objects (Hyper-style fields); `linkTypes` expands each type's native attributes and custom sub-fields; put native attributes at the link object's top level and custom sub-fields under a nested `fields` object |
 | `options` | One (or a list, when `multiple`) of `allowedValues` |
@@ -85,7 +85,7 @@ Shapes whose parent field the writer does not translate (Hyper-style links, gene
 
 By default every write lands as a draft:
 
-- `create_entry` saves a new entry as a draft; `update_entry` on a live entry creates a draft on top, leaving the live version untouched.
+- `create_entry` saves a new entry as a draft; `update_entry` on a live entry creates a draft on top, leaving the live version untouched. Created drafts appear in the CP Entries list like a human-saved draft.
 - The response carries `draftId`, `draftElementId`, and a `cpEditUrl` deep link so a human can review in the control panel.
 - `publish_entry` applies the draft (pass the canonical entry id when there is a single pending draft, or the specific `draftElementId` when there are several).
 - Set `entryWriteMode: 'live'` in `config/mcp.php`, or pass `mode: "live"` per call, for immediate saves.

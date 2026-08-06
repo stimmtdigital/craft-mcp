@@ -83,6 +83,7 @@ final class CpTokensController extends Controller {
             throw new BadRequestHttpException(Craft::t('mcp', 'Name is required.'));
         }
 
+        $this->authorizeScopeEnabled($scope);
         $this->authorizeCreate($userId, $scope);
 
         ['plaintext' => $plaintext] = $this->tokens()->create($userId, $scope, $name, $this->expiresInDays());
@@ -127,12 +128,14 @@ final class CpTokensController extends Controller {
 
     /**
      * Flash a freshly minted plaintext token and its client snippet for the
-     * show-once reveal, then a success message.
+     * show-once reveal, then a success message. Snippet::jsonIfEnabled()
+     * is null when showClientConfigSnippet is off (#62); the reveal
+     * template skips the whole config block when the flash is empty.
      */
     private function reveal(string $plaintext, string $message): void {
         $session = Craft::$app->getSession();
         $session->setFlash('newToken', $plaintext);
-        $session->setFlash('newTokenSnippet', Snippet::json($plaintext, Snippet::url()));
+        $session->setFlash('newTokenSnippet', Snippet::jsonIfEnabled($plaintext, Snippet::url()));
         $this->setSuccessFlash($message);
     }
 
@@ -146,13 +149,28 @@ final class CpTokensController extends Controller {
         $this->requirePermission('manageAllMcpTokens');
     }
 
+    /**
+     * disabledScopes beats every permission: a scope listed there cannot be
+     * minted by anyone, admin included (#48). Only new minting is gated by
+     * this; actionRegenerate() calls authorizeCreate() directly and skips
+     * it, so regenerating an existing token of a now-disabled scope keeps
+     * working, and revocation is unaffected either way.
+     */
+    private function authorizeScopeEnabled(Scope $scope): void {
+        if ($scope->isDisabled(Mcp::settings()->disabledScopes)) {
+            throw new ForbiddenHttpException(Craft::t('mcp', 'The "{scope}" scope is disabled on this install.', [
+                'scope' => $scope->value,
+            ]));
+        }
+    }
+
     private function authorizeCreate(int $userId, Scope $scope): void {
         $currentUser = self::currentUser();
 
         // Full scope bypasses all read and write authorization and includes
         // code execution, so only an admin may hand it out; manageAllMcpTokens
         // alone is not enough to mint an admin-equivalent token.
-        if ($scope === Scope::Full && !($currentUser->admin ?? false)) {
+        if ($scope === Scope::Full && !$this->fullScopeAllowed($currentUser)) {
             throw new ForbiddenHttpException(Craft::t('mcp', 'Only admins can mint full-scope MCP tokens.'));
         }
 
@@ -212,15 +230,41 @@ final class CpTokensController extends Controller {
     }
 
     /**
+     * The scopes this user may mint right now: the self-service pair always
+     * offered, Full added only when fullScopeAllowed() agrees, then anything
+     * in the disabledScopes config setting dropped regardless. This dropdown
+     * and the create/regenerate gates share the same two predicates,
+     * fullScopeAllowed() and Scope::isDisabled(), so what is offered and
+     * what is accepted can never disagree (#48).
+     *
      * @return Scope[]
      */
     private function allowedScopes(): array {
         $scopes = [Scope::ReadOnly, Scope::Content];
-        if ($this->cpUser()->checkPermission('manageAllMcpTokens')) {
+        if ($this->fullScopeAllowed(self::currentUser())) {
             $scopes[] = Scope::Full;
         }
 
-        return $scopes;
+        $disabled = Mcp::settings()->disabledScopes;
+
+        return array_values(array_filter(
+            $scopes,
+            static fn (Scope $scope): bool => !$scope->isDisabled($disabled),
+        ));
+    }
+
+    /**
+     * Full scope bypasses all read and write authorization and includes code
+     * execution, so only Craft's real admin flag may grant it. Single source
+     * of truth for whether Full is offered here (allowedScopes(), the CP
+     * dropdown) and accepted in authorizeCreate() below, so the two can
+     * never disagree on who may mint it: previously the dropdown checked the
+     * manageAllMcpTokens permission while creation checked the admin flag, so
+     * a manager without that flag could see Full listed and still get a 403
+     * on submit (#48).
+     */
+    private function fullScopeAllowed(?User $user): bool {
+        return $user->admin ?? false;
     }
 
     private function expiresInDays(): ?int {

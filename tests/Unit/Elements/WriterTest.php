@@ -55,3 +55,15 @@ it('attributes drafts to the acting user', function () {
     expect($source)->toContain('instanceof User ? $identity->id : null')
         ->and($source)->toContain('saveElementAsDraft($element, $creatorId');
 });
+
+// #61: saveElementAsDraft's markAsSaved arg must be true, or create_entry
+// leaves the draft in Craft's "still being composed" state (saved = 0),
+// invisible in the Entries list, search, and the Drafts status filter for
+// every user, including its own creator. Craft::$app cannot be stubbed to
+// intercept this call in a unit test (createElement()/getDrafts() require a
+// booted application), so this pins the literal argument in source instead.
+it('marks created drafts as saved so reviewers can find them (#61)', function () {
+    $source = (string) file_get_contents((new ReflectionClass(stimmt\craft\Mcp\elements\Writer::class))->getFileName());
+
+    expect($source)->toContain('saveElementAsDraft($element, $creatorId, null, null, true)');
+});

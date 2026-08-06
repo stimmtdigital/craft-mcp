@@ -104,6 +104,28 @@ return [
     'scopedTokenPrivilegedTools' => [
         'read_logs',
     ],
+
+    // Scopes that cannot be minted on this install, no matter who is asking,
+    // admins included. A deliberate per-environment guardrail rather than a
+    // permission: existing tokens of a disabled scope keep working and can
+    // still be regenerated, this only blocks minting new ones. Values must
+    // exactly match a scope name: 'readonly', 'content', or 'full'.
+    // Default: [] (every scope mintable)
+    'disabledScopes' => [],
+
+    // Text appended to the server instructions, on every transport, after
+    // everything else the plugin adds. The only channel that reaches an
+    // agent unconditionally on connect, so it's the place for guidance an
+    // agent must know before its first write: a house style guide, staging
+    // vs. production framing, an internal approval step.
+    // Default: '' (nothing added)
+    'additionalInstructions' => '',
+
+    // Whether the token-reveal screen (My Account -> MCP Tokens) shows the
+    // ready-to-paste Claude Desktop config block alongside the new token.
+    // Turn off on installs that provision MCP clients their own way.
+    // Default: true
+    'showClientConfigSnippet' => true,
 ];
 ```
 
@@ -126,6 +148,9 @@ return [
 | `httpSessionStore` | `mixed` | `null` | Session storage for the HTTP transport. Null uses the built-in database-backed store; set a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable returning one, for a custom store |
 | `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
 | `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
+| `disabledScopes` | `array` | `[]` | Since 1.4.0. Scope names (`readonly`, `content`, `full`) that cannot be minted on this install by anyone, admin included; existing tokens of a disabled scope keep working and can still be regenerated |
+| `additionalInstructions` | `string` | `''` | Since 1.4.0. Text appended to the server instructions, on every transport (stdio and HTTP alike), after everything else the plugin adds |
+| `showClientConfigSnippet` | `bool` | `true` | Since 1.4.0. Whether the token-reveal screen (My Account -> MCP Tokens) shows the ready-to-paste Claude Desktop config block alongside the new token |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 
@@ -198,6 +223,14 @@ return [
         'enabled' => false,
     ],
 ];
+```
+
+`disabledScopes` follows the same per-environment pattern. For example, to allow self-service `readonly`/`content` tokens in production while keeping `full` unmintable there entirely, admins included:
+
+```php
+'production' => [
+    'disabledScopes' => ['full'],
+],
 ```
 
 This pattern allows you to grant full access during development, restricted access on staging for testing, and keep production locked down. As always, production safety defaults are applied first; the resolved `production` block above only needs to set what should differ from those defaults.

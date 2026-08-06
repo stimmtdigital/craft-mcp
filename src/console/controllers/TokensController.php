@@ -46,7 +46,8 @@ class TokensController extends Controller {
     }
 
     /**
-     * Create a token and print it once, with a Claude Desktop snippet.
+     * Create a token and print it once, with a Claude Desktop snippet when
+     * the showClientConfigSnippet setting allows it (#62).
      */
     public function actionCreate(): int {
         $identity = (string) $this->user;
@@ -65,18 +66,28 @@ class TokensController extends Controller {
             return ExitCode::USAGE;
         }
 
+        // disabledScopes beats everything, including CLI access: a scope
+        // listed there cannot be minted by anyone on this install (#48).
+        if ($scope->isDisabled(Mcp::settings()->disabledScopes)) {
+            $this->stderr("The '{$scope->value}' scope is disabled on this install (see the disabledScopes setting in config/mcp.php).\n", Console::FG_RED);
+
+            return ExitCode::USAGE;
+        }
+
         $name = $this->name ?? ($user->username . ' token');
         ['plaintext' => $plaintext] = (new Tokens(new RecordStore()))
             ->create((int) $user->id, $scope, $name, $this->expires);
 
         $settings = Mcp::settings();
-        $url = Snippet::url();
+        $snippet = Snippet::jsonIfEnabled($plaintext, Snippet::url());
 
         $this->stdout("Token created (shown once, store it now):\n\n  {$plaintext}\n\n", Console::FG_GREEN);
-        $this->stdout("Claude Desktop config (claude_desktop_config.json):\n");
-        $this->stdout(Snippet::json($plaintext, $url));
-        if ($settings->httpPublicUrl === null) {
-            $this->stdout("\nThe url host comes from the primary site. If Craft answers on a different domain (headless setups often serve the CMS on a separate host), set the httpPublicUrl setting to that domain, or edit the url by hand.\n", Console::FG_YELLOW);
+        if ($snippet !== null) {
+            $this->stdout("Claude Desktop config (claude_desktop_config.json):\n");
+            $this->stdout($snippet);
+            if ($settings->httpPublicUrl === null) {
+                $this->stdout("\nThe url host comes from the primary site. If Craft answers on a different domain (headless setups often serve the CMS on a separate host), set the httpPublicUrl setting to that domain, or edit the url by hand.\n", Console::FG_YELLOW);
+            }
         }
 
         return ExitCode::OK;

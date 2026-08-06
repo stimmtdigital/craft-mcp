@@ -64,6 +64,45 @@ final class EntryResources {
     }
 
     /**
+     * Get entry statistics for a section.
+     *
+     * Registration order is load-bearing. The MCP SDK matches resource templates in declaration order
+     * with no literal-over-variable preference, so the {section}/stats template must register before
+     * {section}/{slug}. Otherwise, the {slug} pattern regex will match "stats" as a slug value and
+     * the stats resource becomes unreachable.
+     *
+     * @return array{section: string, stats: array{total: int, live: int, disabled: int, pending: int, expired: int, drafts: int, byType: array<string, int>}}
+     */
+    #[McpResourceTemplate(
+        uriTemplate: 'craft://entries/{section}/stats',
+        name: 'section-stats',
+        description: 'Get entry statistics for a specific section.',
+        mimeType: 'application/json',
+    )]
+    #[McpResourceMeta(category: ResourceCategory::CONTENT)]
+    public function sectionStats(
+        #[CompletionProvider(provider: SectionHandleProvider::class)]
+        string $section,
+    ): array {
+        return SafeResourceExecution::run(function () use ($section): array {
+            /** @var Entries $entriesService */
+            $entriesService = Craft::$app->getEntries();
+
+            /** @var Section|null $sectionObj */
+            $sectionObj = $entriesService->getSectionByHandle($section);
+
+            if ($sectionObj === null) {
+                throw new ResourceReadException("Section '{$section}' not found");
+            }
+
+            return [
+                'section' => $section,
+                'stats' => $this->buildSectionStats($sectionObj),
+            ];
+        });
+    }
+
+    /**
      * Get a specific entry by section and slug.
      *
      * @return array{entry: array{id: int, title: string, slug: string, status: string, type: string, url: string|null, dateCreated: string|null, dateUpdated: string|null, fields: array<string, mixed>}}
@@ -93,40 +132,6 @@ final class EntryResources {
 
             return [
                 'entry' => $this->buildEntryDetail($entry),
-            ];
-        });
-    }
-
-    /**
-     * Get entry statistics for a section.
-     *
-     * @return array{section: string, stats: array{total: int, live: int, disabled: int, pending: int, expired: int, drafts: int, byType: array<string, int>}}
-     */
-    #[McpResourceTemplate(
-        uriTemplate: 'craft://entries/{section}/stats',
-        name: 'section-stats',
-        description: 'Get entry statistics for a specific section.',
-        mimeType: 'application/json',
-    )]
-    #[McpResourceMeta(category: ResourceCategory::CONTENT)]
-    public function sectionStats(
-        #[CompletionProvider(provider: SectionHandleProvider::class)]
-        string $section,
-    ): array {
-        return SafeResourceExecution::run(function () use ($section): array {
-            /** @var Entries $entriesService */
-            $entriesService = Craft::$app->getEntries();
-
-            /** @var Section|null $sectionObj */
-            $sectionObj = $entriesService->getSectionByHandle($section);
-
-            if ($sectionObj === null) {
-                throw new ResourceReadException("Section '{$section}' not found");
-            }
-
-            return [
-                'section' => $section,
-                'stats' => $this->buildSectionStats($sectionObj),
             ];
         });
     }

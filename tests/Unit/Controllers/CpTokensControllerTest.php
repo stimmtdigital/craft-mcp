@@ -102,4 +102,63 @@ describe('CpTokensController', function () {
         expect($source)->toContain('function authorizeRevoke')
             ->and($source)->toContain('$token->userId === $currentUser->id');
     });
+
+    // #48: the dropdown (allowedScopes()) used to offer Full whenever the
+    // current user held manageAllMcpTokens, while authorizeCreate() only
+    // accepted Full for real admins. A manager without the admin flag could
+    // see Full listed and still get a 403 on submit. Both call sites must
+    // now consult the same admin predicate so they can never disagree again.
+    it('gates Full via one shared admin predicate consumed by both the dropdown and creation', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function fullScopeAllowed')
+            ->and($source)->toContain('$this->fullScopeAllowed(self::currentUser())')
+            ->and($source)->toContain('$this->fullScopeAllowed($currentUser)')
+            ->and($source)->not->toContain("checkPermission('manageAllMcpTokens')");
+    });
+
+    // #48: disabledScopes is a per-environment guardrail that beats every
+    // permission, admin included. The dropdown drops a disabled scope
+    // entirely (reporter's stated preference over a submit-time 403), and
+    // creation rejects it server-side too, in case a request bypasses the
+    // dropdown. Both consult the same Scope::isDisabled() predicate.
+    it('drops disabled scopes from the dropdown and rejects them at create time for everyone', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function authorizeScopeEnabled')
+            ->and($source)->toContain('->isDisabled(Mcp::settings()->disabledScopes)')
+            ->and($source)->toContain('scope is disabled on this install')
+            ->and($source)->toContain('!$scope->isDisabled($disabled)');
+    });
+
+    // #48: existing tokens of a now-disabled scope must keep regenerating,
+    // so disabledScopes only gates *new* minting: actionCreate() calls
+    // authorizeScopeEnabled(), actionRegenerate() must not. Assert against
+    // each method body rather than whole-file occurrence counts, so comments
+    // naming the method cannot mask or fake a call site.
+    it('does not gate regenerate on disabledScopes', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+        $body = static function (string $method) use ($source): string {
+            $start = strpos($source, 'function ' . $method);
+            expect($start)->not->toBeFalse();
+            $end = strpos($source, 'public function', $start + 1);
+
+            return substr($source, $start, ($end === false ? strlen($source) : $end) - $start);
+        };
+
+        expect($body('actionCreate'))->toContain('authorizeScopeEnabled(')
+            ->and($body('actionRegenerate'))->not->toContain('authorizeScopeEnabled(');
+    });
+
+    // #62: showClientConfigSnippet lets an install skip the Claude Desktop
+    // config block on the token-reveal screen entirely. The controller
+    // consumes Snippet::jsonIfEnabled() rather than checking the setting
+    // itself, so this and the console command can never disagree on
+    // whether the block appears.
+    it('flashes the client config snippet through the single gated builder', function () {
+        $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
+
+        expect($source)->toContain('function reveal')
+            ->and($source)->toContain("setFlash('newTokenSnippet', Snippet::jsonIfEnabled(\$plaintext, Snippet::url()))");
+    });
 });

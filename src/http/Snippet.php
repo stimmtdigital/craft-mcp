@@ -43,4 +43,14 @@ JSON;
 
         return rtrim($base, '/') . '/' . $settings->httpPath;
     }
+
+    /**
+     * The config block, or null when showClientConfigSnippet is off (#62).
+     * The single gate for every caller (the CP reveal screen, the console
+     * command): neither checks the setting itself, so the two surfaces can
+     * never disagree on whether the block appears.
+     */
+    public static function jsonIfEnabled(string $plaintext, string $url): ?string {
+        return Mcp::settings()->showClientConfigSnippet ? self::json($plaintext, $url) : null;
+    }
 }

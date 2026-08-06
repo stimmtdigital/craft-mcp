@@ -10,5 +10,15 @@ declare(strict_types=1);
 if (!class_exists('Craft', false)) {
     class Craft {
         public static ?object $app = null;
+
+        /** No-op logging statics so code paths that log via Craft::info()/warning()/error() run under the stub. */
+        public static function info(mixed $message, string $category = 'application'): void {
+        }
+
+        public static function warning(mixed $message, string $category = 'application'): void {
+        }
+
+        public static function error(mixed $message, string $category = 'application'): void {
+        }
     }
 }

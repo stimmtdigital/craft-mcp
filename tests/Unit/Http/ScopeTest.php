@@ -31,4 +31,11 @@ describe('Scope', function () {
         expect(Scope::fromInput(' Content '))->toBe(Scope::Content);
         expect(fn () => Scope::fromInput('admin'))->toThrow(InvalidArgumentException::class, 'readonly');
     });
+
+    it('is disabled only when its own value is listed in disabledScopes', function () {
+        expect(Scope::Full->isDisabled(['full']))->toBeTrue()
+            ->and(Scope::Full->isDisabled(['readonly', 'content']))->toBeFalse()
+            ->and(Scope::Full->isDisabled([]))->toBeFalse()
+            ->and(Scope::ReadOnly->isDisabled(['full']))->toBeFalse();
+    });
 });

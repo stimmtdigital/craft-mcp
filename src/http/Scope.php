@@ -37,4 +37,16 @@ enum Scope: string {
 
         return $scope;
     }
+
+    /**
+     * True when this scope is listed in the install's disabledScopes config
+     * setting. The single check shared by the CP token dropdown, CP token
+     * creation, and console token creation, so none of them can disagree
+     * about which scopes this install allows minting (#48).
+     *
+     * @param string[] $disabledScopes
+     */
+    public function isDisabled(array $disabledScopes): bool {
+        return in_array($this->value, $disabledScopes, true);
+    }
 }

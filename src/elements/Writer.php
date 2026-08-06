@@ -70,7 +70,19 @@ final readonly class Writer {
         // runs (stdio console) keep a null creator as before.
         $identity = Craft::$app->getUser()->getIdentity();
         $creatorId = $identity instanceof User ? $identity->id : null;
-        Craft::$app->getDrafts()->saveElementAsDraft($element, $creatorId, null, null, false);
+
+        // markAsSaved: true. An agent-driven create_entry call is a deliberate
+        // act, not a still-typing autosave tick, so it should land where a
+        // human's "+ New entry" then "Save draft" click does: saved = 1 in
+        // the drafts table. Craft's native create route calls this same
+        // method with markAsSaved: false (the "still being composed" state)
+        // and relies on the CP's Save button to perform a second save that
+        // flips it to true; the plugin has no equivalent second call, and a
+        // draft left at false is invisible in the Entries list, search, and
+        // the Drafts status filter, for the creator and every other user
+        // (#61). It is still an unpublished draft either way: no canonical
+        // id, no public URL, safe from public view until publish_entry.
+        Craft::$app->getDrafts()->saveElementAsDraft($element, $creatorId, null, null, true);
 
         return !$element->hasErrors();
     }
