@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `disabledScopes` config setting: block minting specific token scopes per environment (for example `'production' => ['disabledScopes' => ['full']]`), enforced for everyone including admins, in the control panel dropdown, the control panel create action, and the console command through one shared predicate; existing tokens of a disabled scope keep working and keep regenerating (#48)
+- `additionalInstructions` config setting: install-owner text appended to the end of the server instructions on every transport, for deployment-specific guidance an agent must see before its first write (house style guides, staging warnings, approval workflows); empty by default (#52)
+
+### Changed
+- `craftcms/cms` requirement raised to `^5.1`: the control panel token screens use `EditUserTrait` (since Craft 5.1), which is a compile-time fatal on Craft 5.0 (#51)
+- CI now tests PHP 8.3, 8.4, and 8.5, PHPStan analyses against that full version range, and lefthook pre-commit/pre-push hooks wire themselves via `composer install` for contributors; `rector/rector` floats at `^2.5` so it tracks PHPStan releases
+
+### Fixed
+- Tools registered by SDK attribute discovery without being available (for example the Commerce tools when Craft Commerce is not installed) no longer bypass `disabledTools`, scope, and the privileged axis: anything without an informational definition is unregistered deny-by-default, and `get_mcp_info`'s `bySource` counts now sum to its `total` (#57)
+- `disabledPrompts` and `disabledResources` are now actually enforced at serve time, with the same deny-by-default sweep as tools; they were documented but never applied. The content-writing guide resource is also registered in the informational registry, where it had been missing
+- `craft://entries/{section}/stats` is reachable again: it registered after the `{section}/{slug}` template, whose variable segment swallowed the literal `stats` (#49)
+- `describe_entry_schema` expands each Matrix field once instead of twice: `input.blockTypes` is now a flat map of the valid block-type handles and the field's top-level `blockTypes` list is the single depth-expanded representation, keeping per-field `instructions`; nested Matrix fields at exhausted depth now name their block types too (#53)
+- The server instructions no longer recommend tools a connection cannot call: a computed availability note lists any cited-but-disabled tools, and the full-scope wording is qualified to what the install exposes (#50)
+- The control panel no longer offers the Full scope to token managers who are not admins only to reject it on submit: the dropdown and the create authorization consult the same predicate (#48)
+
 ## [1.4.0-beta.9] - 2026-07-20
 
 ### Changed
