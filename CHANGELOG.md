@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.11] - 2026-08-06
+
 ### Added
 - `showClientConfigSnippet` config setting: when off, the ready-to-paste Claude Desktop config block is not built or shown on the control panel token-reveal screen, and the `mcp/tokens/create` console command prints the plaintext token without it; the setting is consulted in exactly one place, so the two surfaces can never disagree (#62)
 
