@@ -78,7 +78,7 @@ class HttpController extends Controller {
             return null;
         }
 
-        $token = (new Tokens(new RecordStore()))->authenticate($bearer);
+        $token = (new Tokens(new RecordStore()))->authenticate($bearer, Mcp::settings()->disabledScopes);
         if ($token === null) {
             return null;
         }
