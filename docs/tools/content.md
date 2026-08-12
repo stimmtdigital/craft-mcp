@@ -299,6 +299,7 @@ Update an entry by id. In draft mode (the default) a live entry gets a draft on 
 | `fields` | string | No | JSON string in the payload format, containing field values to update |
 | `mode` | string | No | `"draft"` or `"live"`, overriding the `entryWriteMode` setting for this call |
 | `parent` | string | No | New parent entry: its numeric id, or its slug within the entry's own section |
+| `expectedDateUpdated` | string | No | The `dateUpdated` string `get_entry` returned; the write fails when the entry changed since, instead of overwriting the newer content |
 
 **Examples:**
 
@@ -314,7 +315,12 @@ update_entry id=123 fields='{"summary": "Updated summary text"}'
 
 # Update live instead of drafting on top
 update_entry id=123 title="New Title" mode="live"
+
+# Reject the write if anything else touched the entry since the read
+update_entry id=123 fields='{"summary": "..."}' expectedDateUpdated="2024-01-15 14:22:00"
 ```
+
+When `expectedDateUpdated` is given and the canonical entry's `dateUpdated` no longer matches it, the call fails naming both timestamps; re-read with `get_entry` and rebuild the payload from the fresh values. Timestamps compare as instants, so timezone formatting differences never produce false conflicts. Omitting the parameter keeps the previous unchecked behavior. See [Content Writing: Conflict detection](../content-writing.md#conflict-detection-expecteddateupdated).
 
 **Response:**
 

@@ -7,6 +7,8 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use craft\elements\Entry;
 use craft\elements\User;
+use DateTimeImmutable;
+use Exception;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
@@ -232,7 +234,7 @@ class EntryTools {
 
     #[McpTool(
         name: 'update_entry',
-        description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change. Matrix-family blocks are entries too: pass a block\'s own id to edit just that block without touching its siblings.',
+        description: 'Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change. Matrix-family blocks are entries too: pass a block\'s own id to edit just that block without touching its siblings. Pass expectedDateUpdated (the dateUpdated string get_entry returned) to fail instead of overwriting when the entry changed since your read.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
@@ -245,11 +247,13 @@ class EntryTools {
         ?string $fields = null,
         ?string $mode = null,
         ?string $parent = null,
+        ?string $expectedDateUpdated = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent, $context): array {
+        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent, $expectedDateUpdated, $context): array {
             $entry = $this->find($id, null, null, $site);
             Authorization::assertCanSave($entry);
+            $this->assertUnchanged($entry, $expectedDateUpdated);
 
             $attributes = array_filter([
                 'title' => $title,
@@ -363,6 +367,40 @@ class EntryTools {
         }
 
         throw new ToolCallException("Entry type '{$handle}' not found in section '{$section->handle}'");
+    }
+
+    /**
+     * Optional optimistic-concurrency precondition (#36): a read-modify-write
+     * payload built from a get_entry snapshot is rejected when the canonical
+     * entry changed underneath it, instead of silently overwriting whatever
+     * changed. Timestamps compare as instants so timezone formatting
+     * differences never produce false conflicts; omitted means unchecked.
+     */
+    private function assertUnchanged(Entry $entry, ?string $expectedDateUpdated): void {
+        if ($expectedDateUpdated === null) {
+            return;
+        }
+
+        $current = $entry->getCanonical()->dateUpdated;
+        if ($current === null || $current->getTimestamp() === $this->timestamp($expectedDateUpdated)) {
+            return;
+        }
+
+        throw new ToolCallException(
+            "Entry {$entry->getCanonicalId()} changed since you read it: dateUpdated is now"
+            . " '{$current->format('Y-m-d H:i:s')}', expectedDateUpdated was '{$expectedDateUpdated}'."
+            . ' Re-read the entry with get_entry and rebuild the write from the fresh payload.',
+        );
+    }
+
+    private function timestamp(string $value): int {
+        try {
+            return (new DateTimeImmutable($value))->getTimestamp();
+        } catch (Exception) {
+            throw new ToolCallException(
+                "Invalid expectedDateUpdated '{$value}'; pass the dateUpdated string exactly as get_entry returned it.",
+            );
+        }
     }
 
     private function parentId(?string $parent, ?string $section, ?string $site): ?int {

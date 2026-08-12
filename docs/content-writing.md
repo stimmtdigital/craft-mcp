@@ -56,6 +56,12 @@ This is the safer default for any single-block change. Sending the owner's Matri
 
 `create_nested_entry` and `move_nested_entry` stage their change on a draft **of the owner entry**, the same way the control panel does: the response's `draftElementId` is the owner draft to review (`get_entry`) and publish (`publish_entry`), and passing it as `owner` to further `create_nested_entry` calls stacks more blocks onto that same draft. After publishing, re-read the owner: Craft duplicates a draft-owned block onto the canonical entry on apply, so the block's final id comes from the published owner, not from the create response.
 
+### Conflict detection: expectedDateUpdated
+
+A read-modify-write payload is built from a `get_entry` snapshot, and nothing guarantees that snapshot is still current by the time the write lands: a person may have saved the entry in the control panel in between, or another agent may have published its own draft. `update_entry` accepts an optional `expectedDateUpdated`, the `dateUpdated` string exactly as `get_entry` returned it. When the entry changed since, the write fails naming both timestamps instead of silently overwriting the newer content; re-read, rebuild the payload, retry. Omitting the parameter keeps the previous unchecked behavior.
+
+Prefer avoiding the race entirely where the change allows it: a per-block write (`update_entry` on the block's own id) or `create_nested_entry` never resends sibling content, so there is nothing stale to overwrite.
+
 ## Discover the Shape First: describe_entry_schema
 
 Call `describe_entry_schema` for a section and entry type before writing. It returns everything needed to construct a valid entry on the first attempt:
