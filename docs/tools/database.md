@@ -204,8 +204,8 @@ run_query sql="SELECT e.id, el.title, el.slug FROM craft_entries e JOIN craft_el
 
 ```json
 {
-  "success": false,
-  "error": "Only SELECT queries are allowed for safety."
+  "content": [{ "type": "text", "text": "Only SELECT queries are allowed for safety." }],
+  "isError": true
 }
 ```
 
