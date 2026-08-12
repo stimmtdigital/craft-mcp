@@ -78,16 +78,32 @@ class NestedEntryTools {
             $matrix = $this->matrixField($ownerEntry->getFieldLayout(), $field);
             $entryType = $this->blockType($matrix, $type);
             $target = $this->target($ownerEntry, $writeMode);
+            // Only a draft this call opened is ours to clean up; an owner
+            // draft the caller passed in belongs to them and their earlier
+            // blocks live on it.
+            $opened = $target === $ownerEntry ? null : $target;
 
             $result = $this->writer->create($this->blockAttributes($entryType, $matrix, $target, $title), $payload, WriteMode::Live, $site);
             if ($result->isFailure()) {
+                $this->discard($opened, null);
+
                 return ['success' => false] + $result->toArray();
             }
 
             $blockId = (int) $result->elementId;
-            $taken = $position === null
-                ? $this->endPosition($target, $matrix)
-                : NestedPosition::move($target, $matrix, $blockId, $position);
+
+            try {
+                $taken = $position === null
+                    ? $this->endPosition($target, $matrix)
+                    : NestedPosition::move($target, $matrix, $blockId, $position);
+            } catch (Throwable $e) {
+                // The block saved but placing it did not: without this the call
+                // reports failure while the block sits on the target, so a retry
+                // adds a second copy.
+                $this->discard($opened, $blockId);
+
+                throw $e;
+            }
 
             $this->notifyOwner($context, $target);
 
@@ -198,6 +214,30 @@ class NestedEntryTools {
      */
     private function target(Entry $owner, WriteMode $mode): Entry {
         return $mode === WriteMode::Draft ? $this->draftOf($owner) : $owner;
+    }
+
+    /**
+     * Undo what this call created before it failed. Deleting the owner draft
+     * cascades to a block already attached to it, so the two cases never both
+     * apply; without either, a failed create leaves an empty draft in the
+     * review queue or a block a retry would duplicate.
+     */
+    private function discard(?Entry $openedDraft, ?int $blockId): void {
+        $elements = Craft::$app->getElements();
+
+        if ($openedDraft instanceof Entry) {
+            $elements->deleteElement($openedDraft, true);
+
+            return;
+        }
+
+        $block = $blockId === null
+            ? null
+            : Entry::find()->id($blockId)->drafts(null)->status(null)->one();
+
+        if ($block instanceof Entry) {
+            $elements->deleteElement($block, true);
+        }
     }
 
     private function draftOf(Entry $owner): Entry {

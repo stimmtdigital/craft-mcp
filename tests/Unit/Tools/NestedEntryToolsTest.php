@@ -164,6 +164,45 @@ describe('owner-draft model', function () {
             ->and($source)->toContain('WriteMode::Live, $site');
     });
 
+    // A create that fails after opening a draft, or after saving the block but
+    // before placing it, must not leave either behind: a stranded empty draft
+    // clutters the human review queue, and a surviving block turns a reported
+    // failure into a duplicate on retry. Both cleanups need a booted
+    // application to exercise, so the call sites are pinned here and the
+    // helper's own branch logic is asserted below.
+    it('cleans up an opened draft or a saved block when a create fails', function () {
+        $method = new ReflectionMethod(NestedEntryTools::class, 'createNestedEntry');
+        $file = (string) file_get_contents($method->getFileName());
+        $body = implode("\n", array_slice(
+            explode("\n", $file),
+            $method->getStartLine() - 1,
+            $method->getEndLine() - $method->getStartLine() + 1,
+        ));
+
+        expect($body)->toContain('$this->discard($opened, null)')
+            ->and($body)->toContain('$this->discard($opened, $blockId)')
+            ->and($body)->toContain('catch (Throwable $e)');
+    });
+
+    it('only discards a draft this call opened, never one the caller passed in', function () {
+        $file = (string) file_get_contents((new ReflectionClass(NestedEntryTools::class))->getFileName());
+
+        expect($file)->toContain('$opened = $target === $ownerEntry ? null : $target;');
+
+        $method = new ReflectionMethod(NestedEntryTools::class, 'discard');
+        $body = implode("\n", array_slice(
+            explode("\n", $file),
+            $method->getStartLine() - 1,
+            $method->getEndLine() - $method->getStartLine() + 1,
+        ));
+
+        // Draft first and returning: deleting it cascades the block, so the
+        // block branch must not also run.
+        expect($body)->toContain('deleteElement($openedDraft, true)')
+            ->and($body)->toContain('return;')
+            ->and($body)->toContain('deleteElement($block, true)');
+    });
+
     it('reuses an owner that already is a draft instead of drafting a draft', function () {
         $reflection = new ReflectionMethod(NestedEntryTools::class, 'draftOf');
         $file = (string) file_get_contents($reflection->getFileName());
