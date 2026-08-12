@@ -33,6 +33,38 @@ describe('EntryWorkflowTools structure', function () {
     });
 });
 
+describe('publish_entry block ordering', function () {
+    // Applying a draft of a single nested block silently moved it to the end
+    // of its Matrix field: applyDraft clones the draft with draftId nulled,
+    // so NestedElementTrait::saveOwnership() skips its sortOrder recovery
+    // lookup and falls through to max+1. The fix presets the canonical's
+    // current position on the draft BEFORE the apply, because saveOwnership
+    // checks isset(sortOrder) before either fallback and the preset value is
+    // then written inside the apply transaction. NestedPosition::capture's
+    // guard behavior is covered in NestedPositionTest; this pins the preset
+    // and its position relative to the apply call, which needs a real
+    // install to run.
+    it('presets the captured sort order on the draft before applying it', function () {
+        $reflection = new ReflectionMethod(EntryWorkflowTools::class, 'applyDraft');
+        $file = (string) file_get_contents($reflection->getFileName());
+        $body = implode("\n", array_slice(
+            explode("\n", $file),
+            $reflection->getStartLine() - 1,
+            $reflection->getEndLine() - $reflection->getStartLine() + 1,
+        ));
+
+        $capture = strpos($body, 'NestedPosition::capture($draft)');
+        $preset = strpos($body, '$draft->setSortOrder(');
+        $apply = strpos($body, '->applyDraft($draft)');
+
+        expect($capture)->toBeInt()
+            ->and($preset)->toBeInt()
+            ->and($apply)->toBeInt()
+            ->and($capture)->toBeLessThan($preset)
+            ->and($preset)->toBeLessThan($apply);
+    });
+});
+
 describe('publish_entry resource notification', function () {
     // publish_entry is the true canonical-change moment for the default
     // draft-first flow: applyDraft() merges the draft into the canonical

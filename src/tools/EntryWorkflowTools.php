@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\NestedPosition;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
@@ -272,6 +273,16 @@ class EntryWorkflowTools {
      * default draft-first flow, so this is where the resource push belongs.
      */
     private function applyDraft(Entry $draft, ?string $site, ?RequestContext $context): array {
+        // A nested block's draft must carry the canonical's current position
+        // into the apply, or Craft appends the block to the end of its field:
+        // applyDraft clones with draftId nulled, which skips saveOwnership()'s
+        // sortOrder recovery and falls through to max+1. Presetting the value
+        // writes the right position inside the apply transaction.
+        $sortOrder = NestedPosition::capture($draft);
+        if ($sortOrder !== null) {
+            $draft->setSortOrder($sortOrder);
+        }
+
         $applied = Craft::$app->getDrafts()->applyDraft($draft);
         ResourceChangeNotifier::notifyEntry($context, (int) $applied->id);
 
