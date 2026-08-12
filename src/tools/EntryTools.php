@@ -23,13 +23,13 @@ use stimmt\craft\Mcp\elements\schema\Meta;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
+use stimmt\craft\Mcp\support\WriteParams;
 
 /**
  * Entry tools: payload-format reads, draft-first writes, schema discovery.
@@ -218,7 +218,7 @@ class EntryTools {
                 $attributes['parentId'] = $parentId;
             }
 
-            $result = $this->writer->create($attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
+            $result = $this->writer->create($attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
 
             if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
                 ResourceChangeNotifier::notifyEntry($context, $result->elementId);
@@ -265,7 +265,7 @@ class EntryTools {
                 $attributes['parentId'] = $parentId;
             }
 
-            $result = $this->writer->update($entry, $attributes, $this->fieldsPayload($fields), $this->mode($mode), $site);
+            $result = $this->writer->update($entry, $attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
 
             if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
                 ResourceChangeNotifier::notifyEntry($context, $result->elementId);
@@ -363,30 +363,6 @@ class EntryTools {
         }
 
         throw new ToolCallException("Entry type '{$handle}' not found in section '{$section->handle}'");
-    }
-
-    private function fieldsPayload(?string $fields): array {
-        if ($fields === null) {
-            return [];
-        }
-
-        $decoded = json_decode($fields, true);
-        if (!is_array($decoded)) {
-            throw new ToolCallException('Invalid JSON in fields parameter');
-        }
-
-        return $decoded;
-    }
-
-    private function mode(?string $mode): WriteMode {
-        if ($mode !== null) {
-            return WriteMode::tryFrom(strtolower($mode))
-                ?? throw new ToolCallException("Unknown mode '{$mode}'; use draft or live");
-        }
-
-        $settings = Mcp::settings();
-
-        return WriteMode::fromSetting($settings->entryWriteMode);
     }
 
     private function parentId(?string $parent, ?string $section, ?string $site): ?int {

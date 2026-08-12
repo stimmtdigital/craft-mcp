@@ -49,10 +49,12 @@ That id works directly with the entry tools, same as any other entry id:
 - `update_entry id=<blockId> fields='{...}'` edits that one block. Sibling blocks and the owner's own field value are untouched.
 - `delete_entry id=<blockId>` removes that one block.
 - `publish_entry id=<blockId>` applies that block's own pending draft in place.
+- `create_nested_entry owner=<entryId> field=<matrixHandle> type=<blockType>` adds a new block, the first-ever block of a brand-new type included, without resending any sibling.
+- `move_nested_entry id=<blockId> position=<n>` repositions a block within its field.
 
-This is the safer default for a single-block change. Sending the owner's Matrix field through `update_entry` replaces the field's entire value; any block left out of the payload is deleted. Targeting a block's own id skips that risk entirely, since the owner's field value and every sibling block are never touched.
+This is the safer default for any single-block change. Sending the owner's Matrix field through `update_entry` replaces the field's entire value; any block left out of the payload is deleted. Targeting one block skips that risk entirely, since the owner's field value and every sibling block are never touched.
 
-One limit: this only reaches a block whose type already appears somewhere in the field. Adding the first-ever block of a brand new type still needs the full owner-field payload.
+`create_nested_entry` and `move_nested_entry` stage their change on a draft **of the owner entry**, the same way the control panel does: the response's `draftElementId` is the owner draft to review (`get_entry`) and publish (`publish_entry`), and passing it as `owner` to further `create_nested_entry` calls stacks more blocks onto that same draft. After publishing, re-read the owner: Craft duplicates a draft-owned block onto the canonical entry on apply, so the block's final id comes from the published owner, not from the create response.
 
 ## Discover the Shape First: describe_entry_schema
 

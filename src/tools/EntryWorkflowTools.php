@@ -24,6 +24,7 @@ use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
+use stimmt\craft\Mcp\support\WriteParams;
 
 /**
  * Entry workflow: the pending-drafts review queue, publish, delete, duplicate, copy to site.
@@ -177,16 +178,12 @@ class EntryWorkflowTools {
             $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
             $duplicate = Craft::$app->getElements()->duplicateElement($entry, $attributes, asUnpublishedDraft: true);
 
-            if ($fields !== null) {
-                $decoded = json_decode($fields, true);
-                if (!is_array($decoded)) {
-                    throw new ToolCallException('Invalid JSON in fields parameter');
-                }
+            $result = $fields === null
+                ? null
+                : $this->writer->update($duplicate, [], WriteParams::fieldsPayload($fields), WriteMode::Draft, $site);
 
-                $result = $this->writer->update($duplicate, [], $decoded, WriteMode::Draft, $site);
-                if ($result->isFailure()) {
-                    return ['success' => false] + $result->toArray();
-                }
+            if ($result !== null && $result->isFailure()) {
+                return ['success' => false] + $result->toArray();
             }
 
             return Response::success(['entry' => $this->reader->read($duplicate, $site)]);

@@ -20,6 +20,7 @@ use stimmt\craft\Mcp\tools\EntryWorkflowTools;
 use stimmt\craft\Mcp\tools\GlobalSetTools;
 use stimmt\craft\Mcp\tools\GraphqlTools;
 use stimmt\craft\Mcp\tools\McpTools;
+use stimmt\craft\Mcp\tools\NestedEntryTools;
 use stimmt\craft\Mcp\tools\SiteTools;
 use stimmt\craft\Mcp\tools\SystemTools;
 use stimmt\craft\Mcp\tools\TinkerTools;
@@ -49,6 +50,7 @@ final class ToolRegistry {
         GlobalSetTools::class,
         GraphqlTools::class,
         McpTools::class,
+        NestedEntryTools::class,
         SiteTools::class,
         SystemTools::class,
         TinkerTools::class,

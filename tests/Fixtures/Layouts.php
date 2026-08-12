@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\Tests\Fixtures;
 
 use Closure;
+use craft\fields\Matrix;
+use craft\models\EntryType;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 use ReflectionObject;
@@ -27,6 +29,21 @@ final class Layouts {
         (new ReflectionObject($layout))->getProperty('_tabs')->setValue($layout, [$tab]);
 
         return $layout;
+    }
+
+    /**
+     * A real Matrix field whose private entry-type storage is set via
+     * reflection, bypassing only setEntryTypes() (which resolves every type
+     * through Craft::$app's entries service); type lookups by handle run
+     * unmocked.
+     *
+     * @param EntryType[] $entryTypes
+     */
+    public static function matrix(string $handle, array $entryTypes = [], ?int $id = null): Matrix {
+        $field = new Matrix(['handle' => $handle, 'id' => $id]);
+        (new ReflectionObject($field))->getProperty('_entryTypes')->setValue($field, $entryTypes);
+
+        return $field;
     }
 
     /**
