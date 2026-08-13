@@ -10,6 +10,7 @@ use craft\helpers\FileHelper as CraftFileHelper;
 use craft\models\CategoryGroup;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -20,6 +21,7 @@ use stimmt\craft\Mcp\support\LogEntry;
 use stimmt\craft\Mcp\support\LogFormatter;
 use stimmt\craft\Mcp\support\LogParser;
 use stimmt\craft\Mcp\support\Palette;
+use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
@@ -83,6 +85,7 @@ class SystemTools {
         ?string $level = null,
         ?string $pattern = null,
         ?string $source = null,
+        #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array|TextContent {

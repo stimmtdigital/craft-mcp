@@ -22,10 +22,12 @@ use stimmt\craft\Mcp\elements\schema\Describer;
 use stimmt\craft\Mcp\elements\schema\Meta;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
@@ -130,6 +132,8 @@ class EntryTools {
         ?string $createdAfter = null,
         ?string $createdBefore = null,
         ?string $groupBy = null,
+        #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
+        ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array {
         return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $groupBy): array {

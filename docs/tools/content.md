@@ -123,6 +123,7 @@ Count entries, optionally grouped: by attribute (`status`, `type`, `section`, `s
 | `createdAfter` | string | null | ISO date/datetime; only entries created on or after this |
 | `createdBefore` | string | null | ISO date/datetime; only entries created before this |
 | `groupBy` | string | null | An attribute (`status`, `type`, `section`, `site`, `author`), a date bucket (`granularity:dateAttribute`, e.g. `"month:dateUpdated"`), or a field handle. Omit for a plain total |
+| `output` | string | "structured" | "structured" for the JSON payload, "text" for an aligned breakdown table. See [Text Output](README.md#text-output) |
 
 **Examples:**
 
@@ -162,6 +163,21 @@ With `groupBy`, a `buckets` list is added, one entry per distinct value, sorted 
   ],
   "groupBy": "month:dateUpdated"
 }
+```
+
+The same breakdown with `output="text"`:
+
+```
+count_entries section="news" groupBy="month:dateUpdated" output="text"
+
+success: true
+total:   245
+buckets:
+  key      count
+  -------  -----
+  2023-12  18
+  2024-01  32
+groupBy: month:dateUpdated
 ```
 
 ```json

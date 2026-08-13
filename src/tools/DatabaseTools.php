@@ -6,11 +6,14 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SqlReadGuard;
@@ -133,7 +136,13 @@ class DatabaseTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, dangerous: true)]
-    public function runQuery(string $sql, int $limit = 100, ?RequestContext $context = null): array {
+    public function runQuery(
+        string $sql,
+        int $limit = 100,
+        #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
+        ResponseFormat $output = ResponseFormat::STRUCTURED,
+        ?RequestContext $context = null,
+    ): array {
         return SafeExecution::run(function () use ($sql, $limit, $context): array {
             $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
 
@@ -197,7 +206,11 @@ class DatabaseTools {
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
-    public function getTableCounts(?RequestContext $context = null): array {
+    public function getTableCounts(
+        #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
+        ResponseFormat $output = ResponseFormat::STRUCTURED,
+        ?RequestContext $context = null,
+    ): array {
         return SafeExecution::run(function (): array {
             $db = Craft::$app->getDb();
             $prefix = $db->tablePrefix;

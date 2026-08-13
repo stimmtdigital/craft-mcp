@@ -41,6 +41,12 @@ final readonly class Presenter implements ReferenceHandlerInterface {
      */
     public const string OUTPUT_PARAM = 'output';
 
+    /**
+     * The one description of the convention, so every opted-in tool advertises
+     * it identically in its schema.
+     */
+    public const string OUTPUT_DESCRIPTION = 'Response format: "structured" (default) returns the JSON payload, "text" returns the same data laid out for a person to read.';
+
     public function __construct(
         private ReferenceHandlerInterface $handler,
         private Renderer $renderer,

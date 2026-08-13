@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Text output for tool payloads: `run_query`, `get_table_counts`, and `count_entries` accept `output="text"` and return the same data laid out for a person (uniform rows as an aligned table, key-value data and breakdowns as aligned blocks, nesting indented), falling back to pretty JSON for anything that will not lay out cleanly. A tool opts in purely by declaring the parameter in its signature, and the rendering happens centrally, so no tool carries formatting code of its own
+- `colorOutput` config setting: whether human-readable output carries ANSI colour. Off by default, because escape sequences reach an AI client as literal noise it pays tokens for
+
+### Changed
+- `read_logs` with `output="text"` is no longer coloured unconditionally; its layout is unchanged and `colorOutput` restores the colours. Colour is now decided in exactly one place instead of per formatter
+
+### Fixed
+- Every tool payload is sent once instead of twice. The SDK serialized array returns into both `content` and `structuredContent`, doubling the wire and token cost of every call; no tool declares an output schema, so the duplicate carried nothing a client could use
+
 ## [1.4.0-beta.12] - 2026-08-06
 
 ### Fixed
