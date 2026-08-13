@@ -40,6 +40,14 @@ Matrix values are objects keyed by block id (use `new1`, `new2`, ... for new blo
 
 Disabled blocks are preserved on round trips, never silently dropped.
 
+### Block order travels in `position`, not in the key order
+
+Reads add a 1-based `position` to every block, and that is the only reliable statement of the field's order. The blocks are keyed by their numeric entry id, and a JSON object whose keys look like integers is re-ordered ascending by most clients (JavaScript does it by specification), so by the time a payload reaches an agent the keys are usually sorted by id rather than by where the blocks sit on the page.
+
+Writes take `position` back. When every block carries one, the field is saved in that order regardless of the order the keys arrived in; when they are absent, the blocks are saved in the order given, which is what a hand-written payload expects. Either way `position` is stripped before Craft sees it.
+
+This matters because Craft renumbers a Matrix field's order from the order of the value it is handed. Without positions, reading an entry and writing it back unchanged could reshuffle its blocks into id order. Read `position` to learn the order, and change it with `move_nested_entry` rather than by rearranging a payload.
+
 ### Editing one block directly
 
 The block key in the Matrix object above (`new1` in that example) is a placeholder only for a block that doesn't exist yet. For a block `get_entry` already returned, that same key is the block's own entry id, since every Matrix-family block is a real, independently-addressable entry in Craft 5, not a row inside the owner's field.
