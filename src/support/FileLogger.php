@@ -42,6 +42,7 @@ class FileLogger extends AbstractLogger {
     public function __construct(
         private readonly string $logPath,
         string $minLevel = 'error',
+        private readonly LogContext $encoder = new LogContext(),
     ) {
         $minLevel = strtolower($minLevel);
 
@@ -70,7 +71,7 @@ class FileLogger extends AbstractLogger {
 
         $timestamp = $this->getTimestamp();
         $levelUpper = strtoupper($this->levelToString($level));
-        $contextJson = $context !== [] ? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES) : '';
+        $contextJson = $context !== [] ? ' ' . $this->encoder->encode($context) : '';
 
         $line = "[{$timestamp}] [{$levelUpper}] {$message}{$contextJson}\n";
 

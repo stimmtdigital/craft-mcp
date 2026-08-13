@@ -90,4 +90,30 @@ describe('FileLogger', function () {
                 ->toThrow(\InvalidArgumentException::class);
         });
     });
+
+    describe('context', function () {
+        it('writes an exception as a readable structure instead of an empty object', function () {
+            $logger = new FileLogger($this->logPath);
+
+            $logger->error('Unhandled error during tool execution', [
+                'name' => 'reload_mcp',
+                'exception' => new RuntimeException('the real cause'),
+            ]);
+
+            $content = file_get_contents($this->logPath);
+            expect($content)
+                ->toContain('"class":"RuntimeException"')
+                ->toContain('"message":"the real cause"')
+                ->toContain('"trace"')
+                ->not->toContain('"exception":{}');
+        });
+
+        it('keeps one log entry on one line', function () {
+            $logger = new FileLogger($this->logPath);
+
+            $logger->error('boom', ['exception' => new RuntimeException('with a trace')]);
+
+            expect(substr_count((string) file_get_contents($this->logPath), "\n"))->toBe(1);
+        });
+    });
 });
