@@ -180,6 +180,7 @@ All tools return consistent response structures that AI assistants can easily pa
 
 - **List operations** return `count` and an array of items
 - **Single record lookups** return `found: true/false` with the record or an error message
-- **Operations** return `success: true/false` with data or an error description
+- **Operations** return `success: true` with their data. Failures are not a payload: the tool call
+  itself fails, and the client receives an MCP tool error (`isError: true`) whose text is the reason
 
 See individual tool documentation for specific response formats and examples.

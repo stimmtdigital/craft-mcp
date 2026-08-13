@@ -367,12 +367,12 @@ Key fields:
 
 ## Error Handling
 
-If Commerce isn't installed or enabled, all Commerce tools return:
+If Commerce isn't installed or enabled, every Commerce tool fails with:
 
 ```json
 {
-  "success": false,
-  "error": "Craft Commerce is not installed or not enabled"
+  "content": [{ "type": "text", "text": "Craft Commerce is not installed or not enabled" }],
+  "isError": true
 }
 ```
 

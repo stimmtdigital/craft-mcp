@@ -87,6 +87,11 @@ class McpTools {
                     'source' => $definition->source,
                     'category' => $definition->category,
                     'dangerous' => $definition->dangerous,
+                    // Install-introspection reads are hidden from non-admin
+                    // readonly/content connections, so a listed privileged
+                    // tool can still be refused; say so rather than letting
+                    // the listing imply every row is callable.
+                    'privileged' => $definition->privileged,
                     'enabled' => Mcp::isToolEnabled($definition->name),
                 ];
             }
