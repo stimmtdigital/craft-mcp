@@ -7,43 +7,52 @@ namespace stimmt\craft\Mcp\support;
 use Mcp\Schema\Content\TextContent;
 
 /**
- * Formats log entries as human-readable colored text.
+ * Formats log entries as human-readable text.
+ *
+ * Log lines are the one payload the shared Renderer cannot improve on: the
+ * level colouring, the timestamp/category/message ordering and the indented
+ * stack trace are what make a log readable, and a table of them would not be.
+ * So this stays its own formatter, and only borrows the Palette so that
+ * whether it colours is decided in the same single place as everything else.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class LogFormatter {
+final readonly class LogFormatter {
+    public function __construct(private Palette $palette) {
+    }
+
     /**
-     * Format log entries as colored text.
+     * Format log entries as text.
      *
      * @param LogEntry[] $entries
      */
-    public static function format(array $entries): TextContent {
+    public function format(array $entries): TextContent {
         if ($entries === []) {
             return new TextContent('No log entries found.');
         }
 
-        $lines = array_map(self::formatEntry(...), $entries);
+        $lines = array_map($this->formatEntry(...), $entries);
 
         return new TextContent(implode("\n\n", $lines));
     }
 
     /**
-     * Format a single log entry with ANSI colors.
+     * Format a single log entry.
      */
-    private static function formatEntry(LogEntry $entry): string {
+    private function formatEntry(LogEntry $entry): string {
         $level = strtoupper($entry->level);
-        $levelFormatted = self::colorizeLevel($level, $entry->level);
+        $levelFormatted = $this->colorizeLevel($level, $entry->level);
 
         $line = sprintf(
             '%s [%s] %s: %s',
-            Ansi::dim($entry->timestamp),
+            $this->palette->muted($entry->timestamp),
             $levelFormatted,
-            Ansi::gray($entry->category),
+            $this->palette->subtle($entry->category),
             $entry->message,
         );
 
         if ($entry->hasStackTrace()) {
-            $line .= self::formatStackTrace($entry->stackTrace);
+            $line .= $this->formatStackTrace($entry->stackTrace);
         }
 
         return $line;
@@ -52,11 +61,11 @@ final class LogFormatter {
     /**
      * Colorize log level based on severity.
      */
-    private static function colorizeLevel(string $display, string $level): string {
+    private function colorizeLevel(string $display, string $level): string {
         return match (strtolower($level)) {
-            'error' => Ansi::red($display),
-            'warning' => Ansi::yellow($display),
-            default => Ansi::dim($display),
+            'error' => $this->palette->error($display),
+            'warning' => $this->palette->warning($display),
+            default => $this->palette->muted($display),
         };
     }
 
@@ -65,9 +74,9 @@ final class LogFormatter {
      *
      * @param StackFrame[] $frames
      */
-    private static function formatStackTrace(array $frames): string {
+    private function formatStackTrace(array $frames): string {
         $lines = array_map(
-            static fn (StackFrame $frame): string => Ansi::dim(sprintf(
+            fn (StackFrame $frame): string => $this->palette->muted(sprintf(
                 '  #%d %s(%d): %s',
                 $frame->index,
                 $frame->file,

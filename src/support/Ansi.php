@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\support;
 
 /**
- * ANSI terminal formatting helper.
+ * The escape sequences themselves, and nothing more.
  *
- * Provides consistent terminal styling across all MCP tools.
+ * Whether any of this is emitted is Palette's call, never this class's and
+ * never a tool's. Only what is actually used is kept here: an unused colour
+ * constant is a suggestion to reach past the palette.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -15,17 +17,9 @@ final class Ansi {
     // Colors
     public const string RED = "\033[31m";
 
-    public const string GREEN = "\033[32m";
-
     public const string YELLOW = "\033[33m";
 
-    public const string BLUE = "\033[34m";
-
-    public const string MAGENTA = "\033[35m";
-
     public const string CYAN = "\033[36m";
-
-    public const string WHITE = "\033[37m";
 
     public const string GRAY = "\033[90m";
 
@@ -33,10 +27,6 @@ final class Ansi {
     public const string BOLD = "\033[1m";
 
     public const string DIM = "\033[2m";
-
-    public const string ITALIC = "\033[3m";
-
-    public const string UNDERLINE = "\033[4m";
 
     // Reset
     public const string RESET = "\033[0m";
@@ -56,38 +46,10 @@ final class Ansi {
     }
 
     /**
-     * Wrap text in bold style.
-     */
-    public static function bold(string $text): string {
-        return self::BOLD . $text . self::RESET;
-    }
-
-    /**
      * Wrap text in red color.
      */
     public static function red(string $text): string {
         return self::RED . $text . self::RESET;
-    }
-
-    /**
-     * Wrap text in green color.
-     */
-    public static function green(string $text): string {
-        return self::GREEN . $text . self::RESET;
-    }
-
-    /**
-     * Wrap text in yellow color.
-     */
-    public static function yellow(string $text): string {
-        return self::YELLOW . $text . self::RESET;
-    }
-
-    /**
-     * Wrap text in cyan color.
-     */
-    public static function cyan(string $text): string {
-        return self::CYAN . $text . self::RESET;
     }
 
     /**

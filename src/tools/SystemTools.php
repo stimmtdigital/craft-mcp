@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\LogEntry;
 use stimmt\craft\Mcp\support\LogFormatter;
 use stimmt\craft\Mcp\support\LogParser;
+use stimmt\craft\Mcp\support\Palette;
 use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
@@ -73,7 +74,7 @@ class SystemTools {
      */
     #[McpTool(
         name: 'read_logs',
-        description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for human-readable colored output.',
+        description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for a human-readable view with indented stack traces.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
@@ -89,7 +90,7 @@ class SystemTools {
             $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
 
             return match ($output) {
-                ResponseFormat::TEXT => LogFormatter::format($entries),
+                ResponseFormat::TEXT => (new LogFormatter(Palette::fromSettings()))->format($entries),
                 ResponseFormat::STRUCTURED => [
                     'count' => count($entries),
                     'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $entries),

@@ -5,7 +5,18 @@ declare(strict_types=1);
 use Mcp\Schema\Content\TextContent;
 use stimmt\craft\Mcp\support\LogEntry;
 use stimmt\craft\Mcp\support\LogFormatter;
+use stimmt\craft\Mcp\support\Palette;
 use stimmt\craft\Mcp\support\StackFrame;
+
+/**
+ * Colour on by default here: that is the output read_logs produced before the
+ * palette existed, and these assertions are the regression baseline for it.
+ *
+ * @param LogEntry[] $entries
+ */
+function formatLogs(array $entries, bool $color = true): TextContent {
+    return (new LogFormatter(new Palette($color)))->format($entries);
+}
 
 describe('LogFormatter', function () {
     describe('format()', function () {
@@ -21,13 +32,13 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             expect($result)->toBeInstanceOf(TextContent::class);
         });
 
         it('handles empty entries', function () {
-            $result = LogFormatter::format([]);
+            $result = formatLogs([]);
 
             expect($result)->toBeInstanceOf(TextContent::class)
                 ->and($result->text)->toBe('No log entries found.');
@@ -45,7 +56,7 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             expect($result->text)
                 ->toContain('2026-01-07 10:30:00')
@@ -74,7 +85,7 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             expect($result->text)
                 ->toContain('First')
@@ -94,7 +105,7 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             // Red ANSI code
             expect($result->text)->toContain("\033[31mERROR\033[0m");
@@ -112,7 +123,7 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             // Yellow ANSI code
             expect($result->text)->toContain("\033[33mWARNING\033[0m");
@@ -130,7 +141,7 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             // Dim ANSI code
             expect($result->text)->toContain("\033[2mINFO\033[0m");
@@ -152,7 +163,7 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             expect($result->text)
                 ->toContain('#0 /var/www/file.php(123): SomeClass->method()')
@@ -174,10 +185,51 @@ describe('LogFormatter', function () {
                 ),
             ];
 
-            $result = LogFormatter::format($entries);
+            $result = formatLogs($entries);
 
             // Stack trace should be on new line with indentation (wrapped in dim ANSI)
             expect($result->text)->toContain("\n\033[2m  #0");
         });
+    });
+});
+
+describe('LogFormatter without colour', function () {
+    it('emits the same text with no escape sequences', function () {
+        $entries = [
+            new LogEntry(
+                timestamp: '2026-01-07 10:30:00',
+                channel: 'web',
+                level: 'error',
+                category: 'app\\Service',
+                message: 'Error occurred',
+                file: 'web.log',
+                stackTrace: [new StackFrame(0, '/file.php', 1, 'test()')],
+            ),
+        ];
+
+        $plain = formatLogs($entries, color: false)->text;
+
+        expect($plain)->not->toContain("\033")
+            ->and($plain)->toContain('2026-01-07 10:30:00')
+            ->and($plain)->toContain('[ERROR]')
+            ->and($plain)->toContain('app\\Service: Error occurred')
+            ->and($plain)->toContain('  #0 /file.php(1): test()');
+    });
+
+    it('lays out identically to the coloured output', function () {
+        $entries = [
+            new LogEntry(
+                timestamp: '2026-01-07 10:30:00',
+                channel: 'web',
+                level: 'warning',
+                category: 'app',
+                message: 'Careful',
+                file: 'web.log',
+            ),
+        ];
+
+        $stripped = preg_replace('/\033\[[0-9;]*m/', '', formatLogs($entries)->text);
+
+        expect($stripped)->toBe(formatLogs($entries, color: false)->text);
     });
 });
