@@ -1,0 +1,107 @@
+<?php
+
+declare(strict_types=1);
+
+namespace stimmt\craft\Mcp\support;
+
+use Mcp\Capability\Registry\ElementReference;
+use Mcp\Capability\Registry\ReferenceHandlerInterface;
+use Mcp\Capability\Registry\ToolReference;
+use Mcp\Schema\Content\TextContent;
+use Mcp\Schema\Result\CallToolResult;
+use stimmt\craft\Mcp\enums\ResponseFormat;
+
+/**
+ * Decides what a tool call actually puts on the wire.
+ *
+ * Left to itself, the SDK sends every array payload twice: CallToolHandler
+ * calls extractStructuredContent() (which returns an array verbatim) and
+ * formatResult() (which JSON-encodes the same array), and CallToolResult
+ * serializes both `content` and `structuredContent`. No tool here declares an
+ * outputSchema, so the second copy buys a client nothing and costs it the
+ * whole payload again in tokens. That handler skips both calls when the
+ * reference handler already returned a CallToolResult, so building one here
+ * is the one interception point that fixes it for every tool at once, without
+ * a line of change in any tool.
+ *
+ * It also serves the text convention: a tool opts into human-readable output
+ * purely by declaring `output: ResponseFormat` in its signature, which puts
+ * the parameter in its JSON schema. This class does the rendering centrally
+ * and never guesses for a tool that did not declare it.
+ *
+ * The same reference handler serves prompts and resources, so anything that is
+ * not a tool passes straight through.
+ *
+ * @author Max van Essen <support@stimmt.digital>
+ */
+final readonly class Presenter implements ReferenceHandlerInterface {
+    /**
+     * The parameter a tool declares to offer a text view. One name, so the
+     * convention is discoverable from any tool's schema.
+     */
+    public const string OUTPUT_PARAM = 'output';
+
+    public function __construct(
+        private ReferenceHandlerInterface $handler,
+        private Renderer $renderer,
+    ) {
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     */
+    public function handle(ElementReference $reference, array $arguments): mixed {
+        $result = $this->handler->handle($reference, $arguments);
+
+        if (!$reference instanceof ToolReference) {
+            return $result;
+        }
+
+        if ($result instanceof CallToolResult) {
+            return $result;
+        }
+
+        if (is_array($result) && $this->wantsText($reference, $arguments)) {
+            return new CallToolResult([new TextContent($this->renderer->render($result))]);
+        }
+
+        // formatResult() is the SDK's own content formatting (Content objects
+        // pass through, arrays become one JSON TextContent), so tools that
+        // already return TextContent keep their exact output. Only the
+        // structuredContent duplicate is dropped.
+        return new CallToolResult($reference->formatResult($result));
+    }
+
+    /**
+     * True only when the tool advertises the output parameter as a
+     * ResponseFormat and this call asked for text.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    private function wantsText(ToolReference $reference, array $arguments): bool {
+        if (!$this->declaresOutput($reference)) {
+            return false;
+        }
+
+        $requested = $arguments[self::OUTPUT_PARAM] ?? null;
+        if ($requested instanceof ResponseFormat) {
+            return $requested === ResponseFormat::TEXT;
+        }
+
+        return is_string($requested) && ResponseFormat::tryFrom($requested) === ResponseFormat::TEXT;
+    }
+
+    /**
+     * The schema, not the argument bag, is what makes the opt-in explicit: a
+     * tool with its own unrelated `output` parameter (tinker's dump mode) is
+     * not opted in, because its schema advertises different values.
+     */
+    private function declaresOutput(ToolReference $reference): bool {
+        $declared = $reference->tool->inputSchema['properties'][self::OUTPUT_PARAM]['enum'] ?? null;
+        if (!is_array($declared)) {
+            return false;
+        }
+
+        return array_diff(array_column(ResponseFormat::cases(), 'value'), $declared) === [];
+    }
+}

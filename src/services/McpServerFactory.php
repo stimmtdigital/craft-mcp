@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\services;
 use Craft;
 use craft\elements\User;
 use Mcp\Capability\Registry;
+use Mcp\Capability\Registry\ReferenceHandler;
 use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\SessionStoreInterface;
@@ -25,8 +26,11 @@ use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\support\EventDispatcher;
 use stimmt\craft\Mcp\support\FileLogger;
+use stimmt\craft\Mcp\support\Palette;
+use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
+use stimmt\craft\Mcp\support\Renderer;
 
 /**
  * Factory for creating MCP Server instances.
@@ -70,6 +74,7 @@ class McpServerFactory {
             ->setContainer($this->container)
             ->setRegistry($registry)
             ->setEventDispatcher($eventDispatcher)
+            ->setReferenceHandler($this->presenter())
             ->setPaginationLimit(Mcp::settings()->paginationLimit);
 
         if ($sessionStore !== null) {
@@ -89,6 +94,20 @@ class McpServerFactory {
         $this->filterResources($registry);
 
         return $server;
+    }
+
+    /**
+     * The output layer, decorating the SDK's own reference handler so every
+     * tool call passes through it: one payload on the wire instead of two, and
+     * central text rendering for tools that declare the output parameter.
+     * Built here rather than in the Builder default so the container stays the
+     * one this factory already configures.
+     */
+    private function presenter(): Presenter {
+        return new Presenter(
+            new ReferenceHandler($this->container),
+            new Renderer(Palette::fromSettings()),
+        );
     }
 
     /**
