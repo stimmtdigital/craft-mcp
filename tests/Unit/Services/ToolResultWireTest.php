@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/Fixtures/RealCraft.php';
 
 use Mcp\Capability\Registry;
 use Mcp\Capability\Registry\ReferenceHandler;
+use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\JsonRpc\Response;
 use Mcp\Schema\Request\CallToolRequest;
 use Mcp\Schema\Tool;
@@ -85,6 +86,21 @@ describe('tool result on the wire', function () {
 
         expect($wire['content'][0]['text'])->toBe("count:  1\nhandle: default")
             ->and($wire)->not->toHaveKey('structuredContent');
+    });
+});
+
+describe('tools that build their own content', function () {
+    /**
+     * tinker and read_logs (output=text) return a TextContent. Their wire
+     * payload is the regression baseline for this change: it must be exactly
+     * what the SDK sent before the presenter existed, byte for byte.
+     */
+    it('sends a TextContent return exactly as the SDK did', function () {
+        $handler = static fn (): TextContent => new TextContent("> \$x = 1\n= 1");
+        $schema = ['type' => 'object'];
+
+        expect(callTool($handler, $schema, []))
+            ->toBe(callTool($handler, $schema, [], present: false));
     });
 });
 
