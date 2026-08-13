@@ -26,9 +26,19 @@ use yii\caching\TagDependency;
 final readonly class Psr16CacheAdapter implements SimpleCacheInterface {
     public const string TAG = 'mcp-discovery';
 
+    /**
+     * @param string $prefix Namespaces the keys, and carries the code revision
+     *                       the cached discovery belongs to; see
+     *                       McpServerFactory::discoveryCache().
+     * @param int|null $defaultTtl Applied when the caller stores without a TTL
+     *                             of its own, which the SDK's CachedDiscoverer
+     *                             always does. Null keeps the Yii default of
+     *                             storing indefinitely.
+     */
     public function __construct(
         private YiiCacheInterface $cache,
         private string $prefix = 'mcp-discovery:',
+        private ?int $defaultTtl = null,
     ) {
     }
 
@@ -42,7 +52,7 @@ final readonly class Psr16CacheAdapter implements SimpleCacheInterface {
     }
 
     public function set(string $key, mixed $value, null|int|DateInterval $ttl = null): bool {
-        $normalizedTtl = $this->normalizeTtl($ttl);
+        $normalizedTtl = $this->normalizeTtl($ttl) ?? $this->defaultTtl;
 
         // PSR-16: Zero or negative TTL means immediate expiry (delete the key)
         if ($ttl !== null && $normalizedTtl <= 0) {

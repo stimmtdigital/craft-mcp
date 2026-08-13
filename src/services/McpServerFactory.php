@@ -24,6 +24,7 @@ use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\models\ToolDefinition;
+use stimmt\craft\Mcp\support\DiscoveryCache;
 use stimmt\craft\Mcp\support\EventDispatcher;
 use stimmt\craft\Mcp\support\FileLogger;
 use stimmt\craft\Mcp\support\Palette;
@@ -59,17 +60,19 @@ class McpServerFactory {
         $eventDispatcher = new EventDispatcher();
         $registry = new Registry($eventDispatcher, $logger);
 
+        $basePath = dirname(__DIR__);
+
         $builder = Server::builder()
             ->setServerInfo(
                 name: 'Craft CMS MCP Server',
-                version: Mcp::getInstance()?->getVersion() ?? '1.0.0',
+                version: $this->version(),
             )
             ->setInstructions($this->getInstructions($scope))
             ->setDiscovery(
-                basePath: dirname(__DIR__),
+                basePath: $basePath,
                 scanDirs: ['tools', 'prompts', 'resources'],
                 excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts', 'elements', 'http', 'records', 'migrations', 'controllers', 'console', 'installer'],
-                cache: new Psr16CacheAdapter(Craft::$app->getCache()),
+                cache: $this->discoveryCache($basePath),
             )
             ->setContainer($this->container)
             ->setRegistry($registry)
@@ -94,6 +97,23 @@ class McpServerFactory {
         $this->filterResources($registry);
 
         return $server;
+    }
+
+    /**
+     * The cache behind the SDK's attribute discovery. Keying it on the state
+     * of the scanned code is what stops tools/list serving a previous scan
+     * after a tool is edited; DiscoveryCache holds that reasoning.
+     */
+    private function discoveryCache(string $basePath): Psr16CacheAdapter {
+        return (new DiscoveryCache(
+            cache: Craft::$app->getCache(),
+            devMode: Craft::$app->getConfig()->getGeneral()->devMode,
+            version: $this->version(),
+        ))->of($basePath);
+    }
+
+    private function version(): string {
+        return Mcp::getInstance()?->getVersion() ?? '1.0.0';
     }
 
     /**

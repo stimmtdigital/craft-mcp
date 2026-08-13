@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
+require_once dirname(__DIR__, 2) . '/Fixtures/RecordingCache.php';
 
 use Psr\SimpleCache\CacheInterface as SimpleCacheInterface;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
+use stimmt\craft\Mcp\Tests\Fixtures\RecordingCache;
 use yii\caching\ArrayCache;
 
 describe('Psr16CacheAdapter', function () {
@@ -121,6 +123,30 @@ describe('Psr16CacheAdapter', function () {
         $adapter->set('key', 'value', null);
 
         expect($adapter->get('key', 'default'))->toBe('value');
+    });
+
+    it('stores with the default TTL when the caller sets none', function () {
+        $wrapped = new RecordingCache();
+
+        (new Psr16CacheAdapter($wrapped, 'mcp-discovery:', 3600))->set('key', 'value');
+
+        expect($wrapped->lastDuration())->toBe(3600);
+    });
+
+    it('lets an explicit TTL win over the default', function () {
+        $wrapped = new RecordingCache();
+
+        (new Psr16CacheAdapter($wrapped, 'mcp-discovery:', 3600))->set('key', 'value', 60);
+
+        expect($wrapped->lastDuration())->toBe(60);
+    });
+
+    it('still expires immediately on an explicit zero TTL despite a default', function () {
+        $adapter = new Psr16CacheAdapter(new ArrayCache(), 'mcp-discovery:', 3600);
+
+        $adapter->set('key', 'value', 0);
+
+        expect($adapter->get('key', 'default'))->toBe('default');
     });
 
     it('applies zero TTL expiry through setMultiple', function () {
