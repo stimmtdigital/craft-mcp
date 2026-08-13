@@ -17,6 +17,70 @@ function upcaseRecurse(): Closure {
 }
 
 describe('Containers', function () {
+    // Block order cannot survive the wire: blocks are keyed by their numeric
+    // entry id, and JSON objects with integer-like keys are re-ordered
+    // ascending by most clients, so an agent would read a page's blocks in id
+    // order and, writing that payload back, silently reshuffle the field
+    // (Craft renumbers sortOrder from value order).
+    it('numbers blocks in field order on the way out', function () {
+        $blocks = [
+            480 => ['type' => 'text', 'fields' => ['body' => 'second in id, first on the page']],
+            475 => ['type' => 'text', 'fields' => ['body' => 'first in id, second on the page']],
+        ];
+
+        $out = (new Containers(upcaseRecurse()))->toKeys(new Matrix(), $blocks, new Context());
+
+        expect($out[480]['position'])->toBe(1)
+            ->and($out[475]['position'])->toBe(2);
+    });
+
+    it('restores the intended order on the way in, whatever the key order', function () {
+        // Exactly what a JavaScript client hands back: keys ascending by id,
+        // positions still saying which one comes first.
+        $blocks = [
+            475 => ['type' => 'text', 'position' => 2, 'fields' => ['body' => 'b']],
+            480 => ['type' => 'text', 'position' => 1, 'fields' => ['body' => 'a']],
+        ];
+
+        $out = (new Containers(upcaseRecurse()))->toIds(new Matrix(), $blocks, new Context());
+
+        expect(array_keys($out))->toBe([480, 475]);
+    });
+
+    it('never passes position through to Craft', function () {
+        $blocks = [
+            475 => ['type' => 'text', 'position' => 2, 'fields' => ['body' => 'b']],
+            480 => ['type' => 'text', 'position' => 1, 'fields' => ['body' => 'a']],
+        ];
+
+        $out = (new Containers(upcaseRecurse()))->toIds(new Matrix(), $blocks, new Context());
+
+        expect($out[480])->not->toHaveKey('position')
+            ->and($out[475])->not->toHaveKey('position');
+    });
+
+    // Positions are advisory: a hand-written payload without them is saved in
+    // the order it was written, which is the documented behavior.
+    it('keeps the given order when positions are absent or partial', function () {
+        $blocks = [
+            'new2' => ['type' => 'text', 'fields' => ['body' => 'b']],
+            'new1' => ['type' => 'text', 'position' => 1, 'fields' => ['body' => 'a']],
+        ];
+
+        $out = (new Containers(upcaseRecurse()))->toIds(new Matrix(), $blocks, new Context());
+
+        expect(array_keys($out))->toBe(['new2', 'new1'])
+            ->and($out['new1'])->not->toHaveKey('position');
+    });
+
+    it('leaves a single container value untouched', function () {
+        $value = ['fields' => ['body' => 'x']];
+
+        $out = (new Containers(upcaseRecurse()))->toKeys(new ContentBlock(), $value, new Context());
+
+        expect($out)->not->toHaveKey('position');
+    });
+
     it('handles the three container field types', function () {
         $containers = new Containers(upcaseRecurse());
 

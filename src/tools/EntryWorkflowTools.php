@@ -19,10 +19,12 @@ use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\NestedPosition;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
+use stimmt\craft\Mcp\support\WriteParams;
 
 /**
  * Entry workflow: the pending-drafts review queue, publish, delete, duplicate, copy to site.
@@ -176,16 +178,12 @@ class EntryWorkflowTools {
             $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
             $duplicate = Craft::$app->getElements()->duplicateElement($entry, $attributes, asUnpublishedDraft: true);
 
-            if ($fields !== null) {
-                $decoded = json_decode($fields, true);
-                if (!is_array($decoded)) {
-                    throw new ToolCallException('Invalid JSON in fields parameter');
-                }
+            $result = $fields === null
+                ? null
+                : $this->writer->update($duplicate, [], WriteParams::fieldsPayload($fields), WriteMode::Draft, $site);
 
-                $result = $this->writer->update($duplicate, [], $decoded, WriteMode::Draft, $site);
-                if ($result->isFailure()) {
-                    return ['success' => false] + $result->toArray();
-                }
+            if ($result !== null && $result->isFailure()) {
+                return ['success' => false] + $result->toArray();
             }
 
             return Response::success(['entry' => $this->reader->read($duplicate, $site)]);
@@ -272,6 +270,16 @@ class EntryWorkflowTools {
      * default draft-first flow, so this is where the resource push belongs.
      */
     private function applyDraft(Entry $draft, ?string $site, ?RequestContext $context): array {
+        // A nested block's draft must carry the canonical's current position
+        // into the apply, or Craft appends the block to the end of its field:
+        // applyDraft clones with draftId nulled, which skips saveOwnership()'s
+        // sortOrder recovery and falls through to max+1. Presetting the value
+        // writes the right position inside the apply transaction.
+        $sortOrder = NestedPosition::capture($draft);
+        if ($sortOrder !== null) {
+            $draft->setSortOrder($sortOrder);
+        }
+
         $applied = Craft::$app->getDrafts()->applyDraft($draft);
         ResourceChangeNotifier::notifyEntry($context, (int) $applied->id);
 

@@ -311,6 +311,9 @@ class McpServerFactory {
         'get_entry',
         'create_entry',
         'update_entry',
+        'create_nested_entry',
+        'move_nested_entry',
+        'delete_entry',
         'publish_entry',
         'copy_entry_to_site',
         'list_entries',
@@ -397,9 +400,10 @@ This MCP server provides access to a Craft CMS installation.
 1. Call `describe_entry_schema` for the section first; pass `example` (an entry id or slug) to get a real entry as a golden fixture. Every field carries an `input` shape describing the exact payload it accepts.
 2. The payload format is symmetric: what `get_entry` returns is exactly what `create_entry`/`update_entry` accept. Read one, tweak it, write it back.
 3. Use natural keys, never numeric ids: relations are `{"section": "...", "slug": "..."}`, assets `{"volume": "...", "filename": "..."}`, categories/tags `{"group": "...", "slug": "..."}`, users `{"username": "..."}`. Matrix blocks are keyed objects (`new1`, `new2`, ...) with the entry-type handle as `type`.
-4. Writes land as DRAFTS by default: the response carries `draftElementId` and a `cpEditUrl` deep link for human review; `publish_entry` makes them live. Nothing touches live content until published.
-5. Always read the `warnings` list on write responses: unresolvable natural keys become warnings, never guesses or silent drops. Validation failures return per-field errors.
-6. Multi-site installs: pass the `site` handle parameter; `copy_entry_to_site` moves content between sites.
+4. Single Matrix-block work has dedicated tools: `create_nested_entry` adds one block to an owner's field without resending its siblings, `move_nested_entry` repositions one, and `update_entry`/`delete_entry` with the block's own id edit or remove one. Prefer these over rewriting the owner's whole field value, which deletes any block left out of the payload.
+5. Writes land as DRAFTS by default: the response carries `draftElementId` and a `cpEditUrl` deep link for human review; `publish_entry` makes them live. Nothing touches live content until published.
+6. Always read the `warnings` list on write responses: unresolvable natural keys become warnings, never guesses or silent drops. Validation failures return per-field errors.
+7. Multi-site installs: pass the `site` handle parameter; `copy_entry_to_site` moves content between sites.
 
 The full contract lives in the `craft://guides/content-writing` resource.
 
@@ -408,11 +412,12 @@ The full contract lives in the `craft://guides/content-writing` resource.
 Prefer the most specific tool and escalate only when none fits:
 
 1. Content questions: `list_entries` (field filters, `relatedTo`, `search`, date ranges, `fields` projection), `get_entry`, `count_entries` for totals and per-value breakdowns, `list_drafts` for the review queue, `list_revisions` for an entry's history, `describe_entry_schema` for payload shapes.
-2. Other element types and nested shapes: `query_graphql` reads anything Craft's GraphQL schema exposes (assets, categories, users, plugin types) with exactly the response shape you ask for.
-3. Database structure: `get_database_schema` and `get_table_counts`, never hand-written information_schema queries.
-4. `run_query` covers what no structured tool does: custom plugin tables and aggregate SQL (SELECT only).
-5. `tinker` is the last resort, for logic no tool can express (cross-entry computation, service calls). Keep analysis code read-only; write content through the entry tools so drafts, validation, and warnings stay in play.
-6. Tools marked with a destructive annotation modify data or execute code; prefer draft-mode writes and review flows.
+2. Single Matrix-block changes: `create_nested_entry` to add a block, `move_nested_entry` to reposition one, `update_entry`/`delete_entry` with the block's own id to edit or remove one. Never rebuild an owner's whole field value to change one block.
+3. Other element types and nested shapes: `query_graphql` reads anything Craft's GraphQL schema exposes (assets, categories, users, plugin types) with exactly the response shape you ask for.
+4. Database structure: `get_database_schema` and `get_table_counts`, never hand-written information_schema queries.
+5. `run_query` covers what no structured tool does: custom plugin tables and aggregate SQL (SELECT only).
+6. `tinker` is the last resort, for logic no tool can express (cross-entry computation, service calls). Keep analysis code read-only; write content through the entry tools so drafts, validation, and warnings stay in play.
+7. Tools marked with a destructive annotation modify data or execute code; prefer draft-mode writes and review flows.
 INSTRUCTIONS;
     }
 

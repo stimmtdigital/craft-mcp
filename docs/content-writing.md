@@ -40,6 +40,14 @@ Matrix values are objects keyed by block id (use `new1`, `new2`, ... for new blo
 
 Disabled blocks are preserved on round trips, never silently dropped.
 
+### Block order travels in `position`, not in the key order
+
+Reads add a 1-based `position` to every block, and that is the only reliable statement of the field's order. The blocks are keyed by their numeric entry id, and a JSON object whose keys look like integers is re-ordered ascending by most clients (JavaScript does it by specification), so by the time a payload reaches an agent the keys are usually sorted by id rather than by where the blocks sit on the page.
+
+Writes take `position` back. When every block carries one, the field is saved in that order regardless of the order the keys arrived in; when they are absent, the blocks are saved in the order given, which is what a hand-written payload expects. Either way `position` is stripped before Craft sees it.
+
+This matters because Craft renumbers a Matrix field's order from the order of the value it is handed. Without positions, reading an entry and writing it back unchanged could reshuffle its blocks into id order. Read `position` to learn the order, and change it with `move_nested_entry` rather than by rearranging a payload.
+
 ### Editing one block directly
 
 The block key in the Matrix object above (`new1` in that example) is a placeholder only for a block that doesn't exist yet. For a block `get_entry` already returned, that same key is the block's own entry id, since every Matrix-family block is a real, independently-addressable entry in Craft 5, not a row inside the owner's field.
@@ -49,10 +57,18 @@ That id works directly with the entry tools, same as any other entry id:
 - `update_entry id=<blockId> fields='{...}'` edits that one block. Sibling blocks and the owner's own field value are untouched.
 - `delete_entry id=<blockId>` removes that one block.
 - `publish_entry id=<blockId>` applies that block's own pending draft in place.
+- `create_nested_entry owner=<entryId> field=<matrixHandle> type=<blockType>` adds a new block, the first-ever block of a brand-new type included, without resending any sibling.
+- `move_nested_entry id=<blockId> position=<n>` repositions a block within its field.
 
-This is the safer default for a single-block change. Sending the owner's Matrix field through `update_entry` replaces the field's entire value; any block left out of the payload is deleted. Targeting a block's own id skips that risk entirely, since the owner's field value and every sibling block are never touched.
+This is the safer default for any single-block change. Sending the owner's Matrix field through `update_entry` replaces the field's entire value; any block left out of the payload is deleted. Targeting one block skips that risk entirely, since the owner's field value and every sibling block are never touched.
 
-One limit: this only reaches a block whose type already appears somewhere in the field. Adding the first-ever block of a brand new type still needs the full owner-field payload.
+`create_nested_entry` and `move_nested_entry` stage their change on a draft **of the owner entry**, the same way the control panel does: the response's `draftElementId` is the owner draft to review (`get_entry`) and publish (`publish_entry`), and passing it as `owner` to further `create_nested_entry` calls stacks more blocks onto that same draft. After publishing, re-read the owner: Craft duplicates a draft-owned block onto the canonical entry on apply, so the block's final id comes from the published owner, not from the create response.
+
+### Conflict detection: expectedDateUpdated
+
+A read-modify-write payload is built from a `get_entry` snapshot, and nothing guarantees that snapshot is still current by the time the write lands: a person may have saved the entry in the control panel in between, or another agent may have published its own draft. `update_entry` accepts an optional `expectedDateUpdated`, the `dateUpdated` string exactly as `get_entry` returned it. When the entry changed since, the write fails naming both timestamps instead of silently overwriting the newer content; re-read, rebuild the payload, retry. Omitting the parameter keeps the previous unchecked behavior.
+
+Prefer avoiding the race entirely where the change allows it: a per-block write (`update_entry` on the block's own id) or `create_nested_entry` never resends sibling content, so there is nothing stale to overwrite.
 
 ## Discover the Shape First: describe_entry_schema
 

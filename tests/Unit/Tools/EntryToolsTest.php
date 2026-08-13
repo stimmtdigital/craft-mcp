@@ -2,10 +2,19 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../../Fixtures/RealCraft.php';
+require_once __DIR__ . '/../../Fixtures/CustomFieldBehaviorStub.php';
+
+use craft\elements\Entry;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
+use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\Reader;
+use stimmt\craft\Mcp\elements\refs\Translator;
+use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\Tests\Fixtures\Layouts;
 use stimmt\craft\Mcp\tools\EntryTools;
 
 describe('EntryTools structure', function () {
@@ -119,6 +128,91 @@ describe('get_entry lookups', function () {
         $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
 
         expect($source)->toContain('revisions(null)');
+    });
+});
+
+describe('update_entry conflict detection', function () {
+    // The comparison helper runs behaviorally on constructed entries; only
+    // the full update round trip needs a booted application. The contract:
+    // expectedDateUpdated omitted means unchecked (nothing breaks for
+    // existing callers), a matching instant passes regardless of timezone
+    // formatting, and a mismatch throws naming both values so the caller
+    // re-reads instead of silently overwriting (#36).
+    beforeEach(function () {
+        $translator = Translator::withDefaults(Layouts::keysWith());
+        $this->assert = function (?DateTime $current, ?string $expected) use ($translator): void {
+            (new ReflectionMethod(EntryTools::class, 'assertUnchanged'))->invoke(
+                new EntryTools(new Reader($translator), new Writer($translator)),
+                new Entry(['siteId' => 1, 'id' => 7, 'dateUpdated' => $current]),
+                $expected,
+            );
+        };
+    });
+
+    it('accepts the expectedDateUpdated parameter', function () {
+        $params = array_map(
+            fn (ReflectionParameter $p): string => $p->getName(),
+            (new ReflectionMethod(EntryTools::class, 'updateEntry'))->getParameters(),
+        );
+
+        expect($params)->toContain('expectedDateUpdated');
+    });
+
+    it('is a no-op when expectedDateUpdated is omitted', function () {
+        ($this->assert)(new DateTime('2026-08-12 10:00:00'), null);
+
+        expect(true)->toBeTrue();
+    });
+
+    it('passes when the timestamps name the same instant', function () {
+        ($this->assert)(new DateTime('2026-08-12 10:00:00'), '2026-08-12 10:00:00');
+
+        expect(true)->toBeTrue();
+    });
+
+    it('passes when the same instant is written in another timezone', function () {
+        ($this->assert)(new DateTime('2026-08-12 10:00:00', new DateTimeZone('UTC')), '2026-08-12T12:00:00+02:00');
+
+        expect(true)->toBeTrue();
+    });
+
+    it('rejects a stale snapshot naming both values', function () {
+        try {
+            ($this->assert)(new DateTime('2026-08-12 10:00:00'), '2026-08-11 09:30:00');
+        } catch (ToolCallException $e) {
+            expect($e->getMessage())->toContain('changed since you read it')
+                ->toContain('2026-08-12 10:00:00')
+                ->toContain('2026-08-11 09:30:00')
+                ->toContain('get_entry');
+
+            return;
+        }
+
+        $this->fail('Expected a ToolCallException for a stale snapshot');
+    });
+
+    it('rejects an unparsable expectedDateUpdated', function () {
+        ($this->assert)(new DateTime('2026-08-12 10:00:00'), 'not a date');
+    })->throws(ToolCallException::class, 'expectedDateUpdated');
+
+    // The write path itself needs a booted application; this pins that the
+    // precondition actually guards updateEntry (behavior of the comparison
+    // is covered above).
+    it('checks the precondition inside updateEntry before writing', function () {
+        $reflection = new ReflectionMethod(EntryTools::class, 'updateEntry');
+        $file = (string) file_get_contents($reflection->getFileName());
+        $body = implode("\n", array_slice(
+            explode("\n", $file),
+            $reflection->getStartLine() - 1,
+            $reflection->getEndLine() - $reflection->getStartLine() + 1,
+        ));
+
+        $check = strpos($body, '$this->assertUnchanged($entry, $expectedDateUpdated)');
+        $write = strpos($body, '$this->writer->update(');
+
+        expect($check)->toBeInt()
+            ->and($write)->toBeInt()
+            ->and($check)->toBeLessThan($write);
     });
 });
 
