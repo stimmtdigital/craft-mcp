@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Mcp\Capability\Discovery\DocBlockParser;
+use Mcp\Capability\Discovery\SchemaGenerator;
 use Mcp\Capability\Registry\ElementReference;
 use Mcp\Capability\Registry\PromptReference;
 use Mcp\Capability\Registry\ReferenceHandlerInterface;
@@ -15,6 +17,7 @@ use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\support\Palette;
 use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\Renderer;
+use stimmt\craft\Mcp\tools\McpTools;
 
 /**
  * A reference handler that returns whatever the test hands it, standing in for
@@ -32,14 +35,29 @@ function returning(mixed $result): ReferenceHandlerInterface {
 }
 
 function toolReference(bool $declaresOutput = false): ToolReference {
+    // A tool with no parameters does not arrive with an empty properties
+    // ARRAY: the SDK rewrites it to a stdClass so the schema serializes as
+    // `{}` rather than `[]` (Mcp\Schema\Tool::normalizeSchemaProperties()).
+    // The fixture mirrors that, because assuming an array here is what made
+    // every parameterless tool, reload_mcp included, fatal in the Presenter.
     $properties = $declaresOutput
         ? ['output' => ['type' => 'string', 'enum' => array_column(ResponseFormat::cases(), 'value')]]
-        : [];
+        : new stdClass();
 
     return new ToolReference(
         new Tool('demo', null, ['type' => 'object', 'properties' => $properties], 'Demo', null),
         static fn (): array => [],
     );
+}
+
+function presentWithSchema(array $inputSchema, array $arguments = []): mixed {
+    $presenter = new Presenter(returning(['count' => 1]), new Renderer(new Palette(false)));
+    $reference = new ToolReference(
+        new Tool('demo', null, $inputSchema, 'Demo', null),
+        static fn (): array => [],
+    );
+
+    return $presenter->handle($reference, $arguments);
 }
 
 function present(mixed $result, array $arguments = [], bool $declaresOutput = false): mixed {
@@ -140,6 +158,41 @@ describe('Presenter text output', function () {
             ['count' => 1],
             ['output' => ResponseFormat::TEXT],
             declaresOutput: true,
+        );
+
+        expect($result->content[0]->text)->toBe('count: 1');
+    });
+});
+
+describe('Presenter schema shapes', function () {
+    it('handles the real schema the SDK generates for reload_mcp', function () {
+        $schema = (new SchemaGenerator(new DocBlockParser()))
+            ->generate(new ReflectionMethod(McpTools::class, 'reloadMcp'));
+
+        expect($schema['properties'])->toBeInstanceOf(stdClass::class)
+            ->and(presentWithSchema($schema))->toBeInstanceOf(CallToolResult::class);
+    });
+
+    it('survives an empty property map normalized by the SDK', function () {
+        $tool = Tool::fromArray([
+            'name' => 'demo',
+            'inputSchema' => ['type' => 'object', 'properties' => []],
+        ]);
+
+        expect(presentWithSchema($tool->inputSchema, ['output' => 'text']))
+            ->toBeInstanceOf(CallToolResult::class);
+    });
+
+    it('reads an output declaration carried as objects rather than arrays', function () {
+        $properties = new stdClass();
+        $properties->output = (object) [
+            'type' => 'string',
+            'enum' => array_column(ResponseFormat::cases(), 'value'),
+        ];
+
+        $result = presentWithSchema(
+            ['type' => 'object', 'properties' => $properties],
+            ['output' => 'text'],
         );
 
         expect($result->content[0]->text)->toBe('count: 1');

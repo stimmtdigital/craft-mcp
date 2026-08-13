@@ -103,11 +103,35 @@ final readonly class Presenter implements ReferenceHandlerInterface {
      * not opted in, because its schema advertises different values.
      */
     private function declaresOutput(ToolReference $reference): bool {
-        $declared = $reference->tool->inputSchema['properties'][self::OUTPUT_PARAM]['enum'] ?? null;
+        $properties = $this->fragment($reference->tool->inputSchema['properties'] ?? null);
+        $declared = $this->fragment($properties[self::OUTPUT_PARAM] ?? null)['enum'] ?? null;
+
         if (!is_array($declared)) {
             return false;
         }
 
         return array_diff(array_column(ResponseFormat::cases(), 'value'), $declared) === [];
+    }
+
+    /**
+     * A JSON schema fragment as an array, whichever shape it arrives in.
+     *
+     * A tool with no parameters does not carry an empty properties array: the
+     * SDK rewrites it to a stdClass so the schema serializes as `{}` instead
+     * of `[]` (Mcp\Schema\Tool::normalizeSchemaProperties(), and the same
+     * cleanup in Capability\Discovery\SchemaGenerator::buildSchemaFromParameters()).
+     * Subscripting that object was a fatal Error, so every parameterless tool
+     * (reload_mcp among them) died here before its result reached the client.
+     * An externally registered tool may equally hand in a decoded JSON schema
+     * that is objects throughout, so both shapes are read the same way.
+     *
+     * @return array<string, mixed>
+     */
+    private function fragment(mixed $value): array {
+        if (is_object($value)) {
+            return get_object_vars($value);
+        }
+
+        return is_array($value) ? $value : [];
     }
 }
