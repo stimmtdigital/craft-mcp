@@ -229,6 +229,20 @@
                             "string"
                         ],
                         "default": null
+                    },
+                    "postDate": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "expiryDate": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
                     }
                 },
                 "required": [
@@ -1506,6 +1520,20 @@
                         "default": null
                     },
                     "parent": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "postDate": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "expiryDate": {
                         "type": [
                             "null",
                             "string"
@@ -3756,7 +3784,8 @@
                     "url": "<string>",
                     "warnings": []
                 },
-                "success": true
+                "success": true,
+                "warnings": []
             }
         },
         "copy_entry_to_site": {

@@ -37,12 +37,37 @@ final readonly class Relations implements FieldTranslator {
             return $value;
         }
 
-        return array_map(
-            fn (mixed $id): mixed => is_numeric($id)
-                ? ($this->keys->keyFor($target, (int) $id, $context->site) ?? (int) $id)
-                : $id,
-            array_values($value),
-        );
+        $keyed = [];
+        foreach (array_values($value) as $index => $id) {
+            if (!is_numeric($id)) {
+                $keyed[] = $id;
+
+                continue;
+            }
+
+            $key = $this->keys->keyFor($target, (int) $id, $context->site);
+            if ($key !== null) {
+                $keyed[] = $key;
+
+                continue;
+            }
+
+            // Falling back to the raw id is right: it is the only thing left
+            // that still addresses the element. Doing it silently was not. The
+            // whole payload contract is that a relation reads as a key and can
+            // be written straight back, so an id here means that round trip
+            // will not hold for this item, and the caller is entitled to know
+            // which item and why rather than inferring it from a type.
+            $keyed[] = (int) $id;
+            $context->warn(new Warning(
+                (string) $field->handle,
+                $field->handle . '.' . $index,
+                ['id' => (int) $id],
+                'No natural key for this id; it reads as a raw id and may not resolve on write',
+            ));
+        }
+
+        return $keyed;
     }
 
     public function toIds(FieldInterface $field, mixed $value, Context $context): mixed {

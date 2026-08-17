@@ -41,6 +41,9 @@ use stimmt\craft\Mcp\support\WriteParams;
  * @author Max van Essen <support@stimmt.digital>
  */
 class EntryTools {
+    /** Deepest nesting describe_entry_schema will expand. */
+    private const int MAX_SCHEMA_DEPTH = 3;
+
     private readonly Reader $reader;
 
     private readonly Writer $writer;
@@ -194,9 +197,11 @@ class EntryTools {
         ?string $fields = null,
         ?string $mode = null,
         ?string $parent = null,
+        ?string $postDate = null,
+        ?string $expiryDate = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent, $context): array {
+        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent, $postDate, $expiryDate, $context): array {
             $siteModel = SiteResolver::resolve($site);
             $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
                 ?? throw new ToolCallException("Section '{$section}' not found");
@@ -223,6 +228,8 @@ class EntryTools {
             if ($parentId !== null) {
                 $attributes['parentId'] = $parentId;
             }
+
+            $attributes += WriteParams::schedule($postDate, $expiryDate);
 
             $result = $this->writer->create($attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
 
@@ -251,10 +258,12 @@ class EntryTools {
         ?string $fields = null,
         ?string $mode = null,
         ?string $parent = null,
+        ?string $postDate = null,
+        ?string $expiryDate = null,
         ?string $expectedDateUpdated = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent, $expectedDateUpdated, $context): array {
+        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent, $postDate, $expiryDate, $expectedDateUpdated, $context): array {
             $entry = $this->find($id, null, null, $site);
             Authorization::assertCanSave($entry);
             $this->assertUnchanged($entry, $expectedDateUpdated);
@@ -272,6 +281,8 @@ class EntryTools {
             if ($parentId !== null) {
                 $attributes['parentId'] = $parentId;
             }
+
+            $attributes += WriteParams::schedule($postDate, $expiryDate);
 
             $result = $this->writer->update($entry, $attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
 
@@ -298,6 +309,13 @@ class EntryTools {
         ?string $example = null,
         ?RequestContext $context = null,
     ): array {
+        // Clamped rather than trusted: each level expands every block type of
+        // every matrix field, so the payload and the work grow multiplicatively
+        // and a caller passing a large number gets a response nothing can use,
+        // after making the server do all of it. Two levels covers a matrix
+        // inside a matrix, which is as deep as the payload contract goes.
+        $depth = max(0, min($depth, self::MAX_SCHEMA_DEPTH));
+
         return SafeExecution::run(function () use ($section, $type, $depth, $example): array {
             $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
                 ?? throw new ToolCallException("Section '{$section}' not found");
@@ -385,13 +403,24 @@ class EntryTools {
             return;
         }
 
-        $current = $entry->getCanonical()->dateUpdated;
+        // Compared against the element the caller addressed, not its canonical.
+        // The default flow hands back a derivative draft's id, get_entry on that
+        // id reports the draft's own dateUpdated, and comparing that to the
+        // canonical's could never match: the draft was saved when it was
+        // created and the canonical was not touched. The tool then told the
+        // agent to re-read and retry, which produced the same timestamp and the
+        // same refusal, with no way out. It also watched the wrong thing in both
+        // directions, missing a concurrent edit of the draft (the actual race
+        // for draft-first content) while blocking on canonical changes that
+        // could not conflict. Addressing the canonical is unchanged, and so is
+        // an unpublished draft, whose getCanonical() already returns itself.
+        $current = $entry->dateUpdated;
         if ($current === null || $current->getTimestamp() === $this->timestamp($expectedDateUpdated)) {
             return;
         }
 
         throw new ToolCallException(
-            "Entry {$entry->getCanonicalId()} changed since you read it: dateUpdated is now"
+            "Entry {$entry->id} changed since you read it: dateUpdated is now"
             . " '{$current->format('Y-m-d H:i:s')}', expectedDateUpdated was '{$expectedDateUpdated}'."
             . ' Re-read the entry with get_entry and rebuild the write from the fresh payload.',
         );

@@ -71,18 +71,39 @@ final readonly class Containers implements FieldTranslator {
      * Restore the caller's intended order on the way in, because Craft renumbers
      * sortOrder from the order of the value it is given: a payload whose keys
      * were re-ordered in transit would otherwise silently reshuffle the field.
-     * Positions are advisory, so a payload that omits them keeps the order it
-     * arrived in, and the key never reaches Craft either way.
+     * Positions are advisory: a payload that omits them entirely keeps the
+     * order it arrived in, and a payload that carries them on only some blocks
+     * orders those and appends the rest. The key never reaches Craft either
+     * way.
      */
     private function ordered(mixed $value): mixed {
         if (!$this->isBlockList($value)) {
             return $value;
         }
 
-        $positioned = array_filter($value, static fn (mixed $block): bool => is_array($block) && isset($block['position']));
-        if (count($positioned) === count($value)) {
-            uasort($value, static fn (array $a, array $b): int => $a['position'] <=> $b['position']);
+        // Positioned blocks lead, in the order the caller asked for; anything
+        // without a position follows in the order it arrived.
+        //
+        // The all-or-nothing rule this replaces skipped sorting entirely when
+        // one block lacked a position, which is exactly the payload an agent
+        // produces when it reads a field, keeps the positions it was given and
+        // adds a new block. The field was then silently reshuffled into
+        // whatever order the transport left it in, which is the accident this
+        // whole mechanism exists to prevent.
+        $positioned = [];
+        $unpositioned = [];
+        foreach ($value as $key => $block) {
+            if (is_array($block) && isset($block['position'])) {
+                $positioned[$key] = $block;
+
+                continue;
+            }
+
+            $unpositioned[$key] = $block;
         }
+
+        uasort($positioned, static fn (array $a, array $b): int => $a['position'] <=> $b['position']);
+        $value = $positioned + $unpositioned;
 
         foreach ($value as $key => $block) {
             if (is_array($block)) {

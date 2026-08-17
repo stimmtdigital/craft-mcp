@@ -61,16 +61,33 @@ describe('Containers', function () {
 
     // Positions are advisory: a hand-written payload without them is saved in
     // the order it was written, which is the documented behavior.
-    it('keeps the given order when positions are absent or partial', function () {
+    it('keeps the given order when no block carries a position', function () {
         $blocks = [
             'new2' => ['type' => 'text', 'fields' => ['body' => 'b']],
-            'new1' => ['type' => 'text', 'position' => 1, 'fields' => ['body' => 'a']],
+            'new1' => ['type' => 'text', 'fields' => ['body' => 'a']],
         ];
 
         $out = (new Containers(upcaseRecurse()))->toIds(new Matrix(), $blocks, new Context());
 
-        expect(array_keys($out))->toBe(['new2', 'new1'])
-            ->and($out['new1'])->not->toHaveKey('position');
+        expect(array_keys($out))->toBe(['new2', 'new1']);
+    });
+
+    it('orders the positioned blocks and appends the rest', function () {
+        // The realistic payload: an agent reads a field, keeps the positions it
+        // was handed, and inserts one new block without inventing a position
+        // for it. Skipping the sort here (the old all-or-nothing rule) left the
+        // whole field in transport order, which for id-keyed blocks means
+        // ascending by id rather than page order.
+        $blocks = [
+            'existing2' => ['type' => 'text', 'position' => 2, 'fields' => ['body' => 'second']],
+            'new1' => ['type' => 'text', 'fields' => ['body' => 'added']],
+            'existing1' => ['type' => 'text', 'position' => 1, 'fields' => ['body' => 'first']],
+        ];
+
+        $out = (new Containers(upcaseRecurse()))->toIds(new Matrix(), $blocks, new Context());
+
+        expect(array_keys($out))->toBe(['existing1', 'existing2', 'new1'])
+            ->and($out['existing1'])->not->toHaveKey('position');
     });
 
     it('leaves a single container value untouched', function () {

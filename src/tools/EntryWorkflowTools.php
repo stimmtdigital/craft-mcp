@@ -186,7 +186,15 @@ class EntryWorkflowTools {
                 return ['success' => false] + $result->toArray();
             }
 
-            return Response::success(['entry' => $this->reader->read($duplicate, $site)]);
+            // The warnings ride along on success too. A fields payload naming a
+            // relation that cannot be resolved is dropped rather than guessed,
+            // and this was the one write path that then reported plain success,
+            // so the caller could not tell a complete duplicate from a partial
+            // one. Every other write surfaces them; this one now agrees.
+            return Response::success([
+                'entry' => $this->reader->read($duplicate, $site),
+                'warnings' => $result === null ? [] : $result->toArray()['warnings'],
+            ]);
         });
     }
 
