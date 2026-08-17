@@ -20,6 +20,7 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use stimmt\craft\Mcp\discovery\Loader;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
@@ -86,12 +87,13 @@ class McpServerFactory {
             // whatever it was compiled against, which is not necessarily what
             // this server implements.
             ->setProtocolVersion(ProtocolVersion::V2025_06_18)
-            ->setDiscovery(
+            ->addLoader(new Loader(
                 basePath: $basePath,
                 scanDirs: ['tools', 'prompts', 'resources'],
-                excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts', 'elements', 'http', 'records', 'migrations', 'controllers', 'console', 'installer'],
                 cache: $this->discoveryCache($basePath),
-            )
+                gate: new Gate($scope),
+                logger: $logger,
+            ))
             ->setCapabilities($this->capabilities())
             ->setContainer($this->container)
             ->setRegistry($registry)
@@ -110,12 +112,10 @@ class McpServerFactory {
 
         $this->registerExternalElements($builder);
 
-        $server = $builder->build();
-        $this->filterTools($registry, $scope);
-        $this->filterPrompts($registry);
-        $this->filterResources($registry);
-
-        return $server;
+        // No post-build filtering: the loader admits or declines each element
+        // before it is registered, so capabilities are computed on the real set
+        // and nothing has to be unregistered afterwards.
+        return $builder->build();
     }
 
     /**
@@ -231,116 +231,6 @@ class McpServerFactory {
         }
 
         return new FileLogger($logPath, $logLevel);
-    }
-
-    /**
-     * Unregister every tool the global settings disallow (disabledTools,
-     * enableDangerousTools, method conditions) and, when a scope is given,
-     * everything outside it. Runs against the informational ToolRegistry, so
-     * external event-registered tools are covered too.
-     */
-    private function filterTools(Registry $registry, ?Scope $scope): void {
-        $gate = new Gate($scope);
-        $definitions = Mcp::getToolRegistry()->getDefinitions();
-
-        foreach ($definitions as $definition) {
-            if (!$gate->admitsTool($definition)->allowed) {
-                $registry->unregisterTool($definition->name);
-            }
-        }
-
-        // Attribute discovery registers every #[McpTool] method it finds,
-        // including classes the informational registry deliberately omits, so
-        // anything with no definition here was never offered to the Gate at
-        // all. Denying it is the difference between a filter and a suggestion.
-        foreach (array_keys($registry->getTools()->references) as $name) {
-            if (!isset($definitions[$name])) {
-                $registry->unregisterTool($name);
-            }
-        }
-    }
-
-    /**
-     * Unregister every prompt disabledPrompts disallows and, mirroring
-     * filterTools()'s deny-by-default sweep, any SDK-registered prompt with
-     * no informational definition. Attribute discovery registers every
-     * #[McpPrompt] method it finds unconditionally, including ones the
-     * informational PromptRegistry omits, so an undefined prompt has not
-     * passed the check above and is denied by default rather than left live.
-     * Prompts carry no scope semantics; that stays a tool-only axis.
-     */
-    private function filterPrompts(Registry $registry): void {
-        $gate = new Gate();
-        $definitions = Mcp::getPromptRegistry()->getDefinitions();
-
-        foreach ($definitions as $definition) {
-            if (!$gate->admitsPrompt($definition)->allowed) {
-                $registry->unregisterPrompt($definition->name);
-            }
-        }
-
-        foreach (array_keys($registry->getPrompts()->references) as $name) {
-            if (!isset($definitions[$name])) {
-                $registry->unregisterPrompt($name);
-            }
-        }
-    }
-
-    /**
-     * Same enforcement as filterPrompts(), for resources. Static resources
-     * and resource templates are separate SDK collections (keyed by URI and
-     * uriTemplate respectively), so both are checked against
-     * disabledResources and swept for deny-by-default independently.
-     */
-    private function filterResources(Registry $registry): void {
-        $gate = new Gate();
-        $definitions = Mcp::getResourceRegistry()->getDefinitions();
-
-        foreach ($definitions as $definition) {
-            if ($gate->admitsResource($definition)->allowed) {
-                continue;
-            }
-
-            $definition->isTemplate
-                ? $registry->unregisterResourceTemplate($definition->uri)
-                : $registry->unregisterResource($definition->uri);
-        }
-
-        $this->sweepResources($registry, $definitions);
-    }
-
-    /**
-     * Deny-by-default sweep for both SDK resource collections. The
-     * informational ResourceRegistry keys template definitions by name (see
-     * RegisterResourcesEvent), so definitions are re-indexed by URI here
-     * rather than matched against their array keys directly.
-     *
-     * @param array<string, ResourceDefinition> $definitions
-     */
-    private function sweepResources(Registry $registry, array $definitions): void {
-        $staticUris = [];
-        $templateUris = [];
-        foreach ($definitions as $definition) {
-            if ($definition->isTemplate) {
-                $templateUris[$definition->uri] = true;
-
-                continue;
-            }
-
-            $staticUris[$definition->uri] = true;
-        }
-
-        foreach (array_keys($registry->getResources()->references) as $uri) {
-            if (!isset($staticUris[$uri])) {
-                $registry->unregisterResource($uri);
-            }
-        }
-
-        foreach (array_keys($registry->getResourceTemplates()->references) as $uriTemplate) {
-            if (!isset($templateUris[$uriTemplate])) {
-                $registry->unregisterResourceTemplate($uriTemplate);
-            }
-        }
     }
 
     /**
