@@ -8,10 +8,10 @@ use Craft;
 use craft\elements\User;
 use Mcp\Capability\Registry;
 use Mcp\Capability\Registry\ReferenceHandler;
+use Mcp\Schema\Enum\ProtocolVersion;
 use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\SessionStoreInterface;
-use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
 use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
 use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
 use Mcp\Server\Transport\StdioTransport;
@@ -44,6 +44,16 @@ use stimmt\craft\Mcp\support\Renderer;
  * @author Max van Essen <support@stimmt.digital>
  */
 class McpServerFactory {
+    /**
+     * The revisions this server will serve over HTTP. 2024-11-05 is omitted on
+     * purpose: it predates the Streamable HTTP transport it would arrive on.
+     */
+    private const array SUPPORTED_PROTOCOLS = [
+        ProtocolVersion::V2025_03_26,
+        ProtocolVersion::V2025_06_18,
+        ProtocolVersion::V2025_11_25,
+    ];
+
     public function __construct(private readonly ?ContainerInterface $container = new Psr11ContainerAdapter(), private readonly ?LoggerInterface $logger = null) {
     }
 
@@ -70,6 +80,10 @@ class McpServerFactory {
                 version: $this->version(),
             )
             ->setInstructions($this->getInstructions($scope))
+            // Answered on every initialize. Without it the SDK replies with
+            // whatever it was compiled against, which is not necessarily what
+            // this server implements.
+            ->setProtocolVersion(ProtocolVersion::V2025_06_18)
             ->setDiscovery(
                 basePath: $basePath,
                 scanDirs: ['tools', 'prompts', 'resources'],
@@ -160,9 +174,15 @@ class McpServerFactory {
      */
     public function createHttpTransport(ServerRequestInterface $request, string $hostName): StreamableHttpTransport {
         $middleware = [
-            new CorsMiddleware(),
+            // CORS is not installed: the controller answers OPTIONS itself,
+            // before any middleware runs, so the preflight branch could never
+            // be reached and an installed-but-unreachable guard reads as
+            // protection that is not there. Browser clients need both halves
+            // changed together, which is a deliberate decision, not this.
             new DnsRebindingProtectionMiddleware(allowedHosts: ['localhost', '127.0.0.1', '[::1]', strtolower($hostName)]),
-            new ProtocolVersionMiddleware(),
+            // Given no list the middleware admits every revision the SDK knows,
+            // including 2024-11-05, which predates Streamable HTTP entirely.
+            new ProtocolVersionMiddleware(self::SUPPORTED_PROTOCOLS),
         ];
 
         return new BufferedTransport($request, logger: $this->logger, middleware: $middleware);
