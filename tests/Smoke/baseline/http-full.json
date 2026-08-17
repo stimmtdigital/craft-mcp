@@ -1437,7 +1437,14 @@
                     },
                     "output": {
                         "type": "string",
-                        "default": "dump"
+                        "default": "dump",
+                        "enum": [
+                            "dump",
+                            "json",
+                            "raw",
+                            "print_r"
+                        ],
+                        "description": "How the return value is rendered."
                     }
                 },
                 "required": [

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
-use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -85,15 +85,19 @@ class TinkerTools {
     #[McpToolMeta(category: ToolCategory::DEBUGGING, dangerous: true)]
     public function tinker(
         string $code,
-        #[CompletionProvider(enum: OutputMode::class)]
-        string $output = 'dump',
+        // Typed as the enum rather than a string carrying a CompletionProvider:
+        // MCP has no completion channel for tool arguments, so that attribute
+        // was dead and the generated schema advertised neither the allowed
+        // values nor a description. An unrecognised value silently became dump.
+        #[Schema(description: 'How the return value is rendered.')]
+        OutputMode $output = OutputMode::DUMP,
         ?RequestContext $context = null,
     ): TextContent {
         // SafeExecution is the outer safety net for unexpected failures
         // (e.g. CodeCleaner instantiation). The inner try/catch handles
         // expected errors with REPL-style formatting.
         return SafeExecution::run(function () use ($code, $output, $context): TextContent {
-            $outputMode = OutputMode::tryFrom($output) ?? OutputMode::DUMP;
+            $outputMode = $output;
 
             $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
 

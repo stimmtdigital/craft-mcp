@@ -162,7 +162,15 @@ describe('tools opted into the text view', function () {
 describe('tinker is not opted in', function () {
     it('keeps its own unrelated output parameter out of the convention', function () {
         $schema = schemaFor(stimmt\craft\Mcp\tools\TinkerTools::class, 'tinker');
+        $enum = $schema['properties']['output']['enum'] ?? null;
 
-        expect($schema['properties']['output']['enum'] ?? null)->toBeNull();
+        // tinker's output names a render mode, not the shared structured-or-text
+        // convention, and the two happen to share a parameter name. Asserting
+        // the absence of any enum was a proxy for that and stopped being true
+        // once the parameter was typed as its own enum. The real invariant is
+        // that it offers none of the convention's values, which is exactly what
+        // Presenter::declaresOutput() requires before it renders text.
+        expect($enum)->toBe(['dump', 'json', 'raw', 'print_r'])
+            ->and(array_intersect($enum, array_column(ResponseFormat::cases(), 'value')))->toBe([]);
     });
 });
