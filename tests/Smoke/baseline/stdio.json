@@ -3,12 +3,9 @@
     "capabilities": {
         "logging": [],
         "completions": [],
-        "prompts": {
-            "listChanged": true
-        },
+        "prompts": [],
         "resources": {
-            "subscribe": true,
-            "listChanged": true
+            "subscribe": true
         },
         "tools": {
             "listChanged": true

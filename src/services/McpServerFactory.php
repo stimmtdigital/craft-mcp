@@ -9,6 +9,7 @@ use craft\elements\User;
 use Mcp\Capability\Registry;
 use Mcp\Capability\Registry\ReferenceHandler;
 use Mcp\Schema\Enum\ProtocolVersion;
+use Mcp\Schema\ServerCapabilities;
 use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\SessionStoreInterface;
@@ -92,6 +93,7 @@ class McpServerFactory {
                 excludeDirs: ['vendor', 'support', 'services', 'events', 'models', 'enums', 'attributes', 'completions', 'contracts', 'elements', 'http', 'records', 'migrations', 'controllers', 'console', 'installer'],
                 cache: $this->discoveryCache($basePath),
             )
+            ->setCapabilities($this->capabilities())
             ->setContainer($this->container)
             ->setRegistry($registry)
             ->setEventDispatcher($eventDispatcher)
@@ -115,6 +117,36 @@ class McpServerFactory {
         $this->filterResources($registry);
 
         return $server;
+    }
+
+    /**
+     * What this server actually honours, rather than what the SDK infers.
+     *
+     * Left to itself the builder turns on every listChanged flag purely because
+     * an event dispatcher exists, and a client that trusts those waits for
+     * notifications that are never sent. Only the tool list has a producer:
+     * reload_mcp pushes one after a rescan. Prompts and resources have none, so
+     * a client is better told to poll than told to wait.
+     *
+     * Subscriptions and logging stay on because they now work on both
+     * transports; until the fiber suspension was fixed they were advertised and
+     * broken over HTTP, which is the same lie in the other direction.
+     */
+    private function capabilities(): ServerCapabilities {
+        return new ServerCapabilities(
+            tools: true,
+            toolsListChanged: true,
+            resources: true,
+            resourcesSubscribe: true,
+            resourcesListChanged: false,
+            prompts: true,
+            promptsListChanged: false,
+            logging: true,
+            // Real: resource templates and prompts carry completion providers
+            // for section handles, and the SDK resolves them. Only tool
+            // arguments have no completion channel in MCP at all.
+            completions: true,
+        );
     }
 
     /**
