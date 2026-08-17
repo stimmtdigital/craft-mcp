@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\events;
 use InvalidArgumentException;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpPrompt;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
@@ -181,7 +182,7 @@ class RegisterPromptsEvent extends Event {
         }
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $mcpPromptAttrs = $method->getAttributes(McpPrompt::class);
+            $mcpPromptAttrs = $method->getAttributes(McpPrompt::class, ReflectionAttribute::IS_INSTANCEOF);
             if (empty($mcpPromptAttrs)) {
                 continue;
             }
@@ -189,7 +190,7 @@ class RegisterPromptsEvent extends Event {
             $mcpPrompt = $mcpPromptAttrs[0]->newInstance();
 
             // Get optional McpPromptMeta attribute
-            $metaAttrs = $method->getAttributes(McpPromptMeta::class);
+            $metaAttrs = $method->getAttributes(McpPromptMeta::class, ReflectionAttribute::IS_INSTANCEOF);
             $meta = empty($metaAttrs) ? null : $metaAttrs[0]->newInstance();
 
             // Extract completion providers from method parameters
@@ -219,7 +220,7 @@ class RegisterPromptsEvent extends Event {
         $providers = [];
 
         foreach ($method->getParameters() as $param) {
-            $attrs = $param->getAttributes(CompletionProvider::class);
+            $attrs = $param->getAttributes(CompletionProvider::class, ReflectionAttribute::IS_INSTANCEOF);
             if (empty($attrs)) {
                 continue;
             }
@@ -262,7 +263,7 @@ class RegisterPromptsEvent extends Event {
         // Check for at least one method with McpPrompt attribute
         $hasPromptMethod = false;
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $attributes = $method->getAttributes(McpPrompt::class);
+            $attributes = $method->getAttributes(McpPrompt::class, ReflectionAttribute::IS_INSTANCEOF);
             if (!empty($attributes)) {
                 $hasPromptMethod = true;
                 break;

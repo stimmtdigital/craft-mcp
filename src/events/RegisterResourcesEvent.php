@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpResource;
 use Mcp\Capability\Attribute\McpResourceTemplate;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
@@ -211,7 +212,7 @@ class RegisterResourcesEvent extends Event {
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             // Check for McpResource (static resource)
-            $resourceAttrs = $method->getAttributes(McpResource::class);
+            $resourceAttrs = $method->getAttributes(McpResource::class, ReflectionAttribute::IS_INSTANCEOF);
             if (!empty($resourceAttrs)) {
                 $definitions[] = $this->createStaticResourceDefinition(
                     $resourceAttrs[0]->newInstance(),
@@ -223,7 +224,7 @@ class RegisterResourcesEvent extends Event {
             }
 
             // Check for McpResourceTemplate (dynamic resource)
-            $templateAttrs = $method->getAttributes(McpResourceTemplate::class);
+            $templateAttrs = $method->getAttributes(McpResourceTemplate::class, ReflectionAttribute::IS_INSTANCEOF);
             if (!empty($templateAttrs)) {
                 $definitions[] = $this->createTemplateResourceDefinition(
                     $templateAttrs[0]->newInstance(),
@@ -247,7 +248,7 @@ class RegisterResourcesEvent extends Event {
         string $source,
     ): ResourceDefinition {
         // Get optional McpResourceMeta attribute
-        $metaAttrs = $method->getAttributes(McpResourceMeta::class);
+        $metaAttrs = $method->getAttributes(McpResourceMeta::class, ReflectionAttribute::IS_INSTANCEOF);
         $meta = $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
 
         return new ResourceDefinition(
@@ -275,7 +276,7 @@ class RegisterResourcesEvent extends Event {
         string $source,
     ): ResourceDefinition {
         // Get optional McpResourceMeta attribute
-        $metaAttrs = $method->getAttributes(McpResourceMeta::class);
+        $metaAttrs = $method->getAttributes(McpResourceMeta::class, ReflectionAttribute::IS_INSTANCEOF);
         $meta = $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
 
         // Extract completion providers from method parameters
@@ -305,7 +306,7 @@ class RegisterResourcesEvent extends Event {
         $providers = [];
 
         foreach ($method->getParameters() as $param) {
-            $attrs = $param->getAttributes(CompletionProvider::class);
+            $attrs = $param->getAttributes(CompletionProvider::class, ReflectionAttribute::IS_INSTANCEOF);
             if (empty($attrs)) {
                 continue;
             }
@@ -348,8 +349,8 @@ class RegisterResourcesEvent extends Event {
         // Check for at least one method with McpResource or McpResourceTemplate attribute
         $hasResourceMethod = false;
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $resourceAttrs = $method->getAttributes(McpResource::class);
-            $templateAttrs = $method->getAttributes(McpResourceTemplate::class);
+            $resourceAttrs = $method->getAttributes(McpResource::class, ReflectionAttribute::IS_INSTANCEOF);
+            $templateAttrs = $method->getAttributes(McpResourceTemplate::class, ReflectionAttribute::IS_INSTANCEOF);
             if (!empty($resourceAttrs) || !empty($templateAttrs)) {
                 $hasResourceMethod = true;
                 break;

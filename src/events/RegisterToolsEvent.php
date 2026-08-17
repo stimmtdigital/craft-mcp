@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\events;
 
 use InvalidArgumentException;
 use Mcp\Capability\Attribute\McpTool;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
@@ -221,7 +222,7 @@ class RegisterToolsEvent extends Event {
         }
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $mcpToolAttrs = $method->getAttributes(McpTool::class);
+            $mcpToolAttrs = $method->getAttributes(McpTool::class, ReflectionAttribute::IS_INSTANCEOF);
             if (empty($mcpToolAttrs)) {
                 continue;
             }
@@ -229,11 +230,11 @@ class RegisterToolsEvent extends Event {
             $mcpTool = $mcpToolAttrs[0]->newInstance();
 
             // Get optional McpToolMeta attribute
-            $metaAttrs = $method->getAttributes(McpToolMeta::class);
+            $metaAttrs = $method->getAttributes(McpToolMeta::class, ReflectionAttribute::IS_INSTANCEOF);
             $meta = empty($metaAttrs) ? null : $metaAttrs[0]->newInstance();
 
             $definitions[] = new ToolDefinition(
-                name: $mcpTool->name ?? '',
+                name: $mcpTool->name ?? $method->getName(),
                 description: $mcpTool->description ?? '',
                 class: $class,
                 method: $method->getName(),
@@ -275,7 +276,7 @@ class RegisterToolsEvent extends Event {
         // Check for at least one method with McpTool attribute
         $hasToolMethod = false;
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $attributes = $method->getAttributes(McpTool::class);
+            $attributes = $method->getAttributes(McpTool::class, ReflectionAttribute::IS_INSTANCEOF);
             if (!empty($attributes)) {
                 $hasToolMethod = true;
                 break;
