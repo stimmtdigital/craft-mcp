@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\services;
 use Craft;
 use Mcp\Capability\Registry;
 use Mcp\Capability\Registry\ReferenceHandler;
+use Mcp\Capability\Registry\ReferenceHandlerInterface;
 use Mcp\Schema\Enum\ProtocolVersion;
 use Mcp\Schema\ServerCapabilities;
 use Mcp\Server;
@@ -25,8 +26,10 @@ use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\policy\Gate;
+use stimmt\craft\Mcp\support\ConfigRefresh;
 use stimmt\craft\Mcp\support\ConsoleHeaders;
 use stimmt\craft\Mcp\support\DiscoveryCache;
+use stimmt\craft\Mcp\support\ErrorBoundary;
 use stimmt\craft\Mcp\support\EventDispatcher;
 use stimmt\craft\Mcp\support\FileLogger;
 use stimmt\craft\Mcp\support\Palette;
@@ -172,10 +175,17 @@ class McpServerFactory {
      * Built here rather than in the Builder default so the container stays the
      * one this factory already configures.
      */
-    private function presenter(): Presenter {
-        return new Presenter(
-            new ReferenceHandler($this->container),
-            new Renderer(Palette::fromSettings()),
+    private function presenter(): ReferenceHandlerInterface {
+        // Order is the design, not an accident. ErrorBoundary is outermost so
+        // it also covers argument preparation, result formatting and the
+        // Presenter's own logic, none of which a tool body can guard.
+        return new ErrorBoundary(
+            new ConfigRefresh(
+                new Presenter(
+                    new ReferenceHandler($this->container),
+                    new Renderer(Palette::fromSettings()),
+                ),
+            ),
         );
     }
 

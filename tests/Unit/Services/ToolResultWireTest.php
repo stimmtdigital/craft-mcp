@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/Fixtures/RealCraft.php';
 
 use Mcp\Capability\Registry;
 use Mcp\Capability\Registry\ReferenceHandler;
+use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\JsonRpc\Response;
 use Mcp\Schema\Request\CallToolRequest;
@@ -15,6 +16,8 @@ use Mcp\Server\Session\InMemorySessionStore;
 use Mcp\Server\Session\Session;
 use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\support\ConfigRefresh;
+use stimmt\craft\Mcp\support\ErrorBoundary;
 use stimmt\craft\Mcp\support\Palette;
 use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\Renderer;
@@ -26,7 +29,7 @@ use stimmt\craft\Mcp\support\Renderer;
  * the Presenter, CallToolHandler emits `content` AND `structuredContent` for
  * every array return.
  */
-function callTool(callable $handler, array $inputSchema, array $arguments, bool $present = true): array {
+function callTool(callable $handler, array $inputSchema, array $arguments, bool $present = true, bool $guard = false): array {
     $registry = new Registry();
     $registry->registerTool(
         new Tool(name: 'demo', title: null, inputSchema: $inputSchema, description: null, annotations: null),
@@ -35,15 +38,20 @@ function callTool(callable $handler, array $inputSchema, array $arguments, bool 
 
     $inner = new ReferenceHandler();
     $reference = $present ? new Presenter($inner, new Renderer(new Palette(false))) : $inner;
+    $reference = $guard ? new ErrorBoundary($reference) : $reference;
 
     $result = (new CallToolHandler($registry, $reference))->handle(
         (new CallToolRequest('demo', $arguments))->withId(1),
         new Session(new InMemorySessionStore()),
     );
 
-    expect($result)->toBeInstanceOf(Response::class);
-
-    return json_decode(json_encode($result->result), true);
+    // A throw that reaches the SDK's own catch produces an Error envelope, not
+    // a result: the whole point of the boundary is that the client gets a
+    // readable tool result instead. Both shapes are returned so a test can say
+    // which one it got.
+    return $result instanceof Response
+        ? json_decode(json_encode($result->result), true)
+        : ['error' => ['code' => $result->code, 'message' => $result->message]];
 }
 
 describe('tool result on the wire', function () {
@@ -104,21 +112,61 @@ describe('tools that build their own content', function () {
     });
 });
 
+describe('the error boundary', function () {
+    /**
+     * The leak this closes: anything thrown outside a tool body reaches the
+     * SDK's generic catch, which answers with the fixed string 'Error while
+     * executing tool' and discards the real message. A tool body's own wrapper
+     * cannot cover argument preparation, result formatting, or a fault in the
+     * output layer itself, which is exactly the class of bug that shipped here.
+     */
+    it('keeps the real message where the SDK would have replaced it', function () {
+        $thrower = static fn (): array => throw new RuntimeException('the database went away');
+        $schema = ['type' => 'object'];
+
+        $unguarded = callTool($thrower, $schema, [], present: false);
+        $guarded = callTool($thrower, $schema, [], present: false, guard: true);
+
+        // Without it: a JSON-RPC error carrying a fixed string, with the real
+        // message discarded and nothing for the agent to act on.
+        expect($unguarded['error']['message'])->toBe('Error while executing tool');
+
+        // With it: a normal tool result flagged as an error, naming the cause.
+        expect($guarded['isError'])->toBeTrue()
+            ->and($guarded['content'][0]['text'])->toContain('the database went away');
+    });
+
+    it('leaves an exception that already carries a chosen message alone', function () {
+        $thrower = static fn (): array => throw new ToolCallException('Section \'news\' not found');
+
+        $wire = callTool($thrower, ['type' => 'object'], [], present: false, guard: true);
+
+        expect($wire['content'][0]['text'])->toBe('Section \'news\' not found');
+    });
+});
+
 describe('McpServerFactory wiring', function () {
     /**
-     * create() itself needs a booted Craft app, so this pins the collaborator
-     * it installs: the SDK's own reference handler, wrapped in the Presenter,
-     * with a palette read from the install's settings.
+     * create() itself needs a booted Craft app, so this pins the chain it
+     * installs. The order is the design: ErrorBoundary has to sit outside the
+     * Presenter to catch argument preparation, result formatting and any fault
+     * in the Presenter itself, and an inner boundary would catch none of them.
      */
-    it('builds the presenter around the SDK reference handler', function () {
-        $presenter = (new ReflectionMethod(McpServerFactory::class, 'presenter'))
+    it('wraps the SDK reference handler in the boundary, the refresher and the presenter', function () {
+        $handler = (new ReflectionMethod(McpServerFactory::class, 'presenter'))
             ->invoke(new McpServerFactory());
 
-        expect($presenter)->toBeInstanceOf(Presenter::class);
+        $unwrap = static fn (object $decorator, string $class): object => (new ReflectionProperty($class, 'handler'))
+            ->getValue($decorator);
 
-        $inner = (new ReflectionProperty(Presenter::class, 'handler'))->getValue($presenter);
+        expect($handler)->toBeInstanceOf(ErrorBoundary::class);
 
-        expect($inner)->toBeInstanceOf(ReferenceHandler::class);
+        $refresh = $unwrap($handler, ErrorBoundary::class);
+        expect($refresh)->toBeInstanceOf(ConfigRefresh::class);
+
+        $presenter = $unwrap($refresh, ConfigRefresh::class);
+        expect($presenter)->toBeInstanceOf(Presenter::class)
+            ->and($unwrap($presenter, Presenter::class))->toBeInstanceOf(ReferenceHandler::class);
     });
 
     it('passes the reference handler to the builder', function () {
