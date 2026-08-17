@@ -105,29 +105,7 @@ try {
     $settings = Mcp::settings();
     $logger = McpServerFactory::createFileLogger(logLevel: $settings->logLevel);
 
-    // Register logger so Yii can inject it into tool constructors.
-    // TinkerTools must also be registered so the SDK's container lookup
-    // finds it via Psr11ContainerAdapter::has() instead of falling back
-    // to bare instantiation (which would skip DI and use NullLogger).
-    Craft::$container->setSingleton(\Psr\Log\LoggerInterface::class, fn() => $logger);
-    Craft::$container->set(\stimmt\craft\Mcp\tools\TinkerTools::class);
-
-    // Elements module: shared translator registry, event-extensible.
-    $keys = new \stimmt\craft\Mcp\elements\refs\Keys();
-    $registry = new \stimmt\craft\Mcp\elements\refs\Registry();
-    $translator = \stimmt\craft\Mcp\elements\refs\Translator::withDefaults($keys, $registry);
-
-    $event = new \stimmt\craft\Mcp\events\RegisterFieldTranslatorsEvent();
-    $plugin->trigger(\stimmt\craft\Mcp\Mcp::EVENT_REGISTER_FIELD_TRANSLATORS, $event);
-    foreach ($event->translators as $fieldTranslator) {
-        $registry->register($fieldTranslator);
-    }
-
-    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\refs\Translator::class, fn() => $translator);
-    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Reader::class, fn() => new \stimmt\craft\Mcp\elements\Reader($translator));
-    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Writer::class, fn() => new \stimmt\craft\Mcp\elements\Writer($translator));
-    Craft::$container->set(\stimmt\craft\Mcp\tools\EntryTools::class);
-    Craft::$container->set(\stimmt\craft\Mcp\tools\EntryWorkflowTools::class);
+    \stimmt\craft\Mcp\support\Runtime::bootstrap($logger);
 
     $factory = new McpServerFactory(logger: $logger);
     $server = $factory->create();
