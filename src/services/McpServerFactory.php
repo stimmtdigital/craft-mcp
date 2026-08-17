@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\services;
 
 use Craft;
-use craft\elements\User;
 use Mcp\Capability\Registry;
 use Mcp\Capability\Registry\ReferenceHandler;
 use Mcp\Schema\Enum\ProtocolVersion;
@@ -24,7 +23,7 @@ use Psr\Log\NullLogger;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
-use stimmt\craft\Mcp\models\ToolDefinition;
+use stimmt\craft\Mcp\policy\Gate;
 use stimmt\craft\Mcp\support\ConsoleHeaders;
 use stimmt\craft\Mcp\support\DiscoveryCache;
 use stimmt\craft\Mcp\support\EventDispatcher;
@@ -241,48 +240,24 @@ class McpServerFactory {
      * external event-registered tools are covered too.
      */
     private function filterTools(Registry $registry, ?Scope $scope): void {
+        $gate = new Gate($scope);
         $definitions = Mcp::getToolRegistry()->getDefinitions();
 
         foreach ($definitions as $definition) {
-            $allowed = Mcp::isToolEnabled($definition->name)
-                && ($scope === null || $scope->allows($definition->category, $definition->dangerous))
-                && $this->privilegedAllowed($definition, $scope);
-
-            if (!$allowed) {
+            if (!$gate->admitsTool($definition)->allowed) {
                 $registry->unregisterTool($definition->name);
             }
         }
 
-        // SDK attribute discovery (setDiscovery() in create()) registers every
-        // #[McpTool] method it finds unconditionally, including
-        // ConditionalToolProvider classes whose isAvailable() is false, which
-        // the informational registry above deliberately omits. Anything the
-        // SDK registered that has no definition here has not passed any of
-        // the checks in the loop above, so deny it by default rather than
-        // leaving it live and ungoverned.
+        // Attribute discovery registers every #[McpTool] method it finds,
+        // including classes the informational registry deliberately omits, so
+        // anything with no definition here was never offered to the Gate at
+        // all. Denying it is the difference between a filter and a suggestion.
         foreach (array_keys($registry->getTools()->references) as $name) {
             if (!isset($definitions[$name])) {
                 $registry->unregisterTool($name);
             }
         }
-    }
-
-    /**
-     * Privileged (install-introspection) tools are hidden from read-scoped
-     * tokens whose user is not an admin, unless the site owner opened the tool
-     * in config. Full scope and stdio are never gated on this axis.
-     */
-    private function privilegedAllowed(ToolDefinition $definition, ?Scope $scope): bool {
-        if (!$definition->privileged || $scope === null || $scope === Scope::Full) {
-            return true;
-        }
-
-        $identity = Craft::$app->getUser()->getIdentity();
-        if ($identity instanceof User && $identity->admin) {
-            return true;
-        }
-
-        return in_array($definition->name, Mcp::settings()->scopedTokenPrivilegedTools, true);
     }
 
     /**
@@ -295,10 +270,11 @@ class McpServerFactory {
      * Prompts carry no scope semantics; that stays a tool-only axis.
      */
     private function filterPrompts(Registry $registry): void {
+        $gate = new Gate();
         $definitions = Mcp::getPromptRegistry()->getDefinitions();
 
         foreach ($definitions as $definition) {
-            if (!Mcp::isPromptEnabled($definition->name)) {
+            if (!$gate->admitsPrompt($definition)->allowed) {
                 $registry->unregisterPrompt($definition->name);
             }
         }
@@ -317,10 +293,11 @@ class McpServerFactory {
      * disabledResources and swept for deny-by-default independently.
      */
     private function filterResources(Registry $registry): void {
+        $gate = new Gate();
         $definitions = Mcp::getResourceRegistry()->getDefinitions();
 
         foreach ($definitions as $definition) {
-            if (Mcp::isResourceEnabled($definition->uri)) {
+            if ($gate->admitsResource($definition)->allowed) {
                 continue;
             }
 
