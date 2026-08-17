@@ -24,6 +24,7 @@ use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\models\ToolDefinition;
+use stimmt\craft\Mcp\support\ConsoleHeaders;
 use stimmt\craft\Mcp\support\DiscoveryCache;
 use stimmt\craft\Mcp\support\EventDispatcher;
 use stimmt\craft\Mcp\support\FileLogger;
@@ -132,8 +133,19 @@ class McpServerFactory {
 
     /**
      * Create a StdioTransport for the server.
+     *
+     * The console request is given a headers shim on the way past, because this
+     * is the one seam that means "we are serving over stdio". Third-party
+     * listeners on Craft's own events assume a web request and take the whole
+     * tool call down with them otherwise; ConsoleHeaders holds the reasoning.
+     * The HTTP transport is built separately and never sees it.
      */
     public function createTransport(): StdioTransport {
+        $request = Craft::$app->getRequest();
+        if ($request->getBehavior(ConsoleHeaders::NAME) === null) {
+            $request->attachBehavior(ConsoleHeaders::NAME, new ConsoleHeaders());
+        }
+
         return new StdioTransport();
     }
 

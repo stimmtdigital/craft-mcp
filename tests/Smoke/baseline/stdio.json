@@ -1510,9 +1510,7 @@
     "uncovered": [
         "copy_entry_to_site",
         "create_backup",
-        "execute_graphql",
-        "get_asset",
-        "query_graphql"
+        "get_asset"
     ],
     "steps": {
         "get_mcp_info": {
@@ -2429,14 +2427,24 @@
             "shape": "<string>"
         },
         "query_graphql": {
-            "status": "tool-error",
-            "message": "UnknownMethodException: Calling unknown method: craft\\console\\Request::getHeaders() (Component.php:315)",
-            "expected": "graphql-needs-a-web-request"
+            "status": "ok",
+            "shape": {
+                "data": {
+                    "ping": "<string>"
+                },
+                "errors": null,
+                "success": true
+            }
         },
         "execute_graphql": {
-            "status": "tool-error",
-            "message": "UnknownMethodException: Calling unknown method: craft\\console\\Request::getHeaders() (Component.php:315)",
-            "expected": "graphql-needs-a-web-request"
+            "status": "ok",
+            "shape": {
+                "data": {
+                    "ping": "<string>"
+                },
+                "errors": null,
+                "success": true
+            }
         },
         "list_entries": {
             "status": "ok",

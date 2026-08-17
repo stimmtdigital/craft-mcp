@@ -166,7 +166,9 @@ final class Runner {
         }
 
         if (($result['isError'] ?? false) === true) {
-            return ['status' => 'tool-error', 'message' => $this->text($result)];
+            $message = $this->text($result);
+
+            return ['status' => 'tool-error', 'message' => $message, 'diagnosis' => self::diagnose($message)];
         }
 
         $rules = is_array($step['assert'] ?? null) ? $step['assert'] : [];
@@ -177,6 +179,29 @@ final class Runner {
         }
 
         return ['status' => 'ok', 'shape' => Shape::of($payload)];
+    }
+
+    /**
+     * Names a failure class when the message betrays one, so whoever hits it
+     * next gets a lead instead of a stack frame.
+     *
+     * The web-request case is here because it is open ended: every Craft event
+     * our tools fire is somewhere a third-party listener can reach for a
+     * request that a console process does not have, and the error Yii produces
+     * names only the missing method. One shim exists for getHeaders(); a second
+     * distinct method appearing here is the signal to stop shimming and start
+     * naming the plugin instead.
+     */
+    private static function diagnose(string $message): ?string {
+        if (!str_contains($message, 'UnknownMethodException')) {
+            return null;
+        }
+
+        if (!str_contains($message, 'console\\Request')) {
+            return null;
+        }
+
+        return 'a listener on a Craft event assumes a web request; see support/ConsoleHeaders';
     }
 
     /**

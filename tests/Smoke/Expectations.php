@@ -31,18 +31,6 @@ final class Expectations {
      */
     public static function all(): array {
         return [
-            'graphql-needs-a-web-request' => [
-                'steps' => ['query_graphql', 'execute_graphql'],
-                'profiles' => ['stdio-full'],
-                'status' => 'tool-error',
-                'contains' => 'getHeaders()',
-                'why' => 'Craft\'s GraphQL path asks the request for headers. Over stdio the '
-                    . 'request is a console request, which has no such method, so both GraphQL '
-                    . 'tools fail on the transport nearly every user runs. Over HTTP the request '
-                    . 'is a real web request and both tools answer, which is why this is pinned '
-                    . 'to the stdio profile rather than to the tools.',
-                'found' => '2026-08-13',
-            ],
             'http-notification-destroys-its-own-response' => [
                 'steps' => ['reload_mcp'],
                 'profiles' => ['http-full', 'http-content', 'http-readonly'],

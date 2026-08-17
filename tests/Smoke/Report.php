@@ -69,7 +69,11 @@ final class Report {
     private static function stepLines(array $steps): string {
         $lines = '';
         foreach ($steps as $name => $step) {
-            if (!is_array($step) || in_array($step['status'] ?? '', ['ok', 'skipped'], true)) {
+            // An ok step still gets a line when it was not supposed to be ok:
+            // that is a cleared expectation, and its whole value is being told
+            // about it rather than having to read the diff.
+            $unexpected = is_array($step) && array_key_exists('unexpected', $step);
+            if (!is_array($step) || (!$unexpected && in_array($step['status'] ?? '', ['ok', 'skipped'], true))) {
                 continue;
             }
 
