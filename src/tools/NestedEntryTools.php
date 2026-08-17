@@ -53,7 +53,7 @@ class NestedEntryTools {
     #[McpTool(
         name: 'create_nested_entry',
         description: 'Add a block to a Matrix field on an owner entry without resending the field\'s other blocks (the full-field rewrite risks deleting them). In draft mode (default) the block lands on a draft of the owner, like a control panel edit: pass the returned draftElementId to publish_entry to make it live, to get_entry to review it in context, or as owner in follow-up calls to stack more blocks onto the same draft. Optional position places the block among its siblings (1-based, clamped to the end).',
-        annotations: new ToolAnnotations(destructiveHint: true),
+        annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function createNestedEntry(
@@ -114,7 +114,7 @@ class NestedEntryTools {
     #[McpTool(
         name: 'move_nested_entry',
         description: 'Move a Matrix block to a new 1-based position within its field, by the block\'s own entry id. In draft mode (default) the reorder lands on a draft of the owner entry for review and publish_entry applies it; live mode reorders the canonical directly. Positions past the end clamp to the last slot; the response reports the position actually taken.',
-        annotations: new ToolAnnotations(destructiveHint: true),
+        annotations: new ToolAnnotations(destructiveHint: true, idempotentHint: true, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function moveNestedEntry(

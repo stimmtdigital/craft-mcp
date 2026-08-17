@@ -137,6 +137,9 @@ class McpTools {
     #[McpTool(
         name: 'reload_mcp',
         description: 'Reload MCP to detect newly installed plugins. Note: Code changes require sending SIGHUP to the MCP server process.',
+        // Without these the spec's conservative defaults apply, so a client
+        // prompts for confirmation before a cache refresh that changes no data.
+        annotations: new ToolAnnotations(destructiveHint: false, idempotentHint: true, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function reloadMcp(?RequestContext $context = null): array {

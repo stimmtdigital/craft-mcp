@@ -1040,7 +1040,11 @@
         },
         "reload_mcp": {
             "description": "Reload MCP to detect newly installed plugins. Note: Code changes require sending SIGHUP to the MCP server process.",
-            "annotations": null,
+            "annotations": {
+                "destructiveHint": false,
+                "idempotentHint": true,
+                "openWorldHint": false
+            },
             "inputSchema": {
                 "type": "object",
                 "properties": []

@@ -34,12 +34,22 @@ describe('NestedEntryTools structure', function () {
         ['moveNestedEntry', 'move_nested_entry'],
     ]);
 
-    it('marks both tools destructive for MCP clients', function (string $method) {
+    it('advertises destructiveness by what the tool actually does', function (string $method, bool $destructive, ?bool $idempotent) {
         $tool = (new ReflectionMethod(NestedEntryTools::class, $method))
             ->getAttributes(McpTool::class)[0]->newInstance();
 
-        expect($tool->annotations?->destructiveHint)->toBeTrue();
-    })->with([['createNestedEntry'], ['moveNestedEntry']]);
+        // Adding a block touches nothing that exists, which is what
+        // destructiveHint: false means. Reordering mutates every sibling's
+        // position, so it stays destructive, but moving to position N twice
+        // leaves the same state. The dangerous flag in McpToolMeta is what
+        // actually gates access; these hints only tell a client when to ask.
+        expect($tool->annotations?->destructiveHint)->toBe($destructive)
+            ->and($tool->annotations?->idempotentHint)->toBe($idempotent)
+            ->and($tool->annotations?->openWorldHint)->toBeFalse();
+    })->with([
+        ['createNestedEntry', false, null],
+        ['moveNestedEntry', true, true],
+    ]);
 
     it('accepts the documented parameters', function (string $method, array $expected) {
         $params = array_map(

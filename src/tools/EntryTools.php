@@ -182,7 +182,7 @@ class EntryTools {
     #[McpTool(
         name: 'create_entry',
         description: 'Create an entry. fields is JSON in the payload format (natural keys: {section,slug} for entries, {volume,filename} for assets, matrix blocks by type handle). Saves as a draft unless mode or the entryWriteMode setting says live. Use describe_entry_schema first to learn the shape.',
-        annotations: new ToolAnnotations(destructiveHint: true),
+        annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function createEntry(

@@ -160,7 +160,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'duplicate_entry',
         description: 'Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for "like X but change these".',
-        annotations: new ToolAnnotations(destructiveHint: true),
+        annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function duplicateEntry(
@@ -193,7 +193,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'copy_entry_to_site',
         description: 'Copy an entry\'s field values from one site to another as a draft on the target site. Copies values; does not machine-translate.',
-        annotations: new ToolAnnotations(destructiveHint: true),
+        annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {
