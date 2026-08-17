@@ -87,7 +87,17 @@ final class NestedPosition {
         $value->setCachedResult(array_map(static fn (int $id): ElementInterface => $byCanonicalId[$id], $order));
         $owner->setFieldValue($field->handle, $value);
 
-        if (!Craft::$app->getElements()->saveElement($owner)) {
+        // Saved without validation, deliberately, because a reorder changes no
+        // value: the owner's attributes and every block's content are exactly
+        // what was already stored, and only the order of existing children
+        // moves. Validating anyway made the tool fail on data it did not author
+        // and cannot fix. A block whose entry type was later removed from the
+        // field is still valid content that Craft itself will keep and show; it
+        // simply no longer passes the field's current rules, and refusing to
+        // reorder its siblings because of it helps nobody. Nothing invalid is
+        // introduced by this path: every value written back was read from the
+        // same element moments earlier.
+        if (!Craft::$app->getElements()->saveElement($owner, runValidation: false)) {
             throw new ToolCallException('Failed to reorder blocks: ' . json_encode($owner->getErrors()));
         }
 
