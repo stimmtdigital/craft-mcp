@@ -109,7 +109,7 @@ try {
 
     $factory = new McpServerFactory(logger: $logger);
     $server = $factory->create();
-    $transport = $factory->createTransport();
+    $transport = $factory->createTransport($signalHandler);
 
     $server->run($transport);
 

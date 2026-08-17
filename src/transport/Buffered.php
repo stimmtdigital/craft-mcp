@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\http;
+namespace stimmt\craft\Mcp\transport;
 
 use JsonException;
 use Mcp\Schema\JsonRpc\Error;
@@ -35,7 +35,7 @@ use Psr\Log\LoggerInterface;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class BufferedTransport extends StreamableHttpTransport {
+final class Buffered extends StreamableHttpTransport {
     /**
      * Resume attempts before the loop gives up.
      *

@@ -20,7 +20,6 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use stimmt\craft\Mcp\http\BufferedTransport;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
@@ -34,6 +33,9 @@ use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Renderer;
+use stimmt\craft\Mcp\support\SignalHandler;
+use stimmt\craft\Mcp\transport\Buffered;
+use stimmt\craft\Mcp\transport\Stdio;
 
 /**
  * Factory for creating MCP Server instances.
@@ -155,13 +157,13 @@ class McpServerFactory {
      * tool call down with them otherwise; ConsoleHeaders holds the reasoning.
      * The HTTP transport is built separately and never sees it.
      */
-    public function createTransport(): StdioTransport {
+    public function createTransport(?SignalHandler $signals = null): StdioTransport {
         $request = Craft::$app->getRequest();
         if ($request->getBehavior(ConsoleHeaders::NAME) === null) {
             $request->attachBehavior(ConsoleHeaders::NAME, new ConsoleHeaders());
         }
 
-        return new StdioTransport();
+        return new Stdio($signals ?? new SignalHandler(), $this->logger);
     }
 
     /**
@@ -185,7 +187,7 @@ class McpServerFactory {
             new ProtocolVersionMiddleware(self::SUPPORTED_PROTOCOLS),
         ];
 
-        return new BufferedTransport($request, logger: $this->logger, middleware: $middleware);
+        return new Buffered($request, logger: $this->logger, middleware: $middleware);
     }
 
     /**

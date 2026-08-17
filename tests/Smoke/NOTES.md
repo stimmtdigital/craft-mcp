@@ -201,3 +201,15 @@ Stated so nobody mistakes a pass for more than it is:
    arguments that would work. On a correct server it is refused and nothing
    happens; on a broken one the run leaves a draft behind, which is the cost of
    proving the boundary by crossing it rather than by reading a list.
+
+## Manual probes
+
+Some things cannot run inside `composer smoke` and are not honest as unit tests
+either. They live in `manual/` with the expected output written down.
+
+- `manual/sighup.php` sends SIGHUP to a running server and checks it still
+  answers. `reload_mcp`'s own hint text tells an agent to use that signal, and
+  it used to kill the session silently: `Server::run()` closes the transport in
+  a finally, which closes descriptors 0 and 1, and the restart then `pcntl_exec`s
+  a fresh image that inherits them. Expected: `after restart: ANSWERED`.
+  `SILENT (pipes dead)` means `transport\Stdio::close()` stopped guarding it.
