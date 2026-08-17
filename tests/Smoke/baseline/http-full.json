@@ -1557,8 +1557,7 @@
     "uncovered": [
         "copy_entry_to_site",
         "create_backup",
-        "get_asset",
-        "reload_mcp"
+        "get_asset"
     ],
     "steps": {
         "get_mcp_info": {
@@ -3821,9 +3820,34 @@
             "reason": "writes a database dump; run with --heavy"
         },
         "reload_mcp": {
-            "status": "crashed",
-            "error": "SSE frames escaped the response: 200 text/html; charset=UTF-8 carrying event-stream framing, which no client can read",
-            "expected": "http-notification-destroys-its-own-response"
+            "status": "ok",
+            "shape": {
+                "hint": "<string>",
+                "message": "<string>",
+                "pluginsDiscovered": [
+                    "<string>"
+                ],
+                "success": true,
+                "tools": {
+                    "by_category": {
+                        "backup": "<number>",
+                        "content": "<number>",
+                        "core": "<number>",
+                        "database": "<number>",
+                        "debugging": "<number>",
+                        "graphql": "<number>",
+                        "multisite": "<number>",
+                        "schema": "<number>",
+                        "system": "<number>"
+                    },
+                    "by_source": {
+                        "core": "<number>"
+                    },
+                    "dangerous": "<number>",
+                    "errors": "<number>",
+                    "total": "<number>"
+                }
+            }
         },
         "clear_caches": {
             "status": "ok",
@@ -3835,7 +3859,7 @@
             }
         }
     },
-    "stderr": "<present>",
+    "stderr": null,
     "scope": {
         "granted": "full",
         "advertised": 55,

@@ -31,26 +31,6 @@ final class Expectation {
      */
     public static function all(): array {
         return [
-            'http-notification-destroys-its-own-response' => [
-                'steps' => ['reload_mcp'],
-                'profiles' => ['http-full', 'http-content', 'http-readonly'],
-                'status' => 'crashed',
-                'contains' => 'SSE frames escaped the response',
-                'why' => 'A tool that notifies suspends a fiber. Over HTTP the SDK answers that '
-                    . 'by switching the response to SSE and echoing the frames from a callback '
-                    . 'that only fires when the body is stringified, which happens after the '
-                    . 'controller has already closed its output buffer. The echo therefore '
-                    . 'reaches the SAPI directly: PHP sends its own default headers (200 '
-                    . 'text/html), Craft\'s own headers and the text/event-stream content type '
-                    . 'never arrive, and Yii then dies on HeadersAlreadySentException pointing '
-                    . 'at the SDK\'s flush. The client is handed event-stream framing labelled '
-                    . 'text/html, which is unreadable either way it tries. reload_mcp notifies '
-                    . 'unconditionally, so it reproduces on every HTTP profile; on stdio the '
-                    . 'same tool answers normally, which is why this entry names its profiles. '
-                    . 'Mechanism in docs/superpowers/plans/plan-transport.md section 1; the '
-                    . 'observed symptom above is worse than the empty body predicted there.',
-                'found' => '2026-08-17',
-            ],
         ];
     }
 

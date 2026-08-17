@@ -20,6 +20,7 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use stimmt\craft\Mcp\http\BufferedTransport;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
@@ -164,7 +165,7 @@ class McpServerFactory {
             new ProtocolVersionMiddleware(),
         ];
 
-        return new StreamableHttpTransport($request, logger: $this->logger, middleware: $middleware);
+        return new BufferedTransport($request, logger: $this->logger, middleware: $middleware);
     }
 
     /**
