@@ -13,7 +13,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
-use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
+use stimmt\craft\Mcp\contracts\ConditionalProvider;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\SafeExecution;
 
@@ -24,7 +24,7 @@ use stimmt\craft\Mcp\support\SafeExecution;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-class CommerceTools implements ConditionalToolProvider {
+class CommerceTools implements ConditionalProvider {
     /**
      * Check if Commerce plugin is available.
      *

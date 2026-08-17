@@ -10,7 +10,7 @@ use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
-use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
+use stimmt\craft\Mcp\contracts\ConditionalProvider;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\models\ToolDefinition;
 use yii\base\Event;
@@ -210,8 +210,12 @@ class RegisterToolsEvent extends Event {
             return;
         }
 
-        // Check class-level condition
-        if (is_subclass_of($class, ConditionalToolProvider::class) && !$class::isAvailable()) {
+        // Tested against the base interface, not the deprecated subinterface:
+        // a class implementing ConditionalProvider directly had its condition
+        // silently ignored here, while the prompt and resource events honoured
+        // it. Deprecated implementers still match, because the old interface
+        // extends this one.
+        if (is_subclass_of($class, ConditionalProvider::class) && !$class::isAvailable()) {
             return;
         }
 
