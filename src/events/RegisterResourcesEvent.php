@@ -106,20 +106,6 @@ class RegisterResourcesEvent extends Event {
     }
 
     /**
-     * Get flat list of all resource classes.
-     *
-     * @return string[]
-     */
-    public function getAllResourceClasses(): array {
-        $classes = [];
-        foreach ($this->resources as $sourceResources) {
-            $classes = array_merge($classes, $sourceResources);
-        }
-
-        return $classes;
-    }
-
-    /**
      * Get all resource definitions.
      *
      * @return array<string, ResourceDefinition>
@@ -164,20 +150,6 @@ class RegisterResourcesEvent extends Event {
         }
 
         return $bySource;
-    }
-
-    /**
-     * Get resource definitions grouped by category.
-     *
-     * @return array<string, ResourceDefinition[]>
-     */
-    public function getDefinitionsByCategory(): array {
-        $byCategory = [];
-        foreach ($this->definitions as $definition) {
-            $byCategory[$definition->category][] = $definition;
-        }
-
-        return $byCategory;
     }
 
     /**

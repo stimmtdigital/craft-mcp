@@ -21,7 +21,7 @@ final class Runner {
     private array $captured = [];
 
     public function __construct(
-        private readonly Connection $connection,
+        private readonly Client $client,
         private readonly Profile $profile,
         private readonly bool $includeHeavy,
     ) {
@@ -82,8 +82,8 @@ final class Runner {
             return $result;
         }
 
-        $expectation = Expectations::covering($name, $this->profile->name)
-            ?? Expectations::covering($tool, $this->profile->name);
+        $expectation = Expectation::covering($name, $this->profile->name)
+            ?? Expectation::covering($tool, $this->profile->name);
 
         if ($expectation === null) {
             if ($result['status'] !== 'ok') {
@@ -106,7 +106,7 @@ final class Runner {
         $result['expected'] = $id;
 
         if ($result['status'] === 'ok') {
-            $result['unexpected'] = "{$id} no longer reproduces: delete it from Expectations";
+            $result['unexpected'] = "{$id} no longer reproduces: delete it from Expectation";
 
             return $result;
         }
@@ -137,7 +137,7 @@ final class Runner {
         }
 
         try {
-            $envelope = $this->connection->callTool((string) $step['tool'], $arguments);
+            $envelope = $this->client->callTool((string) $step['tool'], $arguments);
         } catch (Throwable $exception) {
             return ['status' => 'crashed', 'error' => $exception->getMessage()];
         }

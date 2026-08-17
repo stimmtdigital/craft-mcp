@@ -18,7 +18,7 @@ use RuntimeException;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class StdioClient extends Connection {
+final class StdioClient extends Client {
     /** @var resource|null */
     private $process = null;
 

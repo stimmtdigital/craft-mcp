@@ -47,7 +47,7 @@ final class Boundary {
      * @return array<string, mixed>|null null when the connection carries no
      *                                   scope at all, which is stdio
      */
-    public static function of(Connection $connection, Profile $profile, array $tools): ?array {
+    public static function of(Client $client, Profile $profile, array $tools): ?array {
         if ($profile->scope === null) {
             return null;
         }
@@ -55,7 +55,7 @@ final class Boundary {
         $outside = [];
         $violations = [];
         foreach (self::OUTSIDE[$profile->scope] ?? [] as $tool => $arguments) {
-            $probe = self::probe($connection, $tool, $arguments, isset($tools[$tool]));
+            $probe = self::probe($client, $tool, $arguments, isset($tools[$tool]));
             $outside[$tool] = $probe;
 
             if ($probe['refused'] !== true) {
@@ -70,9 +70,9 @@ final class Boundary {
      * @param array<string, mixed> $arguments
      * @return array{advertised: bool, refused: bool, how: string}
      */
-    private static function probe(Connection $connection, string $tool, array $arguments, bool $advertised): array {
+    private static function probe(Client $client, string $tool, array $arguments, bool $advertised): array {
         try {
-            $envelope = $connection->callTool($tool, $arguments);
+            $envelope = $client->callTool($tool, $arguments);
         } catch (Throwable $exception) {
             // The transport itself refused to carry the call. Not a leak, but
             // not a refusal we can attribute to the scope either, so it is

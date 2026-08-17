@@ -43,7 +43,7 @@ tools work.
 | `http-content` | the `httpPath` endpoint | `content` | `baseline/http-content.json` | 50 |
 | `http-readonly` | the `httpPath` endpoint | `readonly` | `baseline/http-readonly.json` | 42 |
 
-Every profile runs the same plan through the same `Connection` contract, so a
+Every profile runs the same plan through the same `Client` contract, so a
 difference in results is a difference in the server rather than in the harness.
 A profile that cannot connect is reported as `UNREACHABLE` with the reason, and
 its baseline is left alone: a harness that records an empty snapshot over a
@@ -78,11 +78,11 @@ Three mechanisms, and the choice between them is mechanical:
 
 | The finding is | Put it in | Behaviour |
 |---|---|---|
-| broken, not fixed yet | `Expectations.php` | pinned to its exact symptom; **fails** when it starts working |
+| broken, not fixed yet | `Expectation.php` | pinned to its exact symptom; **fails** when it starts working |
 | a value that must hold | `assert` on the step in `Plan.php` | fails when the value stops holding |
 | a tool a scope must refuse | `Boundary.php` | calls it and fails if it answers |
 
-An entry in `Expectations.php` is self-clearing. It asserts the defect still
+An entry in `Expectation.php` is self-clearing. It asserts the defect still
 reproduces with the same status and the same message, so a fix announces itself
 with "no longer reproduces: delete it" instead of passing silently. That makes
 the register a todo list the machine maintains.

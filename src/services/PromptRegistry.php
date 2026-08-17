@@ -52,22 +52,6 @@ final class PromptRegistry {
     private bool $initialized = false;
 
     /**
-     * Get all prompt classes for MCP server registration.
-     *
-     * @return string[]
-     */
-    public function getPromptClasses(): array {
-        $this->ensureInitialized();
-
-        $classes = [];
-        foreach ($this->prompts as $sourcePrompts) {
-            $classes = array_merge($classes, $sourcePrompts);
-        }
-
-        return $classes;
-    }
-
-    /**
      * Get prompts grouped by source for debugging/info.
      *
      * @return array<string, string[]>
@@ -112,22 +96,6 @@ final class PromptRegistry {
         }
 
         return $bySource;
-    }
-
-    /**
-     * Get prompt definitions grouped by category.
-     *
-     * @return array<string, PromptDefinition[]>
-     */
-    public function getDefinitionsByCategory(): array {
-        $this->ensureInitialized();
-
-        $byCategory = [];
-        foreach ($this->definitions as $definition) {
-            $byCategory[$definition->category][] = $definition;
-        }
-
-        return $byCategory;
     }
 
     /**

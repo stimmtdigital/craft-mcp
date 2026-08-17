@@ -80,23 +80,6 @@ describe('RegisterToolsEvent::addTool()', function () {
     });
 });
 
-describe('RegisterToolsEvent::getAllToolClasses()', function () {
-    it('returns empty array when no tools registered', function () {
-        expect($this->event->getAllToolClasses())->toBe([]);
-    });
-
-    it('returns flat list of all tool classes', function () {
-        $this->event->addTool(ValidToolClass::class, 'plugin-a');
-        $this->event->addTool(ValidToolClass::class, 'plugin-b');
-
-        $allClasses = $this->event->getAllToolClasses();
-
-        expect($allClasses)
-            ->toHaveCount(2)
-            ->each->toBe(ValidToolClass::class);
-    });
-});
-
 describe('RegisterToolsEvent::addDiscoveryPath()', function () {
     it('registers valid directory path', function () {
         $path = dirname(__DIR__, 3) . '/src/tools';

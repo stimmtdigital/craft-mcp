@@ -18,7 +18,7 @@ use RuntimeException;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-abstract class Connection {
+abstract class Client {
     protected const string PROTOCOL_VERSION = '2025-06-18';
 
     private int $nextId = 1;

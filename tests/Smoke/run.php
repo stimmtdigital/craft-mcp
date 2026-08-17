@@ -22,14 +22,14 @@ use Throwable;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-require_once __DIR__ . '/Connection.php';
+require_once __DIR__ . '/Client.php';
 require_once __DIR__ . '/StdioClient.php';
 require_once __DIR__ . '/HttpClient.php';
 require_once __DIR__ . '/Credentials.php';
 require_once __DIR__ . '/Profile.php';
 require_once __DIR__ . '/Shape.php';
 require_once __DIR__ . '/Assert.php';
-require_once __DIR__ . '/Expectations.php';
+require_once __DIR__ . '/Expectation.php';
 require_once __DIR__ . '/Plan.php';
 require_once __DIR__ . '/Boundary.php';
 require_once __DIR__ . '/Runner.php';
@@ -135,6 +135,17 @@ function readBaseline(string $path): ?array {
  * @param array<string, mixed> $snapshot
  */
 function record(string $path, array $snapshot): int {
+    // A baseline recorded from a broken run is worse than no baseline: it
+    // launders the breakage into the expected state, and every later run
+    // agrees with it. Learned the hard way, by doing exactly that.
+    $failures = Report::failureCount($snapshot);
+    if ($failures > 0) {
+        fwrite(STDERR, "Refusing to record a baseline with {$failures} unexpected failures.\n");
+        fwrite(STDERR, "Fix them, or record the defect in Expectation so it is a known state rather than the new normal.\n");
+
+        return 1;
+    }
+
     $directory = dirname($path);
     if (!is_dir($directory) && !mkdir($directory, 0o775, true) && !is_dir($directory)) {
         fwrite(STDERR, "Could not create {$directory}\n");
@@ -145,7 +156,7 @@ function record(string $path, array $snapshot): int {
     file_put_contents($path, json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
     fwrite(STDOUT, "Baseline written to {$path}\n");
 
-    return Report::failureCount($snapshot) > 0 ? 1 : 0;
+    return 0;
 }
 
 /**

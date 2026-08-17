@@ -22,7 +22,7 @@ use RuntimeException;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class HttpClient extends Connection {
+final class HttpClient extends Client {
     private const string SESSION_HEADER = 'mcp-session-id';
 
     private const string EVENT_STREAM = 'text/event-stream';

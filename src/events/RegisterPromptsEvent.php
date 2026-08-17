@@ -103,20 +103,6 @@ class RegisterPromptsEvent extends Event {
     }
 
     /**
-     * Get flat list of all prompt classes.
-     *
-     * @return string[]
-     */
-    public function getAllPromptClasses(): array {
-        $classes = [];
-        foreach ($this->prompts as $sourcePrompts) {
-            $classes = array_merge($classes, $sourcePrompts);
-        }
-
-        return $classes;
-    }
-
-    /**
      * Get all prompt definitions.
      *
      * @return array<string, PromptDefinition>
@@ -137,20 +123,6 @@ class RegisterPromptsEvent extends Event {
         }
 
         return $bySource;
-    }
-
-    /**
-     * Get prompt definitions grouped by category.
-     *
-     * @return array<string, PromptDefinition[]>
-     */
-    public function getDefinitionsByCategory(): array {
-        $byCategory = [];
-        foreach ($this->definitions as $definition) {
-            $byCategory[$definition->category][] = $definition;
-        }
-
-        return $byCategory;
     }
 
     /**

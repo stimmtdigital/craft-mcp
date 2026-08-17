@@ -29,20 +29,20 @@ final class Harness {
     public function run(Profile $profile): array {
         $runId = 'r' . substr(sha1($profile->name . getmypid() . microtime()), 0, 8);
         $credentials = $profile->isHttp() ? Credentials::for((string) $profile->scope, $runId) : null;
-        $connection = $credentials === null
+        $client = $credentials === null
             ? new StdioClient($this->serverCommand)
             : new HttpClient($credentials->endpoint, $credentials->token);
 
-        $connection->start();
+        $client->start();
 
         try {
-            $initialize = $connection->initialize();
-            $tools = $this->catalogue($connection);
-            $steps = (new Runner($connection, $profile, $this->includeHeavy))->execute($runId, $tools);
-            $scope = Boundary::of($connection, $profile, $tools);
+            $initialize = $client->initialize();
+            $tools = $this->catalogue($client);
+            $steps = (new Runner($client, $profile, $this->includeHeavy))->execute($runId, $tools);
+            $scope = Boundary::of($client, $profile, $tools);
         } finally {
-            $diagnostics = $connection->diagnostics();
-            $connection->stop();
+            $diagnostics = $client->diagnostics();
+            $client->stop();
             $credentials?->release();
         }
 
@@ -56,8 +56,8 @@ final class Harness {
      *
      * @return array<string, mixed>
      */
-    private function catalogue(Connection $connection): array {
-        $result = $connection->request('tools/list', []);
+    private function catalogue(Client $client): array {
+        $result = $client->request('tools/list', []);
         $tools = is_array($result['tools'] ?? null) ? $result['tools'] : [];
 
         $catalogue = [];

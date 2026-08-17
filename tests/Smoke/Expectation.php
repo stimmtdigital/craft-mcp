@@ -25,7 +25,7 @@ namespace stimmt\craft\Mcp\Tests\Smoke;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class Expectations {
+final class Expectation {
     /**
      * @return array<string, array{steps: list<string>, profiles?: list<string>, status: string, contains?: string, why: string, found: string}>
      */

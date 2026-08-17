@@ -109,20 +109,6 @@ class RegisterToolsEvent extends Event {
     }
 
     /**
-     * Get flat list of all tool classes.
-     *
-     * @return string[]
-     */
-    public function getAllToolClasses(): array {
-        $classes = [];
-        foreach ($this->tools as $sourceTools) {
-            $classes = array_merge($classes, $sourceTools);
-        }
-
-        return $classes;
-    }
-
-    /**
      * Get all tool definitions.
      *
      * @return array<string, ToolDefinition>
@@ -143,20 +129,6 @@ class RegisterToolsEvent extends Event {
         }
 
         return $bySource;
-    }
-
-    /**
-     * Get tool definitions grouped by category.
-     *
-     * @return array<string, ToolDefinition[]>
-     */
-    public function getDefinitionsByCategory(): array {
-        $byCategory = [];
-        foreach ($this->definitions as $definition) {
-            $byCategory[$definition->category][] = $definition;
-        }
-
-        return $byCategory;
     }
 
     /**
