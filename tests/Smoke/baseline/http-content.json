@@ -1,0 +1,3618 @@
+{
+    "protocolVersion": "2025-11-25",
+    "capabilities": {
+        "logging": [],
+        "completions": [],
+        "prompts": {
+            "listChanged": true
+        },
+        "resources": {
+            "subscribe": true,
+            "listChanged": true
+        },
+        "tools": {
+            "listChanged": true
+        }
+    },
+    "toolCount": 50,
+    "tools": {
+        "copy_entry_to_site": {
+            "description": "Copy an entry's field values from one site to another as a draft on the target site. Copies values; does not machine-translate.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "fromSite": {
+                        "type": "string"
+                    },
+                    "toSite": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "fromSite",
+                    "toSite"
+                ]
+            }
+        },
+        "count_entries": {
+            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Same filters as list_entries. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers \"how many per X\" without listing anything.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "search": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "filters": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Field-value filters: {fieldHandle: value}. Values are scalars, \":empty:\", \":notempty:\", or a natural key object for relation fields.",
+                        "additionalProperties": true
+                    },
+                    "relatedTo": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Only entries related to this element, as a natural key.",
+                        "additionalProperties": true
+                    },
+                    "author": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "updatedAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "updatedBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "createdAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "createdBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "groupBy": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "output": {
+                        "type": "string",
+                        "default": "structured",
+                        "enum": [
+                            "structured",
+                            "text"
+                        ],
+                        "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
+                    }
+                }
+            }
+        },
+        "create_entry": {
+            "description": "Create an entry. fields is JSON in the payload format (natural keys: {section,slug} for entries, {volume,filename} for assets, matrix blocks by type handle). Saves as a draft unless mode or the entryWriteMode setting says live. Use describe_entry_schema first to learn the shape.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "parent": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "section",
+                    "type",
+                    "title"
+                ]
+            }
+        },
+        "create_nested_entry": {
+            "description": "Add a block to a Matrix field on an owner entry without resending the field's other blocks (the full-field rewrite risks deleting them). In draft mode (default) the block lands on a draft of the owner, like a control panel edit: pass the returned draftElementId to publish_entry to make it live, to get_entry to review it in context, or as owner in follow-up calls to stack more blocks onto the same draft. Optional position places the block among its siblings (1-based, clamped to the end).",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "owner": {
+                        "type": "integer"
+                    },
+                    "field": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "position": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "owner",
+                    "field",
+                    "type"
+                ]
+            }
+        },
+        "delete_entry": {
+            "description": "Soft-delete an entry (moves to trash, restorable in the control panel). Matrix-family blocks are entries too: pass a block's own id to delete just that block without touching its siblings.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "describe_entry_schema": {
+            "description": "Describe the fields a section/entry type accepts: handles, kinds, required flags, a per-field input shape (the exact payload each field takes: natural keys for relations, block types for matrix, link/option/table/container shapes for structured and third-party fields), native fields, writable meta attributes. Pass example (entry id or slug) to include a real entry payload as a golden fixture.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "depth": {
+                        "type": "integer",
+                        "default": 1
+                    },
+                    "example": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "section"
+                ]
+            }
+        },
+        "duplicate_entry": {
+            "description": "Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for \"like X but change these\".",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "slug": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "explain_query": {
+            "description": "Run EXPLAIN on a SELECT query to analyze performance. Shows query execution plan, indexes used, and estimated rows.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "sql"
+                ]
+            }
+        },
+        "get_asset": {
+            "description": "Get a single asset by ID with full metadata",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "get_config": {
+            "description": "Get a Craft CMS configuration value by dot-notation key (e.g., \"general.devMode\", \"db.driver\")",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "key"
+                ]
+            }
+        },
+        "get_database_info": {
+            "description": "Get database connection information including driver, server version, and connection details",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "get_database_schema": {
+            "description": "Get database schema information. Lists all tables, or details for a specific table including columns and indexes.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "table": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "get_deprecations": {
+            "description": "Get deprecation warnings from Craft CMS logs. Shows deprecated code usage that should be updated.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "default": 50
+                    }
+                }
+            }
+        },
+        "get_entry": {
+            "description": "Get one entry by id or slug, in the payload format: what this returns is exactly what create_entry/update_entry accept as fields.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null
+                    },
+                    "slug": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "get_environment": {
+            "description": "Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "get_graphql_schema": {
+            "description": "Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null
+                    },
+                    "uid": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "get_last_error": {
+            "description": "Get the most recent error from Craft CMS log files",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "get_mcp_info": {
+            "description": "Get information about the Craft MCP plugin including version, status, and configuration",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "get_project_config_diff": {
+            "description": "Show pending project config changes that need to be applied. Returns differences between YAML files and database.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "get_queue_jobs": {
+            "description": "List queue jobs in Craft CMS. Filter by status: pending, reserved, failed, done. Shows job class, description, and failure reason if applicable.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "default": "pending"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 50
+                    }
+                }
+            }
+        },
+        "get_site": {
+            "description": "Get detailed information about a specific site by ID or handle",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null
+                    },
+                    "handle": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "get_system_info": {
+            "description": "Get information about the Craft CMS installation including version, PHP version, and database info",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "get_table_counts": {
+            "description": "Get row counts for Craft CMS tables (entries, assets, users, etc.)",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "output": {
+                        "type": "string",
+                        "default": "structured",
+                        "enum": [
+                            "structured",
+                            "text"
+                        ],
+                        "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
+                    }
+                }
+            }
+        },
+        "list_asset_folders": {
+            "description": "List asset folders in a volume",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "volume": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "parentId": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "list_assets": {
+            "description": "List assets from Craft CMS. Filter by volume, folder, kind (image, video, pdf, etc.), filename.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "volume": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "folderId": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null
+                    },
+                    "kind": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "filename": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 50
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0
+                    }
+                }
+            }
+        },
+        "list_backups": {
+            "description": "List available database backups from storage/backups directory",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_categories": {
+            "description": "List categories from Craft CMS. Filter by group handle.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "group": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 100
+                    }
+                }
+            }
+        },
+        "list_console_commands": {
+            "description": "List all available Craft CMS console commands (like php craft <command>)",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_drafts": {
+            "description": "List pending (non-provisional) entry drafts awaiting review, newest first. Filter by section, site, or creator username/email. Each row carries the draft element id publish_entry accepts and a cpEditUrl for human review.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "creator": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0
+                    }
+                }
+            }
+        },
+        "list_entries": {
+            "description": "List entries. Filter by section, type, status, site, full-text search, field values (with :empty:/:notempty: and natural keys for relations), relatedTo, author, and date ranges. Returns entries in the payload format (natural keys for relations).",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "search": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "filters": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Field-value filters: {fieldHandle: value}. Values are scalars, \":empty:\", \":notempty:\", or a natural key object for relation fields (e.g. {\"group\": \"...\", \"slug\": \"...\"}).",
+                        "additionalProperties": true
+                    },
+                    "relatedTo": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Only entries related to this element, as a natural key: {\"section\",\"slug\"}, {\"volume\",\"filename\"}, {\"group\",\"slug\"}, or {\"username\"}.",
+                        "additionalProperties": true
+                    },
+                    "author": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "updatedAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "updatedBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "createdAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "createdBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "fields": {
+                        "type": "array",
+                        "default": null,
+                        "description": "Projection: return only these attributes and field handles per entry (id and title always included) instead of the full payload. Ideal for scanning many entries.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0
+                    }
+                }
+            }
+        },
+        "list_event_handlers": {
+            "description": "List registered event handlers/listeners in Craft CMS. Useful for debugging hooks and understanding what code runs on events.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "filter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "list_fields": {
+            "description": "List all custom fields in Craft CMS with their type and group. Optionally filter by handle/name search term or field type.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "search": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "list_globals": {
+            "description": "List all global sets in Craft CMS with their field values",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_graphql_schemas": {
+            "description": "List all GraphQL schemas in Craft CMS with their scopes and permissions",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_graphql_tokens": {
+            "description": "List all GraphQL tokens (API keys) with their associated schemas",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_mcp_tools": {
+            "description": "List all available MCP tools with their names, descriptions, and enabled status",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_plugins": {
+            "description": "List all installed Craft CMS plugins with their enabled status, version, and handle",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_revisions": {
+            "description": "List an entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers \"when did this change and by whom\". Read a revision's full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "list_routes": {
+            "description": "List all registered routes in Craft CMS",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_sections": {
+            "description": "List all sections (channels, structures, singles) in Craft CMS with their entry types. Optionally filter by handle/name search term.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "search": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                }
+            }
+        },
+        "list_site_groups": {
+            "description": "List all site groups in Craft CMS",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_sites": {
+            "description": "List all sites in Craft CMS with their handles, languages, and configuration",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "list_users": {
+            "description": "List users from Craft CMS. Filter by group handle, status, email.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "group": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "email": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 50
+                    }
+                }
+            }
+        },
+        "list_volumes": {
+            "description": "List all asset volumes (storage locations) in Craft CMS",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "move_nested_entry": {
+            "description": "Move a Matrix block to a new 1-based position within its field, by the block's own entry id. In draft mode (default) the reorder lands on a draft of the owner entry for review and publish_entry applies it; live mode reorders the canonical directly. Positions past the end clamp to the last slot; the response reports the position actually taken.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "id",
+                    "position"
+                ]
+            }
+        },
+        "publish_entry": {
+            "description": "Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "query_graphql": {
+            "description": "Run a read-only GraphQL query against Craft's GraphQL API. Mutations and subscriptions are rejected before execution, so this is safe for browsing any GraphQL-exposed data (assets, categories, users, plugin types) with exactly the response shape you ask for. Use get_graphql_schema to discover the available types first.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string"
+                    },
+                    "variables": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "operationName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "schemaId": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "query"
+                ]
+            }
+        },
+        "read_logs": {
+            "description": "Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for a human-readable view with indented stack traces.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "default": 50
+                    },
+                    "level": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "pattern": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "source": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "output": {
+                        "type": "string",
+                        "default": "structured",
+                        "enum": [
+                            "structured",
+                            "text"
+                        ],
+                        "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
+                    }
+                }
+            }
+        },
+        "reload_mcp": {
+            "description": "Reload MCP to detect newly installed plugins. Note: Code changes require sending SIGHUP to the MCP server process.",
+            "annotations": null,
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "update_entry": {
+            "description": "Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change. Matrix-family blocks are entries too: pass a block's own id to edit just that block without touching its siblings. Pass expectedDateUpdated (the dateUpdated string get_entry returned) to fail instead of overwriting when the entry changed since your read.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "slug": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "parent": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "expectedDateUpdated": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        }
+    },
+    "uncovered": [
+        "copy_entry_to_site",
+        "get_asset",
+        "reload_mcp"
+    ],
+    "steps": {
+        "get_mcp_info": {
+            "status": "ok",
+            "shape": {
+                "configuration": {
+                    "disabledTools": []
+                },
+                "handle": "<string>",
+                "name": "<string>",
+                "schemaVersion": "<string>",
+                "status": {
+                    "dangerousToolsEnabled": true,
+                    "enabled": true,
+                    "environment": "<string>"
+                },
+                "tools": {
+                    "byCategory": {
+                        "backup": "<number>",
+                        "content": "<number>",
+                        "core": "<number>",
+                        "database": "<number>",
+                        "debugging": "<number>",
+                        "graphql": "<number>",
+                        "multisite": "<number>",
+                        "schema": "<number>",
+                        "system": "<number>"
+                    },
+                    "bySource": {
+                        "core": "<number>"
+                    },
+                    "dangerous": "<number>",
+                    "errors": "<number>",
+                    "total": "<number>"
+                },
+                "version": "<string>"
+            }
+        },
+        "list_mcp_tools": {
+            "status": "ok",
+            "shape": {
+                "byCategory": {
+                    "backup": "<number>",
+                    "content": "<number>",
+                    "core": "<number>",
+                    "database": "<number>",
+                    "debugging": "<number>",
+                    "graphql": "<number>",
+                    "multisite": "<number>",
+                    "schema": "<number>",
+                    "system": "<number>"
+                },
+                "bySource": {
+                    "core": "<number>"
+                },
+                "count": "<number>",
+                "tools": [
+                    {
+                        "category": "<string>",
+                        "dangerous": "<bool|false|true>",
+                        "description": "<string>",
+                        "enabled": true,
+                        "name": "<string>",
+                        "privileged": "<bool|false|true>",
+                        "source": "<string>"
+                    }
+                ]
+            }
+        },
+        "get_system_info": {
+            "status": "ok",
+            "shape": {
+                "craft": {
+                    "devMode": true,
+                    "edition": "<string>",
+                    "environment": "<string>",
+                    "schemaVersion": "<string>",
+                    "version": "<string>"
+                },
+                "database": {
+                    "driver": "<string>",
+                    "version": "<string>"
+                },
+                "php": {
+                    "version": "<string>"
+                },
+                "sites": [
+                    {
+                        "baseUrl": "<string>",
+                        "handle": "<string>",
+                        "id": "<number>",
+                        "name": "<string>",
+                        "primary": true
+                    }
+                ]
+            }
+        },
+        "get_environment": {
+            "status": "ok",
+            "shape": {
+                "environment": {
+                    "CRAFT_ALLOW_ADMIN_CHANGES": "<string>",
+                    "CRAFT_DEV_MODE": "<string>",
+                    "CRAFT_ENVIRONMENT": "<string>",
+                    "CRAFT_RUN_QUEUE_AUTOMATICALLY": null
+                },
+                "paths": {
+                    "basePath": "<string>",
+                    "configPath": "<string>",
+                    "storagePath": "<string>",
+                    "templatesPath": "<string>"
+                },
+                "php": {
+                    "display_errors": "<string>",
+                    "error_reporting": "<string>",
+                    "max_execution_time": "<string>",
+                    "memory_limit": "<string>",
+                    "opcache.enable": "<string>",
+                    "post_max_size": "<string>",
+                    "upload_max_filesize": "<string>"
+                },
+                "system": {
+                    "allowAdminChanges": true,
+                    "cpTrigger": null,
+                    "devMode": true,
+                    "enableTemplateCaching": true,
+                    "isSystemLive": true,
+                    "runQueueAutomatically": true,
+                    "testToEmailAddress": null
+                }
+            }
+        },
+        "list_plugins": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "plugins": [
+                    {
+                        "description": "<string>",
+                        "developer": "<string>",
+                        "handle": "<string>",
+                        "isEnabled": "<bool|true>",
+                        "isInstalled": "<bool|true>",
+                        "name": "<string>",
+                        "schemaVersion": "<null|string>",
+                        "version": "<string>"
+                    }
+                ]
+            }
+        },
+        "get_last_error": {
+            "status": "ok",
+            "shape": {
+                "found": false,
+                "message": "<string>"
+            }
+        },
+        "get_deprecations": {
+            "status": "ok",
+            "shape": {
+                "fromDatabase": {
+                    "count": "<number>",
+                    "deprecations": []
+                },
+                "fromLogs": {
+                    "count": "<number>",
+                    "deprecations": []
+                },
+                "hint": "<string>"
+            }
+        },
+        "get_queue_jobs": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "counts": {
+                    "failed": "<number>",
+                    "pending": "<number>",
+                    "reserved": "<number>"
+                },
+                "jobs": [
+                    {
+                        "channel": "<string>",
+                        "delay": "<number>",
+                        "description": "<string>",
+                        "id": "<number>",
+                        "jobClass": "<string>",
+                        "priority": "<number>",
+                        "timePushed": "<string>",
+                        "ttr": "<number>"
+                    }
+                ],
+                "status": "<string>"
+            }
+        },
+        "list_console_commands": {
+            "status": "ok",
+            "shape": {
+                "commands": [],
+                "count": "<number>"
+            }
+        },
+        "list_routes": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "routes": [
+                    {
+                        "pattern": "<string>",
+                        "section?": "<string>",
+                        "section??": "<string>",
+                        "siteId?": "<number>",
+                        "siteId??": "<number>",
+                        "template": "<null|string>",
+                        "type": "<string>"
+                    }
+                ]
+            }
+        },
+        "list_event_handlers": {
+            "status": "ok",
+            "shape": {
+                "applicationEvents": {
+                    "count": "<number>",
+                    "events": []
+                },
+                "classEvents": {
+                    "count": "<number>",
+                    "events": {
+                        "craft\\elements\\Entry::defineSidebarHtml": {
+                            "class": "<string>",
+                            "count": "<number>",
+                            "event": "<string>",
+                            "handlers": [
+                                "<string>"
+                            ]
+                        },
+                        "craft\\elements\\Entry::registerPreviewTargets": {
+                            "class": "<string>",
+                            "count": "<number>",
+                            "event": "<string>",
+                            "handlers": [
+                                "<string>"
+                            ]
+                        },
+                        "craft\\services\\Fields::registerNestedEntryFieldTypes": {
+                            "class": "<string>",
+                            "count": "<number>",
+                            "event": "<string>",
+                            "handlers": [
+                                "<string>"
+                            ]
+                        }
+                    }
+                },
+                "hint": "<string>"
+            }
+        },
+        "read_logs": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "entries": [
+                    {
+                        "category": "<string>",
+                        "channel": "<string>",
+                        "file": "<string>",
+                        "level": "<string>",
+                        "message": "<string>",
+                        "timestamp": "<string>"
+                    }
+                ]
+            }
+        },
+        "read_logs.text": {
+            "status": "ok",
+            "shape": "<string>"
+        },
+        "list_sites": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "sites": [
+                    {
+                        "baseUrl": "<string>",
+                        "dateCreated": "<string>",
+                        "dateUpdated": "<string>",
+                        "enabled": true,
+                        "groupId": "<number>",
+                        "handle": "<string>",
+                        "id": "<number>",
+                        "language": "<string>",
+                        "name": "<string>",
+                        "primary": true,
+                        "sortOrder": "<number>",
+                        "uid": "<string>"
+                    }
+                ]
+            }
+        },
+        "list_site_groups": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "groups": [
+                    {
+                        "id": "<number>",
+                        "name": "<string>",
+                        "siteCount": "<number>",
+                        "siteHandles": [
+                            "<string>"
+                        ],
+                        "uid": "<string>"
+                    }
+                ]
+            }
+        },
+        "get_site": {
+            "status": "ok",
+            "shape": {
+                "site": {
+                    "baseUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "enabled": true,
+                    "group": {
+                        "id": "<number>",
+                        "name": "<string>"
+                    },
+                    "handle": "<string>",
+                    "id": "<number>",
+                    "language": "<string>",
+                    "name": "<string>",
+                    "primary": true,
+                    "sortOrder": "<number>",
+                    "uid": "<string>"
+                },
+                "success": true
+            }
+        },
+        "list_sections": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "sections": [
+                    {
+                        "entryTypes": [
+                            {
+                                "handle": "<string>",
+                                "id": "<number>",
+                                "name": "<string>"
+                            }
+                        ],
+                        "handle": "<string>",
+                        "id": "<number>",
+                        "name": "<string>",
+                        "siteSettings": {
+                            "<keyed>": {
+                                "hasUrls": true,
+                                "siteId": "<number>",
+                                "template": null,
+                                "uriFormat": "<string>"
+                            }
+                        },
+                        "type": "<string>"
+                    }
+                ]
+            }
+        },
+        "list_fields": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "fields": [
+                    {
+                        "handle": "<string>",
+                        "id": "<number>",
+                        "instructions": null,
+                        "name": "<string>",
+                        "searchable": "<bool|false|true>",
+                        "type": "<string>"
+                    }
+                ]
+            }
+        },
+        "list_volumes": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "volumes": [
+                    {
+                        "handle": "<string>",
+                        "hasUrls": true,
+                        "id": "<number>",
+                        "name": "<string>",
+                        "rootUrl": "<string>",
+                        "type": "<string>"
+                    }
+                ]
+            }
+        },
+        "list_globals": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "globals": [
+                    {
+                        "fields": {
+                            "companyAddress": null,
+                            "companyBtw": null,
+                            "companyCity": null,
+                            "companyKvk": null,
+                            "companyName": null,
+                            "companyZipcode": null,
+                            "facebook": null,
+                            "favicon": {
+                                "__class": "<string>",
+                                "__note": "<string>",
+                                "count": "<number>",
+                                "elements": []
+                            },
+                            "instagram": null,
+                            "linkedin": null,
+                            "logo": {
+                                "__class": "<string>",
+                                "__note": "<string>",
+                                "count": "<number>",
+                                "elements": []
+                            }
+                        },
+                        "handle": "<string>",
+                        "id": "<number>",
+                        "name": "<string>"
+                    }
+                ]
+            }
+        },
+        "list_categories": {
+            "status": "ok",
+            "shape": {
+                "categories": [],
+                "count": "<number>"
+            }
+        },
+        "list_users": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "users": [
+                    {
+                        "admin": true,
+                        "dateCreated": "<string>",
+                        "email": "<string>",
+                        "fullName": null,
+                        "groups": [],
+                        "id": "<number>",
+                        "lastLoginDate": "<string>",
+                        "status": "<string>",
+                        "username": "<string>"
+                    }
+                ]
+            }
+        },
+        "get_config": {
+            "status": "ok",
+            "shape": {
+                "key": "<string>",
+                "value": "<string>"
+            }
+        },
+        "get_project_config_diff": {
+            "status": "ok",
+            "shape": {
+                "message": "<string>",
+                "pending": false
+            }
+        },
+        "get_database_info": {
+            "status": "ok",
+            "shape": {
+                "charset": "<string>",
+                "database": "<string>",
+                "driver": "<string>",
+                "port": "<number>",
+                "server": "<string>",
+                "serverVersion": "<string>",
+                "tablePrefix": null
+            }
+        },
+        "get_database_schema": {
+            "status": "ok",
+            "shape": {
+                "columns": [
+                    {
+                        "allowNull": "<bool|false|true>",
+                        "autoIncrement": false,
+                        "dbType": "<string>",
+                        "defaultValue": "<null|string>",
+                        "isPrimaryKey": "<bool|false>",
+                        "name": "<string>",
+                        "phpType": "<string>",
+                        "size": "<null|number>",
+                        "type": "<string>"
+                    }
+                ],
+                "foreignKeys": {
+                    "fk_ajirjuktwjgiwoclckwjbjhdxrrkrbfokbto": {
+                        "0": "<string>",
+                        "parentId": "<string>"
+                    },
+                    "fk_ixckxqxttkoengysrqsjvlvifwbouufsgogu": {
+                        "0": "<string>",
+                        "primaryOwnerId": "<string>"
+                    },
+                    "fk_rpuugquhflfawqzacwcqtpjsarubpbdhxaes": {
+                        "0": "<string>",
+                        "sectionId": "<string>"
+                    },
+                    "fk_rsmejgcqdxqigjljvknwjdumzmqzapwnmajb": {
+                        "0": "<string>",
+                        "id": "<string>"
+                    },
+                    "fk_sflidbledwxttatopzkntuxidudjxpqljtxi": {
+                        "0": "<string>",
+                        "fieldId": "<string>"
+                    },
+                    "fk_vurhywvyfuakygomtmxhumighyipxsrnnhqi": {
+                        "0": "<string>",
+                        "typeId": "<string>"
+                    }
+                },
+                "fullName": "<string>",
+                "indexes": [
+                    {
+                        "columns": {
+                            "columns": [
+                                "<string>"
+                            ],
+                            "unique": false
+                        },
+                        "name": "<string>"
+                    }
+                ],
+                "primaryKey": [
+                    "<string>"
+                ],
+                "table": "<string>"
+            }
+        },
+        "get_table_counts": {
+            "status": "ok",
+            "shape": {
+                "assets": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "categories": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "elements": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "entries": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "entrytypes": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "fields": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "globalsets": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "plugins": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "sections": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "tags": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "users": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "volumes": {
+                    "count": "<number>",
+                    "label": "<string>"
+                }
+            }
+        },
+        "list_backups": {
+            "status": "ok",
+            "shape": {
+                "backups": [
+                    {
+                        "created": "<string>",
+                        "filename": "<string>",
+                        "path": "<string>",
+                        "size": "<string>",
+                        "sizeBytes": "<number>"
+                    }
+                ],
+                "count": "<number>",
+                "path": "<string>"
+            }
+        },
+        "list_graphql_schemas": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "schemas": [
+                    {
+                        "id": "<number>",
+                        "isPublic": "<bool>",
+                        "name": "<string>",
+                        "permissions": {
+                            "elements": {
+                                "drafts": [
+                                    "<string>"
+                                ],
+                                "inactive": [
+                                    "<string>"
+                                ],
+                                "revisions": [
+                                    "<string>"
+                                ]
+                            },
+                            "formieForms": {
+                                "all": [
+                                    "<string>"
+                                ]
+                            },
+                            "formieSubmissions?": {
+                                "all": [
+                                    "<string>"
+                                ]
+                            },
+                            "headless": {
+                                "devMeta": [
+                                    "<string>"
+                                ],
+                                "devToolsConfig": [
+                                    "<string>"
+                                ]
+                            },
+                            "navigationNavs": {
+                                "0533798e-1317-4833-bf48-a3f9189a8c80": [
+                                    "<string>"
+                                ],
+                                "all": [
+                                    "<string>"
+                                ]
+                            },
+                            "nestedentryfields": {
+                                "0a58e287-e038-4eb7-ab2a-cf4cbdbe013d": [
+                                    "<string>"
+                                ],
+                                "2bae9725-9546-4f55-a889-56102191aa89": [
+                                    "<string>"
+                                ],
+                                "8025fde3-00ea-4d54-9862-f1dca9b08ebf": [
+                                    "<string>"
+                                ]
+                            },
+                            "retour": {
+                                "all": [
+                                    "<string>"
+                                ]
+                            },
+                            "sections": {
+                                "3e2a1a6f-88ea-477b-936d-39393f2d594f": [
+                                    "<string>"
+                                ],
+                                "6ba54824-1c3f-454f-8830-f6cea379bee4": [
+                                    "<string>"
+                                ],
+                                "70b2614b-639a-4de2-8c11-3851d36d6f8c": [
+                                    "<string>"
+                                ],
+                                "998bf681-e007-4f7e-a525-863e01a38560": [
+                                    "<string>"
+                                ],
+                                "aef20f9c-5c84-4c50-8a18-acf0452db62f": [
+                                    "<string>"
+                                ],
+                                "bd99645a-4524-40e4-83dc-c6b12e023bab": [
+                                    "<string>"
+                                ],
+                                "c4b4f50d-7d62-4a4c-bbf8-7aae00fd82c7": [
+                                    "<string>"
+                                ],
+                                "cdad2202-5d55-49ba-995e-962503f5887f": [
+                                    "<string>"
+                                ]
+                            },
+                            "seomatic": {
+                                "all": [
+                                    "<string>"
+                                ]
+                            },
+                            "sites": {
+                                "58ccb571-6c72-449f-8e7b-6f43c5d416b3": [
+                                    "<string>"
+                                ]
+                            },
+                            "volumes": {
+                                "7b9364bd-2215-495a-8b0b-2280df887a8b": [
+                                    "<string>"
+                                ]
+                            }
+                        },
+                        "scope": [
+                            "<string>"
+                        ],
+                        "uid": "<string>"
+                    }
+                ]
+            }
+        },
+        "list_graphql_tokens": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "tokens": [
+                    {
+                        "dateCreated": "<string>",
+                        "enabled": true,
+                        "expiryDate": null,
+                        "id": "<number>",
+                        "name": "<string>",
+                        "schema": {
+                            "id": "<number>",
+                            "name": "<string>"
+                        },
+                        "uid": "<string>"
+                    }
+                ]
+            }
+        },
+        "get_graphql_schema": {
+            "status": "ok",
+            "shape": {
+                "schema": {
+                    "id": "<number>",
+                    "isPublic": true,
+                    "name": "<string>",
+                    "permissions": {
+                        "elements": {
+                            "drafts": [
+                                "<string>"
+                            ],
+                            "inactive": [
+                                "<string>"
+                            ],
+                            "revisions": [
+                                "<string>"
+                            ]
+                        },
+                        "formieForms": {
+                            "all": [
+                                "<string>"
+                            ]
+                        },
+                        "headless": {
+                            "devMeta": [
+                                "<string>"
+                            ],
+                            "devToolsConfig": [
+                                "<string>"
+                            ]
+                        },
+                        "navigationNavs": {
+                            "0533798e-1317-4833-bf48-a3f9189a8c80": [
+                                "<string>"
+                            ],
+                            "all": [
+                                "<string>"
+                            ]
+                        },
+                        "nestedentryfields": {
+                            "0a58e287-e038-4eb7-ab2a-cf4cbdbe013d": [
+                                "<string>"
+                            ],
+                            "2bae9725-9546-4f55-a889-56102191aa89": [
+                                "<string>"
+                            ],
+                            "8025fde3-00ea-4d54-9862-f1dca9b08ebf": [
+                                "<string>"
+                            ]
+                        },
+                        "retour": {
+                            "all": [
+                                "<string>"
+                            ]
+                        },
+                        "sections": {
+                            "3e2a1a6f-88ea-477b-936d-39393f2d594f": [
+                                "<string>"
+                            ],
+                            "6ba54824-1c3f-454f-8830-f6cea379bee4": [
+                                "<string>"
+                            ],
+                            "70b2614b-639a-4de2-8c11-3851d36d6f8c": [
+                                "<string>"
+                            ],
+                            "998bf681-e007-4f7e-a525-863e01a38560": [
+                                "<string>"
+                            ],
+                            "aef20f9c-5c84-4c50-8a18-acf0452db62f": [
+                                "<string>"
+                            ],
+                            "bd99645a-4524-40e4-83dc-c6b12e023bab": [
+                                "<string>"
+                            ],
+                            "c4b4f50d-7d62-4a4c-bbf8-7aae00fd82c7": [
+                                "<string>"
+                            ],
+                            "cdad2202-5d55-49ba-995e-962503f5887f": [
+                                "<string>"
+                            ]
+                        },
+                        "seomatic": {
+                            "all": [
+                                "<string>"
+                            ]
+                        },
+                        "sites": {
+                            "58ccb571-6c72-449f-8e7b-6f43c5d416b3": [
+                                "<string>"
+                            ]
+                        },
+                        "volumes": {
+                            "7b9364bd-2215-495a-8b0b-2280df887a8b": [
+                                "<string>"
+                            ]
+                        }
+                    },
+                    "scope": [
+                        "<string>"
+                    ],
+                    "sdl": null,
+                    "sdlLength": "<number>",
+                    "uid": "<string>"
+                },
+                "success": true
+            }
+        },
+        "explain_query": {
+            "status": "ok",
+            "shape": {
+                "driver": "<string>",
+                "explain": [
+                    {
+                        "Extra": "<string>",
+                        "filtered": "<number>",
+                        "id": "<number>",
+                        "key": "<string>",
+                        "key_len": "<string>",
+                        "partitions": null,
+                        "possible_keys": null,
+                        "ref": null,
+                        "rows": "<number>",
+                        "select_type": "<string>",
+                        "table": "<string>",
+                        "type": "<string>"
+                    }
+                ],
+                "query": "<string>",
+                "success": true,
+                "warnings": [
+                    {
+                        "Code": "<number>",
+                        "Level": "<string>",
+                        "Message": "<string>"
+                    }
+                ]
+            }
+        },
+        "run_query": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "run_query.text": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "tinker": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "query_graphql": {
+            "status": "ok",
+            "shape": {
+                "data": {
+                    "ping": "<string>"
+                },
+                "errors": null,
+                "success": true
+            }
+        },
+        "execute_graphql": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "list_entries": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "entries": [
+                    {
+                        "authorId": "<number>",
+                        "canonicalId": "<number>",
+                        "cpEditUrl": "<string>",
+                        "dateCreated": "<string>",
+                        "dateUpdated": "<string>",
+                        "draftId": null,
+                        "expiryDate": null,
+                        "fields": {
+                            "category": [],
+                            "contentBuilder": "<list|object>"
+                        },
+                        "id": "<number>",
+                        "postDate": "<string>",
+                        "sectionHandle": "<string>",
+                        "siteHandle": "<string>",
+                        "siteId": "<number>",
+                        "slug": "<string>",
+                        "state": "<string>",
+                        "status": "<string>",
+                        "title": "<string>",
+                        "typeHandle": "<string>",
+                        "url": "<string>",
+                        "warnings": []
+                    }
+                ],
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "list_entries.projection": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "entries": [
+                    {
+                        "id": "<number>",
+                        "slug": "<string>",
+                        "status": "<string>",
+                        "title": "<string>"
+                    }
+                ],
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "list_entries.search": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "entries": [
+                    {
+                        "authorId": "<number>",
+                        "canonicalId": "<number>",
+                        "cpEditUrl": "<string>",
+                        "dateCreated": "<string>",
+                        "dateUpdated": "<string>",
+                        "draftId": null,
+                        "expiryDate": null,
+                        "fields": {
+                            "category": [],
+                            "contentBuilder": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": "<bool|true>",
+                                    "fields": {
+                                        "buttons": [],
+                                        "contentExtensive": "<string>",
+                                        "image??": [],
+                                        "reverseView??": true
+                                    },
+                                    "position": "<number>",
+                                    "slug": null,
+                                    "title": null,
+                                    "type": "<string>"
+                                }
+                            }
+                        },
+                        "id": "<number>",
+                        "postDate": "<string>",
+                        "sectionHandle": "<string>",
+                        "siteHandle": "<string>",
+                        "siteId": "<number>",
+                        "slug": "<string>",
+                        "state": "<string>",
+                        "status": "<string>",
+                        "title": "<string>",
+                        "typeHandle": "<string>",
+                        "url": "<string>",
+                        "warnings": []
+                    }
+                ],
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "list_entries.filters": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "entries": [
+                    {
+                        "authorId": "<number>",
+                        "canonicalId": "<number>",
+                        "cpEditUrl": "<string>",
+                        "dateCreated": "<string>",
+                        "dateUpdated": "<string>",
+                        "draftId": null,
+                        "expiryDate": null,
+                        "fields": {
+                            "category": [],
+                            "contentBuilder": "<list|object>"
+                        },
+                        "id": "<number>",
+                        "postDate": "<string>",
+                        "sectionHandle": "<string>",
+                        "siteHandle": "<string>",
+                        "siteId": "<number>",
+                        "slug": "<string>",
+                        "state": "<string>",
+                        "status": "<string>",
+                        "title": "<string>",
+                        "typeHandle": "<string>",
+                        "url": "<string>",
+                        "warnings": []
+                    }
+                ],
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "get_entry": {
+            "status": "ok",
+            "shape": {
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": null,
+                    "expiryDate": null,
+                    "fields": {
+                        "category": [],
+                        "contentBuilder": {
+                            "<keyed>": {
+                                "collapsed": false,
+                                "enabled": true,
+                                "fields": [],
+                                "position": "<number>",
+                                "slug": "<string>",
+                                "title": "<string>",
+                                "type": "<string>"
+                            }
+                        }
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "found": true
+            }
+        },
+        "get_entry.by_slug": {
+            "status": "ok",
+            "shape": {
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": null,
+                    "expiryDate": null,
+                    "fields": {
+                        "category": [],
+                        "contentBuilder": {
+                            "<keyed>": {
+                                "collapsed": false,
+                                "enabled": true,
+                                "fields": [],
+                                "position": "<number>",
+                                "slug": "<string>",
+                                "title": "<string>",
+                                "type": "<string>"
+                            }
+                        }
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "found": true
+            }
+        },
+        "count_entries": {
+            "status": "ok",
+            "shape": {
+                "groupBy": null,
+                "success": true,
+                "total": "<number>"
+            }
+        },
+        "count_entries.grouped": {
+            "status": "ok",
+            "shape": {
+                "buckets": [
+                    {
+                        "count": "<number>",
+                        "key": "<string>"
+                    }
+                ],
+                "groupBy": "<string>",
+                "success": true,
+                "total": "<number>"
+            }
+        },
+        "describe_entry_schema": {
+            "status": "ok",
+            "shape": {
+                "fields": [
+                    {
+                        "blockTypes?": [
+                            {
+                                "fields": [
+                                    {
+                                        "handle": "<string>",
+                                        "input": {
+                                            "elementType????": "<string>",
+                                            "hint??": "<string>",
+                                            "hint????": "<string>",
+                                            "item????": [
+                                                "<string>"
+                                            ],
+                                            "kind": "<string>",
+                                            "linkTypes??": {
+                                                "default-verbb-hyper-links-custom": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-email": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-entry": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-phone": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkIcon2": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-url": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "linkTypes???": {
+                                                "default-verbb-hyper-links-custom": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-email": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-entry": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-phone": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkIcon2": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-url": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "multiple????": true,
+                                            "note??": "<string>",
+                                            "note???": "<string>",
+                                            "payload??": "<string>",
+                                            "payload???": "<string>",
+                                            "valueType?": "<string>",
+                                            "valueType????": "<string>"
+                                        },
+                                        "instructions": "<string>",
+                                        "kind": "<string>",
+                                        "name": "<string>",
+                                        "required": false,
+                                        "target????": {
+                                            "elementType": "<string>",
+                                            "sources": "<string>"
+                                        },
+                                        "type": "<string>"
+                                    }
+                                ],
+                                "handle": "<string>",
+                                "hasTitleField": false,
+                                "name": "<string>"
+                            }
+                        ],
+                        "handle": "<string>",
+                        "input": {
+                            "blockTypes?": {
+                                "contentBlock": {
+                                    "hasTitleField": false
+                                },
+                                "contentMedia": {
+                                    "hasTitleField": false
+                                }
+                            },
+                            "elementType?": "<string>",
+                            "item?": [
+                                "<string>"
+                            ],
+                            "kind": "<string>",
+                            "multiple?": true,
+                            "payload?": "<string>"
+                        },
+                        "instructions": "<string>",
+                        "kind": "<string>",
+                        "name": "<string>",
+                        "required": false,
+                        "target?": {
+                            "elementType": "<string>",
+                            "sources": [
+                                "<string>"
+                            ]
+                        },
+                        "type": "<string>"
+                    }
+                ],
+                "flags": {
+                    "hasTitleField": true,
+                    "showSlugField": true,
+                    "showStatusField": true
+                },
+                "meta": [
+                    "<string>"
+                ],
+                "natives": [
+                    {
+                        "attribute": "<string>",
+                        "mandatory": false,
+                        "name": "<string>",
+                        "required": true
+                    }
+                ],
+                "section": "<string>",
+                "type": "<string>"
+            }
+        },
+        "describe_entry_schema.example": {
+            "status": "ok",
+            "shape": {
+                "example": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": null,
+                    "expiryDate": null,
+                    "fields": {
+                        "category": [],
+                        "contentBuilder": {
+                            "<keyed>": {
+                                "collapsed": false,
+                                "enabled": true,
+                                "fields": [],
+                                "position": "<number>",
+                                "slug": "<string>",
+                                "title": "<string>",
+                                "type": "<string>"
+                            }
+                        }
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "fields": [
+                    {
+                        "blockTypes?": [
+                            {
+                                "fields": [
+                                    {
+                                        "handle": "<string>",
+                                        "input": {
+                                            "elementType????": "<string>",
+                                            "hint??": "<string>",
+                                            "hint????": "<string>",
+                                            "item????": [
+                                                "<string>"
+                                            ],
+                                            "kind": "<string>",
+                                            "linkTypes??": {
+                                                "default-verbb-hyper-links-custom": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-email": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-entry": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-phone": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkIcon2": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-url": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "linkTypes???": {
+                                                "default-verbb-hyper-links-custom": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-email": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-entry": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-phone": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkIcon2": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "default-verbb-hyper-links-url": {
+                                                    "fields": {
+                                                        "fields": {
+                                                            "linkIcon": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            },
+                                                            "linkStyle": {
+                                                                "input": {
+                                                                    "kind": "<string>",
+                                                                    "truncated": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "natives": [
+                                                            {
+                                                                "attribute": "<string>",
+                                                                "required": false
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "multiple????": true,
+                                            "note??": "<string>",
+                                            "note???": "<string>",
+                                            "payload??": "<string>",
+                                            "payload???": "<string>",
+                                            "valueType?": "<string>",
+                                            "valueType????": "<string>"
+                                        },
+                                        "instructions": "<string>",
+                                        "kind": "<string>",
+                                        "name": "<string>",
+                                        "required": false,
+                                        "target????": {
+                                            "elementType": "<string>",
+                                            "sources": "<string>"
+                                        },
+                                        "type": "<string>"
+                                    }
+                                ],
+                                "handle": "<string>",
+                                "hasTitleField": false,
+                                "name": "<string>"
+                            }
+                        ],
+                        "handle": "<string>",
+                        "input": {
+                            "blockTypes?": {
+                                "contentBlock": {
+                                    "hasTitleField": false
+                                },
+                                "contentMedia": {
+                                    "hasTitleField": false
+                                }
+                            },
+                            "elementType?": "<string>",
+                            "item?": [
+                                "<string>"
+                            ],
+                            "kind": "<string>",
+                            "multiple?": true,
+                            "payload?": "<string>"
+                        },
+                        "instructions": "<string>",
+                        "kind": "<string>",
+                        "name": "<string>",
+                        "required": false,
+                        "target?": {
+                            "elementType": "<string>",
+                            "sources": [
+                                "<string>"
+                            ]
+                        },
+                        "type": "<string>"
+                    }
+                ],
+                "flags": {
+                    "hasTitleField": true,
+                    "showSlugField": true,
+                    "showStatusField": true
+                },
+                "meta": [
+                    "<string>"
+                ],
+                "natives": [
+                    {
+                        "attribute": "<string>",
+                        "mandatory": false,
+                        "name": "<string>",
+                        "required": true
+                    }
+                ],
+                "section": "<string>",
+                "type": "<string>"
+            }
+        },
+        "list_drafts": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "drafts": [
+                    {
+                        "canonicalId": "<number>",
+                        "cpEditUrl": "<string>",
+                        "creator": null,
+                        "dateUpdated": "<string>",
+                        "draftElementId": "<number>",
+                        "isNewEntry": true,
+                        "notes": null,
+                        "section": "<string>",
+                        "site": "<string>",
+                        "title": "<string>",
+                        "type": "<string>"
+                    }
+                ],
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "list_revisions": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "limit": "<number>",
+                "offset": "<number>",
+                "revisions": [
+                    {
+                        "canonicalId": "<number>",
+                        "creator": "<string>",
+                        "dateCreated": "<string>",
+                        "notes": "<string>",
+                        "revisionElementId": "<number>",
+                        "revisionNum": "<number>",
+                        "title": "<string>"
+                    }
+                ],
+                "total": "<number>"
+            }
+        },
+        "list_assets": {
+            "status": "ok",
+            "shape": {
+                "assets": [],
+                "count": "<number>",
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "get_asset": {
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
+        },
+        "list_asset_folders": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "folders": [
+                    {
+                        "id": "<number>",
+                        "name": "<string>",
+                        "parentId": null,
+                        "path": null,
+                        "volumeId": "<number>"
+                    }
+                ]
+            }
+        },
+        "create_entry": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "elementId": "<number>",
+                "errors": [],
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "get_entry.draft": {
+            "status": "ok",
+            "shape": {
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "expiryDate": null,
+                    "fields": {
+                        "category": [],
+                        "contentBuilder": []
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "found": true
+            }
+        },
+        "update_entry": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "elementId": "<number>",
+                "errors": [],
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "create_nested_entry": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "create_nested_entry.second": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "move_nested_entry": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "publish_entry": {
+            "status": "ok",
+            "shape": {
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": null,
+                    "expiryDate": null,
+                    "fields": {
+                        "category": [],
+                        "contentBuilder": {
+                            "<keyed>": {
+                                "collapsed": false,
+                                "enabled": true,
+                                "fields": {
+                                    "buttons": [],
+                                    "contentExtensive": null
+                                },
+                                "position": "<number>",
+                                "slug": null,
+                                "title": null,
+                                "type": "<string>"
+                            }
+                        }
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "success": true
+            }
+        },
+        "duplicate_entry": {
+            "status": "ok",
+            "shape": {
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "expiryDate": null,
+                    "fields": {
+                        "category": [],
+                        "contentBuilder": {
+                            "<keyed>": {
+                                "collapsed": false,
+                                "enabled": true,
+                                "fields": {
+                                    "buttons": [],
+                                    "contentExtensive": null
+                                },
+                                "position": "<number>",
+                                "slug": null,
+                                "title": null,
+                                "type": "<string>"
+                            }
+                        }
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "success": true
+            }
+        },
+        "copy_entry_to_site": {
+            "status": "skipped",
+            "reason": "needs a second site; this install has one"
+        },
+        "delete_entry.copy": {
+            "status": "ok",
+            "shape": {
+                "deleted": "<number>",
+                "restorable": true,
+                "success": true
+            }
+        },
+        "delete_entry.published": {
+            "status": "ok",
+            "shape": {
+                "deleted": "<number>",
+                "restorable": true,
+                "success": true
+            }
+        },
+        "create_backup": {
+            "status": "skipped",
+            "reason": "writes a database dump; run with --heavy"
+        },
+        "reload_mcp": {
+            "status": "crashed",
+            "error": "SSE frames escaped the response: 200 text/html; charset=UTF-8 carrying event-stream framing, which no client can read",
+            "expected": "http-notification-destroys-its-own-response"
+        },
+        "clear_caches": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        }
+    },
+    "stderr": "<present>",
+    "scope": {
+        "granted": "content",
+        "advertised": 50,
+        "outside": {
+            "tinker": {
+                "advertised": false,
+                "refused": true,
+                "how": "protocol-error -32601"
+            },
+            "run_query": {
+                "advertised": false,
+                "refused": true,
+                "how": "protocol-error -32601"
+            },
+            "clear_caches": {
+                "advertised": false,
+                "refused": true,
+                "how": "protocol-error -32601"
+            }
+        },
+        "violations": []
+    }
+}
