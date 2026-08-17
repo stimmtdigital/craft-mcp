@@ -3418,6 +3418,56 @@
                 "found": true
             }
         },
+        "create_entry.relating_to_draft": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "elementId": "<number>",
+                "errors": [],
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "get_entry.relation_reads_back_as_a_key": {
+            "status": "ok",
+            "shape": {
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "expiryDate": null,
+                    "fields": {
+                        "category": [
+                            {
+                                "section": "<string>",
+                                "slug": "<string>"
+                            }
+                        ],
+                        "contentBuilder": []
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "found": true
+            }
+        },
         "update_entry": {
             "status": "ok",
             "shape": {
@@ -3571,6 +3621,14 @@
         "copy_entry_to_site": {
             "status": "skipped",
             "reason": "needs a second site; this install has one"
+        },
+        "delete_entry.relating": {
+            "status": "ok",
+            "shape": {
+                "deleted": "<number>",
+                "restorable": true,
+                "success": true
+            }
         },
         "delete_entry.copy": {
             "status": "ok",

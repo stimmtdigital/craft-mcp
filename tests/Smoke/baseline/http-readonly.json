@@ -3028,6 +3028,14 @@
             "status": "skipped",
             "reason": "an earlier step did not produce the value this one needs"
         },
+        "create_entry.relating_to_draft": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "get_entry.relation_reads_back_as_a_key": {
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
+        },
         "update_entry": {
             "status": "skipped",
             "reason": "not advertised by this connection"
@@ -3055,6 +3063,10 @@
         "copy_entry_to_site": {
             "status": "skipped",
             "reason": "needs a second site; this install has one"
+        },
+        "delete_entry.relating": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
         },
         "delete_entry.copy": {
             "status": "skipped",

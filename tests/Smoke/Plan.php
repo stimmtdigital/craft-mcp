@@ -41,6 +41,9 @@ final class Plan {
 
     public const string BLOCK_TYPE = 'contentBlock';
 
+    /** An Entries relation field on the section above, used to prove key resolution. */
+    public const string RELATION_FIELD = 'category';
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -210,6 +213,35 @@ final class Plan {
             ],
             ['tool' => 'get_entry', 'name' => 'get_entry.draft', 'args' => ['id' => '{{draft.id}}']],
             [
+                // Writes land as drafts, so relating to an entry created moments
+                // earlier is the ordinary case, not an edge one. It silently
+                // dropped the relation with a warning until Keys learned to see
+                // unpublished drafts, so both halves are pinned here: the write
+                // resolves the key, and the read gives a key back rather than a
+                // bare id.
+                'tool' => 'create_entry',
+                'name' => 'create_entry.relating_to_draft',
+                'args' => [
+                    'section' => self::SECTION,
+                    'type' => self::ENTRY_TYPE,
+                    'title' => "Smoke {$runId} relation",
+                    'slug' => "smoke-{$runId}-relation",
+                    'fields' => '{"' . self::RELATION_FIELD . '":[{"section":"' . self::SECTION . '","slug":"smoke-' . $runId . '"}]}',
+                ],
+                'capture' => ['relating.id' => 'draftElementId'],
+                'assert' => ['success' => true, 'warnings' => [], 'errors' => []],
+            ],
+            [
+                'tool' => 'get_entry',
+                'name' => 'get_entry.relation_reads_back_as_a_key',
+                'args' => ['id' => '{{relating.id}}'],
+                'assert' => [
+                    'found' => true,
+                    'entry.fields.' . self::RELATION_FIELD . '.0.section' => self::SECTION,
+                    'entry.fields.' . self::RELATION_FIELD . '.0.slug' => 'smoke-' . $runId,
+                ],
+            ],
+            [
                 'tool' => 'update_entry',
                 'args' => ['id' => '{{draft.id}}', 'title' => "Smoke {$runId} edited"],
                 'assert' => ['success' => true, 'draftElementId' => 'isInt'],
@@ -260,6 +292,12 @@ final class Plan {
                 'tool' => 'copy_entry_to_site',
                 'args' => [],
                 'skip' => 'needs a second site; this install has one',
+            ],
+            [
+                'tool' => 'delete_entry',
+                'name' => 'delete_entry.relating',
+                'args' => ['id' => '{{relating.id}}'],
+                'assert' => ['success' => true],
             ],
             [
                 'tool' => 'delete_entry',

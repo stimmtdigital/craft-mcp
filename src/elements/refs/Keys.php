@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\elements\refs;
 use Closure;
 use craft\elements\Asset;
 use craft\elements\Category;
+use craft\elements\db\ElementQuery;
 use craft\elements\Entry;
 use craft\elements\GlobalSet;
 use craft\elements\Tag;
@@ -96,11 +97,35 @@ final readonly class Keys {
         return array_all($shape, fn ($part) => is_string($key[$part] ?? null) && $key[$part] !== '');
     }
 
-    private function queryId(string $elementType, array $key, ?string $site): ?int {
-        $query = $elementType::find()->status(null);
+    /**
+     * A query that can see unpublished drafts, and only those.
+     *
+     * WHY: writes land as drafts by default, so the ordinary session is to
+     * create an entry and then relate to it from the next one. With Craft's
+     * default (`drafts` false, which appends `elements.draftId IS NULL`) that
+     * relation could never resolve, and the agent got "No entry matches this
+     * key" for an entry it had just created.
+     *
+     * Only UNPUBLISHED drafts, though, and the distinction is not cosmetic.
+     * `Drafts::applyDraft()` publishes an unpublished draft in place, keeping
+     * the element id, so storing that id in a relation is safe. A DERIVATIVE
+     * draft is hard deleted on publish once its canonical has been updated, so
+     * its id would take the relation with it. `draftOf(false)` is Craft's own
+     * spelling for the first group: it adds `drafts.canonicalId IS NULL` over a
+     * LEFT JOIN, which a canonical element satisfies too. Derivative drafts
+     * also share their canonical's slug, so admitting them would make the
+     * result order-dependent as well as unsafe.
+     */
+    private function resolvable(ElementQuery $query, ?string $site): void {
+        $query->status(null)->drafts(null)->draftOf(false);
         if ($site !== null) {
             $query->site($site);
         }
+    }
+
+    private function queryId(string $elementType, array $key, ?string $site): ?int {
+        $query = $elementType::find();
+        $this->resolvable($query, $site);
 
         $constrained = match ($elementType) {
             Entry::class => $query->section($key['section'])->slug($key['slug']),
@@ -120,12 +145,14 @@ final readonly class Keys {
     }
 
     private function queryKey(string $elementType, int $id, ?string $site): ?array {
-        $query = $elementType::find()->id($id)->status(null);
-        if ($site !== null) {
-            $query->site($site);
-        }
+        // The read half of the same defect: an entry legitimately relating to
+        // an unpublished draft read back as a bare integer id, because this
+        // lookup could not see the draft and Relations::toKeys() falls through
+        // to the raw id when no key resolves.
+        $query = $elementType::find();
+        $this->resolvable($query, $site);
 
-        $element = $query->one();
+        $element = $query->id($id)->one();
         if ($element === null) {
             return null;
         }
