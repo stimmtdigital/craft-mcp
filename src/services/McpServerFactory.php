@@ -39,6 +39,7 @@ use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Renderer;
 use stimmt\craft\Mcp\support\SignalHandler;
+use stimmt\craft\Mcp\support\Subscription;
 use stimmt\craft\Mcp\transport\Buffered;
 use stimmt\craft\Mcp\transport\Stdio;
 
@@ -61,6 +62,11 @@ class McpServerFactory {
         ProtocolVersion::V2025_11_25,
     ];
 
+    /**
+     * Where a client can send someone who wants to know what this server is.
+     */
+    private const string WEBSITE_URL = 'https://github.com/stimmtdigital/craft-mcp';
+
     public function __construct(private readonly ?ContainerInterface $container = new Psr11ContainerAdapter(), private readonly ?LoggerInterface $logger = null) {
     }
 
@@ -82,9 +88,14 @@ class McpServerFactory {
         $basePath = dirname(__DIR__);
 
         $builder = Server::builder()
+            // Description and website URL are part of the identity the SDK
+            // serializes on every initialize, and clients show them in their
+            // server pickers. Passing name and version only left both blank.
             ->setServerInfo(
                 name: 'Craft CMS MCP Server',
                 version: $this->version(),
+                description: 'Read and write Craft CMS content, inspect the schema, and query the install.',
+                websiteUrl: self::WEBSITE_URL,
             )
             ->setInstructions($this->getInstructions($scope))
             // Answered on every initialize. Without it the SDK replies with
@@ -98,6 +109,12 @@ class McpServerFactory {
                 gate: new Gate($scope),
                 logger: $logger,
             ))
+            // Ours rather than the SDK's default, because it owns the stored
+            // subscription keys: a client that subscribes to a resource
+            // template was told yes and then heard nothing, since the notifier
+            // only ever produces concrete URIs and the default matches by
+            // exact key.
+            ->setResourceSubscriptionManager(new Subscription())
             ->setCapabilities($this->capabilities())
             ->setContainer($this->container)
             ->setRegistry($registry)
@@ -372,12 +389,25 @@ INSTRUCTIONS;
         $this->registerExternalResources($builder);
     }
 
+    /**
+     * Everything the author declared in their attribute travels with the tool.
+     * Passing handler, name and description only meant a third party's read-only
+     * tool reached clients under the conservative destructive defaults, and its
+     * title, icons, _meta and output schema were dropped on the floor.
+     * inputSchema stays absent on purpose: the SDK generates it from the
+     * handler's own signature, which is more accurate than anything we carry.
+     */
     private function registerExternalTools(Builder $builder): void {
         foreach (McpRegistry::tools()->getExternalToolDefinitions() as $def) {
             $builder->addTool(
                 handler: [$def->class, $def->method],
                 name: $def->name,
+                title: $def->title,
                 description: $def->description,
+                annotations: $def->annotations,
+                icons: $def->icons,
+                meta: $def->meta,
+                outputSchema: $def->outputSchema,
             );
         }
     }
@@ -387,7 +417,10 @@ INSTRUCTIONS;
             $builder->addPrompt(
                 handler: [$def->class, $def->method],
                 name: $def->name,
+                title: $def->title,
                 description: $def->description,
+                icons: $def->icons,
+                meta: $def->meta,
             );
         }
     }
@@ -398,14 +431,21 @@ INSTRUCTIONS;
         }
     }
 
+    /**
+     * Templates take no size and no icons, because #[McpResourceTemplate]
+     * declares neither; everything else the author wrote travels through.
+     */
     private function registerResource(Builder $builder, ResourceDefinition $def): void {
         if ($def->isTemplate) {
             $builder->addResourceTemplate(
                 handler: [$def->class, $def->method],
                 uriTemplate: $def->uri,
                 name: $def->name,
+                title: $def->title,
                 description: $def->description,
                 mimeType: $def->mimeType,
+                annotations: $def->annotations,
+                meta: $def->meta,
             );
 
             return;
@@ -415,8 +455,13 @@ INSTRUCTIONS;
             handler: [$def->class, $def->method],
             uri: $def->uri,
             name: $def->name,
+            title: $def->title,
             description: $def->description,
             mimeType: $def->mimeType,
+            size: $def->size,
+            annotations: $def->annotations,
+            icons: $def->icons,
+            meta: $def->meta,
         );
     }
 }

@@ -11,6 +11,7 @@ use craft\fields\Matrix;
 use craft\models\EntryType;
 use craft\models\FieldLayout;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -51,18 +52,27 @@ class NestedEntryTools {
 
     #[McpTool(
         name: 'create_nested_entry',
+        title: 'Add a Matrix block',
         description: 'Add a block to a Matrix field on an owner entry without resending the field\'s other blocks (the full-field rewrite risks deleting them). In draft mode (default) the block lands on a draft of the owner, like a control panel edit: pass the returned draftElementId to publish_entry to make it live, to get_entry to review it in context, or as owner in follow-up calls to stack more blocks onto the same draft. Optional position places the block among its siblings (1-based, clamped to the end).',
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function createNestedEntry(
+        #[Schema(description: 'Id of the entry that owns the Matrix field: a canonical entry, or a draft of one (pass a draftElementId to stack another block onto the same pending draft).')]
         int $owner,
+        #[Schema(description: 'Matrix field handle on the owner\'s field layout; describe_entry_schema reports them.')]
         string $field,
+        #[Schema(description: 'Entry type handle the Matrix field allows for its blocks.')]
         string $type,
+        #[Schema(description: 'Block title, for block types that have a title field.')]
         ?string $title = null,
+        #[Schema(description: 'The block\'s own field values as a JSON-encoded STRING (not a nested object), in the payload format describe_entry_schema documents for that block type.')]
         ?string $fields = null,
+        #[Schema(description: 'Site handle to write on; list_sites reports the handles.')]
         ?string $site = null,
+        #[Schema(description: '"draft" puts the block on a draft of the owner for review, "live" adds it to the canonical owner directly. Omitted follows the entryWriteMode setting, which defaults to draft.')]
         ?string $mode = null,
+        #[Schema(description: '1-based slot among the field\'s existing blocks. Omit to append; a position past the end clamps to the last slot.')]
         ?int $position = null,
         ?RequestContext $context = null,
     ): array {
@@ -85,7 +95,7 @@ class NestedEntryTools {
         if ($result->isFailure()) {
             $this->discard($opened, null);
 
-            return ['success' => false] + $result->toArray();
+            return Response::failure($result->toArray());
         }
 
         $blockId = (int) $result->elementId;
@@ -110,14 +120,19 @@ class NestedEntryTools {
 
     #[McpTool(
         name: 'move_nested_entry',
+        title: 'Reorder a Matrix block',
         description: 'Move a Matrix block to a new 1-based position within its field, by the block\'s own entry id. In draft mode (default) the reorder lands on a draft of the owner entry for review and publish_entry applies it; live mode reorders the canonical directly. Positions past the end clamp to the last slot; the response reports the position actually taken.',
         annotations: new ToolAnnotations(destructiveHint: true, idempotentHint: true, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function moveNestedEntry(
+        #[Schema(description: 'The block\'s own entry id, and the canonical one: a draft or revision copy of a block carries a stale position row.')]
         int $id,
+        #[Schema(description: '1-based target slot within the field. A position past the end clamps to the last slot, and the response reports the slot actually taken.')]
         int $position,
+        #[Schema(description: 'Site handle to reorder on; list_sites reports the handles.')]
         ?string $site = null,
+        #[Schema(description: '"draft" stages the reorder on a draft of the owner entry, "live" reorders the canonical owner directly. Omitted follows the entryWriteMode setting, which defaults to draft.')]
         ?string $mode = null,
         ?RequestContext $context = null,
     ): array {

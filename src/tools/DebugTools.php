@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -27,11 +28,17 @@ class DebugTools {
      */
     #[McpTool(
         name: 'get_queue_jobs',
+        title: 'Queue jobs',
         description: 'List queue jobs in Craft CMS. Filter by status: pending, reserved, failed, done. Shows job class, description, and failure reason if applicable.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
-    public function getQueueJobs(string $status = 'pending', int $limit = 50, ?RequestContext $context = null): array {
+    public function getQueueJobs(
+        #[Schema(description: 'Which jobs to list: pending, reserved (currently running), failed, or done. "done" returns a count only. Any other value is refused.')]
+        string $status = 'pending',
+        int $limit = 50,
+        ?RequestContext $context = null,
+    ): array {
         $db = Craft::$app->getDb();
         $prefix = $db->tablePrefix;
         $table = $prefix . 'queue';
@@ -101,6 +108,7 @@ class DebugTools {
      */
     #[McpTool(
         name: 'get_project_config_diff',
+        title: 'Pending project config changes',
         description: 'Show pending project config changes that need to be applied. Returns differences between YAML files and database.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -157,6 +165,7 @@ class DebugTools {
      */
     #[McpTool(
         name: 'get_deprecations',
+        title: 'Deprecation warnings',
         description: 'Get deprecation warnings from Craft CMS logs. Shows deprecated code usage that should be updated.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -233,11 +242,16 @@ class DebugTools {
      */
     #[McpTool(
         name: 'explain_query',
+        title: 'Explain a query plan',
         description: 'Run EXPLAIN on a SELECT query to analyze performance. Shows query execution plan, indexes used, and estimated rows.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
-    public function explainQuery(string $sql, ?RequestContext $context = null): array {
+    public function explainQuery(
+        #[Schema(description: 'The SELECT statement to explain. It is not executed, but anything the read guard does not recognise as read-only is refused anyway.')]
+        string $sql,
+        ?RequestContext $context = null,
+    ): array {
         // Security: only allow read-only SELECT queries
         $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
         $context?->getClientLogger()?->info('SQL query validated by the read guard');
@@ -281,6 +295,7 @@ class DebugTools {
      */
     #[McpTool(
         name: 'get_environment',
+        title: 'Environment and PHP settings',
         description: 'Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -339,11 +354,16 @@ class DebugTools {
      */
     #[McpTool(
         name: 'list_event_handlers',
+        title: 'Registered event handlers',
         description: 'List registered event handlers/listeners in Craft CMS. Useful for debugging hooks and understanding what code runs on events.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
-    public function listEventHandlers(?string $filter = null, ?RequestContext $context = null): array {
+    public function listEventHandlers(
+        #[Schema(description: 'Case-insensitive substring matched against event names and the classes the events are registered on.')]
+        ?string $filter = null,
+        ?RequestContext $context = null,
+    ): array {
         $events = new EventHandlers();
         $handlers = $events->applicationEvents($filter);
         $classEvents = $events->classEvents($filter);

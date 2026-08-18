@@ -154,14 +154,20 @@ class RegisterPromptsEvent extends Event {
             return;
         }
 
+        $definitions = $this->extractPromptDefinitions($class, $source);
+        if ($definitions === []) {
+            $this->errors[] = "[{$source}] Class '{$class}' has no public methods with #[McpPrompt] attribute";
+
+            return;
+        }
+
         // Store class for backwards compatibility
         if (!isset($this->prompts[$source])) {
             $this->prompts[$source] = [];
         }
         $this->prompts[$source][] = $class;
 
-        // Extract and store definitions
-        foreach ($this->extractPromptDefinitions($class, $source) as $definition) {
+        foreach ($definitions as $definition) {
             $this->definitions[$definition->name] = $definition;
         }
     }
@@ -169,46 +175,100 @@ class RegisterPromptsEvent extends Event {
     /**
      * Extract prompt definitions from a class.
      *
+     * A class-level attribute is honoured first, dispatching through __invoke
+     * with the class short name as the default prompt name, because that is the
+     * invokable shape the SDK's own discoverer supports and ours used to produce
+     * no definition for at all.
+     *
      * @param class-string $class
      * @return PromptDefinition[]
      */
     private function extractPromptDefinitions(string $class, string $source): array {
-        $definitions = [];
-
         try {
             $reflection = new ReflectionClass($class);
         } catch (ReflectionException) {
             return [];
         }
 
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $mcpPromptAttrs = $method->getAttributes(McpPrompt::class, ReflectionAttribute::IS_INSTANCEOF);
-            if (empty($mcpPromptAttrs)) {
+        $invoke = $this->invokable($reflection);
+        $classAttrs = $invoke === null
+            ? []
+            : $reflection->getAttributes(McpPrompt::class, ReflectionAttribute::IS_INSTANCEOF);
+
+        if ($invoke !== null && $classAttrs !== []) {
+            return [$this->promptDefinition($classAttrs[0]->newInstance(), $invoke, $source, $reflection->getShortName())];
+        }
+
+        $definitions = [];
+        foreach ($this->dispatchableMethods($reflection) as $method) {
+            $attrs = $method->getAttributes(McpPrompt::class, ReflectionAttribute::IS_INSTANCEOF);
+            if ($attrs === []) {
                 continue;
             }
 
-            $mcpPrompt = $mcpPromptAttrs[0]->newInstance();
-
-            // Get optional McpPromptMeta attribute
-            $metaAttrs = $method->getAttributes(McpPromptMeta::class, ReflectionAttribute::IS_INSTANCEOF);
-            $meta = empty($metaAttrs) ? null : $metaAttrs[0]->newInstance();
-
-            // Extract completion providers from method parameters
-            $completionProviders = $this->extractCompletionProviders($method);
-
-            $definitions[] = new PromptDefinition(
-                name: $mcpPrompt->name ?? $method->getName(),
-                description: $mcpPrompt->description ?? '',
-                class: $class,
-                method: $method->getName(),
-                source: $source,
-                category: $meta?->category->value ?? PromptCategory::GENERAL->value,
-                condition: $meta?->condition,
-                completionProviders: $completionProviders,
-            );
+            $definitions[] = $this->promptDefinition($attrs[0]->newInstance(), $method, $source, $method->getName());
         }
 
         return $definitions;
+    }
+
+    /**
+     * Build one definition from the SDK attribute plus our own policy metadata.
+     */
+    private function promptDefinition(McpPrompt $mcpPrompt, ReflectionMethod $method, string $source, string $defaultName): PromptDefinition {
+        $metaAttrs = $method->getAttributes(McpPromptMeta::class, ReflectionAttribute::IS_INSTANCEOF);
+        $promptMeta = $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
+
+        return new PromptDefinition(
+            name: $mcpPrompt->name ?? $defaultName,
+            description: $mcpPrompt->description ?? '',
+            class: $method->getDeclaringClass()->getName(),
+            method: $method->getName(),
+            source: $source,
+            category: $promptMeta?->category->value ?? PromptCategory::GENERAL->value,
+            condition: $promptMeta?->condition,
+            completionProviders: $this->extractCompletionProviders($method),
+            title: $mcpPrompt->title,
+            icons: $mcpPrompt->icons,
+            meta: $mcpPrompt->meta,
+        );
+    }
+
+    /**
+     * The __invoke a class-level attribute would dispatch through, or null when
+     * the class has none the SDK could use.
+     *
+     * @param ReflectionClass<object> $reflection
+     */
+    private function invokable(ReflectionClass $reflection): ?ReflectionMethod {
+        if (!$reflection->hasMethod('__invoke')) {
+            return null;
+        }
+
+        $invoke = $reflection->getMethod('__invoke');
+
+        return $invoke->isPublic() && !$invoke->isStatic() ? $invoke : null;
+    }
+
+    /**
+     * The methods the SDK's discoverer would actually dispatch: declared on this
+     * class, and never static, abstract, the constructor, the destructor or
+     * __invoke. Accepting a method it skips advertises a prompt that prompts/get
+     * then cannot resolve.
+     *
+     * @param ReflectionClass<object> $reflection
+     * @return ReflectionMethod[]
+     */
+    private function dispatchableMethods(ReflectionClass $reflection): array {
+        return array_filter(
+            $reflection->getMethods(ReflectionMethod::IS_PUBLIC),
+            static fn (ReflectionMethod $method): bool => $method->getDeclaringClass()->getName() === $reflection->getName()
+                && !$method->isStatic()
+                && !$method->isAbstract()
+                && !$method->isConstructor()
+                && !$method->isDestructor()
+                && $method->getName() !== '__invoke',
+        );
     }
 
     /**
@@ -237,7 +297,9 @@ class RegisterPromptsEvent extends Event {
     }
 
     /**
-     * Validate a prompt class before registration.
+     * Validate a prompt class before registration. Whether it carries any usable
+     * attribute is answered by extraction itself, so the two never disagree
+     * about which methods count.
      *
      * @return string|null Error message or null if valid
      */
@@ -258,20 +320,6 @@ class RegisterPromptsEvent extends Event {
 
         if (!$reflection->isInstantiable()) {
             return "Class '{$class}' is not instantiable";
-        }
-
-        // Check for at least one method with McpPrompt attribute
-        $hasPromptMethod = false;
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $attributes = $method->getAttributes(McpPrompt::class, ReflectionAttribute::IS_INSTANCEOF);
-            if (!empty($attributes)) {
-                $hasPromptMethod = true;
-                break;
-            }
-        }
-
-        if (!$hasPromptMethod) {
-            return "Class '{$class}' has no public methods with #[McpPrompt] attribute";
         }
 
         return null;

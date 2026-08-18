@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\models;
 
+use Mcp\Schema\Annotations;
+use Mcp\Schema\Icon;
 use stimmt\craft\Mcp\enums\ResourceCategory;
 
 /**
@@ -14,6 +16,18 @@ use stimmt\craft\Mcp\enums\ResourceCategory;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class ResourceDefinition {
+    /**
+     * The trailing fields mirror #[McpResource] one for one, so an external
+     * resource declaring an audience, a priority or a size keeps them instead of
+     * arriving at the client as name, description and MIME type only. Templates
+     * carry no size and no icons, matching #[McpResourceTemplate], so those two
+     * stay null for them. The fields are appended rather than inserted, because
+     * third-party plugins construct this positionally; anything added later
+     * belongs after them for the same reason.
+     *
+     * @param Icon[]|null $icons
+     * @param array<string, mixed>|null $meta
+     */
     public function __construct(
         public string $uri,
         public string $name,
@@ -27,6 +41,11 @@ final readonly class ResourceDefinition {
         public ?string $condition = null,
         /** @var array<string, string> Variable name => CompletionProvider class (for templates) */
         public array $completionProviders = [],
+        public ?string $title = null,
+        public ?Annotations $annotations = null,
+        public ?int $size = null,
+        public ?array $icons = null,
+        public ?array $meta = null,
     ) {
     }
 
@@ -87,9 +106,10 @@ final readonly class ResourceDefinition {
     }
 
     /**
-     * Create a ResourceDefinition from extracted metadata.
+     * Create a ResourceDefinition from extracted metadata. Every key is
+     * optional, including the ones added after the first release of this factory.
      *
-     * @param array{uri?: string, name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, isTemplate?: bool, mimeType?: string|null, condition?: string|null, completionProviders?: array<string, string>} $data
+     * @param array{uri?: string, name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, isTemplate?: bool, mimeType?: string|null, condition?: string|null, completionProviders?: array<string, string>, title?: string|null, annotations?: Annotations|null, size?: int|null, icons?: Icon[]|null, meta?: array<string, mixed>|null} $data
      */
     public static function fromArray(array $data): self {
         return new self(
@@ -104,6 +124,11 @@ final readonly class ResourceDefinition {
             mimeType: $data['mimeType'] ?? null,
             condition: $data['condition'] ?? null,
             completionProviders: $data['completionProviders'] ?? [],
+            title: $data['title'] ?? null,
+            annotations: $data['annotations'] ?? null,
+            size: $data['size'] ?? null,
+            icons: $data['icons'] ?? null,
+            meta: $data['meta'] ?? null,
         );
     }
 }

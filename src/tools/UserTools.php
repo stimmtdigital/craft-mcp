@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use craft\elements\User;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
@@ -24,13 +25,17 @@ class UserTools {
      */
     #[McpTool(
         name: 'list_users',
+        title: 'Browse users',
         description: 'List users from Craft CMS. Filter by group handle, status, email.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listUsers(
+        #[Schema(description: 'User group handle. Omit to list users from every group.')]
         ?string $group = null,
+        #[Schema(description: 'Account status: active, pending, suspended, locked, or inactive.')]
         ?string $status = null,
+        #[Schema(description: 'Exact email address to match.')]
         ?string $email = null,
         int $limit = 50,
         ?RequestContext $context = null,

@@ -9,6 +9,7 @@ use craft\commerce\elements\Order;
 use craft\commerce\elements\Product;
 use craft\commerce\Plugin as Commerce;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -61,11 +62,13 @@ class CommerceTools implements ConditionalProvider {
      */
     #[McpTool(
         name: 'list_products',
+        title: 'Browse products',
         description: 'List products from Craft Commerce. Filter by product type handle.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function listProducts(
+        #[Schema(description: 'Product type handle; list_product_types reports the handles.')]
         ?string $type = null,
         int $limit = 20,
         int $offset = 0,
@@ -98,6 +101,7 @@ class CommerceTools implements ConditionalProvider {
      */
     #[McpTool(
         name: 'get_product',
+        title: 'Read one product',
         description: 'Get detailed information about a single Commerce product by ID',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -155,11 +159,13 @@ class CommerceTools implements ConditionalProvider {
      */
     #[McpTool(
         name: 'list_orders',
+        title: 'Browse orders',
         description: 'List orders from Craft Commerce. Filter by status handle.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function listOrders(
+        #[Schema(description: 'Order status handle; list_order_statuses reports the handles. Only completed orders are listed either way, so carts never appear.')]
         ?string $status = null,
         int $limit = 20,
         int $offset = 0,
@@ -208,11 +214,17 @@ class CommerceTools implements ConditionalProvider {
      */
     #[McpTool(
         name: 'get_order',
+        title: 'Read one order',
         description: 'Get detailed information about a single Commerce order by ID or order number',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
-    public function getOrder(?int $id = null, ?string $number = null, ?RequestContext $context = null): array {
+    public function getOrder(
+        ?int $id = null,
+        #[Schema(description: 'The order\'s full number, not the abbreviated shortNumber the control panel displays.')]
+        ?string $number = null,
+        ?RequestContext $context = null,
+    ): array {
         $this->assertCommerceAvailable();
 
         if ($id === null && $number === null) {
@@ -292,6 +304,7 @@ class CommerceTools implements ConditionalProvider {
      */
     #[McpTool(
         name: 'list_order_statuses',
+        title: 'Order statuses',
         description: 'List all order statuses configured in Craft Commerce',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -327,6 +340,7 @@ class CommerceTools implements ConditionalProvider {
      */
     #[McpTool(
         name: 'list_product_types',
+        title: 'Product types',
         description: 'List all product types configured in Craft Commerce',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]

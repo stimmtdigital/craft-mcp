@@ -181,14 +181,20 @@ class RegisterResourcesEvent extends Event {
             return;
         }
 
+        $definitions = $this->extractResourceDefinitions($class, $source);
+        if ($definitions === []) {
+            $this->errors[] = "[{$source}] Class '{$class}' has no public methods with #[McpResource] or #[McpResourceTemplate] attribute";
+
+            return;
+        }
+
         // Store class for backwards compatibility
         if (!isset($this->resources[$source])) {
             $this->resources[$source] = [];
         }
         $this->resources[$source][] = $class;
 
-        // Extract and store definitions
-        foreach ($this->extractResourceDefinitions($class, $source) as $definition) {
+        foreach ($definitions as $definition) {
             // Use URI for static resources, name for templates
             $key = $definition->isTemplate ? $definition->name : $definition->uri;
             $this->definitions[$key] = $definition;
@@ -198,40 +204,31 @@ class RegisterResourcesEvent extends Event {
     /**
      * Extract resource definitions from a class.
      *
+     * A class-level attribute is honoured first, dispatching through __invoke
+     * with the class short name as the default resource name, because that is
+     * the invokable shape the SDK's own discoverer supports and ours used to
+     * produce no definition for at all.
+     *
      * @param class-string $class
      * @return ResourceDefinition[]
      */
     private function extractResourceDefinitions(string $class, string $source): array {
-        $definitions = [];
-
         try {
             $reflection = new ReflectionClass($class);
         } catch (ReflectionException) {
             return [];
         }
 
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            // Check for McpResource (static resource)
-            $resourceAttrs = $method->getAttributes(McpResource::class, ReflectionAttribute::IS_INSTANCEOF);
-            if (!empty($resourceAttrs)) {
-                $definitions[] = $this->createStaticResourceDefinition(
-                    $resourceAttrs[0]->newInstance(),
-                    $method,
-                    $class,
-                    $source,
-                );
-                continue;
-            }
+        $classLevel = $this->classLevelDefinition($reflection, $source);
+        if ($classLevel !== null) {
+            return [$classLevel];
+        }
 
-            // Check for McpResourceTemplate (dynamic resource)
-            $templateAttrs = $method->getAttributes(McpResourceTemplate::class, ReflectionAttribute::IS_INSTANCEOF);
-            if (!empty($templateAttrs)) {
-                $definitions[] = $this->createTemplateResourceDefinition(
-                    $templateAttrs[0]->newInstance(),
-                    $method,
-                    $class,
-                    $source,
-                );
+        $definitions = [];
+        foreach ($this->dispatchableMethods($reflection) as $method) {
+            $definition = $this->methodDefinition($method, $source, $method->getName());
+            if ($definition !== null) {
+                $definitions[] = $definition;
             }
         }
 
@@ -239,23 +236,64 @@ class RegisterResourcesEvent extends Event {
     }
 
     /**
+     * The definition a class-level #[McpResource] or #[McpResourceTemplate]
+     * declares, dispatched through __invoke, or null when there is none.
+     *
+     * @param ReflectionClass<object> $reflection
+     */
+    private function classLevelDefinition(ReflectionClass $reflection, string $source): ?ResourceDefinition {
+        $invoke = $this->invokable($reflection);
+        if ($invoke === null) {
+            return null;
+        }
+
+        $resourceAttrs = $reflection->getAttributes(McpResource::class, ReflectionAttribute::IS_INSTANCEOF);
+        if ($resourceAttrs !== []) {
+            return $this->staticDefinition($resourceAttrs[0]->newInstance(), $invoke, $source, $reflection->getShortName());
+        }
+
+        $templateAttrs = $reflection->getAttributes(McpResourceTemplate::class, ReflectionAttribute::IS_INSTANCEOF);
+        if ($templateAttrs !== []) {
+            return $this->templateDefinition($templateAttrs[0]->newInstance(), $invoke, $source, $reflection->getShortName());
+        }
+
+        return null;
+    }
+
+    /**
+     * The definition a method-level attribute declares, or null when it carries
+     * neither of the two.
+     */
+    private function methodDefinition(ReflectionMethod $method, string $source, string $defaultName): ?ResourceDefinition {
+        $resourceAttrs = $method->getAttributes(McpResource::class, ReflectionAttribute::IS_INSTANCEOF);
+        if ($resourceAttrs !== []) {
+            return $this->staticDefinition($resourceAttrs[0]->newInstance(), $method, $source, $defaultName);
+        }
+
+        $templateAttrs = $method->getAttributes(McpResourceTemplate::class, ReflectionAttribute::IS_INSTANCEOF);
+        if ($templateAttrs !== []) {
+            return $this->templateDefinition($templateAttrs[0]->newInstance(), $method, $source, $defaultName);
+        }
+
+        return null;
+    }
+
+    /**
      * Create a ResourceDefinition for a static resource.
      */
-    private function createStaticResourceDefinition(
+    private function staticDefinition(
         McpResource $mcpResource,
         ReflectionMethod $method,
-        string $class,
         string $source,
+        string $defaultName,
     ): ResourceDefinition {
-        // Get optional McpResourceMeta attribute
-        $metaAttrs = $method->getAttributes(McpResourceMeta::class, ReflectionAttribute::IS_INSTANCEOF);
-        $meta = $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
+        $meta = $this->houseMeta($method);
 
         return new ResourceDefinition(
             uri: $mcpResource->uri,
-            name: $mcpResource->name ?? $method->getName(),
+            name: $mcpResource->name ?? $defaultName,
             description: $mcpResource->description ?? '',
-            class: $class,
+            class: $method->getDeclaringClass()->getName(),
             method: $method->getName(),
             source: $source,
             category: $meta?->category->value ?? ResourceCategory::GENERAL->value,
@@ -263,37 +301,87 @@ class RegisterResourcesEvent extends Event {
             mimeType: $mcpResource->mimeType,
             condition: $meta?->condition,
             completionProviders: [],
+            title: $mcpResource->title,
+            annotations: $mcpResource->annotations,
+            size: $mcpResource->size,
+            icons: $mcpResource->icons,
+            meta: $mcpResource->meta,
         );
     }
 
     /**
-     * Create a ResourceDefinition for a resource template.
+     * Create a ResourceDefinition for a resource template. Templates carry no
+     * size and no icons; #[McpResourceTemplate] declares neither.
      */
-    private function createTemplateResourceDefinition(
+    private function templateDefinition(
         McpResourceTemplate $mcpTemplate,
         ReflectionMethod $method,
-        string $class,
         string $source,
+        string $defaultName,
     ): ResourceDefinition {
-        // Get optional McpResourceMeta attribute
-        $metaAttrs = $method->getAttributes(McpResourceMeta::class, ReflectionAttribute::IS_INSTANCEOF);
-        $meta = $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
-
-        // Extract completion providers from method parameters
-        $completionProviders = $this->extractCompletionProviders($method);
+        $meta = $this->houseMeta($method);
 
         return new ResourceDefinition(
             uri: $mcpTemplate->uriTemplate,
-            name: $mcpTemplate->name ?? $method->getName(),
+            name: $mcpTemplate->name ?? $defaultName,
             description: $mcpTemplate->description ?? '',
-            class: $class,
+            class: $method->getDeclaringClass()->getName(),
             method: $method->getName(),
             source: $source,
             category: $meta?->category->value ?? ResourceCategory::GENERAL->value,
             isTemplate: true,
             mimeType: $mcpTemplate->mimeType,
             condition: $meta?->condition,
-            completionProviders: $completionProviders,
+            completionProviders: $this->extractCompletionProviders($method),
+            title: $mcpTemplate->title,
+            annotations: $mcpTemplate->annotations,
+            meta: $mcpTemplate->meta,
+        );
+    }
+
+    /**
+     * Our own policy metadata for the method, when it declares any.
+     */
+    private function houseMeta(ReflectionMethod $method): ?McpResourceMeta {
+        $metaAttrs = $method->getAttributes(McpResourceMeta::class, ReflectionAttribute::IS_INSTANCEOF);
+
+        return $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
+    }
+
+    /**
+     * The __invoke a class-level attribute would dispatch through, or null when
+     * the class has none the SDK could use.
+     *
+     * @param ReflectionClass<object> $reflection
+     */
+    private function invokable(ReflectionClass $reflection): ?ReflectionMethod {
+        if (!$reflection->hasMethod('__invoke')) {
+            return null;
+        }
+
+        $invoke = $reflection->getMethod('__invoke');
+
+        return $invoke->isPublic() && !$invoke->isStatic() ? $invoke : null;
+    }
+
+    /**
+     * The methods the SDK's discoverer would actually dispatch: declared on this
+     * class, and never static, abstract, the constructor, the destructor or
+     * __invoke. Accepting a method it skips advertises a resource that
+     * resources/read then cannot resolve.
+     *
+     * @param ReflectionClass<object> $reflection
+     * @return ReflectionMethod[]
+     */
+    private function dispatchableMethods(ReflectionClass $reflection): array {
+        return array_filter(
+            $reflection->getMethods(ReflectionMethod::IS_PUBLIC),
+            static fn (ReflectionMethod $method): bool => $method->getDeclaringClass()->getName() === $reflection->getName()
+                && !$method->isStatic()
+                && !$method->isAbstract()
+                && !$method->isConstructor()
+                && !$method->isDestructor()
+                && $method->getName() !== '__invoke',
         );
     }
 
@@ -323,7 +411,9 @@ class RegisterResourcesEvent extends Event {
     }
 
     /**
-     * Validate a resource class before registration.
+     * Validate a resource class before registration. Whether it carries any
+     * usable attribute is answered by extraction itself, so the two never
+     * disagree about which methods count.
      *
      * @return string|null Error message or null if valid
      */
@@ -344,21 +434,6 @@ class RegisterResourcesEvent extends Event {
 
         if (!$reflection->isInstantiable()) {
             return "Class '{$class}' is not instantiable";
-        }
-
-        // Check for at least one method with McpResource or McpResourceTemplate attribute
-        $hasResourceMethod = false;
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $resourceAttrs = $method->getAttributes(McpResource::class, ReflectionAttribute::IS_INSTANCEOF);
-            $templateAttrs = $method->getAttributes(McpResourceTemplate::class, ReflectionAttribute::IS_INSTANCEOF);
-            if (!empty($resourceAttrs) || !empty($templateAttrs)) {
-                $hasResourceMethod = true;
-                break;
-            }
-        }
-
-        if (!$hasResourceMethod) {
-            return "Class '{$class}' has no public methods with #[McpResource] or #[McpResourceTemplate] attribute";
         }
 
         return null;

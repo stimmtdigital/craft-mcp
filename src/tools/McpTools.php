@@ -29,6 +29,7 @@ class McpTools {
      */
     #[McpTool(
         name: 'get_mcp_info',
+        title: 'MCP server status',
         description: 'Get information about the Craft MCP plugin including version, status, and configuration',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -72,6 +73,7 @@ class McpTools {
      */
     #[McpTool(
         name: 'list_mcp_tools',
+        title: 'MCP tool inventory',
         description: 'List all available MCP tools with their names, descriptions, and enabled status',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -136,6 +138,7 @@ class McpTools {
      */
     #[McpTool(
         name: 'reload_mcp',
+        title: 'Reload the MCP server',
         description: 'Reload MCP to detect newly installed plugins. Note: Code changes require sending SIGHUP to the MCP server process.',
         // Without these the spec's conservative defaults apply, so a client
         // prompts for confirmation before a cache refresh that changes no data.

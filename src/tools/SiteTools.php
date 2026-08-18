@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -23,6 +24,7 @@ class SiteTools {
      */
     #[McpTool(
         name: 'list_sites',
+        title: 'Sites',
         description: 'List all sites in Craft CMS with their handles, languages, and configuration',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -59,11 +61,17 @@ class SiteTools {
      */
     #[McpTool(
         name: 'get_site',
+        title: 'Read one site',
         description: 'Get detailed information about a specific site by ID or handle',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::MULTISITE)]
-    public function getSite(?int $id = null, ?string $handle = null, ?RequestContext $context = null): array {
+    public function getSite(
+        ?int $id = null,
+        #[Schema(description: 'Site handle, as an alternative to id; list_sites reports the handles.')]
+        ?string $handle = null,
+        ?RequestContext $context = null,
+    ): array {
         if ($id === null && $handle === null) {
             throw new ToolCallException('Either id or handle must be provided');
         }
@@ -109,6 +117,7 @@ class SiteTools {
      */
     #[McpTool(
         name: 'list_site_groups',
+        title: 'Site groups',
         description: 'List all site groups in Craft CMS',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]

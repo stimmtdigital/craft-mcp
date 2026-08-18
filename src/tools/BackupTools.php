@@ -23,6 +23,7 @@ class BackupTools {
      */
     #[McpTool(
         name: 'list_backups',
+        title: 'Database backups',
         description: 'List available database backups from storage/backups directory',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -84,6 +85,7 @@ class BackupTools {
      */
     #[McpTool(
         name: 'create_backup',
+        title: 'Create a database backup',
         description: 'Create a new database backup. WARNING: This is a dangerous operation that creates files on the server.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]

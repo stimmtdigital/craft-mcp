@@ -28,6 +28,7 @@ final class SchemaPrompts {
     /**
      * Generate a prompt for exploring a section's schema and field structure.
      *
+     * @param string $section Handle of the section to inspect.
      * @return array{array{role: string, content: string}}
      */
     #[McpPrompt(
@@ -63,13 +64,14 @@ Please describe:
 2. The entry types available and what content they represent
 3. The field configuration and data types
 4. Any relationships or complex field types
-5. Suggestions for querying or managing entries in this section (describe_entry_schema returns the write-ready per-field input shapes plus an optional golden-fixture example)
+5. Suggestions for querying or managing entries in this section. The schema above describes the content model, not the write payload: before writing, call describe_entry_schema, which returns the per-field input shapes, the writable meta attributes, and an optional golden-fixture example
 PROMPT);
     }
 
     /**
      * Generate a prompt for understanding field usage across the site.
      *
+     * @param string $fieldHandle Handle of the custom field to trace across the content model.
      * @return array{array{role: string, content: string}}
      */
     #[McpPrompt(

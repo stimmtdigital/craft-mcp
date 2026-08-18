@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\support;
 use Mcp\Capability\Registry\ElementReference;
 use Mcp\Capability\Registry\ReferenceHandlerInterface;
 use Mcp\Capability\Registry\ToolReference;
+use Mcp\Schema\Content\Content;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use stimmt\craft\Mcp\enums\ResponseFormat;
@@ -28,6 +29,11 @@ use stimmt\craft\Mcp\enums\ResponseFormat;
  * purely by declaring `output: ResponseFormat` in its signature, which puts
  * the parameter in its JSON schema. This class does the rendering centrally
  * and never guesses for a tool that did not declare it.
+ *
+ * And it is where a domain failure becomes a protocol failure: a tool says so
+ * in its own payload through Response::failure(), and this class is the single
+ * place that turns that into isError on the wire, so no tool has to know what
+ * a CallToolResult is.
  *
  * The same reference handler serves prompts and resources, so anything that is
  * not a tool passes straight through.
@@ -67,24 +73,59 @@ final readonly class Presenter implements ReferenceHandlerInterface {
             return $result;
         }
 
-        if (is_array($result) && $this->wantsText($reference, $arguments)) {
-            return new CallToolResult([new TextContent($this->renderer->render($result))]);
+        // A payload that states its own failure IS a failed call, and isError
+        // is the only place a client reads that from. Without it a validation
+        // refusal arrives as a successful call whose JSON happens to say
+        // otherwise, and the model has no reason to self-correct.
+        if (Response::isFailure($result)) {
+            return new CallToolResult($this->content($reference, $result, $arguments), isError: true);
         }
 
-        // formatResult() is the SDK's own content formatting (Content objects
-        // pass through, arrays become one JSON TextContent), so tools that
-        // already return TextContent keep their exact output. Only the
-        // structuredContent duplicate is dropped, and only while no tool
-        // declares an output schema: a tool that declares one is contractually
-        // owed the structured copy, and dropping it unconditionally would mean
-        // advertising a schema and then never honouring it. No tool declares
-        // one today, so this branch is dormant rather than speculative; it
-        // exists because the day one does, the failure would be silent.
-        $structured = $reference->tool->outputSchema === null
+        return new CallToolResult(
+            $this->content($reference, $result, $arguments),
+            structuredContent: $this->structured($reference, $result),
+        );
+    }
+
+    /**
+     * The content of a tool result: rendered for text, formatted otherwise.
+     *
+     * Both outcomes come through here, so a tool that opted into the text view
+     * gets its failures as text too. formatResult() is the SDK's own content
+     * formatting (Content objects pass through, arrays become one JSON
+     * TextContent), so tools that already return TextContent keep their exact
+     * output.
+     *
+     * @param array<string, mixed> $arguments
+     * @return Content[]
+     */
+    private function content(ToolReference $reference, mixed $result, array $arguments): array {
+        if (is_array($result) && $this->wantsText($reference, $arguments)) {
+            return [new TextContent($this->renderer->render($result))];
+        }
+
+        return $reference->formatResult($result);
+    }
+
+    /**
+     * The structured copy, which only a tool that declared an output schema
+     * gets.
+     *
+     * The duplicate is dropped while no tool declares one, because the client
+     * cannot be obliged to read it and it costs the whole payload again in
+     * tokens. A tool that DOES declare one is contractually owed it, and
+     * dropping it then would mean advertising a schema and never honouring it.
+     * That holds for the text view as well: text is a presentation choice, the
+     * schema contract is not. It never applies to a failure, which by
+     * definition does not conform to the declared shape; CallToolResult::error()
+     * makes the same choice.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function structured(ToolReference $reference, mixed $result): ?array {
+        return $reference->tool->outputSchema === null
             ? null
             : $reference->extractStructuredContent($result);
-
-        return new CallToolResult($reference->formatResult($result), structuredContent: $structured);
     }
 
     /**

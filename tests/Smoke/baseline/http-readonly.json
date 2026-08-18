@@ -27,7 +27,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Section handle to count within; list_sections reports the handles. Omit to count across every section."
                     },
                     "type": {
                         "type": [
@@ -41,7 +42,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Entry status: live, pending, expired, disabled, or \"any\". Omitted counts EVERY status, unlike list_entries."
                     },
                     "site": {
                         "type": [
@@ -109,7 +111,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "What to bucket the count by: an attribute (status, type, section, site, author), a date bucket such as \"month:dateUpdated\" (day|week|month|year with dateCreated|dateUpdated|postDate), or a field handle. Omit for a plain total."
                     },
                     "output": {
                         "type": "string",
@@ -140,18 +143,21 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Entry type handle to describe. Omit for the section's first entry type."
                     },
                     "depth": {
                         "type": "integer",
-                        "default": 1
+                        "default": 1,
+                        "description": "How many levels of nested Matrix block types to expand. Clamped to 3, because each level expands every block type of every Matrix field."
                     },
                     "example": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "An existing entry in this section, by id or slug. Its full payload comes back as a golden fixture to copy."
                     }
                 },
                 "required": [
@@ -169,7 +175,8 @@
                 "type": "object",
                 "properties": {
                     "sql": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The SELECT statement to explain. It is not executed, but anything the read guard does not recognise as read-only is refused anyway."
                     }
                 },
                 "required": [
@@ -205,7 +212,8 @@
                 "type": "object",
                 "properties": {
                     "key": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Dot-notation key, such as \"general.devMode\" or \"db.driver\". A bare category (\"general\", \"db\") returns every setting in it; \"custom.<file>\" reads a config file."
                     }
                 },
                 "required": [
@@ -238,7 +246,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Table name, with or without the install's table prefix. Omit to list every table instead of detailing one."
                     }
                 }
             }
@@ -273,14 +282,16 @@
                             "null",
                             "integer"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Element id. Reads a canonical entry, a draft (the draftElementId a write returned), a revision (a revisionElementId from list_revisions), or a single Matrix block by its own id."
                     },
                     "slug": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Entry slug, as an alternative to id. Pass section too when the same slug exists in more than one section."
                     },
                     "section": {
                         "type": [
@@ -324,14 +335,16 @@
                             "null",
                             "integer"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Schema id, as list_graphql_schemas reports it."
                     },
                     "uid": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Schema uid, as an alternative to id."
                     }
                 }
             }
@@ -380,7 +393,8 @@
                 "properties": {
                     "status": {
                         "type": "string",
-                        "default": "pending"
+                        "default": "pending",
+                        "description": "Which jobs to list: pending, reserved (currently running), failed, or done. \"done\" returns a count only. Any other value is refused."
                     },
                     "limit": {
                         "type": "integer",
@@ -410,7 +424,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Site handle, as an alternative to id; list_sites reports the handles."
                     }
                 }
             }
@@ -461,14 +476,16 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Volume handle; list_volumes reports the handles. Omit to list the root folder of every volume."
                     },
                     "parentId": {
                         "type": [
                             "null",
                             "integer"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Folder id to list the children of. Omit for the children of the volume's root folder."
                     }
                 }
             }
@@ -487,28 +504,32 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Volume handle; list_volumes reports the handles. Omit to list across every volume."
                     },
                     "folderId": {
                         "type": [
                             "null",
                             "integer"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Numeric folder id, as list_asset_folders reports it."
                     },
                     "kind": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Craft asset kind, such as image, video, pdf, word, excel, audio, compressed, or text."
                     },
                     "filename": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Matched as a substring of the filename, not as an exact name."
                     },
                     "limit": {
                         "type": "integer",
@@ -546,7 +567,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Category group handle. Omit to list categories from every group."
                     },
                     "limit": {
                         "type": "integer",
@@ -580,21 +602,24 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Section handle to narrow the queue to; list_sections reports the handles."
                     },
                     "site": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Site handle to narrow the queue to; list_sites reports the handles."
                     },
                     "creator": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Username or email address of the person who created the draft."
                     },
                     "limit": {
                         "type": "integer",
@@ -621,35 +646,40 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Section handle to list from; list_sections reports the handles. Omit to list across every section."
                     },
                     "type": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Entry type handle within the section, as describe_entry_schema reports it."
                     },
                     "status": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Entry status: live, pending, expired, disabled, or \"any\" for every state. Omitted lists live entries only."
                     },
                     "site": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Site handle to read from; list_sites reports the handles. Omitted uses Craft's current site."
                     },
                     "search": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Full-text search over the entry's searchable content, in Craft's own search syntax."
                     },
                     "filters": {
                         "type": "object",
@@ -668,35 +698,40 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Author username or email address."
                     },
                     "updatedAfter": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Lower bound on dateUpdated, inclusive. Any date Craft parses, such as \"2026-01-31\" or \"2026-01-31 14:00\"."
                     },
                     "updatedBefore": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Upper bound on dateUpdated, exclusive. Same date formats as updatedAfter."
                     },
                     "createdAfter": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Lower bound on dateCreated, inclusive. Same date formats as updatedAfter."
                     },
                     "createdBefore": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Upper bound on dateCreated, exclusive. Same date formats as updatedAfter."
                     },
                     "fields": {
                         "type": "array",
@@ -731,7 +766,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Case-insensitive substring matched against event names and the classes the events are registered on."
                     }
                 }
             }
@@ -750,14 +786,16 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Case-insensitive substring matched against field handles and names."
                     },
                     "type": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Case-insensitive substring matched against the field class short name, such as \"matrix\", \"assets\", or \"plaintext\". The rows report the full class name."
                     }
                 }
             }
@@ -827,14 +865,16 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Canonical entry id whose history to list."
                     },
                     "site": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Site handle whose revisions to list; list_sites reports the handles."
                     },
                     "limit": {
                         "type": "integer",
@@ -875,7 +915,8 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Case-insensitive substring matched against section handles and names."
                     }
                 }
             }
@@ -916,21 +957,24 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "User group handle. Omit to list users from every group."
                     },
                     "status": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Account status: active, pending, suspended, locked, or inactive."
                     },
                     "email": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Exact email address to match."
                     },
                     "limit": {
                         "type": "integer",
@@ -960,28 +1004,32 @@
                 "type": "object",
                 "properties": {
                     "query": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The GraphQL document. Only query operations are accepted; a mutation or subscription is rejected at the AST level, before execution."
                     },
                     "variables": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Query variables as a JSON-encoded STRING (not a nested object)."
                     },
                     "operationName": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Which operation to run, when the document defines more than one."
                     },
                     "schemaId": {
                         "type": [
                             "null",
                             "integer"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Schema id from list_graphql_schemas, which decides what the query may reach. Omit to use the public schema."
                     }
                 },
                 "required": [
@@ -1007,21 +1055,24 @@
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Exact level to keep, case-insensitive, as the log line spells it (error, warning, info, trace). It is not a minimum, so \"warning\" excludes errors."
                     },
                     "pattern": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Case-insensitive substring the log message must contain."
                     },
                     "source": {
                         "type": [
                             "null",
                             "string"
                         ],
-                        "default": null
+                        "default": null,
+                        "description": "Which log to read: web, console, queue, or a plugin name. Omit to read across every log file."
                     },
                     "output": {
                         "type": "string",

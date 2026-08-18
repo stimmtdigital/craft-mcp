@@ -44,7 +44,7 @@ Disabled blocks are preserved on round trips, never silently dropped.
 
 Reads add a 1-based `position` to every block, and that is the only reliable statement of the field's order. The blocks are keyed by their numeric entry id, and a JSON object whose keys look like integers is re-ordered ascending by most clients (JavaScript does it by specification), so by the time a payload reaches an agent the keys are usually sorted by id rather than by where the blocks sit on the page.
 
-Writes take `position` back. When every block carries one, the field is saved in that order regardless of the order the keys arrived in; when they are absent, the blocks are saved in the order given, which is what a hand-written payload expects. Either way `position` is stripped before Craft sees it.
+Writes take `position` back. Blocks carrying one are saved in that order regardless of the order the keys arrived in, and any block without one follows them in the order it was given. So a payload that keeps the positions it was handed and adds a new block without inventing one lands the way you would expect, and a hand-written payload with no positions at all is saved exactly as written. Either way `position` is stripped before Craft sees it.
 
 This matters because Craft renumbers a Matrix field's order from the order of the value it is handed. Without positions, reading an entry and writing it back unchanged could reshuffle its blocks into id order. Read `position` to learn the order, and change it with `move_nested_entry` rather than by rearranging a payload.
 
@@ -76,7 +76,7 @@ Call `describe_entry_schema` for a section and entry type before writing. It ret
 
 - every field with its handle, kind, required flag, and instructions
 - Matrix block types, depth-expanded into their sub-fields
-- native attributes (title and friends) and writable meta attributes
+- native attributes (title and friends) and the writable meta attributes, which are only the ones the write tools accept: `title`, `slug`, `postDate` and `expiryDate`. The first two travel as named arguments or in the payload; the last two are named arguments on `create_entry` and `update_entry`, not entries in the `fields` object. A bare timestamp is read in the site's timezone, matching what `get_entry` prints, so a read-modify-write does not shift a date
 - an optional real entry as a golden-fixture example (pass `example` with an entry id or slug)
 - a per-field `input` shape: the exact payload that field accepts
 

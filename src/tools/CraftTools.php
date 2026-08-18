@@ -8,6 +8,7 @@ use Craft;
 use craft\base\FieldInterface;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
@@ -27,6 +28,7 @@ class CraftTools {
      */
     #[McpTool(
         name: 'list_plugins',
+        title: 'Installed plugins',
         description: 'List all installed Craft CMS plugins with their enabled status, version, and handle',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -60,11 +62,16 @@ class CraftTools {
      */
     #[McpTool(
         name: 'list_sections',
+        title: 'Sections and entry types',
         description: 'List all sections (channels, structures, singles) in Craft CMS with their entry types. Optionally filter by handle/name search term.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
-    public function listSections(?string $search = null, ?RequestContext $context = null): array {
+    public function listSections(
+        #[Schema(description: 'Case-insensitive substring matched against section handles and names.')]
+        ?string $search = null,
+        ?RequestContext $context = null,
+    ): array {
         $sectionsService = Craft::$app->getEntries();
         $allSections = $sectionsService->getAllSections();
 
@@ -114,6 +121,7 @@ class CraftTools {
      */
     #[McpTool(
         name: 'get_system_info',
+        title: 'Craft version and sites',
         description: 'Get information about the Craft CMS installation including version, PHP version, and database info',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -155,11 +163,18 @@ class CraftTools {
      */
     #[McpTool(
         name: 'list_fields',
+        title: 'Custom fields',
         description: 'List all custom fields in Craft CMS with their type and group. Optionally filter by handle/name search term or field type.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
-    public function listFields(?string $search = null, ?string $type = null, ?RequestContext $context = null): array {
+    public function listFields(
+        #[Schema(description: 'Case-insensitive substring matched against field handles and names.')]
+        ?string $search = null,
+        #[Schema(description: 'Case-insensitive substring matched against the field class short name, such as "matrix", "assets", or "plaintext". The rows report the full class name.')]
+        ?string $type = null,
+        ?RequestContext $context = null,
+    ): array {
         $fieldsService = Craft::$app->getFields();
         $allFields = $fieldsService->getAllFields();
 

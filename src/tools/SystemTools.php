@@ -34,11 +34,16 @@ class SystemTools {
      */
     #[McpTool(
         name: 'get_config',
+        title: 'Read a config value',
         description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver")',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
-    public function getConfig(string $key, ?RequestContext $context = null): array {
+    public function getConfig(
+        #[Schema(description: 'Dot-notation key, such as "general.devMode" or "db.driver". A bare category ("general", "db") returns every setting in it; "custom.<file>" reads a config file.')]
+        string $key,
+        ?RequestContext $context = null,
+    ): array {
         $parts = explode('.', $key, 2);
         $category = $parts[0];
         $setting = $parts[1] ?? null;
@@ -73,14 +78,18 @@ class SystemTools {
      */
     #[McpTool(
         name: 'read_logs',
+        title: 'Read Craft logs',
         description: 'Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit. Use output=text for a human-readable view with indented stack traces.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function readLogs(
         int $limit = 50,
+        #[Schema(description: 'Exact level to keep, case-insensitive, as the log line spells it (error, warning, info, trace). It is not a minimum, so "warning" excludes errors.')]
         ?string $level = null,
+        #[Schema(description: 'Case-insensitive substring the log message must contain.')]
         ?string $pattern = null,
+        #[Schema(description: 'Which log to read: web, console, queue, or a plugin name. Omit to read across every log file.')]
         ?string $source = null,
         #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
         ResponseFormat $output = ResponseFormat::STRUCTURED,
@@ -135,6 +144,7 @@ class SystemTools {
      */
     #[McpTool(
         name: 'get_last_error',
+        title: 'Most recent error',
         description: 'Get the most recent error from Craft CMS log files',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -160,11 +170,16 @@ class SystemTools {
      */
     #[McpTool(
         name: 'clear_caches',
-        description: 'Clear Craft CMS caches. Specify type: all, data, compiled-templates, compiled-classes, asset-indexing-data, temp-files',
+        title: 'Clear Craft caches',
+        description: 'Clear Craft CMS caches. Specify type: all, data, compiled-templates, temp-files. The response reports which caches were actually cleared.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, dangerous: true)]
-    public function clearCaches(string $type = 'all', ?RequestContext $context = null): array {
+    public function clearCaches(
+        #[Schema(description: 'Which cache to clear: "all", "data", "compiled-templates", or "temp-files". An unrecognised value clears nothing and reports an empty list.')]
+        string $type = 'all',
+        ?RequestContext $context = null,
+    ): array {
         $cleared = [];
 
         if ($type === 'all' || $type === 'data') {
@@ -199,6 +214,7 @@ class SystemTools {
      */
     #[McpTool(
         name: 'list_console_commands',
+        title: 'Console commands',
         description: 'List all available Craft CMS console commands (like php craft <command>)',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -218,6 +234,7 @@ class SystemTools {
      */
     #[McpTool(
         name: 'list_routes',
+        title: 'Registered routes',
         description: 'List all registered routes in Craft CMS',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]

@@ -9,6 +9,7 @@ use craft\behaviors\DraftBehavior;
 use craft\behaviors\RevisionBehavior;
 use craft\elements\Entry;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -42,13 +43,17 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'list_drafts',
+        title: 'Draft review queue',
         description: 'List pending (non-provisional) entry drafts awaiting review, newest first. Filter by section, site, or creator username/email. Each row carries the draft element id publish_entry accepts and a cpEditUrl for human review.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listDrafts(
+        #[Schema(description: 'Section handle to narrow the queue to; list_sections reports the handles.')]
         ?string $section = null,
+        #[Schema(description: 'Site handle to narrow the queue to; list_sites reports the handles.')]
         ?string $site = null,
+        #[Schema(description: 'Username or email address of the person who created the draft.')]
         ?string $creator = null,
         int $limit = 20,
         int $offset = 0,
@@ -84,12 +89,15 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'list_revisions',
+        title: 'Entry history',
         description: 'List an entry\'s saved revisions, newest first: who saved each one, when, and with what notes. Answers "when did this change and by whom". Read a revision\'s full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listRevisions(
+        #[Schema(description: 'Canonical entry id whose history to list.')]
         int $id,
+        #[Schema(description: 'Site handle whose revisions to list; list_sites reports the handles.')]
         ?string $site = null,
         int $limit = 20,
         int $offset = 0,
@@ -116,11 +124,18 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'publish_entry',
+        title: 'Publish an entry',
         description: 'Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
-    public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
+    public function publishEntry(
+        #[Schema(description: 'The draft element id to apply, or a canonical entry id that has exactly one pending draft (or none and is merely disabled).')]
+        int $id,
+        #[Schema(description: 'Site handle to publish on; list_sites reports the handles.')]
+        ?string $site = null,
+        ?RequestContext $context = null,
+    ): array {
         $entry = $this->find($id, $site, withDrafts: true);
         Authorization::assertCanPublish($entry);
 
@@ -133,11 +148,18 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'delete_entry',
+        title: 'Move an entry to the trash',
         description: 'Soft-delete an entry (moves to trash, restorable in the control panel). Matrix-family blocks are entries too: pass a block\'s own id to delete just that block without touching its siblings.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
-    public function deleteEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
+    public function deleteEntry(
+        #[Schema(description: 'Element id to trash: an entry, a draft (draftElementId, which discards the draft and leaves the canonical entry untouched), or a single Matrix block by its own entry id.')]
+        int $id,
+        #[Schema(description: 'Site handle; list_sites reports the handles.')]
+        ?string $site = null,
+        ?RequestContext $context = null,
+    ): array {
         $entry = $this->find($id, $site, withDrafts: true);
         Authorization::assertCanDelete($entry);
 
@@ -150,15 +172,21 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'duplicate_entry',
+        title: 'Duplicate an entry',
         description: 'Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for "like X but change these".',
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function duplicateEntry(
+        #[Schema(description: 'Id of the entry to copy.')]
         int $id,
+        #[Schema(description: 'Site handle to copy on; list_sites reports the handles.')]
         ?string $site = null,
+        #[Schema(description: 'Title for the copy. Omit to keep the original\'s.')]
         ?string $title = null,
+        #[Schema(description: 'Slug for the copy. Omit to let Craft derive a unique one.')]
         ?string $slug = null,
+        #[Schema(description: 'Field values to change on the copy, as a JSON-encoded STRING (not a nested object) in the payload format. Only the handles present are overwritten; the rest are copied as they were.')]
         ?string $fields = null,
         ?RequestContext $context = null,
     ): array {
@@ -173,7 +201,7 @@ class EntryWorkflowTools {
             : $this->writer->update($duplicate, [], WriteParams::fieldsPayload($fields), WriteMode::Draft, $site);
 
         if ($result !== null && $result->isFailure()) {
-            return ['success' => false] + $result->toArray();
+            return Response::failure($result->toArray());
         }
 
         // The warnings ride along on success too. A fields payload naming a
@@ -189,11 +217,20 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'copy_entry_to_site',
+        title: 'Copy an entry to another site',
         description: 'Copy an entry\'s field values from one site to another as a draft on the target site. Copies values; does not machine-translate.',
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
-    public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {
+    public function copyEntryToSite(
+        #[Schema(description: 'Entry id, which is the same id on every site the entry exists on.')]
+        int $id,
+        #[Schema(description: 'Site handle to read the field values from.')]
+        string $fromSite,
+        #[Schema(description: 'Site handle to write the draft on. The entry must already exist there, which means its section is enabled for that site.')]
+        string $toSite,
+        ?RequestContext $context = null,
+    ): array {
         SiteResolver::resolve($fromSite);
         SiteResolver::resolve($toSite);
 
@@ -206,7 +243,7 @@ class EntryWorkflowTools {
         $result = $this->writer->update($targetEntry, [], $payload['fields'], WriteMode::Draft, $toSite);
 
         return $result->isFailure()
-            ? ['success' => false] + $result->toArray()
+            ? Response::failure($result->toArray())
             : Response::success($result->toArray());
     }
 

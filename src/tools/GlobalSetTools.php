@@ -24,6 +24,7 @@ class GlobalSetTools {
      */
     #[McpTool(
         name: 'list_globals',
+        title: 'Global set values',
         description: 'List all global sets in Craft CMS with their field values',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]

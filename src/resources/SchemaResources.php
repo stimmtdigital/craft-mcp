@@ -82,7 +82,7 @@ final class SchemaResources {
     #[McpResourceTemplate(
         uriTemplate: 'craft://schema/sections/{handle}',
         name: 'section-schema',
-        description: 'Detailed schema information for a specific section including entry types and fields.',
+        description: 'Detailed schema information for a specific section including entry types and fields. Describes the content model, not the write payload: for the per-field input shapes a write needs, call the describe_entry_schema tool.',
         mimeType: 'application/json',
     )]
     #[McpResourceMeta(category: ResourceCategory::SCHEMA)]

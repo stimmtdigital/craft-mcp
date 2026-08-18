@@ -29,11 +29,16 @@ class DatabaseTools {
      */
     #[McpTool(
         name: 'get_database_schema',
+        title: 'Database tables and columns',
         description: 'Get database schema information. Lists all tables, or details for a specific table including columns and indexes.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
-    public function getDatabaseSchema(?string $table = null, ?RequestContext $context = null): array {
+    public function getDatabaseSchema(
+        #[Schema(description: 'Table name, with or without the install\'s table prefix. Omit to list every table instead of detailing one.')]
+        ?string $table = null,
+        ?RequestContext $context = null,
+    ): array {
         $db = Craft::$app->getDb();
         $schema = $db->getSchema();
         $tablePrefix = $db->tablePrefix;
@@ -129,12 +134,15 @@ class DatabaseTools {
      */
     #[McpTool(
         name: 'run_query',
+        title: 'Run a read-only SQL query',
         description: 'Execute a read-only SQL query (SELECT only). Best for custom plugin tables and aggregate SQL; for table and column discovery use get_database_schema, and for entry content prefer list_entries/count_entries. WARNING: Basic keyword security - for development only. May be bypassable with certain PDO configs.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, dangerous: true)]
     public function runQuery(
+        #[Schema(description: 'The SELECT statement to run. Anything the read guard does not recognise as read-only is refused before execution.')]
         string $sql,
+        #[Schema(description: 'Row cap, appended as a LIMIT clause only when the statement does not already carry one.')]
         int $limit = 100,
         #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
         ResponseFormat $output = ResponseFormat::STRUCTURED,
@@ -171,6 +179,7 @@ class DatabaseTools {
      */
     #[McpTool(
         name: 'get_database_info',
+        title: 'Database connection',
         description: 'Get database connection information including driver, server version, and connection details',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -195,6 +204,7 @@ class DatabaseTools {
      */
     #[McpTool(
         name: 'get_table_counts',
+        title: 'Table row counts',
         description: 'Get row counts for Craft CMS tables (entries, assets, users, etc.)',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]

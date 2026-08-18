@@ -11,7 +11,8 @@ use Psr\Container\ContainerInterface;
  * PSR-11 adapter for Craft CMS / Yii2's service locator and container.
  *
  * This allows the MCP SDK to resolve dependencies through Craft's container system.
- * Yii's service locator (Craft::$app) takes precedence over the DI container.
+ * Craft::$container answers for anything that names a type; Craft::$app, whose
+ * lookups are keyed by short component id, answers for everything else.
  */
 class Psr11ContainerAdapter implements ContainerInterface {
     /**
@@ -22,13 +23,12 @@ class Psr11ContainerAdapter implements ContainerInterface {
      * @throws ServiceNotFoundException If no entry was found.
      */
     public function get(string $id): mixed {
-        if ($this->has($id)) {
-            // Yii's service locator takes precedence
-            if (Craft::$app->has($id)) {
-                return Craft::$app->get($id);
-            }
-
+        if (Craft::$container->has($id)) {
             return Craft::$container->get($id);
+        }
+
+        if ($this->isComponentId($id)) {
+            return Craft::$app->get($id);
         }
 
         throw new ServiceNotFoundException($id);
@@ -40,10 +40,26 @@ class Psr11ContainerAdapter implements ContainerInterface {
      * @param string $id Identifier of the entry to look for.
      */
     public function has(string $id): bool {
-        if (Craft::$app->has($id)) {
+        if (Craft::$container->has($id)) {
             return true;
         }
 
-        return (bool) Craft::$container->has($id);
+        return $this->isComponentId($id);
+    }
+
+    /**
+     * A name that resolves to a class or interface is a type to build, never a
+     * component to look up.
+     *
+     * WHY: the SDK asks this container for a handler's own class name and takes
+     * whatever it gets back (ReferenceHandler::getClassInstance), falling back to
+     * plain instantiation when the answer is no. Craft's service locator is keyed
+     * by short ids ('db', 'cache', 'plugins'), and answering yes for a class
+     * whose name happens to match one would hand the SDK that component in place
+     * of the tool it asked for. Craft::$container is the half that is keyed by
+     * type, so types are answered there or not at all.
+     */
+    private function isComponentId(string $id): bool {
+        return !class_exists($id) && !interface_exists($id) && Craft::$app->has($id);
     }
 }

@@ -105,7 +105,7 @@ final class EntryResources {
     #[McpResourceTemplate(
         uriTemplate: 'craft://entries/{section}/{slug}',
         name: 'entry-by-slug',
-        description: 'Get a specific entry by its section handle and slug.',
+        description: 'Get a specific entry by its section handle and slug, as a read-only summary: relation fields collapse to element ids and long lists are truncated. This is not the write payload format; use the get_entry tool for a payload create_entry and update_entry accept back.',
         mimeType: 'application/json',
     )]
     #[McpResourceMeta(category: ResourceCategory::CONTENT)]

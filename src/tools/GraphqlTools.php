@@ -10,6 +10,7 @@ use GraphQL\Error\SyntaxError;
 use GraphQL\Language\AST\OperationDefinitionNode;
 use GraphQL\Language\Parser;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -28,6 +29,7 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'list_graphql_schemas',
+        title: 'GraphQL schemas',
         description: 'List all GraphQL schemas in Craft CMS with their scopes and permissions',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
@@ -61,11 +63,18 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'get_graphql_schema',
+        title: 'GraphQL schema definition',
         description: 'Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
-    public function getGraphqlSchema(?int $id = null, ?string $uid = null, ?RequestContext $context = null): array {
+    public function getGraphqlSchema(
+        #[Schema(description: 'Schema id, as list_graphql_schemas reports it.')]
+        ?int $id = null,
+        #[Schema(description: 'Schema uid, as an alternative to id.')]
+        ?string $uid = null,
+        ?RequestContext $context = null,
+    ): array {
         if ($id === null && $uid === null) {
             throw new ToolCallException('Either id or uid must be provided');
         }
@@ -106,14 +115,19 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'query_graphql',
+        title: 'Run a GraphQL query',
         description: 'Run a read-only GraphQL query against Craft\'s GraphQL API. Mutations and subscriptions are rejected before execution, so this is safe for browsing any GraphQL-exposed data (assets, categories, users, plugin types) with exactly the response shape you ask for. Use get_graphql_schema to discover the available types first.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL, privileged: true)]
     public function queryGraphql(
+        #[Schema(description: 'The GraphQL document. Only query operations are accepted; a mutation or subscription is rejected at the AST level, before execution.')]
         string $query,
+        #[Schema(description: 'Query variables as a JSON-encoded STRING (not a nested object).')]
         ?string $variables = null,
+        #[Schema(description: 'Which operation to run, when the document defines more than one.')]
         ?string $operationName = null,
+        #[Schema(description: 'Schema id from list_graphql_schemas, which decides what the query may reach. Omit to use the public schema.')]
         ?int $schemaId = null,
         ?RequestContext $context = null,
     ): array {
@@ -127,14 +141,19 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'execute_graphql',
+        title: 'Execute GraphQL, mutations included',
         description: 'Execute a GraphQL query against Craft CMS. WARNING: This is a dangerous operation that can modify data via mutations.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL, dangerous: true)]
     public function executeGraphql(
+        #[Schema(description: 'The GraphQL document. Mutations run here, so this can create, change, and delete data.')]
         string $query,
+        #[Schema(description: 'Query variables as a JSON-encoded STRING (not a nested object).')]
         ?string $variables = null,
+        #[Schema(description: 'Which operation to run, when the document defines more than one.')]
         ?string $operationName = null,
+        #[Schema(description: 'Schema id from list_graphql_schemas, which decides what the operation may reach. Omit to use the public schema.')]
         ?int $schemaId = null,
         ?RequestContext $context = null,
     ): array {
@@ -210,6 +229,7 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'list_graphql_tokens',
+        title: 'GraphQL tokens',
         description: 'List all GraphQL tokens (API keys) with their associated schemas',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]

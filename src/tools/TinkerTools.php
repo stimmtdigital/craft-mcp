@@ -77,11 +77,13 @@ class TinkerTools {
      */
     #[McpTool(
         name: 'tinker',
+        title: 'Run PHP in Craft context',
         description: 'Execute PHP code within Craft CMS context. Prefer a specific tool when one exists (content, schema, database tools); reach for tinker when none can express the job, such as cross-entry computation. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING, dangerous: true)]
     public function tinker(
+        #[Schema(description: 'PHP statements to run in Craft\'s context. $app is bound to Craft::$app, and the value the code returns is what gets rendered. Anything echoed is captured and returned alongside it.')]
         string $code,
         // Typed as the enum rather than a string carrying a CompletionProvider:
         // MCP has no completion channel for tool arguments, so that attribute
