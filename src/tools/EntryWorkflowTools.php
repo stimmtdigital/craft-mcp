@@ -132,7 +132,7 @@ class EntryWorkflowTools {
     public function publishEntry(
         #[Schema(description: 'The draft element id to apply, or a canonical entry id that has exactly one pending draft (or none and is merely disabled).')]
         int $id,
-        #[Schema(description: 'Site handle to publish on; list_sites reports the handles.')]
+        #[Schema(description: 'Site handle to locate the entry by and to report the result in. Publishing is not per-site: the draft is applied to every site it exists on, so this only selects which site\'s values come back.')]
         ?string $site = null,
         ?RequestContext $context = null,
     ): array {
@@ -156,7 +156,7 @@ class EntryWorkflowTools {
     public function deleteEntry(
         #[Schema(description: 'Element id to trash: an entry, a draft (draftElementId, which discards the draft and leaves the canonical entry untouched), or a single Matrix block by its own entry id.')]
         int $id,
-        #[Schema(description: 'Site handle; list_sites reports the handles.')]
+        #[Schema(description: 'Site handle to locate the entry by. Deleting is not per-site: the entry is trashed on EVERY site it exists on, so this cannot be used to remove one translation. To take an entry out of one site only, disable it there.')]
         ?string $site = null,
         ?RequestContext $context = null,
     ): array {
