@@ -12,6 +12,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\support\Build;
 use stimmt\craft\Mcp\support\PluginReloader;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Response;
@@ -43,6 +44,10 @@ class McpTools {
             'name' => $plugin !== null ? $plugin->name : 'Craft MCP',
             'handle' => $plugin !== null ? $plugin->handle : 'mcp',
             'version' => $plugin !== null ? $plugin->version : 'unknown',
+            // The commit, because the version alone cannot tell two deploys of
+            // the same branch apart, and 'dev-main' is what a branch install
+            // reports for every commit it will ever have.
+            'build' => Build::reference(),
             'schemaVersion' => $plugin !== null ? $plugin->schemaVersion : 'unknown',
             'status' => [
                 'enabled' => $settings->enabled,

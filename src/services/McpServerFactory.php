@@ -26,6 +26,7 @@ use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
 use stimmt\craft\Mcp\policy\Gate;
+use stimmt\craft\Mcp\support\Build;
 use stimmt\craft\Mcp\support\ConfigRefresh;
 use stimmt\craft\Mcp\support\ConsoleHeaders;
 use stimmt\craft\Mcp\support\DiscoveryCache;
@@ -160,7 +161,7 @@ class McpServerFactory {
         return (new DiscoveryCache(
             cache: Craft::$app->getCache(),
             devMode: Craft::$app->getConfig()->getGeneral()->devMode,
-            version: $this->version(),
+            version: Build::revision(),
         ))->of($basePath);
     }
 

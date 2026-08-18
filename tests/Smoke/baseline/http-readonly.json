@@ -1055,6 +1055,7 @@
         "get_mcp_info": {
             "status": "ok",
             "shape": {
+                "build": "<string>",
                 "configuration": {
                     "disabledTools": []
                 },
