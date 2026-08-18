@@ -18,10 +18,8 @@ use Psy\Exception\ParseErrorException;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\OutputMode;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\Ansi;
 use stimmt\craft\Mcp\support\MutexGuard;
-use Symfony\Component\VarDumper\Cloner\VarCloner;
-use Symfony\Component\VarDumper\Dumper\CliDumper;
+use stimmt\craft\Mcp\support\Transcript;
 use Throwable;
 
 /**
@@ -67,6 +65,7 @@ class TinkerTools {
 
     public function __construct(
         private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly Transcript $transcript = new Transcript(),
     ) {
     }
 
@@ -109,7 +108,7 @@ class TinkerTools {
 
             return $this->response(
                 $code,
-                $this->formatError('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
+                $this->transcript->error('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
             );
         }
 
@@ -133,7 +132,7 @@ class TinkerTools {
 
             return $this->response(
                 $code,
-                $this->formatOutput($result, $outputMode),
+                $this->transcript->output($result, $outputMode),
                 $stdout,
             );
         } catch (ParseErrorException|ParseError $e) {
@@ -142,14 +141,14 @@ class TinkerTools {
             $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
             $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
 
-            return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
+            return $this->response($code, $this->transcript->error('ParseError', $e->getMessage()));
         } catch (Throwable $e) {
             $this->drainCapturedOutput($baseLevel);
 
             $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
             $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
 
-            return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
+            return $this->response($code, $this->transcript->error($e::class, $e->getMessage(), $e));
         } finally {
             MutexGuard::releaseAll();
         }
@@ -183,7 +182,7 @@ class TinkerTools {
      * Build the complete response.
      */
     private function response(string $code, string $result, ?string $stdout = null): TextContent {
-        $output = $this->formatInput($code);
+        $output = $this->transcript->input($code);
 
         if ($stdout !== null) {
             $output .= $stdout . "\n";
@@ -195,75 +194,6 @@ class TinkerTools {
     }
 
     /**
-     * Format the input line.
-     */
-    private function formatInput(string $code): string {
-        return Ansi::dim(Ansi::prefixLines(Ansi::PROMPT, $code)) . "\n";
-    }
-
-    /**
-     * Format the output line.
-     */
-    private function formatOutput(mixed $value, OutputMode $mode): string {
-        $formatted = trim($this->formatResult($value, $mode));
-
-        return Ansi::prefixLines(Ansi::dim(Ansi::RESULT), $formatted);
-    }
-
-    /**
-     * Format an error.
-     */
-    private function formatError(string $type, string $message, ?Throwable $e = null): string {
-        $shortType = str_contains($type, '\\') ? substr($type, strrpos($type, '\\') + 1) : $type;
-
-        // Strip internal eval noise from error messages
-        $message = preg_replace('/, called in .+eval\(\)\'d code on line \d+/', '', $message) ?? $message;
-
-        $output = Ansi::red(Ansi::ERROR . ' ' . $shortType . ':') . ' ' . $message;
-
-        $location = $e !== null ? $this->getUsefulLocation($e) : null;
-        if ($location !== null) {
-            $output .= "\n" . Ansi::gray('   at ' . $location);
-        }
-
-        return $output;
-    }
-
-    /**
-     * Get a useful error location, filtering out internal noise.
-     */
-    private function getUsefulLocation(Throwable $e): ?string {
-        // Check exception's own file first
-        $file = $e->getFile();
-        $line = $e->getLine();
-
-        // Skip if it's eval'd code or internal
-        if ($this->isInternalFile($file)) {
-            // Look through trace for first useful entry
-            foreach ($e->getTrace() as $frame) {
-                $frameFile = $frame['file'] ?? '';
-                if ($frameFile !== '' && !$this->isInternalFile($frameFile)) {
-                    return basename($frameFile) . ':' . ($frame['line'] ?? 0);
-                }
-            }
-
-            return null;
-        }
-
-        return basename($file) . ':' . $line;
-    }
-
-    /**
-     * Check if a file path is internal (should be filtered from traces).
-     */
-    private function isInternalFile(string $file): bool {
-        return str_contains($file, 'eval')
-            || str_contains($file, 'TinkerTools')
-            || str_contains($file, 'mcp/sdk')
-            || str_contains($file, 'mcp-server');
-    }
-
-    /**
      * Get the PsySH CodeCleaner for proper PHP parsing.
      */
     private function getCodeCleaner(): CodeCleaner {
@@ -272,51 +202,5 @@ class TinkerTools {
         }
 
         return $this->cleaner;
-    }
-
-    /**
-     * Format a value based on output mode.
-     */
-    private function formatResult(mixed $value, OutputMode $mode): string {
-        return match ($mode) {
-            OutputMode::DUMP => $this->formatDump($value),
-            OutputMode::JSON => $this->formatJson($value),
-            OutputMode::RAW => $this->formatRaw($value),
-            OutputMode::PRINT_R => $this->formatPrintR($value),
-        };
-    }
-
-    /**
-     * Format using VarDumper (colored).
-     */
-    private function formatDump(mixed $value): string {
-        $cloner = new VarCloner();
-        $dumper = new CliDumper();
-        $dumper->setColors(true);
-
-        return $dumper->dump($cloner->cloneVar($value), true) ?? '';
-    }
-
-    /**
-     * Format as JSON.
-     */
-    private function formatJson(mixed $value): string {
-        $json = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        return $json !== false ? $json : '(JSON encoding failed)';
-    }
-
-    /**
-     * Format using var_export.
-     */
-    private function formatRaw(mixed $value): string {
-        return var_export($value, true);
-    }
-
-    /**
-     * Format using print_r.
-     */
-    private function formatPrintR(mixed $value): string {
-        return print_r($value, true);
     }
 }

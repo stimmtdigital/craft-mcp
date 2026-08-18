@@ -175,3 +175,34 @@ describe('McpServerFactory wiring', function () {
         expect($source)->toContain('->setReferenceHandler($this->presenter())');
     });
 });
+
+describe('outputSchema', function () {
+    /**
+     * The Presenter drops structuredContent because no tool declares an output
+     * schema, so the copy is a duplicate the client cannot be obliged to read.
+     * A tool that DOES declare one is contractually owed it, and dropping it
+     * then would mean advertising a schema the server never honours. Dormant
+     * today, and the failure it prevents would be silent.
+     */
+    it('attaches structuredContent for a tool that declares an output schema', function () {
+        $registry = new Registry();
+        $registry->registerTool(
+            new Tool(
+                name: 'demo',
+                title: null,
+                inputSchema: ['type' => 'object'],
+                description: null,
+                annotations: null,
+                outputSchema: ['type' => 'object', 'properties' => ['count' => ['type' => 'integer']]],
+            ),
+            static fn (): array => ['count' => 2],
+        );
+
+        $result = (new CallToolHandler($registry, new Presenter(new ReferenceHandler(), new Renderer(new Palette(false)))))
+            ->handle((new CallToolRequest('demo', []))->withId(1), new Session(new InMemorySessionStore()));
+
+        $wire = json_decode(json_encode($result->result), true);
+
+        expect($wire['structuredContent'])->toBe(['count' => 2]);
+    });
+});

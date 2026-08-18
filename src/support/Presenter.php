@@ -74,8 +74,17 @@ final readonly class Presenter implements ReferenceHandlerInterface {
         // formatResult() is the SDK's own content formatting (Content objects
         // pass through, arrays become one JSON TextContent), so tools that
         // already return TextContent keep their exact output. Only the
-        // structuredContent duplicate is dropped.
-        return new CallToolResult($reference->formatResult($result));
+        // structuredContent duplicate is dropped, and only while no tool
+        // declares an output schema: a tool that declares one is contractually
+        // owed the structured copy, and dropping it unconditionally would mean
+        // advertising a schema and then never honouring it. No tool declares
+        // one today, so this branch is dormant rather than speculative; it
+        // exists because the day one does, the failure would be silent.
+        $structured = $reference->tool->outputSchema === null
+            ? null
+            : $reference->extractStructuredContent($result);
+
+        return new CallToolResult($reference->formatResult($result), structuredContent: $structured);
     }
 
     /**
