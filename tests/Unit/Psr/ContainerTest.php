@@ -8,16 +8,16 @@ declare(strict_types=1);
 // assignment below works either way.
 require_once __DIR__ . '/../../Fixtures/RealCraft.php';
 
-use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
-use stimmt\craft\Mcp\support\ServiceNotFoundException;
-use yii\di\Container;
+use stimmt\craft\Mcp\psr\Container;
+use stimmt\craft\Mcp\psr\ServiceNotFound;
+use yii\di\Container as YiiContainer;
 
-describe('Psr11ContainerAdapter', function () {
+describe('Container', function () {
     beforeEach(function () {
         $this->originalContainer = Craft::$container;
         $this->originalApp = Craft::$app;
 
-        Craft::$container = new Container();
+        Craft::$container = new YiiContainer();
         // A service locator that claims a class name as one of its component
         // ids, which is the collision the adapter has to refuse to answer.
         Craft::$app = new class () {
@@ -30,7 +30,7 @@ describe('Psr11ContainerAdapter', function () {
             }
         };
 
-        $this->adapter = new Psr11ContainerAdapter();
+        $this->adapter = new Container();
     });
 
     afterEach(function () {
@@ -44,7 +44,7 @@ describe('Psr11ContainerAdapter', function () {
     it('does not answer for a class name the container does not define', function () {
         expect($this->adapter->has(DateTimeImmutable::class))->toBeFalse()
             ->and(fn () => $this->adapter->get(DateTimeImmutable::class))
-                ->toThrow(ServiceNotFoundException::class);
+                ->toThrow(ServiceNotFound::class);
     });
 
     it('resolves a class name the container does define', function () {
@@ -61,6 +61,6 @@ describe('Psr11ContainerAdapter', function () {
 
     it('reports an unknown id as unknown', function () {
         expect($this->adapter->has('nothing-here'))->toBeFalse()
-            ->and(fn () => $this->adapter->get('nothing-here'))->toThrow(ServiceNotFoundException::class);
+            ->and(fn () => $this->adapter->get('nothing-here'))->toThrow(ServiceNotFound::class);
     });
 });

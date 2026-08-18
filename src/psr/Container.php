@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\psr;
 
 use Craft;
 use Psr\Container\ContainerInterface;
@@ -14,13 +14,13 @@ use Psr\Container\ContainerInterface;
  * Craft::$container answers for anything that names a type; Craft::$app, whose
  * lookups are keyed by short component id, answers for everything else.
  */
-class Psr11ContainerAdapter implements ContainerInterface {
+class Container implements ContainerInterface {
     /**
      * Finds an entry of the container by its identifier and returns it.
      *
      * @param string $id Identifier of the entry to look for.
      * @return mixed Entry.
-     * @throws ServiceNotFoundException If no entry was found.
+     * @throws ServiceNotFound If no entry was found.
      */
     public function get(string $id): mixed {
         if (Craft::$container->has($id)) {
@@ -31,7 +31,7 @@ class Psr11ContainerAdapter implements ContainerInterface {
             return Craft::$app->get($id);
         }
 
-        throw new ServiceNotFoundException($id);
+        throw new ServiceNotFound($id);
     }
 
     /**

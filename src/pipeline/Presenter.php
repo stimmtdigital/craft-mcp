@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\pipeline;
 
 use Mcp\Capability\Registry\ElementReference;
 use Mcp\Capability\Registry\ReferenceHandlerInterface;
@@ -11,6 +11,7 @@ use Mcp\Schema\Content\Content;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use stimmt\craft\Mcp\enums\ResponseFormat;
+use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\text\Renderer;
 
 /**

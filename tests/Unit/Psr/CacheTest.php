@@ -6,21 +6,21 @@ require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
 require_once dirname(__DIR__, 2) . '/Fixtures/RecordingCache.php';
 
 use Psr\SimpleCache\CacheInterface as SimpleCacheInterface;
-use stimmt\craft\Mcp\support\Psr16CacheAdapter;
+use stimmt\craft\Mcp\psr\Cache;
 use stimmt\craft\Mcp\Tests\Fixtures\RecordingCache;
 use yii\caching\ArrayCache;
 
-describe('Psr16CacheAdapter', function () {
+describe('Cache', function () {
     it('implements the PSR-16 CacheInterface', function () {
-        expect(new Psr16CacheAdapter(new ArrayCache()))->toBeInstanceOf(SimpleCacheInterface::class);
+        expect(new Cache(new ArrayCache()))->toBeInstanceOf(SimpleCacheInterface::class);
     });
 
     it('exposes the discovery tag name used for scoped invalidation', function () {
-        expect(Psr16CacheAdapter::TAG)->toBe('mcp-discovery');
+        expect(Cache::TAG)->toBe('mcp-discovery');
     });
 
     it('round-trips falsy values without confusing them with a cache miss', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
 
         $adapter->set('flag', false);
         $adapter->set('zero', 0);
@@ -36,14 +36,14 @@ describe('Psr16CacheAdapter', function () {
     });
 
     it('returns the given default on a genuine cache miss', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
 
         expect($adapter->get('missing', 'fallback'))->toBe('fallback')
             ->and($adapter->get('missing'))->toBeNull();
     });
 
     it('reports has() correctly even for a stored falsy value', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
         $adapter->set('flag', false);
 
         expect($adapter->has('flag'))->toBeTrue()
@@ -51,7 +51,7 @@ describe('Psr16CacheAdapter', function () {
     });
 
     it('deletes a single key', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
         $adapter->set('key', 'value');
 
         $adapter->delete('key');
@@ -60,7 +60,7 @@ describe('Psr16CacheAdapter', function () {
     });
 
     it('round-trips getMultiple/setMultiple/deleteMultiple through the single-key methods', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
 
         $adapter->setMultiple(['a' => 1, 'b' => false]);
         $values = iterator_to_array($adapter->getMultiple(['a', 'b', 'c'], 'default'));
@@ -75,7 +75,7 @@ describe('Psr16CacheAdapter', function () {
 
     it('clear() invalidates only the tagged entries, never the wrapped cache itself', function () {
         $wrapped = new ArrayCache();
-        $adapter = new Psr16CacheAdapter($wrapped);
+        $adapter = new Cache($wrapped);
 
         $adapter->set('discovery-key', ['tools' => ['a', 'b']]);
         // Written straight to the wrapped cache, bypassing the adapter and its
@@ -90,8 +90,8 @@ describe('Psr16CacheAdapter', function () {
 
     it('keeps entries from different prefixes on the same wrapped cache apart', function () {
         $wrapped = new ArrayCache();
-        $first = new Psr16CacheAdapter($wrapped, 'first:');
-        $second = new Psr16CacheAdapter($wrapped, 'second:');
+        $first = new Cache($wrapped, 'first:');
+        $second = new Cache($wrapped, 'second:');
 
         $first->set('key', 'from-first');
         $second->set('key', 'from-second');
@@ -101,7 +101,7 @@ describe('Psr16CacheAdapter', function () {
     });
 
     it('treats zero TTL as immediate expiry per PSR-16', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
 
         $adapter->set('key', 'value', 0);
 
@@ -109,7 +109,7 @@ describe('Psr16CacheAdapter', function () {
     });
 
     it('treats negative TTL as immediate expiry per PSR-16', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
 
         $adapter->set('key', 'value', -5);
 
@@ -118,7 +118,7 @@ describe('Psr16CacheAdapter', function () {
 
 
     it('still stores indefinitely when TTL is null (not explicitly zero)', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
 
         $adapter->set('key', 'value', null);
 
@@ -128,7 +128,7 @@ describe('Psr16CacheAdapter', function () {
     it('stores with the default TTL when the caller sets none', function () {
         $wrapped = new RecordingCache();
 
-        (new Psr16CacheAdapter($wrapped, 'mcp-discovery:', 3600))->set('key', 'value');
+        (new Cache($wrapped, 'mcp-discovery:', 3600))->set('key', 'value');
 
         expect($wrapped->lastDuration())->toBe(3600);
     });
@@ -136,13 +136,13 @@ describe('Psr16CacheAdapter', function () {
     it('lets an explicit TTL win over the default', function () {
         $wrapped = new RecordingCache();
 
-        (new Psr16CacheAdapter($wrapped, 'mcp-discovery:', 3600))->set('key', 'value', 60);
+        (new Cache($wrapped, 'mcp-discovery:', 3600))->set('key', 'value', 60);
 
         expect($wrapped->lastDuration())->toBe(60);
     });
 
     it('still expires immediately on an explicit zero TTL despite a default', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache(), 'mcp-discovery:', 3600);
+        $adapter = new Cache(new ArrayCache(), 'mcp-discovery:', 3600);
 
         $adapter->set('key', 'value', 0);
 
@@ -150,7 +150,7 @@ describe('Psr16CacheAdapter', function () {
     });
 
     it('applies zero TTL expiry through setMultiple', function () {
-        $adapter = new Psr16CacheAdapter(new ArrayCache());
+        $adapter = new Cache(new ArrayCache());
 
         $adapter->setMultiple(['a' => 1, 'b' => 2]);
         expect($adapter->get('a'))->toBe(1)

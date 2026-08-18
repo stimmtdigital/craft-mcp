@@ -43,7 +43,7 @@ final class ConfigFreshness {
     ];
 
     /**
-     * $context comes from ConfigRefresh, which builds it from the session and
+     * $context comes from Freshness, which builds it from the session and
      * request the SDK injects on every tool call. Without one a detected
      * refresh still happens, it just has no session to notify.
      */

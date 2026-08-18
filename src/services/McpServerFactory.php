@@ -26,16 +26,16 @@ use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\logging\FileLogger;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
+use stimmt\craft\Mcp\pipeline\ErrorBoundary;
+use stimmt\craft\Mcp\pipeline\Freshness;
+use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\policy\Gate;
+use stimmt\craft\Mcp\psr\Cache;
+use stimmt\craft\Mcp\psr\Container;
+use stimmt\craft\Mcp\psr\Dispatcher;
 use stimmt\craft\Mcp\support\Build;
-use stimmt\craft\Mcp\support\ConfigRefresh;
 use stimmt\craft\Mcp\support\ConsoleHeaders;
 use stimmt\craft\Mcp\support\DiscoveryCache;
-use stimmt\craft\Mcp\support\ErrorBoundary;
-use stimmt\craft\Mcp\support\EventDispatcher;
-use stimmt\craft\Mcp\support\Presenter;
-use stimmt\craft\Mcp\support\Psr11ContainerAdapter;
-use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\SignalHandler;
 use stimmt\craft\Mcp\support\Subscription;
 use stimmt\craft\Mcp\text\Palette;
@@ -67,7 +67,7 @@ class McpServerFactory {
      */
     private const string WEBSITE_URL = 'https://github.com/stimmtdigital/craft-mcp';
 
-    public function __construct(private readonly ?ContainerInterface $container = new Psr11ContainerAdapter(), private readonly ?LoggerInterface $logger = null) {
+    public function __construct(private readonly ?ContainerInterface $container = new Container(), private readonly ?LoggerInterface $logger = null) {
     }
 
     /**
@@ -82,7 +82,7 @@ class McpServerFactory {
         // toolsListChanged) are only advertised as true when the Builder's
         // own eventDispatcher is set, and Registry mutations only actually
         // fire events through the instance it was constructed with.
-        $eventDispatcher = new EventDispatcher();
+        $eventDispatcher = new Dispatcher();
         $registry = new Registry($eventDispatcher, $logger);
 
         $basePath = dirname(__DIR__);
@@ -174,7 +174,7 @@ class McpServerFactory {
      * of the scanned code is what stops tools/list serving a previous scan
      * after a tool is edited; DiscoveryCache holds that reasoning.
      */
-    private function discoveryCache(string $basePath): Psr16CacheAdapter {
+    private function discoveryCache(string $basePath): Cache {
         return (new DiscoveryCache(
             cache: Craft::$app->getCache(),
             devMode: Craft::$app->getConfig()->getGeneral()->devMode,
@@ -198,7 +198,7 @@ class McpServerFactory {
         // it also covers argument preparation, result formatting and the
         // Presenter's own logic, none of which a tool body can guard.
         return new ErrorBoundary(
-            new ConfigRefresh(
+            new Freshness(
                 new Presenter(
                     new ReferenceHandler($this->container),
                     new Renderer(Palette::fromSettings()),

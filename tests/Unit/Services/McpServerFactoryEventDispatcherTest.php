@@ -8,7 +8,7 @@ use Mcp\Schema\Tool;
 use Mcp\Server;
 use Mcp\Server\Handler\Request\InitializeHandler;
 use Mcp\Server\Protocol;
-use stimmt\craft\Mcp\support\EventDispatcher;
+use stimmt\craft\Mcp\psr\Dispatcher;
 
 /**
  * McpServerFactory::create() itself needs a booted Craft app (Craft::$app,
@@ -17,9 +17,9 @@ use stimmt\craft\Mcp\support\EventDispatcher;
  * proving the wiring pattern the factory now uses actually fixes the two
  * bugs: dead Registry events, and false list-changed capabilities.
  */
-describe('EventDispatcher wired into the SDK Registry', function () {
+describe('Dispatcher wired into the SDK Registry', function () {
     it('fires ToolListChangedEvent through the dispatcher on tool registration', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
         $seen = [];
         $dispatcher->addListener(ToolListChangedEvent::class, function (object $event) use (&$seen): void {
             $seen[] = $event;
@@ -36,7 +36,7 @@ describe('EventDispatcher wired into the SDK Registry', function () {
     });
 
     it('fires again on unregisterTool', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
         $count = 0;
         $dispatcher->addListener(ToolListChangedEvent::class, function () use (&$count): void {
             ++$count;
@@ -57,7 +57,7 @@ describe('Builder::setEventDispatcher() truthfulness', function () {
     it('advertises toolsListChanged true once a real dispatcher is set, matching McpServerFactory::create()', function () {
         $server = Server::builder()
             ->setServerInfo(name: 'Test Server', version: '1.0.0')
-            ->setEventDispatcher(new EventDispatcher())
+            ->setEventDispatcher(new Dispatcher())
             ->build();
 
         expect(initializeCapabilities($server)->toolsListChanged)->toBeTrue();

@@ -10,7 +10,7 @@ use Mcp\Capability\Registry\ToolReference;
 use Mcp\Schema\Result\CallToolResult;
 use Mcp\Schema\Tool;
 use stimmt\craft\Mcp\enums\ResponseFormat;
-use stimmt\craft\Mcp\support\Presenter;
+use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\text\Palette;
 use stimmt\craft\Mcp\text\Renderer;
 use stimmt\craft\Mcp\tools\DatabaseTools;

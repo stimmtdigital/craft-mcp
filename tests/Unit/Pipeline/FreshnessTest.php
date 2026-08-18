@@ -10,7 +10,7 @@ use Mcp\Capability\Registry\ReferenceHandlerInterface;
 use Mcp\Capability\Registry\ToolReference;
 use Mcp\Schema\Prompt;
 use Mcp\Schema\Tool;
-use stimmt\craft\Mcp\support\ConfigRefresh;
+use stimmt\craft\Mcp\pipeline\Freshness;
 
 /**
  * The freshness probe only notifies when handed a request context, and it used
@@ -45,7 +45,7 @@ it('delegates a tool call and returns the inner result untouched', function () {
         static fn (): array => [],
     );
 
-    $result = (new ConfigRefresh(($this->recorder)($seen)))->handle($reference, []);
+    $result = (new Freshness(($this->recorder)($seen)))->handle($reference, []);
 
     expect($result)->toBe('delegated')
         ->and($seen)->toBe([ToolReference::class]);
@@ -58,7 +58,7 @@ it('passes a prompt straight through, since a prompt cannot change project confi
         static fn (): array => [],
     );
 
-    $result = (new ConfigRefresh(($this->recorder)($seen)))->handle($reference, []);
+    $result = (new Freshness(($this->recorder)($seen)))->handle($reference, []);
 
     expect($result)->toBe('delegated')
         ->and($seen)->toBe([PromptReference::class]);

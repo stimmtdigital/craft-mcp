@@ -12,9 +12,9 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\psr\Cache;
 use stimmt\craft\Mcp\support\Build;
 use stimmt\craft\Mcp\support\PluginReloader;
-use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Response;
 use yii\caching\TagDependency;
 
@@ -162,7 +162,7 @@ class McpTools {
         Craft::$app->getPlugins()->loadPlugins();
 
         // 6. Invalidate the cached attribute discovery so it rescans
-        TagDependency::invalidate(Craft::$app->getCache(), Psr16CacheAdapter::TAG);
+        TagDependency::invalidate(Craft::$app->getCache(), Cache::TAG);
 
         // 7. Reset tool registry to re-collect tools
         Mcp::resetToolRegistry();

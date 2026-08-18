@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\psr;
 
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\EventDispatcher\StoppableEventInterface;
@@ -15,7 +15,7 @@ use Psr\EventDispatcher\StoppableEventInterface;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class EventDispatcher implements EventDispatcherInterface {
+final class Dispatcher implements EventDispatcherInterface {
     /**
      * @var array<class-string, list<callable(object): void>>
      */

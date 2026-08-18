@@ -15,10 +15,10 @@ use Mcp\Server\Handler\Request\CallToolHandler;
 use Mcp\Server\Session\InMemorySessionStore;
 use Mcp\Server\Session\Session;
 use stimmt\craft\Mcp\enums\ResponseFormat;
+use stimmt\craft\Mcp\pipeline\ErrorBoundary;
+use stimmt\craft\Mcp\pipeline\Freshness;
+use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\services\McpServerFactory;
-use stimmt\craft\Mcp\support\ConfigRefresh;
-use stimmt\craft\Mcp\support\ErrorBoundary;
-use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\text\Palette;
 use stimmt\craft\Mcp\text\Renderer;
 
@@ -162,9 +162,9 @@ describe('McpServerFactory wiring', function () {
         expect($handler)->toBeInstanceOf(ErrorBoundary::class);
 
         $refresh = $unwrap($handler, ErrorBoundary::class);
-        expect($refresh)->toBeInstanceOf(ConfigRefresh::class);
+        expect($refresh)->toBeInstanceOf(Freshness::class);
 
-        $presenter = $unwrap($refresh, ConfigRefresh::class);
+        $presenter = $unwrap($refresh, Freshness::class);
         expect($presenter)->toBeInstanceOf(Presenter::class)
             ->and($unwrap($presenter, Presenter::class))->toBeInstanceOf(ReferenceHandler::class);
     });

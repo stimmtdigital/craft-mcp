@@ -20,7 +20,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\logging\Entry;
 use stimmt\craft\Mcp\logging\Formatter;
 use stimmt\craft\Mcp\logging\Parser;
-use stimmt\craft\Mcp\support\Presenter;
+use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\text\Palette;
 
 /**

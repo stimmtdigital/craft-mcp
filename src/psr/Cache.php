@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\psr;
 
 use DateInterval;
 use DateTimeImmutable;
@@ -23,7 +23,7 @@ use yii\caching\TagDependency;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final readonly class Psr16CacheAdapter implements SimpleCacheInterface {
+final readonly class Cache implements SimpleCacheInterface {
     public const string TAG = 'mcp-discovery';
 
     /**

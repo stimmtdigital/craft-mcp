@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\support;
 
+use stimmt\craft\Mcp\psr\Cache;
 use yii\caching\CacheInterface as YiiCacheInterface;
 
 /**
@@ -55,10 +56,10 @@ final readonly class DiscoveryCache {
     ) {
     }
 
-    public function of(string $basePath): Psr16CacheAdapter {
+    public function of(string $basePath): Cache {
         $revision = $this->devMode ? $this->fingerprint->of($basePath) : $this->version;
 
-        return new Psr16CacheAdapter(
+        return new Cache(
             cache: $this->cache,
             prefix: "mcp-discovery:{$revision}:",
             defaultTtl: $this->devMode ? self::DEV_TTL : null,

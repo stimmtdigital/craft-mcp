@@ -117,7 +117,7 @@ describe('entry write notifications', function () {
     });
 
     // The context used to be threaded by hand into the two write tools, and
-    // this counted the occurrences in the source. ConfigRefresh now builds it
+    // this counted the occurrences in the source. Freshness now builds it
     // from what the SDK injects on every call, so the guarantee covers all 61
     // tools instead of 2 and is no longer a property of this file's text.
     // ConfigRefreshTest owns it.

@@ -13,7 +13,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\Presenter;
+use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SqlReadGuard;
 use Throwable;

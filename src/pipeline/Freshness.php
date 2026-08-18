@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\pipeline;
 
 use Mcp\Capability\Registry\ElementReference;
 use Mcp\Capability\Registry\ReferenceHandlerInterface;
 use Mcp\Capability\Registry\ToolReference;
 use Mcp\Server\RequestContext;
+use stimmt\craft\Mcp\support\ConfigFreshness;
 
 /**
  * Runs the project-config freshness probe once per tool call, with a real
@@ -28,7 +29,7 @@ use Mcp\Server\RequestContext;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final readonly class ConfigRefresh implements ReferenceHandlerInterface {
+final readonly class Freshness implements ReferenceHandlerInterface {
     public function __construct(private ReferenceHandlerInterface $handler) {
     }
 

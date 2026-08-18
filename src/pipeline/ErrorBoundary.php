@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\pipeline;
 
 use Mcp\Capability\Registry\ElementReference;
 use Mcp\Capability\Registry\PromptReference;
@@ -35,8 +35,6 @@ use Throwable;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class ErrorBoundary implements ReferenceHandlerInterface {
-    use ExceptionFormatterTrait;
-
     public function __construct(private ReferenceHandlerInterface $handler) {
     }
 
@@ -78,6 +76,28 @@ final readonly class ErrorBoundary implements ReferenceHandlerInterface {
     private function readable(Throwable $exception): string {
         return $exception instanceof RegistryException
             ? $exception->getMessage()
-            : self::formatErrorMessage($exception);
+            : $this->formatErrorMessage($exception);
+    }
+
+    /**
+     * A one-line account of a throwable: what it was, what it said, and where.
+     *
+     * This was a trait, shared with three Safe*Execution classes that no longer
+     * exist. A trait with one user is just methods living somewhere a reader
+     * has to go looking for them.
+     */
+    private function formatErrorMessage(Throwable $e): string {
+        return sprintf('%s: %s (%s)', $this->shortClass($e), $e->getMessage(), $this->shortLocation($e));
+    }
+
+    private function shortClass(Throwable $e): string {
+        $class = $e::class;
+        $pos = strrpos($class, '\\');
+
+        return $pos !== false ? substr($class, $pos + 1) : $class;
+    }
+
+    private function shortLocation(Throwable $e): string {
+        return basename($e->getFile()) . ':' . $e->getLine();
     }
 }

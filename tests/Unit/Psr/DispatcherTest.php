@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Psr\EventDispatcher\StoppableEventInterface;
-use stimmt\craft\Mcp\support\EventDispatcher;
+use stimmt\craft\Mcp\psr\Dispatcher;
 
 /**
  * Minimal stoppable event for exercising the dispatcher's PSR-14
@@ -21,9 +21,9 @@ final class StoppableTestEvent implements StoppableEventInterface {
     }
 }
 
-describe('EventDispatcher', function () {
+describe('Dispatcher', function () {
     it('dispatches to listeners registered for the exact event class', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
         $received = [];
 
         $dispatcher->addListener(stdClass::class, function (object $event) use (&$received): void {
@@ -38,7 +38,7 @@ describe('EventDispatcher', function () {
     });
 
     it('calls multiple listeners for the same event in registration order', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
         $order = [];
 
         $dispatcher->addListener(stdClass::class, function () use (&$order): void {
@@ -54,7 +54,7 @@ describe('EventDispatcher', function () {
     });
 
     it('returns the event unchanged when nothing listens for it', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
 
         $event = new stdClass();
         $result = $dispatcher->dispatch($event);
@@ -63,7 +63,7 @@ describe('EventDispatcher', function () {
     });
 
     it('does not call listeners registered for a different event class', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
         $called = false;
 
         $dispatcher->addListener(RuntimeException::class, function () use (&$called): void {
@@ -76,7 +76,7 @@ describe('EventDispatcher', function () {
     });
 
     it('stops calling further listeners once a StoppableEventInterface event reports propagation stopped', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
         $order = [];
 
         $dispatcher->addListener(StoppableTestEvent::class, function (StoppableTestEvent $event) use (&$order): void {
@@ -93,7 +93,7 @@ describe('EventDispatcher', function () {
     });
 
     it('still calls every listener for a stoppable event that never stops propagation', function () {
-        $dispatcher = new EventDispatcher();
+        $dispatcher = new Dispatcher();
         $order = [];
 
         $dispatcher->addListener(StoppableTestEvent::class, function () use (&$order): void {

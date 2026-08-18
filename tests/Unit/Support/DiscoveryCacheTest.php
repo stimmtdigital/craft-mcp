@@ -5,8 +5,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
 require_once dirname(__DIR__, 2) . '/Fixtures/RecordingCache.php';
 
+use stimmt\craft\Mcp\psr\Cache;
 use stimmt\craft\Mcp\support\DiscoveryCache;
-use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\Tests\Fixtures\RecordingCache;
 use yii\caching\ArrayCache;
 use yii\caching\TagDependency;
@@ -121,7 +121,7 @@ describe('DiscoveryCache tagged invalidation', function () {
         $cache = new DiscoveryCache($this->wrapped, devMode: true, version: '1.0.0');
         $cache->of($this->source)->set('discovery', ['tools' => ['get_entry']]);
 
-        TagDependency::invalidate($this->wrapped, Psr16CacheAdapter::TAG);
+        TagDependency::invalidate($this->wrapped, Cache::TAG);
 
         expect($cache->of($this->source)->get('discovery', 'miss'))->toBe('miss');
     });
