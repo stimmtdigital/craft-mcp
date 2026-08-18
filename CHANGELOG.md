@@ -10,18 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Text output for tool payloads: `run_query`, `get_table_counts`, and `count_entries` accept `output="text"` and return the same data laid out for a person (uniform rows as an aligned table, key-value data and breakdowns as aligned blocks, nesting indented), falling back to pretty JSON for anything that will not lay out cleanly. A tool opts in purely by declaring the parameter in its signature, and the rendering happens centrally, so no tool carries formatting code of its own
 - `colorOutput` config setting: whether human-readable output carries ANSI colour. Off by default, because escape sequences reach an AI client as literal noise it pays tokens for
+- `get_mcp_info` reports the commit the running code came from, alongside the version. A release install reports a tag and the version is enough; a branch install reports the constraint (`dev-main`) for every commit that branch will ever have, so two deploys a week apart were indistinguishable and a stale server looked exactly like a fresh one
 
 ### Changed
 - `read_logs` with `output="text"` is no longer coloured unconditionally; its layout is unchanged and `colorOutput` restores the colours. Colour is now decided in exactly one place instead of per formatter
-
-### Removed
-- Undocumented introspection helpers with no callers anywhere: `Mcp::collectExternalTools()`, `collectExternalPrompts()` and `collectExternalResources()` (deprecated in favour of the registries), `getAllToolClasses()` and its prompt and resource twins on the registration events, `ToolRegistry::getToolClasses()` and `getToolsBySource()`, `PromptRegistry::getPromptClasses()`, `ResourceRegistry::getResourceClasses()`, and the six copies of `getDefinitionsByCategory()`. None appear in `docs/extending.md`, so none were part of the documented extension API. `getDefinitionsBySource()`, which is used, stays
-
-### Changed
 - Tool annotations describe what each tool actually does. `create_entry`, `duplicate_entry`, `copy_entry_to_site` and `create_nested_entry` advertised `destructiveHint: true` while being purely additive, and `run_query` advertised it while being SELECT-only under `SqlReadGuard`; `move_nested_entry` gains `idempotentHint: true`, since moving a block to position N twice leaves the same state, and `reload_mcp` gains annotations at all instead of inheriting the spec's conservative defaults for a call that changes no data. Every tool now also declares `openWorldHint: false`, which is accurate for a server that only ever touches one Craft install. None of this changes what a token may call: access is gated by the `dangerous` flag in our own metadata, and these hints only tell a client when to ask for confirmation. Prompting on read-only and additive calls trains people to click through the prompts that matter
-
-### Added
-- `get_mcp_info` reports the commit the running code came from, alongside the version. A release install reports a tag and the version is enough; a branch install reports the constraint (`dev-main`) for every commit that branch will ever have, so two deploys a week apart were indistinguishable and a stale server looked exactly like a fresh one
 
 ### Fixed
 - The discovery cache turns over on a branch install. Outside devMode the cache key was the plugin version, which never changes while a branch's code does, so the first deploy's tool scan would be served indefinitely. The key now carries the installed commit as well
@@ -57,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cached tool discovery invalidates itself when the scanned code changes. Editing a tool, adding a tool class or switching branches kept `tools/list` serving the previous scan, and neither reconnecting the client nor restarting the container helped, because the staleness lives in Craft's cache rather than in the process. The cache key now carries the state of the code it was built from: a stat-based fingerprint of the plugin source when `devMode` is on, and the plugin version otherwise, so production keeps a stable key and does no filesystem work per request
 - Every tool payload is sent once instead of twice. The SDK serialized array returns into both `content` and `structuredContent`, doubling the wire and token cost of every call; no tool declares an output schema, so the duplicate carried nothing a client could use
 
+### Removed
+- Undocumented introspection helpers with no callers anywhere: `Mcp::collectExternalTools()`, `collectExternalPrompts()` and `collectExternalResources()` (deprecated in favour of the registries), `getAllToolClasses()` and its prompt and resource twins on the registration events, `ToolRegistry::getToolClasses()` and `getToolsBySource()`, `PromptRegistry::getPromptClasses()`, `ResourceRegistry::getResourceClasses()`, and the six copies of `getDefinitionsByCategory()`. None appear in `docs/extending.md`, so none were part of the documented extension API. `getDefinitionsBySource()`, which is used, stays
 ## [1.4.0-beta.12] - 2026-08-06
 
 ### Fixed
