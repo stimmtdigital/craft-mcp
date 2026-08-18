@@ -31,7 +31,6 @@ use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
 use stimmt\craft\Mcp\support\WriteParams;
 
@@ -89,30 +88,28 @@ class EntryTools {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $fields, $limit, $offset): array {
-            SiteResolver::resolve($site);
+        SiteResolver::resolve($site);
 
-            $query = Entry::find()->limit($limit)->offset($offset);
+        $query = Entry::find()->limit($limit)->offset($offset);
 
-            if ($status !== null) {
-                $query->status($status === 'any' ? null : $status);
+        if ($status !== null) {
+            $query->status($status === 'any' ? null : $status);
+        }
+
+        foreach (['section' => $section, 'type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
+            if ($value !== null) {
+                $query->$method($value);
             }
+        }
 
-            foreach (['section' => $section, 'type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
-                if ($value !== null) {
-                    $query->$method($value);
-                }
-            }
+        $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+        Authorization::scopeQuery($query);
 
-            $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
-            Authorization::scopeQuery($query);
+        $results = $fields === null
+            ? array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all())
+            : array_map(fn (Entry $entry): array => $this->projection->row($entry, $fields, $site), $query->all());
 
-            $results = $fields === null
-                ? array_map(fn (Entry $entry): array => $this->reader->read($entry, $site), $query->all())
-                : array_map(fn (Entry $entry): array => $this->projection->row($entry, $fields, $site), $query->all());
-
-            return Response::paginated('entries', $results, (int) $query->count(), $limit, $offset);
-        });
+        return Response::paginated('entries', $results, (int) $query->count(), $limit, $offset);
     }
 
     #[McpTool(
@@ -141,24 +138,22 @@ class EntryTools {
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $status, $site, $search, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $groupBy): array {
-            SiteResolver::resolve($site);
+        SiteResolver::resolve($site);
 
-            $query = Entry::find()->status($status === 'any' ? null : $status);
-            foreach (['section' => $section, 'type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
-                if ($value !== null) {
-                    $query->$method($value);
-                }
+        $query = Entry::find()->status($status === 'any' ? null : $status);
+        foreach (['section' => $section, 'type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
+            if ($value !== null) {
+                $query->$method($value);
             }
+        }
 
-            $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
-            Authorization::scopeQuery($query);
+        $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+        Authorization::scopeQuery($query);
 
-            $result = (new Buckets())->collect($query, $groupBy);
-            $result['groupBy'] = $groupBy;
+        $result = (new Buckets())->collect($query, $groupBy);
+        $result['groupBy'] = $groupBy;
 
-            return Response::success($result);
-        });
+        return Response::success($result);
     }
 
     #[McpTool(
@@ -174,12 +169,10 @@ class EntryTools {
         ?string $site = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $slug, $section, $site): array {
-            $entry = $this->find($id, $slug, $section, $site);
-            Authorization::assertCanView($entry);
+        $entry = $this->find($id, $slug, $section, $site);
+        Authorization::assertCanView($entry);
 
-            return Response::found('entry', $this->reader->read($entry, $site));
-        });
+        return Response::found('entry', $this->reader->read($entry, $site));
     }
 
     #[McpTool(
@@ -201,46 +194,44 @@ class EntryTools {
         ?string $expiryDate = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $type, $title, $slug, $site, $fields, $mode, $parent, $postDate, $expiryDate, $context): array {
-            $siteModel = SiteResolver::resolve($site);
-            $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
-                ?? throw new ToolCallException("Section '{$section}' not found");
-            $entryType = $this->entryType($sectionModel, $type);
+        $siteModel = SiteResolver::resolve($site);
+        $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
+            ?? throw new ToolCallException("Section '{$section}' not found");
+        $entryType = $this->entryType($sectionModel, $type);
 
-            // Authorization probe: an unsaved entry carrying the target
-            // section/type/site is exactly what Craft's canSave inspects.
-            Authorization::assertCanSave(new Entry([
-                'sectionId' => $sectionModel->id,
-                'typeId' => $entryType->id,
-                'siteId' => $siteModel?->id ?? Craft::$app->getSites()->getPrimarySite()->id, // @phpstan-ignore nullsafe.neverNull
-            ]));
+        // Authorization probe: an unsaved entry carrying the target
+        // section/type/site is exactly what Craft's canSave inspects.
+        Authorization::assertCanSave(new Entry([
+            'sectionId' => $sectionModel->id,
+            'typeId' => $entryType->id,
+            'siteId' => $siteModel?->id ?? Craft::$app->getSites()->getPrimarySite()->id, // @phpstan-ignore nullsafe.neverNull
+        ]));
 
-            $attributes = [
-                'type' => Entry::class,
-                'sectionId' => $sectionModel->id,
-                'typeId' => $entryType->id,
-                'title' => $title,
-                'slug' => $slug,
-                'authorId' => $this->authorId(),
-            ];
+        $attributes = [
+            'type' => Entry::class,
+            'sectionId' => $sectionModel->id,
+            'typeId' => $entryType->id,
+            'title' => $title,
+            'slug' => $slug,
+            'authorId' => $this->authorId(),
+        ];
 
-            $parentId = $this->parentId($parent, $section, $site);
-            if ($parentId !== null) {
-                $attributes['parentId'] = $parentId;
-            }
+        $parentId = $this->parentId($parent, $section, $site);
+        if ($parentId !== null) {
+            $attributes['parentId'] = $parentId;
+        }
 
-            $attributes += WriteParams::schedule($postDate, $expiryDate);
+        $attributes += WriteParams::schedule($postDate, $expiryDate);
 
-            $result = $this->writer->create($attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
+        $result = $this->writer->create($attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
 
-            if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
-                ResourceChangeNotifier::notifyEntry($context, $result->elementId);
-            }
+        if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
+            ResourceChangeNotifier::notifyEntry($context, $result->elementId);
+        }
 
-            return $result->isFailure()
-                ? ['success' => false] + $result->toArray()
-                : Response::success($result->toArray());
-        }, $context);
+        return $result->isFailure()
+            ? ['success' => false] + $result->toArray()
+            : Response::success($result->toArray());
     }
 
     #[McpTool(
@@ -263,37 +254,35 @@ class EntryTools {
         ?string $expectedDateUpdated = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $title, $slug, $status, $fields, $mode, $parent, $postDate, $expiryDate, $expectedDateUpdated, $context): array {
-            $entry = $this->find($id, null, null, $site);
-            Authorization::assertCanSave($entry);
-            $this->assertUnchanged($entry, $expectedDateUpdated);
+        $entry = $this->find($id, null, null, $site);
+        Authorization::assertCanSave($entry);
+        $this->assertUnchanged($entry, $expectedDateUpdated);
 
-            $attributes = array_filter([
-                'title' => $title,
-                'slug' => $slug,
-            ], static fn (?string $v): bool => $v !== null);
+        $attributes = array_filter([
+            'title' => $title,
+            'slug' => $slug,
+        ], static fn (?string $v): bool => $v !== null);
 
-            if ($status !== null) {
-                $attributes['enabled'] = in_array($status, ['live', 'enabled'], true);
-            }
+        if ($status !== null) {
+            $attributes['enabled'] = in_array($status, ['live', 'enabled'], true);
+        }
 
-            $parentId = $this->parentId($parent, $entry->getSection()?->handle, $site);
-            if ($parentId !== null) {
-                $attributes['parentId'] = $parentId;
-            }
+        $parentId = $this->parentId($parent, $entry->getSection()?->handle, $site);
+        if ($parentId !== null) {
+            $attributes['parentId'] = $parentId;
+        }
 
-            $attributes += WriteParams::schedule($postDate, $expiryDate);
+        $attributes += WriteParams::schedule($postDate, $expiryDate);
 
-            $result = $this->writer->update($entry, $attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
+        $result = $this->writer->update($entry, $attributes, WriteParams::fieldsPayload($fields), WriteParams::mode($mode), $site);
 
-            if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
-                ResourceChangeNotifier::notifyEntry($context, $result->elementId);
-            }
+        if (!$result->isFailure() && $result->state === WriteMode::Live && $result->elementId !== null) {
+            ResourceChangeNotifier::notifyEntry($context, $result->elementId);
+        }
 
-            return $result->isFailure()
-                ? ['success' => false] + $result->toArray()
-                : Response::success($result->toArray());
-        }, $context);
+        return $result->isFailure()
+            ? ['success' => false] + $result->toArray()
+            : Response::success($result->toArray());
     }
 
     #[McpTool(
@@ -316,34 +305,32 @@ class EntryTools {
         // inside a matrix, which is as deep as the payload contract goes.
         $depth = max(0, min($depth, self::MAX_SCHEMA_DEPTH));
 
-        return SafeExecution::run(function () use ($section, $type, $depth, $example): array {
-            $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
-                ?? throw new ToolCallException("Section '{$section}' not found");
-            $entryType = $this->entryType($sectionModel, $type ?? $sectionModel->getEntryTypes()[0]->handle);
+        $sectionModel = Craft::$app->getEntries()->getSectionByHandle($section)
+            ?? throw new ToolCallException("Section '{$section}' not found");
+        $entryType = $this->entryType($sectionModel, $type ?? $sectionModel->getEntryTypes()[0]->handle);
 
-            Craft::$app->getFields()->refreshFields();
+        Craft::$app->getFields()->refreshFields();
 
-            $describer = new Describer();
-            $meta = new Meta();
-            $layout = $entryType->getFieldLayout();
+        $describer = new Describer();
+        $meta = new Meta();
+        $layout = $entryType->getFieldLayout();
 
-            $schema = [
-                'section' => $sectionModel->handle,
-                'type' => $entryType->handle,
-                'flags' => $meta->entryFlags($entryType),
-                'meta' => $meta->writable(new Entry(['typeId' => $entryType->id])),
-                'natives' => $describer->natives($layout),
-                'fields' => $describer->describe($layout, $depth),
-            ];
+        $schema = [
+            'section' => $sectionModel->handle,
+            'type' => $entryType->handle,
+            'flags' => $meta->entryFlags($entryType),
+            'meta' => $meta->writable(new Entry(['typeId' => $entryType->id])),
+            'natives' => $describer->natives($layout),
+            'fields' => $describer->describe($layout, $depth),
+        ];
 
-            if ($example !== null) {
-                $entry = $this->example($example, $sectionModel->handle);
-                Authorization::assertCanView($entry);
-                $schema['example'] = $this->reader->read($entry);
-            }
+        if ($example !== null) {
+            $entry = $this->example($example, $sectionModel->handle);
+            Authorization::assertCanView($entry);
+            $schema['example'] = $this->reader->read($entry);
+        }
 
-            return $schema;
-        });
+        return $schema;
     }
 
     private function find(?int $id, ?string $slug, ?string $section, ?string $site): Entry {

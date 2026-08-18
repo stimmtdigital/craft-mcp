@@ -25,7 +25,6 @@ use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\NestedPosition;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
 use stimmt\craft\Mcp\support\WriteParams;
 use Throwable;
@@ -67,48 +66,46 @@ class NestedEntryTools {
         ?int $position = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($owner, $field, $type, $title, $fields, $site, $mode, $position, $context): array {
-            $this->assertPosition($position);
-            $payload = WriteParams::fieldsPayload($fields);
-            $writeMode = WriteParams::mode($mode);
+        $this->assertPosition($position);
+        $payload = WriteParams::fieldsPayload($fields);
+        $writeMode = WriteParams::mode($mode);
 
-            $ownerEntry = $this->ownerFor($owner, $site);
-            Authorization::assertCanSave($ownerEntry->getCanonical());
+        $ownerEntry = $this->ownerFor($owner, $site);
+        Authorization::assertCanSave($ownerEntry->getCanonical());
 
-            $matrix = $this->matrixField($ownerEntry->getFieldLayout(), $field);
-            $entryType = $this->blockType($matrix, $type);
-            $target = $this->target($ownerEntry, $writeMode);
-            // Only a draft this call opened is ours to clean up; an owner
-            // draft the caller passed in belongs to them and their earlier
-            // blocks live on it.
-            $opened = $target === $ownerEntry ? null : $target;
+        $matrix = $this->matrixField($ownerEntry->getFieldLayout(), $field);
+        $entryType = $this->blockType($matrix, $type);
+        $target = $this->target($ownerEntry, $writeMode);
+        // Only a draft this call opened is ours to clean up; an owner
+        // draft the caller passed in belongs to them and their earlier
+        // blocks live on it.
+        $opened = $target === $ownerEntry ? null : $target;
 
-            $result = $this->writer->create($this->blockAttributes($entryType, $matrix, $target, $title), $payload, WriteMode::Live, $site);
-            if ($result->isFailure()) {
-                $this->discard($opened, null);
+        $result = $this->writer->create($this->blockAttributes($entryType, $matrix, $target, $title), $payload, WriteMode::Live, $site);
+        if ($result->isFailure()) {
+            $this->discard($opened, null);
 
-                return ['success' => false] + $result->toArray();
-            }
+            return ['success' => false] + $result->toArray();
+        }
 
-            $blockId = (int) $result->elementId;
+        $blockId = (int) $result->elementId;
 
-            try {
-                $taken = $position === null
-                    ? $this->endPosition($target, $matrix)
-                    : NestedPosition::move($target, $matrix, $blockId, $position);
-            } catch (Throwable $e) {
-                // The block saved but placing it did not: without this the call
-                // reports failure while the block sits on the target, so a retry
-                // adds a second copy.
-                $this->discard($opened, $blockId);
+        try {
+            $taken = $position === null
+                ? $this->endPosition($target, $matrix)
+                : NestedPosition::move($target, $matrix, $blockId, $position);
+        } catch (Throwable $e) {
+            // The block saved but placing it did not: without this the call
+            // reports failure while the block sits on the target, so a retry
+            // adds a second copy.
+            $this->discard($opened, $blockId);
 
-                throw $e;
-            }
+            throw $e;
+        }
 
-            $this->notifyOwner($context, $target);
+        $this->notifyOwner($context, $target);
 
-            return Response::success($this->blockResponse(Result::ACTION_CREATED, $blockId, $target, $taken, $result->warnings));
-        }, $context);
+        return Response::success($this->blockResponse(Result::ACTION_CREATED, $blockId, $target, $taken, $result->warnings));
     }
 
     #[McpTool(
@@ -124,22 +121,20 @@ class NestedEntryTools {
         ?string $mode = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $position, $site, $mode, $context): array {
-            $this->assertPosition($position);
-            $writeMode = WriteParams::mode($mode);
+        $this->assertPosition($position);
+        $writeMode = WriteParams::mode($mode);
 
-            $block = $this->blockFor($id, $site);
-            $matrix = $this->matrixFieldOf($block);
-            $ownerEntry = $this->ownerFor((int) $block->getOwnerId(), $site);
-            Authorization::assertCanSave($ownerEntry->getCanonical());
+        $block = $this->blockFor($id, $site);
+        $matrix = $this->matrixFieldOf($block);
+        $ownerEntry = $this->ownerFor((int) $block->getOwnerId(), $site);
+        Authorization::assertCanSave($ownerEntry->getCanonical());
 
-            $target = $this->target($ownerEntry, $writeMode);
-            $taken = NestedPosition::move($target, $matrix, (int) $block->id, $position);
+        $target = $this->target($ownerEntry, $writeMode);
+        $taken = NestedPosition::move($target, $matrix, (int) $block->id, $position);
 
-            $this->notifyOwner($context, $target);
+        $this->notifyOwner($context, $target);
 
-            return Response::success($this->blockResponse(self::ACTION_MOVED, (int) $block->id, $target, $taken));
-        }, $context);
+        return Response::success($this->blockResponse(self::ACTION_MOVED, (int) $block->id, $target, $taken));
     }
 
     private function assertPosition(?int $position): void {

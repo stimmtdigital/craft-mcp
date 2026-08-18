@@ -19,7 +19,6 @@ use ReflectionClass;
 use stimmt\craft\Mcp\attributes\McpResourceMeta;
 use stimmt\craft\Mcp\enums\ResourceCategory;
 use stimmt\craft\Mcp\support\Authorization;
-use stimmt\craft\Mcp\support\SafeResourceExecution;
 
 /**
  * MCP resources for Craft CMS configuration information.
@@ -40,40 +39,38 @@ final class ConfigResources {
     )]
     #[McpResourceMeta(category: ResourceCategory::CONFIG)]
     public function generalConfig(): array {
-        return SafeResourceExecution::run(function (): array {
-            Authorization::assertPrivileged('craft://config/general');
+        Authorization::assertPrivileged('craft://config/general');
 
-            /** @var Config $configService */
-            $configService = Craft::$app->getConfig();
+        /** @var Config $configService */
+        $configService = Craft::$app->getConfig();
 
-            /** @var GeneralConfig $config */
-            $config = $configService->getGeneral();
+        /** @var GeneralConfig $config */
+        $config = $configService->getGeneral();
 
-            // Only expose safe configuration values
-            return [
-                'general' => [
-                    'devMode' => $config->devMode,
-                    'allowAdminChanges' => $config->allowAdminChanges,
-                    'allowUpdates' => $config->allowUpdates,
-                    'cpTrigger' => $config->cpTrigger,
-                    'defaultWeekStartDay' => $config->defaultWeekStartDay,
-                    'enableGql' => $config->enableGql,
-                    'errorTemplatePrefix' => $config->errorTemplatePrefix,
-                    'generateTransformsBeforePageLoad' => $config->generateTransformsBeforePageLoad,
-                    'headlessMode' => $config->headlessMode,
-                    'isSystemLive' => $config->isSystemLive,
-                    'maxRevisions' => $config->maxRevisions,
-                    'omitScriptNameInUrls' => $config->omitScriptNameInUrls,
-                    'pageTrigger' => $config->pageTrigger,
-                    'runQueueAutomatically' => $config->runQueueAutomatically,
-                    'sendPoweredByHeader' => $config->sendPoweredByHeader,
-                    'timezone' => $config->timezone,
-                    'translationDebugOutput' => $config->translationDebugOutput,
-                    'useEmailAsUsername' => $config->useEmailAsUsername,
-                    'usePathInfo' => $config->usePathInfo,
-                ],
-            ];
-        });
+        // Only expose safe configuration values
+        return [
+            'general' => [
+                'devMode' => $config->devMode,
+                'allowAdminChanges' => $config->allowAdminChanges,
+                'allowUpdates' => $config->allowUpdates,
+                'cpTrigger' => $config->cpTrigger,
+                'defaultWeekStartDay' => $config->defaultWeekStartDay,
+                'enableGql' => $config->enableGql,
+                'errorTemplatePrefix' => $config->errorTemplatePrefix,
+                'generateTransformsBeforePageLoad' => $config->generateTransformsBeforePageLoad,
+                'headlessMode' => $config->headlessMode,
+                'isSystemLive' => $config->isSystemLive,
+                'maxRevisions' => $config->maxRevisions,
+                'omitScriptNameInUrls' => $config->omitScriptNameInUrls,
+                'pageTrigger' => $config->pageTrigger,
+                'runQueueAutomatically' => $config->runQueueAutomatically,
+                'sendPoweredByHeader' => $config->sendPoweredByHeader,
+                'timezone' => $config->timezone,
+                'translationDebugOutput' => $config->translationDebugOutput,
+                'useEmailAsUsername' => $config->useEmailAsUsername,
+                'usePathInfo' => $config->usePathInfo,
+            ],
+        ];
     }
 
     /**
@@ -89,17 +86,15 @@ final class ConfigResources {
     )]
     #[McpResourceMeta(category: ResourceCategory::CONFIG)]
     public function routesConfig(): array {
-        return SafeResourceExecution::run(function (): array {
-            Authorization::assertPrivileged('craft://config/routes');
+        Authorization::assertPrivileged('craft://config/routes');
 
-            /** @var Routes $routesService */
-            $routesService = Craft::$app->getRoutes();
+        /** @var Routes $routesService */
+        $routesService = Craft::$app->getRoutes();
 
-            /** @var array<string, string> $routes */
-            $routes = $routesService->getProjectConfigRoutes();
+        /** @var array<string, string> $routes */
+        $routes = $routesService->getProjectConfigRoutes();
 
-            return ['routes' => $routes];
-        });
+        return ['routes' => $routes];
     }
 
     /**
@@ -115,19 +110,17 @@ final class ConfigResources {
     )]
     #[McpResourceMeta(category: ResourceCategory::CONFIG)]
     public function sitesConfig(): array {
-        return SafeResourceExecution::run(function (): array {
-            Authorization::assertPrivileged('craft://config/sites');
+        Authorization::assertPrivileged('craft://config/sites');
 
-            /** @var Sites $sitesService */
-            $sitesService = Craft::$app->getSites();
+        /** @var Sites $sitesService */
+        $sitesService = Craft::$app->getSites();
 
-            /** @var Site[] $sites */
-            $sites = $sitesService->getAllSites();
+        /** @var Site[] $sites */
+        $sites = $sitesService->getAllSites();
 
-            return [
-                'sites' => array_values(array_map($this->buildSiteInfo(...), $sites)),
-            ];
-        });
+        return [
+            'sites' => array_values(array_map($this->buildSiteInfo(...), $sites)),
+        ];
     }
 
     /**
@@ -143,19 +136,17 @@ final class ConfigResources {
     )]
     #[McpResourceMeta(category: ResourceCategory::CONFIG)]
     public function volumesConfig(): array {
-        return SafeResourceExecution::run(function (): array {
-            Authorization::assertPrivileged('craft://config/volumes');
+        Authorization::assertPrivileged('craft://config/volumes');
 
-            /** @var Volumes $volumesService */
-            $volumesService = Craft::$app->getVolumes();
+        /** @var Volumes $volumesService */
+        $volumesService = Craft::$app->getVolumes();
 
-            /** @var Volume[] $volumes */
-            $volumes = $volumesService->getAllVolumes();
+        /** @var Volume[] $volumes */
+        $volumes = $volumesService->getAllVolumes();
 
-            return [
-                'volumes' => array_values(array_map($this->buildVolumeInfo(...), $volumes)),
-            ];
-        });
+        return [
+            'volumes' => array_values(array_map($this->buildVolumeInfo(...), $volumes)),
+        ];
     }
 
     /**
@@ -171,28 +162,26 @@ final class ConfigResources {
     )]
     #[McpResourceMeta(category: ResourceCategory::CONFIG)]
     public function pluginsConfig(): array {
-        return SafeResourceExecution::run(function (): array {
-            Authorization::assertPrivileged('craft://config/plugins');
+        Authorization::assertPrivileged('craft://config/plugins');
 
-            /** @var Plugins $pluginsService */
-            $pluginsService = Craft::$app->getPlugins();
+        /** @var Plugins $pluginsService */
+        $pluginsService = Craft::$app->getPlugins();
 
-            /** @var array<string, array{name: string, version: string, isInstalled: bool, isEnabled: bool, developer?: string}> $plugins */
-            $plugins = $pluginsService->getAllPluginInfo();
+        /** @var array<string, array{name: string, version: string, isInstalled: bool, isEnabled: bool, developer?: string}> $plugins */
+        $plugins = $pluginsService->getAllPluginInfo();
 
-            $result = [];
-            foreach ($plugins as $handle => $info) {
-                $result[] = [
-                    'handle' => $handle,
-                    'name' => $info['name'],
-                    'version' => $info['version'],
-                    'enabled' => $info['isInstalled'] && $info['isEnabled'],
-                    'developer' => $info['developer'] ?? null,
-                ];
-            }
+        $result = [];
+        foreach ($plugins as $handle => $info) {
+            $result[] = [
+                'handle' => $handle,
+                'name' => $info['name'],
+                'version' => $info['version'],
+                'enabled' => $info['isInstalled'] && $info['isEnabled'],
+                'developer' => $info['developer'] ?? null,
+            ];
+        }
 
-            return ['plugins' => $result];
-        });
+        return ['plugins' => $result];
     }
 
     /**

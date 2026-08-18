@@ -16,7 +16,6 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
-use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\Serializer;
 
 /**
@@ -43,43 +42,41 @@ class AssetTools {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($volume, $folderId, $kind, $filename, $limit, $offset): array {
-            $query = Asset::find()
-                ->limit($limit)
-                ->offset($offset);
+        $query = Asset::find()
+            ->limit($limit)
+            ->offset($offset);
 
-            if ($volume !== null) {
-                $query->volume($volume);
-            }
+        if ($volume !== null) {
+            $query->volume($volume);
+        }
 
-            if ($folderId !== null) {
-                $query->folderId($folderId);
-            }
+        if ($folderId !== null) {
+            $query->folderId($folderId);
+        }
 
-            if ($kind !== null) {
-                $query->kind($kind);
-            }
+        if ($kind !== null) {
+            $query->kind($kind);
+        }
 
-            if ($filename !== null) {
-                $query->filename('*' . $filename . '*');
-            }
+        if ($filename !== null) {
+            $query->filename('*' . $filename . '*');
+        }
 
-            Authorization::scopeQuery($query);
-            $assets = $query->all();
-            $results = [];
+        Authorization::scopeQuery($query);
+        $assets = $query->all();
+        $results = [];
 
-            foreach ($assets as $asset) {
-                $results[] = $this->serializeAsset($asset);
-            }
+        foreach ($assets as $asset) {
+            $results[] = $this->serializeAsset($asset);
+        }
 
-            return [
-                'count' => count($results),
-                'total' => $query->count(),
-                'limit' => $limit,
-                'offset' => $offset,
-                'assets' => $results,
-            ];
-        });
+        return [
+            'count' => count($results),
+            'total' => $query->count(),
+            'limit' => $limit,
+            'offset' => $offset,
+            'assets' => $results,
+        ];
     }
 
     /**
@@ -92,20 +89,18 @@ class AssetTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function getAsset(int $id, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id): array {
-            $asset = Asset::find()->id($id)->one();
+        $asset = Asset::find()->id($id)->one();
 
-            if ($asset === null) {
-                throw new ToolCallException("Asset with ID {$id} not found");
-            }
+        if ($asset === null) {
+            throw new ToolCallException("Asset with ID {$id} not found");
+        }
 
-            Authorization::assertCanView($asset);
+        Authorization::assertCanView($asset);
 
-            return [
-                'found' => true,
-                'asset' => $this->serializeAsset($asset, true),
-            ];
-        });
+        return [
+            'found' => true,
+            'asset' => $this->serializeAsset($asset, true),
+        ];
     }
 
     /**
@@ -118,26 +113,24 @@ class AssetTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listVolumes(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $volumes = Craft::$app->getVolumes()->getAllVolumes();
-            $results = [];
+        $volumes = Craft::$app->getVolumes()->getAllVolumes();
+        $results = [];
 
-            foreach ($volumes as $volume) {
-                $results[] = [
-                    'id' => $volume->id,
-                    'handle' => $volume->handle,
-                    'name' => $volume->name,
-                    'type' => $volume->getFs()::class,
-                    'hasUrls' => $volume->getFs()->hasUrls,
-                    'rootUrl' => $volume->getFs()->hasUrls ? $volume->getFs()->getRootUrl() : null,
-                ];
-            }
-
-            return [
-                'count' => count($results),
-                'volumes' => $results,
+        foreach ($volumes as $volume) {
+            $results[] = [
+                'id' => $volume->id,
+                'handle' => $volume->handle,
+                'name' => $volume->name,
+                'type' => $volume->getFs()::class,
+                'hasUrls' => $volume->getFs()->hasUrls,
+                'rootUrl' => $volume->getFs()->hasUrls ? $volume->getFs()->getRootUrl() : null,
             ];
-        });
+        }
+
+        return [
+            'count' => count($results),
+            'volumes' => $results,
+        ];
     }
 
     /**
@@ -150,30 +143,28 @@ class AssetTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listAssetFolders(?string $volume = null, ?int $parentId = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($volume, $parentId): array {
-            $assetsService = Craft::$app->getAssets();
+        $assetsService = Craft::$app->getAssets();
 
-            $folders = $this->getAssetFolders($assetsService, $volume, $parentId);
-            if ($folders === null) {
-                throw new ToolCallException("Volume '{$volume}' not found");
-            }
+        $folders = $this->getAssetFolders($assetsService, $volume, $parentId);
+        if ($folders === null) {
+            throw new ToolCallException("Volume '{$volume}' not found");
+        }
 
-            $results = [];
-            foreach ($folders as $folder) {
-                $results[] = [
-                    'id' => $folder->id,
-                    'name' => $folder->name,
-                    'path' => $folder->path,
-                    'volumeId' => $folder->volumeId,
-                    'parentId' => $folder->parentId,
-                ];
-            }
-
-            return [
-                'count' => count($results),
-                'folders' => $results,
+        $results = [];
+        foreach ($folders as $folder) {
+            $results[] = [
+                'id' => $folder->id,
+                'name' => $folder->name,
+                'path' => $folder->path,
+                'volumeId' => $folder->volumeId,
+                'parentId' => $folder->parentId,
             ];
-        });
+        }
+
+        return [
+            'count' => count($results),
+            'folders' => $results,
+        ];
     }
 
     /**

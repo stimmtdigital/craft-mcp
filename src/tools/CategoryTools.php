@@ -12,7 +12,6 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * Category MCP tools for Craft CMS.
@@ -30,19 +29,17 @@ class CategoryTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listCategories(?string $group = null, int $limit = 100, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($group, $limit): array {
-            $query = Category::find()->limit($limit);
+        $query = Category::find()->limit($limit);
 
-            if ($group !== null) {
-                $query->group($group);
-            }
+        if ($group !== null) {
+            $query->group($group);
+        }
 
-            Authorization::scopeQuery($query);
-            $categories = $query->all();
-            $results = array_map($this->serializeCategory(...), $categories);
+        Authorization::scopeQuery($query);
+        $categories = $query->all();
+        $results = array_map($this->serializeCategory(...), $categories);
 
-            return Response::list('categories', $results);
-        });
+        return Response::list('categories', $results);
     }
 
     /**

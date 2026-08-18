@@ -15,7 +15,6 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\contracts\ConditionalProvider;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * Commerce tools for Craft CMS.
@@ -72,28 +71,26 @@ class CommerceTools implements ConditionalProvider {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($type, $limit, $offset): array {
-            $this->assertCommerceAvailable();
+        $this->assertCommerceAvailable();
 
-            $query = Product::find();
+        $query = Product::find();
 
-            if ($type !== null) {
-                $query->type($type);
-            }
+        if ($type !== null) {
+            $query->type($type);
+        }
 
-            $query->limit($limit)->offset($offset);
-            $products = $query->all();
+        $query->limit($limit)->offset($offset);
+        $products = $query->all();
 
-            $result = array_map(
-                $this->serializeProductSummary(...),
-                $products,
-            );
+        $result = array_map(
+            $this->serializeProductSummary(...),
+            $products,
+        );
 
-            return [
-                'count' => count($result),
-                'products' => $result,
-            ];
-        });
+        return [
+            'count' => count($result),
+            'products' => $result,
+        ];
     }
 
     /**
@@ -106,53 +103,51 @@ class CommerceTools implements ConditionalProvider {
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function getProduct(int $id, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id): array {
-            $this->assertCommerceAvailable();
+        $this->assertCommerceAvailable();
 
-            $commerce = Commerce::getInstance();
-            $product = $commerce->getProducts()->getProductById($id);
+        $commerce = Commerce::getInstance();
+        $product = $commerce->getProducts()->getProductById($id);
 
-            if ($product === null) {
-                throw new ToolCallException("Product with ID {$id} not found");
-            }
+        if ($product === null) {
+            throw new ToolCallException("Product with ID {$id} not found");
+        }
 
-            $variants = [];
-            foreach ($product->getVariants() as $variant) {
-                $variants[] = [
-                    'id' => $variant->id,
-                    'sku' => $variant->sku,
-                    'title' => $variant->title,
-                    'price' => $variant->price,
-                    'salePrice' => $variant->getSalePrice(),
-                    'stock' => $variant->stock,
-                    'hasUnlimitedStock' => $variant->hasUnlimitedStock,
-                    'minQty' => $variant->minQty,
-                    'maxQty' => $variant->maxQty,
-                    'isDefault' => $variant->isDefault,
-                    'weight' => $variant->weight,
-                    'length' => $variant->length,
-                    'width' => $variant->width,
-                    'height' => $variant->height,
-                ];
-            }
-
-            return [
-                'success' => true,
-                'product' => [
-                    'id' => $product->id,
-                    'title' => $product->title,
-                    'slug' => $product->slug,
-                    'typeHandle' => $product->getType()?->handle,
-                    'status' => $product->getStatus(),
-                    'defaultVariantId' => $product->defaultVariantId,
-                    'variants' => $variants,
-                    'dateCreated' => $product->dateCreated?->format('Y-m-d H:i:s'),
-                    'dateUpdated' => $product->dateUpdated?->format('Y-m-d H:i:s'),
-                    'postDate' => $product->postDate?->format('Y-m-d H:i:s'),
-                    'expiryDate' => $product->expiryDate?->format('Y-m-d H:i:s'),
-                ],
+        $variants = [];
+        foreach ($product->getVariants() as $variant) {
+            $variants[] = [
+                'id' => $variant->id,
+                'sku' => $variant->sku,
+                'title' => $variant->title,
+                'price' => $variant->price,
+                'salePrice' => $variant->getSalePrice(),
+                'stock' => $variant->stock,
+                'hasUnlimitedStock' => $variant->hasUnlimitedStock,
+                'minQty' => $variant->minQty,
+                'maxQty' => $variant->maxQty,
+                'isDefault' => $variant->isDefault,
+                'weight' => $variant->weight,
+                'length' => $variant->length,
+                'width' => $variant->width,
+                'height' => $variant->height,
             ];
-        });
+        }
+
+        return [
+            'success' => true,
+            'product' => [
+                'id' => $product->id,
+                'title' => $product->title,
+                'slug' => $product->slug,
+                'typeHandle' => $product->getType()?->handle,
+                'status' => $product->getStatus(),
+                'defaultVariantId' => $product->defaultVariantId,
+                'variants' => $variants,
+                'dateCreated' => $product->dateCreated?->format('Y-m-d H:i:s'),
+                'dateUpdated' => $product->dateUpdated?->format('Y-m-d H:i:s'),
+                'postDate' => $product->postDate?->format('Y-m-d H:i:s'),
+                'expiryDate' => $product->expiryDate?->format('Y-m-d H:i:s'),
+            ],
+        ];
     }
 
     /**
@@ -170,44 +165,42 @@ class CommerceTools implements ConditionalProvider {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($status, $limit, $offset): array {
-            $this->assertCommerceAvailable();
+        $this->assertCommerceAvailable();
 
-            $query = Order::find();
+        $query = Order::find();
 
-            // Only completed orders by default
-            $query->isCompleted(true);
+        // Only completed orders by default
+        $query->isCompleted(true);
 
-            if ($status !== null) {
-                $query->orderStatus($status);
-            }
+        if ($status !== null) {
+            $query->orderStatus($status);
+        }
 
-            $query->limit($limit)->offset($offset)->orderBy('dateOrdered DESC');
-            $orders = $query->all();
+        $query->limit($limit)->offset($offset)->orderBy('dateOrdered DESC');
+        $orders = $query->all();
 
-            $result = [];
-            foreach ($orders as $order) {
-                $result[] = [
-                    'id' => $order->id,
-                    'number' => $order->number,
-                    'shortNumber' => $order->shortNumber,
-                    'reference' => $order->reference,
-                    'email' => $order->email,
-                    'status' => $order->getOrderStatus()?->handle,
-                    'totalPrice' => $order->totalPrice,
-                    'totalPaid' => $order->totalPaid,
-                    'currency' => $order->currency,
-                    'itemCount' => count($order->getLineItems()),
-                    'dateOrdered' => $order->dateOrdered?->format('Y-m-d H:i:s'),
-                    'dateCreated' => $order->dateCreated?->format('Y-m-d H:i:s'),
-                ];
-            }
-
-            return [
-                'count' => count($result),
-                'orders' => $result,
+        $result = [];
+        foreach ($orders as $order) {
+            $result[] = [
+                'id' => $order->id,
+                'number' => $order->number,
+                'shortNumber' => $order->shortNumber,
+                'reference' => $order->reference,
+                'email' => $order->email,
+                'status' => $order->getOrderStatus()?->handle,
+                'totalPrice' => $order->totalPrice,
+                'totalPaid' => $order->totalPaid,
+                'currency' => $order->currency,
+                'itemCount' => count($order->getLineItems()),
+                'dateOrdered' => $order->dateOrdered?->format('Y-m-d H:i:s'),
+                'dateCreated' => $order->dateCreated?->format('Y-m-d H:i:s'),
             ];
-        });
+        }
+
+        return [
+            'count' => count($result),
+            'orders' => $result,
+        ];
     }
 
     /**
@@ -220,80 +213,78 @@ class CommerceTools implements ConditionalProvider {
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE, privileged: true)]
     public function getOrder(?int $id = null, ?string $number = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $number): array {
-            $this->assertCommerceAvailable();
+        $this->assertCommerceAvailable();
 
-            if ($id === null && $number === null) {
-                throw new ToolCallException('Either id or number must be provided');
-            }
+        if ($id === null && $number === null) {
+            throw new ToolCallException('Either id or number must be provided');
+        }
 
-            $commerce = Commerce::getInstance();
+        $commerce = Commerce::getInstance();
 
-            $order = $id !== null
-                ? $commerce->getOrders()->getOrderById($id)
-                : $commerce->getOrders()->getOrderByNumber($number);
+        $order = $id !== null
+            ? $commerce->getOrders()->getOrderById($id)
+            : $commerce->getOrders()->getOrderByNumber($number);
 
-            if ($order === null) {
-                $identifier = $id !== null ? "ID {$id}" : "number '{$number}'";
+        if ($order === null) {
+            $identifier = $id !== null ? "ID {$id}" : "number '{$number}'";
 
-                throw new ToolCallException("Order with {$identifier} not found");
-            }
+            throw new ToolCallException("Order with {$identifier} not found");
+        }
 
-            // Get line items
-            $lineItems = [];
-            foreach ($order->getLineItems() as $item) {
-                $lineItems[] = [
-                    'id' => $item->id,
-                    'description' => $item->description,
-                    'sku' => $item->sku,
-                    'qty' => $item->qty,
-                    'price' => $item->price,
-                    'salePrice' => $item->salePrice,
-                    'total' => $item->total,
-                ];
-            }
-
-            // Get addresses
-            $billingAddress = $order->getBillingAddress();
-            $shippingAddress = $order->getShippingAddress();
-
-            return [
-                'success' => true,
-                'order' => [
-                    'id' => $order->id,
-                    'number' => $order->number,
-                    'shortNumber' => $order->shortNumber,
-                    'reference' => $order->reference,
-                    'email' => $order->email,
-                    'status' => $order->getOrderStatus()?->handle,
-                    'isCompleted' => $order->isCompleted,
-                    'totalPrice' => $order->totalPrice,
-                    'totalPaid' => $order->totalPaid,
-                    'totalTax' => $order->totalTax,
-                    'totalShippingCost' => $order->totalShippingCost,
-                    'totalDiscount' => $order->totalDiscount,
-                    'currency' => $order->currency,
-                    'paymentCurrency' => $order->paymentCurrency,
-                    'lineItems' => $lineItems,
-                    'billingAddress' => $billingAddress ? [
-                        'fullName' => $billingAddress->fullName,
-                        'addressLine1' => $billingAddress->addressLine1,
-                        'locality' => $billingAddress->locality,
-                        'countryCode' => $billingAddress->countryCode,
-                    ] : null,
-                    'shippingAddress' => $shippingAddress ? [
-                        'fullName' => $shippingAddress->fullName,
-                        'addressLine1' => $shippingAddress->addressLine1,
-                        'locality' => $shippingAddress->locality,
-                        'countryCode' => $shippingAddress->countryCode,
-                    ] : null,
-                    'dateOrdered' => $order->dateOrdered?->format('Y-m-d H:i:s'),
-                    'datePaid' => $order->datePaid?->format('Y-m-d H:i:s'),
-                    'dateCreated' => $order->dateCreated?->format('Y-m-d H:i:s'),
-                    'dateUpdated' => $order->dateUpdated?->format('Y-m-d H:i:s'),
-                ],
+        // Get line items
+        $lineItems = [];
+        foreach ($order->getLineItems() as $item) {
+            $lineItems[] = [
+                'id' => $item->id,
+                'description' => $item->description,
+                'sku' => $item->sku,
+                'qty' => $item->qty,
+                'price' => $item->price,
+                'salePrice' => $item->salePrice,
+                'total' => $item->total,
             ];
-        });
+        }
+
+        // Get addresses
+        $billingAddress = $order->getBillingAddress();
+        $shippingAddress = $order->getShippingAddress();
+
+        return [
+            'success' => true,
+            'order' => [
+                'id' => $order->id,
+                'number' => $order->number,
+                'shortNumber' => $order->shortNumber,
+                'reference' => $order->reference,
+                'email' => $order->email,
+                'status' => $order->getOrderStatus()?->handle,
+                'isCompleted' => $order->isCompleted,
+                'totalPrice' => $order->totalPrice,
+                'totalPaid' => $order->totalPaid,
+                'totalTax' => $order->totalTax,
+                'totalShippingCost' => $order->totalShippingCost,
+                'totalDiscount' => $order->totalDiscount,
+                'currency' => $order->currency,
+                'paymentCurrency' => $order->paymentCurrency,
+                'lineItems' => $lineItems,
+                'billingAddress' => $billingAddress ? [
+                    'fullName' => $billingAddress->fullName,
+                    'addressLine1' => $billingAddress->addressLine1,
+                    'locality' => $billingAddress->locality,
+                    'countryCode' => $billingAddress->countryCode,
+                ] : null,
+                'shippingAddress' => $shippingAddress ? [
+                    'fullName' => $shippingAddress->fullName,
+                    'addressLine1' => $shippingAddress->addressLine1,
+                    'locality' => $shippingAddress->locality,
+                    'countryCode' => $shippingAddress->countryCode,
+                ] : null,
+                'dateOrdered' => $order->dateOrdered?->format('Y-m-d H:i:s'),
+                'datePaid' => $order->datePaid?->format('Y-m-d H:i:s'),
+                'dateCreated' => $order->dateCreated?->format('Y-m-d H:i:s'),
+                'dateUpdated' => $order->dateUpdated?->format('Y-m-d H:i:s'),
+            ],
+        ];
     }
 
     /**
@@ -306,31 +297,29 @@ class CommerceTools implements ConditionalProvider {
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listOrderStatuses(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $this->assertCommerceAvailable();
+        $this->assertCommerceAvailable();
 
-            $commerce = Commerce::getInstance();
-            $statuses = $commerce->getOrderStatuses()->getAllOrderStatuses();
+        $commerce = Commerce::getInstance();
+        $statuses = $commerce->getOrderStatuses()->getAllOrderStatuses();
 
-            $result = [];
-            foreach ($statuses as $status) {
-                $result[] = [
-                    'id' => $status->id,
-                    'uid' => $status->uid,
-                    'name' => $status->name,
-                    'handle' => $status->handle,
-                    'color' => $status->color,
-                    'description' => $status->description,
-                    'default' => $status->default,
-                    'sortOrder' => $status->sortOrder,
-                ];
-            }
-
-            return [
-                'count' => count($result),
-                'statuses' => $result,
+        $result = [];
+        foreach ($statuses as $status) {
+            $result[] = [
+                'id' => $status->id,
+                'uid' => $status->uid,
+                'name' => $status->name,
+                'handle' => $status->handle,
+                'color' => $status->color,
+                'description' => $status->description,
+                'default' => $status->default,
+                'sortOrder' => $status->sortOrder,
             ];
-        });
+        }
+
+        return [
+            'count' => count($result),
+            'statuses' => $result,
+        ];
     }
 
     /**
@@ -343,30 +332,28 @@ class CommerceTools implements ConditionalProvider {
     )]
     #[McpToolMeta(category: ToolCategory::COMMERCE)]
     public function listProductTypes(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $this->assertCommerceAvailable();
+        $this->assertCommerceAvailable();
 
-            $commerce = Commerce::getInstance();
-            $types = $commerce->getProductTypes()->getAllProductTypes();
+        $commerce = Commerce::getInstance();
+        $types = $commerce->getProductTypes()->getAllProductTypes();
 
-            $result = [];
-            foreach ($types as $type) {
-                $result[] = [
-                    'id' => $type->id,
-                    'uid' => $type->uid,
-                    'name' => $type->name,
-                    'handle' => $type->handle,
-                    'hasDimensions' => $type->hasDimensions,
-                    'maxVariants' => $type->maxVariants,
-                    'hasVariantTitleField' => $type->hasVariantTitleField,
-                ];
-            }
-
-            return [
-                'count' => count($result),
-                'productTypes' => $result,
+        $result = [];
+        foreach ($types as $type) {
+            $result[] = [
+                'id' => $type->id,
+                'uid' => $type->uid,
+                'name' => $type->name,
+                'handle' => $type->handle,
+                'hasDimensions' => $type->hasDimensions,
+                'maxVariants' => $type->maxVariants,
+                'hasVariantTitleField' => $type->hasVariantTitleField,
             ];
-        });
+        }
+
+        return [
+            'count' => count($result),
+            'productTypes' => $result,
+        ];
     }
 
     /**

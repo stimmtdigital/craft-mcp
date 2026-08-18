@@ -12,7 +12,6 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * User MCP tools for Craft CMS.
@@ -36,25 +35,23 @@ class UserTools {
         int $limit = 50,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($group, $status, $email, $limit): array {
-            $query = User::find()->limit($limit);
+        $query = User::find()->limit($limit);
 
-            if ($group !== null) {
-                $query->group($group);
-            }
-            if ($status !== null) {
-                $query->status($status);
-            }
-            if ($email !== null) {
-                $query->email($email);
-            }
+        if ($group !== null) {
+            $query->group($group);
+        }
+        if ($status !== null) {
+            $query->status($status);
+        }
+        if ($email !== null) {
+            $query->email($email);
+        }
 
-            Authorization::scopeQuery($query);
-            $users = $query->all();
-            $results = array_map($this->serializeUser(...), $users);
+        Authorization::scopeQuery($query);
+        $users = $query->all();
+        $results = array_map($this->serializeUser(...), $users);
 
-            return Response::list('users', $results);
-        });
+        return Response::list('users', $results);
     }
 
     /**

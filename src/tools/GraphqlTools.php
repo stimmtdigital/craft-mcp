@@ -15,7 +15,6 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\SafeExecution;
 use Throwable;
 
 /**
@@ -34,29 +33,27 @@ class GraphqlTools {
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function listGraphqlSchemas(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $gql = Craft::$app->getGql();
-            $schemas = $gql->getSchemas();
+        $gql = Craft::$app->getGql();
+        $schemas = $gql->getSchemas();
 
-            $result = array_map(
-                $this->serializeSchema(...),
-                $schemas,
-            );
+        $result = array_map(
+            $this->serializeSchema(...),
+            $schemas,
+        );
 
-            // Also include the public schema if it exists
-            $publicSchema = $gql->getPublicSchema();
-            if ($publicSchema !== null && !$this->hasSchemaId($result, $publicSchema->id)) {
-                array_unshift($result, [
-                    ...$this->serializeSchema($publicSchema),
-                    'isPublic' => true,
-                ]);
-            }
+        // Also include the public schema if it exists
+        $publicSchema = $gql->getPublicSchema();
+        if ($publicSchema !== null && !$this->hasSchemaId($result, $publicSchema->id)) {
+            array_unshift($result, [
+                ...$this->serializeSchema($publicSchema),
+                'isPublic' => true,
+            ]);
+        }
 
-            return [
-                'count' => count($result),
-                'schemas' => $result,
-            ];
-        });
+        return [
+            'count' => count($result),
+            'schemas' => $result,
+        ];
     }
 
     /**
@@ -69,41 +66,39 @@ class GraphqlTools {
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function getGraphqlSchema(?int $id = null, ?string $uid = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $uid): array {
-            if ($id === null && $uid === null) {
-                throw new ToolCallException('Either id or uid must be provided');
-            }
+        if ($id === null && $uid === null) {
+            throw new ToolCallException('Either id or uid must be provided');
+        }
 
-            $gql = Craft::$app->getGql();
+        $gql = Craft::$app->getGql();
 
-            $schema = $id !== null
-                ? $gql->getSchemaById($id)
-                : $gql->getSchemaByUid($uid);
+        $schema = $id !== null
+            ? $gql->getSchemaById($id)
+            : $gql->getSchemaByUid($uid);
 
-            if ($schema === null) {
-                $identifier = $id !== null ? "ID {$id}" : "UID '{$uid}'";
+        if ($schema === null) {
+            $identifier = $id !== null ? "ID {$id}" : "UID '{$uid}'";
 
-                throw new ToolCallException("Schema with {$identifier} not found");
-            }
+            throw new ToolCallException("Schema with {$identifier} not found");
+        }
 
-            // Get the SDL for this schema
-            $sdl = null;
+        // Get the SDL for this schema
+        $sdl = null;
 
-            try {
-                $sdl = (string) $gql->getSchemaDef($schema);
-            } catch (Throwable) {
-                // SDL generation might fail for some schemas
-            }
+        try {
+            $sdl = (string) $gql->getSchemaDef($schema);
+        } catch (Throwable) {
+            // SDL generation might fail for some schemas
+        }
 
-            return [
-                'success' => true,
-                'schema' => [
-                    ...$this->serializeSchema($schema),
-                    'sdl' => $sdl,
-                    'sdlLength' => $sdl !== null ? strlen($sdl) : 0,
-                ],
-            ];
-        });
+        return [
+            'success' => true,
+            'schema' => [
+                ...$this->serializeSchema($schema),
+                'sdl' => $sdl,
+                'sdlLength' => $sdl !== null ? strlen($sdl) : 0,
+            ],
+        ];
     }
 
     /**
@@ -122,11 +117,9 @@ class GraphqlTools {
         ?int $schemaId = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($query, $variables, $operationName, $schemaId, $context): array {
-            $this->assertReadOnly($query);
+        $this->assertReadOnly($query);
 
-            return $this->execute($query, $variables, $operationName, $schemaId, $context);
-        });
+        return $this->execute($query, $variables, $operationName, $schemaId, $context);
     }
 
     /**
@@ -145,7 +138,7 @@ class GraphqlTools {
         ?int $schemaId = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(fn (): array => $this->execute($query, $variables, $operationName, $schemaId, $context));
+        return $this->execute($query, $variables, $operationName, $schemaId, $context);
     }
 
     /**
@@ -222,34 +215,32 @@ class GraphqlTools {
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL, privileged: true)]
     public function listGraphqlTokens(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $gql = Craft::$app->getGql();
-            $tokens = $gql->getTokens();
+        $gql = Craft::$app->getGql();
+        $tokens = $gql->getTokens();
 
-            $result = [];
-            foreach ($tokens as $token) {
-                // Get associated schema
-                $schema = $token->getSchema();
+        $result = [];
+        foreach ($tokens as $token) {
+            // Get associated schema
+            $schema = $token->getSchema();
 
-                $result[] = [
-                    'id' => $token->id,
-                    'uid' => $token->uid,
-                    'name' => $token->name,
-                    'enabled' => $token->enabled,
-                    'expiryDate' => $token->expiryDate?->format('Y-m-d H:i:s'),
-                    'schema' => $schema ? [
-                        'id' => $schema->id,
-                        'name' => $schema->name,
-                    ] : null,
-                    'dateCreated' => $token->dateCreated?->format('Y-m-d H:i:s'),
-                ];
-            }
-
-            return [
-                'count' => count($result),
-                'tokens' => $result,
+            $result[] = [
+                'id' => $token->id,
+                'uid' => $token->uid,
+                'name' => $token->name,
+                'enabled' => $token->enabled,
+                'expiryDate' => $token->expiryDate?->format('Y-m-d H:i:s'),
+                'schema' => $schema ? [
+                    'id' => $schema->id,
+                    'name' => $schema->name,
+                ] : null,
+                'dateCreated' => $token->dateCreated?->format('Y-m-d H:i:s'),
             ];
-        });
+        }
+
+        return [
+            'count' => count($result),
+            'tokens' => $result,
+        ];
     }
 
     /**

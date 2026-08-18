@@ -20,7 +20,6 @@ use stimmt\craft\Mcp\attributes\McpResourceMeta;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\ResourceCategory;
 use stimmt\craft\Mcp\support\Authorization;
-use stimmt\craft\Mcp\support\SafeResourceExecution;
 
 /**
  * MCP resources for Craft CMS entry content.
@@ -46,21 +45,19 @@ final class EntryResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        return SafeResourceExecution::run(function () use ($section): array {
-            if (!$this->sectionExists($section)) {
-                throw new ResourceReadException("Section '{$section}' not found");
-            }
+        if (!$this->sectionExists($section)) {
+            throw new ResourceReadException("Section '{$section}' not found");
+        }
 
-            $entries = $this->fetchEntries($section);
-            $total = $this->countEntries($section);
+        $entries = $this->fetchEntries($section);
+        $total = $this->countEntries($section);
 
-            return [
-                'section' => $section,
-                'entries' => array_values(array_map($this->buildEntrySummary(...), $entries)),
-                'total' => $total,
-                'limit' => self::DEFAULT_LIMIT,
-            ];
-        });
+        return [
+            'section' => $section,
+            'entries' => array_values(array_map($this->buildEntrySummary(...), $entries)),
+            'total' => $total,
+            'limit' => self::DEFAULT_LIMIT,
+        ];
     }
 
     /**
@@ -84,22 +81,20 @@ final class EntryResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        return SafeResourceExecution::run(function () use ($section): array {
-            /** @var Entries $entriesService */
-            $entriesService = Craft::$app->getEntries();
+        /** @var Entries $entriesService */
+        $entriesService = Craft::$app->getEntries();
 
-            /** @var Section|null $sectionObj */
-            $sectionObj = $entriesService->getSectionByHandle($section);
+        /** @var Section|null $sectionObj */
+        $sectionObj = $entriesService->getSectionByHandle($section);
 
-            if ($sectionObj === null) {
-                throw new ResourceReadException("Section '{$section}' not found");
-            }
+        if ($sectionObj === null) {
+            throw new ResourceReadException("Section '{$section}' not found");
+        }
 
-            return [
-                'section' => $section,
-                'stats' => $this->buildSectionStats($sectionObj),
-            ];
-        });
+        return [
+            'section' => $section,
+            'stats' => $this->buildSectionStats($sectionObj),
+        ];
     }
 
     /**
@@ -119,21 +114,19 @@ final class EntryResources {
         string $section,
         string $slug,
     ): array {
-        return SafeResourceExecution::run(function () use ($section, $slug): array {
-            if (!$this->sectionExists($section)) {
-                throw new ResourceReadException("Section '{$section}' not found");
-            }
+        if (!$this->sectionExists($section)) {
+            throw new ResourceReadException("Section '{$section}' not found");
+        }
 
-            $entry = $this->findEntryBySlug($section, $slug);
-            if ($entry === null) {
-                throw new ResourceReadException("Entry with slug '{$slug}' not found in section '{$section}'");
-            }
-            Authorization::assertCanView($entry);
+        $entry = $this->findEntryBySlug($section, $slug);
+        if ($entry === null) {
+            throw new ResourceReadException("Entry with slug '{$slug}' not found in section '{$section}'");
+        }
+        Authorization::assertCanView($entry);
 
-            return [
-                'entry' => $this->buildEntryDetail($entry),
-            ];
-        });
+        return [
+            'entry' => $this->buildEntryDetail($entry),
+        ];
     }
 
     /**

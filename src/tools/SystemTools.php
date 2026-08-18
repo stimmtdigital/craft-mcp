@@ -22,7 +22,6 @@ use stimmt\craft\Mcp\support\LogFormatter;
 use stimmt\craft\Mcp\support\LogParser;
 use stimmt\craft\Mcp\support\Palette;
 use stimmt\craft\Mcp\support\Presenter;
-use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * System-related MCP tools for Craft CMS.
@@ -40,35 +39,33 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getConfig(string $key, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($key): array {
-            $parts = explode('.', $key, 2);
-            $category = $parts[0];
-            $setting = $parts[1] ?? null;
+        $parts = explode('.', $key, 2);
+        $category = $parts[0];
+        $setting = $parts[1] ?? null;
 
-            $config = Craft::$app->getConfig();
+        $config = Craft::$app->getConfig();
 
-            $value = match ($category) {
-                'general' => $setting
-                    ? $config->getGeneral()->$setting ?? null
-                    : (array) $config->getGeneral(),
-                'db' => $setting
-                    ? $config->getDb()->$setting ?? null
-                    : [
-                        'driver' => $config->getDb()->driver,
-                        'server' => $config->getDb()->server,
-                        'port' => $config->getDb()->port,
-                        'database' => $config->getDb()->database,
-                        'tablePrefix' => $config->getDb()->tablePrefix,
-                    ],
-                'custom' => $config->getConfigFromFile($setting ?? 'custom'),
-                default => "Unknown config category: {$category}",
-            };
+        $value = match ($category) {
+            'general' => $setting
+                ? $config->getGeneral()->$setting ?? null
+                : (array) $config->getGeneral(),
+            'db' => $setting
+                ? $config->getDb()->$setting ?? null
+                : [
+                    'driver' => $config->getDb()->driver,
+                    'server' => $config->getDb()->server,
+                    'port' => $config->getDb()->port,
+                    'database' => $config->getDb()->database,
+                    'tablePrefix' => $config->getDb()->tablePrefix,
+                ],
+            'custom' => $config->getConfigFromFile($setting ?? 'custom'),
+            default => "Unknown config category: {$category}",
+        };
 
-            return [
-                'key' => $key,
-                'value' => $value,
-            ];
-        });
+        return [
+            'key' => $key,
+            'value' => $value,
+        ];
     }
 
     /**
@@ -89,17 +86,15 @@ class SystemTools {
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array|TextContent {
-        return SafeExecution::run(function () use ($limit, $level, $pattern, $source, $output, $context): array|TextContent {
-            $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
+        $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
 
-            return match ($output) {
-                ResponseFormat::TEXT => (new LogFormatter(Palette::fromSettings()))->format($entries),
-                ResponseFormat::STRUCTURED => [
-                    'count' => count($entries),
-                    'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $entries),
-                ],
-            };
-        });
+        return match ($output) {
+            ResponseFormat::TEXT => (new LogFormatter(Palette::fromSettings()))->format($entries),
+            ResponseFormat::STRUCTURED => [
+                'count' => count($entries),
+                'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $entries),
+            ],
+        };
     }
 
     /**
@@ -145,21 +140,19 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getLastError(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $result = $this->readLogs(1, 'error');
+        $result = $this->readLogs(1, 'error');
 
-            if (empty($result['entries'])) {
-                return [
-                    'found' => false,
-                    'message' => 'No errors found in recent logs',
-                ];
-            }
-
+        if (empty($result['entries'])) {
             return [
-                'found' => true,
-                'error' => $result['entries'][0],
+                'found' => false,
+                'message' => 'No errors found in recent logs',
             ];
-        });
+        }
+
+        return [
+            'found' => true,
+            'error' => $result['entries'][0],
+        ];
     }
 
     /**
@@ -172,35 +165,33 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, dangerous: true)]
     public function clearCaches(string $type = 'all', ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($type): array {
-            $cleared = [];
+        $cleared = [];
 
-            if ($type === 'all' || $type === 'data') {
-                Craft::$app->getCache()->flush();
-                $cleared[] = 'data';
-            }
+        if ($type === 'all' || $type === 'data') {
+            Craft::$app->getCache()->flush();
+            $cleared[] = 'data';
+        }
 
-            if ($type === 'all' || $type === 'compiled-templates') {
-                $this->clearDirectoryIfExists(
-                    Craft::$app->getPath()->getCompiledTemplatesPath(false),
-                    'compiled-templates',
-                    $cleared,
-                );
-            }
+        if ($type === 'all' || $type === 'compiled-templates') {
+            $this->clearDirectoryIfExists(
+                Craft::$app->getPath()->getCompiledTemplatesPath(false),
+                'compiled-templates',
+                $cleared,
+            );
+        }
 
-            if ($type === 'all' || $type === 'temp-files') {
-                $this->clearDirectoryIfExists(
-                    Craft::$app->getPath()->getTempPath(false),
-                    'temp-files',
-                    $cleared,
-                );
-            }
+        if ($type === 'all' || $type === 'temp-files') {
+            $this->clearDirectoryIfExists(
+                Craft::$app->getPath()->getTempPath(false),
+                'temp-files',
+                $cleared,
+            );
+        }
 
-            return [
-                'success' => true,
-                'cleared' => $cleared,
-            ];
-        });
+        return [
+            'success' => true,
+            'cleared' => $cleared,
+        ];
     }
 
     /**
@@ -213,15 +204,13 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function listConsoleCommands(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $helpController = new HelpController('help', Craft::$app);
-            $commands = array_values($helpController->getCommands());
+        $helpController = new HelpController('help', Craft::$app);
+        $commands = array_values($helpController->getCommands());
 
-            return [
-                'count' => count($commands),
-                'commands' => $commands,
-            ];
-        });
+        return [
+            'count' => count($commands),
+            'commands' => $commands,
+        ];
     }
 
     /**
@@ -234,32 +223,30 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function listRoutes(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $routes = [];
+        $routes = [];
 
-            // Get custom routes from config
-            $configRoutes = Craft::$app->getConfig()->getConfigFromFile('routes') ?: [];
-            foreach ($configRoutes as $pattern => $template) {
-                $routes[] = [
-                    'pattern' => $pattern,
-                    'template' => is_array($template) ? ($template['template'] ?? json_encode($template)) : $template,
-                    'type' => 'config',
-                ];
-            }
-
-            // Get routes from sections (entry URLs)
-            $sectionRoutes = $this->extractSectionRoutes(Craft::$app->getEntries()->getAllSections());
-            $routes = array_merge($routes, $sectionRoutes);
-
-            // Get routes from categories
-            $categoryRoutes = $this->extractCategoryRoutes(Craft::$app->getCategories()->getAllGroups());
-            $routes = array_merge($routes, $categoryRoutes);
-
-            return [
-                'count' => count($routes),
-                'routes' => $routes,
+        // Get custom routes from config
+        $configRoutes = Craft::$app->getConfig()->getConfigFromFile('routes') ?: [];
+        foreach ($configRoutes as $pattern => $template) {
+            $routes[] = [
+                'pattern' => $pattern,
+                'template' => is_array($template) ? ($template['template'] ?? json_encode($template)) : $template,
+                'type' => 'config',
             ];
-        });
+        }
+
+        // Get routes from sections (entry URLs)
+        $sectionRoutes = $this->extractSectionRoutes(Craft::$app->getEntries()->getAllSections());
+        $routes = array_merge($routes, $sectionRoutes);
+
+        // Get routes from categories
+        $categoryRoutes = $this->extractCategoryRoutes(Craft::$app->getCategories()->getAllGroups());
+        $routes = array_merge($routes, $categoryRoutes);
+
+        return [
+            'count' => count($routes),
+            'routes' => $routes,
+        ];
     }
 
     /**

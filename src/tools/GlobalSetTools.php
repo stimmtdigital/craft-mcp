@@ -11,7 +11,6 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\Serializer;
 
 /**
@@ -30,12 +29,10 @@ class GlobalSetTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, privileged: true)]
     public function listGlobals(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $globalSets = Craft::$app->getGlobals()->getAllSets();
-            $results = array_map($this->serializeGlobalSet(...), $globalSets);
+        $globalSets = Craft::$app->getGlobals()->getAllSets();
+        $results = array_map($this->serializeGlobalSet(...), $globalSets);
 
-            return Response::list('globals', $results);
-        });
+        return Response::list('globals', $results);
     }
 
     /**

@@ -13,7 +13,6 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\services\SchemaHelper;
-use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * MCP Tools for Craft CMS
@@ -33,29 +32,27 @@ class CraftTools {
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listPlugins(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $pluginsService = Craft::$app->getPlugins();
-            $allPluginInfo = $pluginsService->getAllPluginInfo();
+        $pluginsService = Craft::$app->getPlugins();
+        $allPluginInfo = $pluginsService->getAllPluginInfo();
 
-            $plugins = [];
-            foreach ($allPluginInfo as $handle => $info) {
-                $plugins[] = [
-                    'handle' => $handle,
-                    'name' => $info['name'] ?? $handle,
-                    'version' => $info['version'] ?? 'unknown',
-                    'isInstalled' => $info['isInstalled'] ?? false,
-                    'isEnabled' => $info['isEnabled'] ?? false,
-                    'schemaVersion' => $info['schemaVersion'] ?? null,
-                    'description' => $info['description'] ?? null,
-                    'developer' => $info['developer'] ?? null,
-                ];
-            }
-
-            return [
-                'count' => count($plugins),
-                'plugins' => $plugins,
+        $plugins = [];
+        foreach ($allPluginInfo as $handle => $info) {
+            $plugins[] = [
+                'handle' => $handle,
+                'name' => $info['name'] ?? $handle,
+                'version' => $info['version'] ?? 'unknown',
+                'isInstalled' => $info['isInstalled'] ?? false,
+                'isEnabled' => $info['isEnabled'] ?? false,
+                'schemaVersion' => $info['schemaVersion'] ?? null,
+                'description' => $info['description'] ?? null,
+                'developer' => $info['developer'] ?? null,
             ];
-        });
+        }
+
+        return [
+            'count' => count($plugins),
+            'plugins' => $plugins,
+        ];
     }
 
     /**
@@ -68,50 +65,48 @@ class CraftTools {
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listSections(?string $search = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($search): array {
-            $sectionsService = Craft::$app->getEntries();
-            $allSections = $sectionsService->getAllSections();
+        $sectionsService = Craft::$app->getEntries();
+        $allSections = $sectionsService->getAllSections();
 
-            if ($search !== null) {
-                $allSections = array_values(array_filter(
-                    $allSections,
-                    fn (Section $section): bool => stripos($section->handle ?? '', $search) !== false
-                        || stripos($section->name ?? '', $search) !== false,
-                ));
-            }
-
-            $sections = array_map(
-                fn ($section) => [
-                    'id' => $section->id,
-                    'handle' => $section->handle,
-                    'name' => $section->name,
-                    'type' => is_string($section->type) ? $section->type : $section->type->value,
-                    'entryTypes' => array_map(
-                        fn ($entryType) => [
-                            'id' => $entryType->id,
-                            'handle' => $entryType->handle,
-                            'name' => $entryType->name,
-                        ],
-                        $section->getEntryTypes(),
-                    ),
-                    'siteSettings' => array_map(
-                        fn ($settings) => [
-                            'siteId' => $settings->siteId,
-                            'hasUrls' => $settings->hasUrls,
-                            'uriFormat' => $settings->uriFormat,
-                            'template' => $settings->template,
-                        ],
-                        $section->getSiteSettings(),
-                    ),
-                ],
+        if ($search !== null) {
+            $allSections = array_values(array_filter(
                 $allSections,
-            );
+                fn (Section $section): bool => stripos($section->handle ?? '', $search) !== false
+                    || stripos($section->name ?? '', $search) !== false,
+            ));
+        }
 
-            return [
-                'count' => count($sections),
-                'sections' => $sections,
-            ];
-        });
+        $sections = array_map(
+            fn ($section) => [
+                'id' => $section->id,
+                'handle' => $section->handle,
+                'name' => $section->name,
+                'type' => is_string($section->type) ? $section->type : $section->type->value,
+                'entryTypes' => array_map(
+                    fn ($entryType) => [
+                        'id' => $entryType->id,
+                        'handle' => $entryType->handle,
+                        'name' => $entryType->name,
+                    ],
+                    $section->getEntryTypes(),
+                ),
+                'siteSettings' => array_map(
+                    fn ($settings) => [
+                        'siteId' => $settings->siteId,
+                        'hasUrls' => $settings->hasUrls,
+                        'uriFormat' => $settings->uriFormat,
+                        'template' => $settings->template,
+                    ],
+                    $section->getSiteSettings(),
+                ),
+            ],
+            $allSections,
+        );
+
+        return [
+            'count' => count($sections),
+            'sections' => $sections,
+        ];
     }
 
     /**
@@ -124,37 +119,35 @@ class CraftTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function getSystemInfo(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $info = Craft::$app->getInfo();
-            $db = Craft::$app->getDb();
+        $info = Craft::$app->getInfo();
+        $db = Craft::$app->getDb();
 
-            return [
-                'craft' => [
-                    'version' => Craft::$app->getVersion(),
-                    'edition' => Craft::$app->getEditionName(),
-                    'schemaVersion' => $info->schemaVersion,
-                    'environment' => Craft::$app->env ?? 'production',
-                    'devMode' => Craft::$app->getConfig()->getGeneral()->devMode,
+        return [
+            'craft' => [
+                'version' => Craft::$app->getVersion(),
+                'edition' => Craft::$app->getEditionName(),
+                'schemaVersion' => $info->schemaVersion,
+                'environment' => Craft::$app->env ?? 'production',
+                'devMode' => Craft::$app->getConfig()->getGeneral()->devMode,
+            ],
+            'php' => [
+                'version' => PHP_VERSION,
+            ],
+            'database' => [
+                'driver' => $db->getDriverName(),
+                'version' => $db->getServerVersion(),
+            ],
+            'sites' => array_map(
+                fn ($site) => [
+                    'id' => $site->id,
+                    'handle' => $site->handle,
+                    'name' => $site->name,
+                    'primary' => $site->primary,
+                    'baseUrl' => $site->getBaseUrl(),
                 ],
-                'php' => [
-                    'version' => PHP_VERSION,
-                ],
-                'database' => [
-                    'driver' => $db->getDriverName(),
-                    'version' => $db->getServerVersion(),
-                ],
-                'sites' => array_map(
-                    fn ($site) => [
-                        'id' => $site->id,
-                        'handle' => $site->handle,
-                        'name' => $site->name,
-                        'primary' => $site->primary,
-                        'baseUrl' => $site->getBaseUrl(),
-                    ],
-                    Craft::$app->getSites()->getAllSites(),
-                ),
-            ];
-        });
+                Craft::$app->getSites()->getAllSites(),
+            ),
+        ];
     }
 
     /**
@@ -167,41 +160,39 @@ class CraftTools {
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
     public function listFields(?string $search = null, ?string $type = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($search, $type): array {
-            $fieldsService = Craft::$app->getFields();
-            $allFields = $fieldsService->getAllFields();
+        $fieldsService = Craft::$app->getFields();
+        $allFields = $fieldsService->getAllFields();
 
-            if ($search !== null) {
-                $allFields = array_filter(
-                    $allFields,
-                    fn (FieldInterface $field): bool => stripos($field->handle ?? '', $search) !== false
-                        || stripos($field->name ?? '', $search) !== false,
-                );
-            }
+        if ($search !== null) {
+            $allFields = array_filter(
+                $allFields,
+                fn (FieldInterface $field): bool => stripos($field->handle ?? '', $search) !== false
+                    || stripos($field->name ?? '', $search) !== false,
+            );
+        }
 
-            if ($type !== null) {
-                $allFields = array_filter(
-                    $allFields,
-                    fn (FieldInterface $field): bool => stripos(SchemaHelper::getFieldTypeName($field), $type) !== false,
-                );
-            }
+        if ($type !== null) {
+            $allFields = array_filter(
+                $allFields,
+                fn (FieldInterface $field): bool => stripos(SchemaHelper::getFieldTypeName($field), $type) !== false,
+            );
+        }
 
-            $fields = [];
-            foreach ($allFields as $field) {
-                $fields[] = [
-                    'id' => $field->id,
-                    'handle' => $field->handle,
-                    'name' => $field->name,
-                    'type' => $field::class,
-                    'instructions' => $field->instructions,
-                    'searchable' => $field->searchable,
-                ];
-            }
-
-            return [
-                'count' => count($fields),
-                'fields' => $fields,
+        $fields = [];
+        foreach ($allFields as $field) {
+            $fields[] = [
+                'id' => $field->id,
+                'handle' => $field->handle,
+                'name' => $field->name,
+                'type' => $field::class,
+                'instructions' => $field->instructions,
+                'searchable' => $field->searchable,
             ];
-        });
+        }
+
+        return [
+            'count' => count($fields),
+            'fields' => $fields,
+        ];
     }
 }

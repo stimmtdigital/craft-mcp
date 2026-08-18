@@ -15,7 +15,6 @@ use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\support\PluginReloader;
 use stimmt\craft\Mcp\support\Psr16CacheAdapter;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 use yii\caching\TagDependency;
 
 /**
@@ -34,35 +33,33 @@ class McpTools {
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function getMcpInfo(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $plugin = Mcp::getInstance();
-            $settings = Mcp::settings();
-            $registry = Mcp::getToolRegistry();
+        $plugin = Mcp::getInstance();
+        $settings = Mcp::settings();
+        $registry = Mcp::getToolRegistry();
 
-            $summary = $registry->getSummary();
+        $summary = $registry->getSummary();
 
-            return [
-                'name' => $plugin !== null ? $plugin->name : 'Craft MCP',
-                'handle' => $plugin !== null ? $plugin->handle : 'mcp',
-                'version' => $plugin !== null ? $plugin->version : 'unknown',
-                'schemaVersion' => $plugin !== null ? $plugin->schemaVersion : 'unknown',
-                'status' => [
-                    'enabled' => $settings->enabled,
-                    'dangerousToolsEnabled' => $settings->enableDangerousTools,
-                    'environment' => Craft::$app->env ?? getenv('CRAFT_ENVIRONMENT') ?: 'production',
-                ],
-                'tools' => [
-                    'total' => $summary['total'],
-                    'bySource' => $summary['by_source'],
-                    'byCategory' => $summary['by_category'],
-                    'dangerous' => $summary['dangerous'],
-                    'errors' => $summary['errors'],
-                ],
-                'configuration' => [
-                    'disabledTools' => $settings->disabledTools,
-                ],
-            ];
-        });
+        return [
+            'name' => $plugin !== null ? $plugin->name : 'Craft MCP',
+            'handle' => $plugin !== null ? $plugin->handle : 'mcp',
+            'version' => $plugin !== null ? $plugin->version : 'unknown',
+            'schemaVersion' => $plugin !== null ? $plugin->schemaVersion : 'unknown',
+            'status' => [
+                'enabled' => $settings->enabled,
+                'dangerousToolsEnabled' => $settings->enableDangerousTools,
+                'environment' => Craft::$app->env ?? getenv('CRAFT_ENVIRONMENT') ?: 'production',
+            ],
+            'tools' => [
+                'total' => $summary['total'],
+                'bySource' => $summary['by_source'],
+                'byCategory' => $summary['by_category'],
+                'dangerous' => $summary['dangerous'],
+                'errors' => $summary['errors'],
+            ],
+            'configuration' => [
+                'disabledTools' => $settings->disabledTools,
+            ],
+        ];
     }
 
     /**
@@ -75,57 +72,55 @@ class McpTools {
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function listMcpTools(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $registry = Mcp::getToolRegistry();
-            $definitions = $registry->getDefinitions();
+        $registry = Mcp::getToolRegistry();
+        $definitions = $registry->getDefinitions();
 
-            $tools = [];
-            foreach ($definitions as $definition) {
-                $tools[] = [
-                    'name' => $definition->name,
-                    'description' => $definition->description,
-                    'source' => $definition->source,
-                    'category' => $definition->category,
-                    'dangerous' => $definition->dangerous,
-                    // Install-introspection reads are hidden from non-admin
-                    // readonly/content connections, so a listed privileged
-                    // tool can still be refused; say so rather than letting
-                    // the listing imply every row is callable.
-                    'privileged' => $definition->privileged,
-                    'enabled' => Mcp::isToolEnabled($definition->name),
-                ];
-            }
-
-            // Sort by source, then category, then name
-            usort($tools, function (array $a, array $b): int {
-                $sourceCompare = strcmp($a['source'], $b['source']);
-                if ($sourceCompare !== 0) {
-                    return $sourceCompare;
-                }
-
-                $categoryCompare = strcmp($a['category'], $b['category']);
-                if ($categoryCompare !== 0) {
-                    return $categoryCompare;
-                }
-
-                return strcmp($a['name'], $b['name']);
-            });
-
-            // Group counts
-            $bySource = [];
-            $byCategory = [];
-            foreach ($tools as $tool) {
-                $bySource[$tool['source']] = ($bySource[$tool['source']] ?? 0) + 1;
-                $byCategory[$tool['category']] = ($byCategory[$tool['category']] ?? 0) + 1;
-            }
-
-            return [
-                'count' => count($tools),
-                'bySource' => $bySource,
-                'byCategory' => $byCategory,
-                'tools' => $tools,
+        $tools = [];
+        foreach ($definitions as $definition) {
+            $tools[] = [
+                'name' => $definition->name,
+                'description' => $definition->description,
+                'source' => $definition->source,
+                'category' => $definition->category,
+                'dangerous' => $definition->dangerous,
+                // Install-introspection reads are hidden from non-admin
+                // readonly/content connections, so a listed privileged
+                // tool can still be refused; say so rather than letting
+                // the listing imply every row is callable.
+                'privileged' => $definition->privileged,
+                'enabled' => Mcp::isToolEnabled($definition->name),
             ];
+        }
+
+        // Sort by source, then category, then name
+        usort($tools, function (array $a, array $b): int {
+            $sourceCompare = strcmp($a['source'], $b['source']);
+            if ($sourceCompare !== 0) {
+                return $sourceCompare;
+            }
+
+            $categoryCompare = strcmp($a['category'], $b['category']);
+            if ($categoryCompare !== 0) {
+                return $categoryCompare;
+            }
+
+            return strcmp($a['name'], $b['name']);
         });
+
+        // Group counts
+        $bySource = [];
+        $byCategory = [];
+        foreach ($tools as $tool) {
+            $bySource[$tool['source']] = ($bySource[$tool['source']] ?? 0) + 1;
+            $byCategory[$tool['category']] = ($byCategory[$tool['category']] ?? 0) + 1;
+        }
+
+        return [
+            'count' => count($tools),
+            'bySource' => $bySource,
+            'byCategory' => $byCategory,
+            'tools' => $tools,
+        ];
     }
 
     /**
@@ -143,40 +138,38 @@ class McpTools {
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
     public function reloadMcp(?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($context): array {
-            // 1. Reload Composer classmap (detects new plugin classes)
-            PluginReloader::reloadComposerClassmap();
+        // 1. Reload Composer classmap (detects new plugin classes)
+        PluginReloader::reloadComposerClassmap();
 
-            // 2. Refresh Craft's composer plugin info cache (re-reads plugins.php)
-            $refreshResult = PluginReloader::refreshComposerPluginInfo();
+        // 2. Refresh Craft's composer plugin info cache (re-reads plugins.php)
+        $refreshResult = PluginReloader::refreshComposerPluginInfo();
 
-            // 3. Reset project config to re-read from YAML
-            PluginReloader::resetProjectConfig();
+        // 3. Reset project config to re-read from YAML
+        PluginReloader::resetProjectConfig();
 
-            // 4. Reset Plugins service internal caches
-            PluginReloader::resetPluginsService();
+        // 4. Reset Plugins service internal caches
+        PluginReloader::resetPluginsService();
 
-            // 5. Reload Craft plugins
-            Craft::$app->getPlugins()->loadPlugins();
+        // 5. Reload Craft plugins
+        Craft::$app->getPlugins()->loadPlugins();
 
-            // 6. Invalidate the cached attribute discovery so it rescans
-            TagDependency::invalidate(Craft::$app->getCache(), Psr16CacheAdapter::TAG);
+        // 6. Invalidate the cached attribute discovery so it rescans
+        TagDependency::invalidate(Craft::$app->getCache(), Psr16CacheAdapter::TAG);
 
-            // 7. Reset tool registry to re-collect tools
-            Mcp::resetToolRegistry();
+        // 7. Reset tool registry to re-collect tools
+        Mcp::resetToolRegistry();
 
-            $summary = Mcp::getToolRegistry()->getSummary();
+        $summary = Mcp::getToolRegistry()->getSummary();
 
-            // 8. The connected client's own tool list may now be stale;
-            // push the real notification instead of leaving it to guess.
-            $context?->getClientGateway()->notify(new ToolListChangedNotification());
+        // 8. The connected client's own tool list may now be stale;
+        // push the real notification instead of leaving it to guess.
+        $context?->getClientGateway()->notify(new ToolListChangedNotification());
 
-            return Response::success([
-                'message' => 'MCP plugin state reloaded',
-                'pluginsDiscovered' => $refreshResult['plugins'],
-                'tools' => $summary,
-                'hint' => 'For code changes in existing plugins, send SIGHUP to the MCP server process: kill -HUP $(pgrep -f "mcp-server")',
-            ]);
-        });
+        return Response::success([
+            'message' => 'MCP plugin state reloaded',
+            'pluginsDiscovered' => $refreshResult['plugins'],
+            'tools' => $summary,
+            'hint' => 'For code changes in existing plugins, send SIGHUP to the MCP server process: kill -HUP $(pgrep -f "mcp-server")',
+        ]);
     }
 }

@@ -20,7 +20,6 @@ use stimmt\craft\Mcp\enums\OutputMode;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Ansi;
 use stimmt\craft\Mcp\support\MutexGuard;
-use stimmt\craft\Mcp\support\SafeExecution;
 use Symfony\Component\VarDumper\Cloner\VarCloner;
 use Symfony\Component\VarDumper\Dumper\CliDumper;
 use Throwable;
@@ -96,66 +95,64 @@ class TinkerTools {
         // SafeExecution is the outer safety net for unexpected failures
         // (e.g. CodeCleaner instantiation). The inner try/catch handles
         // expected errors with REPL-style formatting.
-        return SafeExecution::run(function () use ($code, $output, $context): TextContent {
-            $outputMode = $output;
+        $outputMode = $output;
 
-            $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
+        $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
 
-            foreach (self::BLOCKED_PATTERNS as $pattern) {
-                if (!preg_match($pattern, $code)) {
-                    continue;
-                }
-
-                $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
-                $context?->getClientLogger()?->warning("Tinker code rejected by security pattern: {$pattern}");
-
-                return $this->response(
-                    $code,
-                    $this->formatError('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
-                );
+        foreach (self::BLOCKED_PATTERNS as $pattern) {
+            if (!preg_match($pattern, $code)) {
+                continue;
             }
 
-            $context?->getClientLogger()?->info('Tinker code accepted for execution');
-            $context?->getClientLogger()?->debug("Tinker code: {$code}");
+            $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
+            $context?->getClientLogger()?->warning("Tinker code rejected by security pattern: {$pattern}");
 
-            $baseLevel = ob_get_level();
+            return $this->response(
+                $code,
+                $this->formatError('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
+            );
+        }
 
-            try {
-                $cleaner = $this->getCodeCleaner();
-                $cleanedCode = $cleaner->clean([$code]);
+        $context?->getClientLogger()?->info('Tinker code accepted for execution');
+        $context?->getClientLogger()?->debug("Tinker code: {$code}");
 
-                $app = Craft::$app;
+        $baseLevel = ob_get_level();
 
-                ob_start();
-                $result = eval($cleanedCode);
-                $stdout = $this->drainCapturedOutput($baseLevel);
+        try {
+            $cleaner = $this->getCodeCleaner();
+            $cleanedCode = $cleaner->clean([$code]);
 
-                $this->logger->debug('Tinker completed');
-                $context?->getClientLogger()?->info('Tinker execution completed');
+            $app = Craft::$app;
 
-                return $this->response(
-                    $code,
-                    $this->formatOutput($result, $outputMode),
-                    $stdout,
-                );
-            } catch (ParseErrorException|ParseError $e) {
-                $this->drainCapturedOutput($baseLevel);
+            ob_start();
+            $result = eval($cleanedCode);
+            $stdout = $this->drainCapturedOutput($baseLevel);
 
-                $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
-                $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
+            $this->logger->debug('Tinker completed');
+            $context?->getClientLogger()?->info('Tinker execution completed');
 
-                return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
-            } catch (Throwable $e) {
-                $this->drainCapturedOutput($baseLevel);
+            return $this->response(
+                $code,
+                $this->formatOutput($result, $outputMode),
+                $stdout,
+            );
+        } catch (ParseErrorException|ParseError $e) {
+            $this->drainCapturedOutput($baseLevel);
 
-                $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
-                $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
+            $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+            $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
 
-                return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
-            } finally {
-                MutexGuard::releaseAll();
-            }
-        });
+            return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
+        } catch (Throwable $e) {
+            $this->drainCapturedOutput($baseLevel);
+
+            $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+            $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
+
+            return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
+        } finally {
+            MutexGuard::releaseAll();
+        }
     }
 
     /**

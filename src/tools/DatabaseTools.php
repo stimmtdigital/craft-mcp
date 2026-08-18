@@ -15,7 +15,6 @@ use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Presenter;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SqlReadGuard;
 use Throwable;
 
@@ -35,90 +34,88 @@ class DatabaseTools {
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getDatabaseSchema(?string $table = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($table): array {
-            $db = Craft::$app->getDb();
-            $schema = $db->getSchema();
-            $tablePrefix = $db->tablePrefix;
+        $db = Craft::$app->getDb();
+        $schema = $db->getSchema();
+        $tablePrefix = $db->tablePrefix;
 
-            if ($table !== null) {
-                // Get specific table details
-                $fullTableName = $tablePrefix . $table;
-                $tableSchema = $schema->getTableSchema($fullTableName);
+        if ($table !== null) {
+            // Get specific table details
+            $fullTableName = $tablePrefix . $table;
+            $tableSchema = $schema->getTableSchema($fullTableName);
 
-                if ($tableSchema === null) {
-                    // Try without prefix
-                    $tableSchema = $schema->getTableSchema($table);
-                }
+            if ($tableSchema === null) {
+                // Try without prefix
+                $tableSchema = $schema->getTableSchema($table);
+            }
 
-                if ($tableSchema === null) {
-                    throw new ToolCallException("Table '{$table}' not found");
-                }
+            if ($tableSchema === null) {
+                throw new ToolCallException("Table '{$table}' not found");
+            }
 
-                $columns = [];
-                foreach ($tableSchema->columns as $column) {
-                    $columns[] = [
-                        'name' => $column->name,
-                        'type' => $column->type,
-                        'dbType' => $column->dbType,
-                        'phpType' => $column->phpType,
-                        'allowNull' => $column->allowNull,
-                        'defaultValue' => $column->defaultValue,
-                        'isPrimaryKey' => $column->isPrimaryKey,
-                        'autoIncrement' => $column->autoIncrement,
-                        'size' => $column->size,
+            $columns = [];
+            foreach ($tableSchema->columns as $column) {
+                $columns[] = [
+                    'name' => $column->name,
+                    'type' => $column->type,
+                    'dbType' => $column->dbType,
+                    'phpType' => $column->phpType,
+                    'allowNull' => $column->allowNull,
+                    'defaultValue' => $column->defaultValue,
+                    'isPrimaryKey' => $column->isPrimaryKey,
+                    'autoIncrement' => $column->autoIncrement,
+                    'size' => $column->size,
+                ];
+            }
+
+            $indexes = [];
+
+            try {
+                $tableIndexes = $schema->findIndexes($tableSchema->fullName);
+                foreach ($tableIndexes as $indexName => $index) {
+                    $indexes[] = [
+                        'name' => $indexName,
+                        'columns' => $index,
                     ];
                 }
-
-                $indexes = [];
-
-                try {
-                    $tableIndexes = $schema->findIndexes($tableSchema->fullName);
-                    foreach ($tableIndexes as $indexName => $index) {
-                        $indexes[] = [
-                            'name' => $indexName,
-                            'columns' => $index,
-                        ];
-                    }
-                } catch (Throwable) {
-                    // Index retrieval not supported on all DB types
-                }
-
-                return [
-                    'table' => $tableSchema->name,
-                    'fullName' => $tableSchema->fullName,
-                    'primaryKey' => $tableSchema->primaryKey,
-                    'foreignKeys' => $tableSchema->foreignKeys,
-                    'columns' => $columns,
-                    'indexes' => $indexes,
-                ];
+            } catch (Throwable) {
+                // Index retrieval not supported on all DB types
             }
-
-            // List all tables
-            $tableNames = $schema->getTableNames();
-            $tables = [];
-
-            foreach ($tableNames as $tableName) {
-                $displayName = $tableName;
-                if ($tablePrefix && str_starts_with((string) $tableName, (string) $tablePrefix)) {
-                    $displayName = substr((string) $tableName, strlen((string) $tablePrefix));
-                }
-
-                $tables[] = [
-                    'name' => $displayName,
-                    'fullName' => $tableName,
-                ];
-            }
-
-            // Sort alphabetically
-            usort($tables, fn ($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
 
             return [
-                'driver' => $db->getDriverName(),
-                'tablePrefix' => $tablePrefix,
-                'count' => count($tables),
-                'tables' => $tables,
+                'table' => $tableSchema->name,
+                'fullName' => $tableSchema->fullName,
+                'primaryKey' => $tableSchema->primaryKey,
+                'foreignKeys' => $tableSchema->foreignKeys,
+                'columns' => $columns,
+                'indexes' => $indexes,
             ];
-        });
+        }
+
+        // List all tables
+        $tableNames = $schema->getTableNames();
+        $tables = [];
+
+        foreach ($tableNames as $tableName) {
+            $displayName = $tableName;
+            if ($tablePrefix && str_starts_with((string) $tableName, (string) $tablePrefix)) {
+                $displayName = substr((string) $tableName, strlen((string) $tablePrefix));
+            }
+
+            $tables[] = [
+                'name' => $displayName,
+                'fullName' => $tableName,
+            ];
+        }
+
+        // Sort alphabetically
+        usort($tables, fn ($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
+
+        return [
+            'driver' => $db->getDriverName(),
+            'tablePrefix' => $tablePrefix,
+            'count' => count($tables),
+            'tables' => $tables,
+        ];
     }
 
     /**
@@ -143,32 +140,30 @@ class DatabaseTools {
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($sql, $limit, $context): array {
-            $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
+        $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
 
-            $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
-            $context?->getClientLogger()?->info('SQL query validated by the read guard');
+        $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
+        $context?->getClientLogger()?->info('SQL query validated by the read guard');
 
-            // Add LIMIT if not present
-            if (!preg_match('/\bLIMIT\b/i', $trimmedSql)) {
-                $sql = rtrim($trimmedSql, ';') . " LIMIT {$limit}";
-            }
+        // Add LIMIT if not present
+        if (!preg_match('/\bLIMIT\b/i', $trimmedSql)) {
+            $sql = rtrim($trimmedSql, ';') . " LIMIT {$limit}";
+        }
 
-            $context?->getClientLogger()?->debug("SQL query text: {$sql}");
+        $context?->getClientLogger()?->debug("SQL query text: {$sql}");
 
-            $db = Craft::$app->getDb();
-            $results = $db->createCommand($sql)->queryAll();
-            $rowCount = count($results);
+        $db = Craft::$app->getDb();
+        $results = $db->createCommand($sql)->queryAll();
+        $rowCount = count($results);
 
-            $context?->getClientLogger()?->info("SQL query returned {$rowCount} rows");
-            $context?->getClientGateway()?->progress(2, 2, 'Query complete');
+        $context?->getClientLogger()?->info("SQL query returned {$rowCount} rows");
+        $context?->getClientGateway()?->progress(2, 2, 'Query complete');
 
-            return Response::success([
-                'count' => $rowCount,
-                'columns' => empty($results) ? [] : array_keys($results[0]),
-                'rows' => $results,
-            ]);
-        });
+        return Response::success([
+            'count' => $rowCount,
+            'columns' => empty($results) ? [] : array_keys($results[0]),
+            'rows' => $results,
+        ]);
     }
 
     /**
@@ -181,20 +176,18 @@ class DatabaseTools {
     )]
     #[McpToolMeta(category: ToolCategory::DATABASE, privileged: true)]
     public function getDatabaseInfo(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $db = Craft::$app->getDb();
-            $config = Craft::$app->getConfig()->getDb();
+        $db = Craft::$app->getDb();
+        $config = Craft::$app->getConfig()->getDb();
 
-            return [
-                'driver' => $db->getDriverName(),
-                'serverVersion' => $db->getServerVersion(),
-                'server' => $config->server,
-                'port' => $config->port,
-                'database' => $config->database,
-                'tablePrefix' => $config->tablePrefix,
-                'charset' => $config->charset,
-            ];
-        });
+        return [
+            'driver' => $db->getDriverName(),
+            'serverVersion' => $db->getServerVersion(),
+            'server' => $config->server,
+            'port' => $config->port,
+            'database' => $config->database,
+            'tablePrefix' => $config->tablePrefix,
+            'charset' => $config->charset,
+        ];
     }
 
     /**
@@ -211,50 +204,48 @@ class DatabaseTools {
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function (): array {
-            $db = Craft::$app->getDb();
-            $prefix = $db->tablePrefix;
+        $db = Craft::$app->getDb();
+        $prefix = $db->tablePrefix;
 
-            // Craft 5: Matrix blocks are now nested entries, not separate table
-            $tables = [
-                'elements' => 'Total elements',
-                'entries' => 'Entries',
-                'assets' => 'Assets',
-                'users' => 'Users',
-                'categories' => 'Categories',
-                'tags' => 'Tags',
-                'globalsets' => 'Global sets',
-                'sections' => 'Sections',
-                'entrytypes' => 'Entry types',
-                'fields' => 'Fields',
-                'volumes' => 'Volumes',
-                'plugins' => 'Plugins',
-            ];
+        // Craft 5: Matrix blocks are now nested entries, not separate table
+        $tables = [
+            'elements' => 'Total elements',
+            'entries' => 'Entries',
+            'assets' => 'Assets',
+            'users' => 'Users',
+            'categories' => 'Categories',
+            'tags' => 'Tags',
+            'globalsets' => 'Global sets',
+            'sections' => 'Sections',
+            'entrytypes' => 'Entry types',
+            'fields' => 'Fields',
+            'volumes' => 'Volumes',
+            'plugins' => 'Plugins',
+        ];
 
-            $counts = [];
-            foreach ($tables as $table => $label) {
-                $fullTable = $prefix . $table;
+        $counts = [];
+        foreach ($tables as $table => $label) {
+            $fullTable = $prefix . $table;
 
-                // Skip tables that genuinely don't exist; let real query
-                // failures surface via SafeExecution instead of masking them.
-                if ($db->getTableSchema($fullTable) === null) {
-                    $counts[$table] = [
-                        'label' => $label,
-                        'count' => null,
-                        'error' => 'Table does not exist',
-                    ];
-
-                    continue;
-                }
-
-                $count = $db->createCommand("SELECT COUNT(*) FROM `{$fullTable}`")->queryScalar();
+            // Skip tables that genuinely don't exist; let real query
+            // failures surface via SafeExecution instead of masking them.
+            if ($db->getTableSchema($fullTable) === null) {
                 $counts[$table] = [
                     'label' => $label,
-                    'count' => (int) $count,
+                    'count' => null,
+                    'error' => 'Table does not exist',
                 ];
+
+                continue;
             }
 
-            return $counts;
-        });
+            $count = $db->createCommand("SELECT COUNT(*) FROM `{$fullTable}`")->queryScalar();
+            $counts[$table] = [
+                'label' => $label,
+                'count' => (int) $count,
+            ];
+        }
+
+        return $counts;
     }
 }

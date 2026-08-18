@@ -22,7 +22,6 @@ use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\NestedPosition;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
 use stimmt\craft\Mcp\support\WriteParams;
 
@@ -55,34 +54,32 @@ class EntryWorkflowTools {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $site, $creator, $limit, $offset): array {
-            SiteResolver::resolve($site);
+        SiteResolver::resolve($site);
 
-            $query = Entry::find()
-                ->drafts()
-                ->provisionalDrafts(false)
-                ->status(null)
-                ->limit($limit)
-                ->offset($offset)
-                ->orderBy(['dateUpdated' => SORT_DESC]);
+        $query = Entry::find()
+            ->drafts()
+            ->provisionalDrafts(false)
+            ->status(null)
+            ->limit($limit)
+            ->offset($offset)
+            ->orderBy(['dateUpdated' => SORT_DESC]);
 
-            foreach (['section' => $section, 'site' => $site] as $method => $value) {
-                if ($value !== null) {
-                    $query->$method($value);
-                }
+        foreach (['section' => $section, 'site' => $site] as $method => $value) {
+            if ($value !== null) {
+                $query->$method($value);
             }
+        }
 
-            if ($creator !== null) {
-                $user = Craft::$app->getUsers()->getUserByUsernameOrEmail($creator)
-                    ?? throw new ToolCallException("No user found for '{$creator}'");
-                $query->draftCreator($user);
-            }
+        if ($creator !== null) {
+            $user = Craft::$app->getUsers()->getUserByUsernameOrEmail($creator)
+                ?? throw new ToolCallException("No user found for '{$creator}'");
+            $query->draftCreator($user);
+        }
 
-            Authorization::scopeQuery($query);
-            $drafts = array_map($this->draftSummary(...), $query->all());
+        Authorization::scopeQuery($query);
+        $drafts = array_map($this->draftSummary(...), $query->all());
 
-            return Response::paginated('drafts', $drafts, (int) $query->count(), $limit, $offset);
-        });
+        return Response::paginated('drafts', $drafts, (int) $query->count(), $limit, $offset);
     }
 
     #[McpTool(
@@ -98,25 +95,23 @@ class EntryWorkflowTools {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $limit, $offset): array {
-            SiteResolver::resolve($site);
+        SiteResolver::resolve($site);
 
-            $query = Entry::find()
-                ->revisionOf($id)
-                ->revisions()
-                ->status(null)
-                ->limit($limit)
-                ->offset($offset)
-                ->orderBy(['dateCreated' => SORT_DESC, 'revisions.num' => SORT_DESC]);
-            if ($site !== null) {
-                $query->site($site);
-            }
+        $query = Entry::find()
+            ->revisionOf($id)
+            ->revisions()
+            ->status(null)
+            ->limit($limit)
+            ->offset($offset)
+            ->orderBy(['dateCreated' => SORT_DESC, 'revisions.num' => SORT_DESC]);
+        if ($site !== null) {
+            $query->site($site);
+        }
 
-            Authorization::scopeQuery($query);
-            $revisions = array_map($this->revisionSummary(...), $query->all());
+        Authorization::scopeQuery($query);
+        $revisions = array_map($this->revisionSummary(...), $query->all());
 
-            return Response::paginated('revisions', $revisions, (int) $query->count(), $limit, $offset);
-        });
+        return Response::paginated('revisions', $revisions, (int) $query->count(), $limit, $offset);
     }
 
     #[McpTool(
@@ -126,16 +121,14 @@ class EntryWorkflowTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $site, $context): array {
-            $entry = $this->find($id, $site, withDrafts: true);
-            Authorization::assertCanPublish($entry);
+        $entry = $this->find($id, $site, withDrafts: true);
+        Authorization::assertCanPublish($entry);
 
-            if ($entry->getIsDraft()) {
-                return $this->applyDraft($entry, $site, $context);
-            }
+        if ($entry->getIsDraft()) {
+            return $this->applyDraft($entry, $site, $context);
+        }
 
-            return $this->publishCanonical($entry, $site, $context);
-        });
+        return $this->publishCanonical($entry, $site, $context);
     }
 
     #[McpTool(
@@ -145,16 +138,14 @@ class EntryWorkflowTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function deleteEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $site): array {
-            $entry = $this->find($id, $site, withDrafts: true);
-            Authorization::assertCanDelete($entry);
+        $entry = $this->find($id, $site, withDrafts: true);
+        Authorization::assertCanDelete($entry);
 
-            if (!Craft::$app->getElements()->deleteElement($entry)) {
-                throw new ToolCallException('Failed to delete entry');
-            }
+        if (!Craft::$app->getElements()->deleteElement($entry)) {
+            throw new ToolCallException('Failed to delete entry');
+        }
 
-            return Response::success(['deleted' => $id, 'restorable' => true]);
-        });
+        return Response::success(['deleted' => $id, 'restorable' => true]);
     }
 
     #[McpTool(
@@ -171,31 +162,29 @@ class EntryWorkflowTools {
         ?string $fields = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $title, $slug, $fields): array {
-            $entry = $this->find($id, $site);
-            Authorization::assertCanDuplicate($entry);
+        $entry = $this->find($id, $site);
+        Authorization::assertCanDuplicate($entry);
 
-            $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
-            $duplicate = Craft::$app->getElements()->duplicateElement($entry, $attributes, asUnpublishedDraft: true);
+        $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
+        $duplicate = Craft::$app->getElements()->duplicateElement($entry, $attributes, asUnpublishedDraft: true);
 
-            $result = $fields === null
-                ? null
-                : $this->writer->update($duplicate, [], WriteParams::fieldsPayload($fields), WriteMode::Draft, $site);
+        $result = $fields === null
+            ? null
+            : $this->writer->update($duplicate, [], WriteParams::fieldsPayload($fields), WriteMode::Draft, $site);
 
-            if ($result !== null && $result->isFailure()) {
-                return ['success' => false] + $result->toArray();
-            }
+        if ($result !== null && $result->isFailure()) {
+            return ['success' => false] + $result->toArray();
+        }
 
-            // The warnings ride along on success too. A fields payload naming a
-            // relation that cannot be resolved is dropped rather than guessed,
-            // and this was the one write path that then reported plain success,
-            // so the caller could not tell a complete duplicate from a partial
-            // one. Every other write surfaces them; this one now agrees.
-            return Response::success([
-                'entry' => $this->reader->read($duplicate, $site),
-                'warnings' => $result === null ? [] : $result->toArray()['warnings'],
-            ]);
-        });
+        // The warnings ride along on success too. A fields payload naming a
+        // relation that cannot be resolved is dropped rather than guessed,
+        // and this was the one write path that then reported plain success,
+        // so the caller could not tell a complete duplicate from a partial
+        // one. Every other write surfaces them; this one now agrees.
+        return Response::success([
+            'entry' => $this->reader->read($duplicate, $site),
+            'warnings' => $result === null ? [] : $result->toArray()['warnings'],
+        ]);
     }
 
     #[McpTool(
@@ -205,22 +194,20 @@ class EntryWorkflowTools {
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $fromSite, $toSite): array {
-            SiteResolver::resolve($fromSite);
-            SiteResolver::resolve($toSite);
+        SiteResolver::resolve($fromSite);
+        SiteResolver::resolve($toSite);
 
-            $source = $this->find($id, $fromSite);
-            $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
-                ?? throw new ToolCallException("Entry {$id} does not exist on site '{$toSite}'; the section may not be enabled for it");
-            Authorization::assertCanSave($targetEntry);
+        $source = $this->find($id, $fromSite);
+        $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
+            ?? throw new ToolCallException("Entry {$id} does not exist on site '{$toSite}'; the section may not be enabled for it");
+        Authorization::assertCanSave($targetEntry);
 
-            $payload = $this->reader->read($source, $fromSite);
-            $result = $this->writer->update($targetEntry, [], $payload['fields'], WriteMode::Draft, $toSite);
+        $payload = $this->reader->read($source, $fromSite);
+        $result = $this->writer->update($targetEntry, [], $payload['fields'], WriteMode::Draft, $toSite);
 
-            return $result->isFailure()
-                ? ['success' => false] + $result->toArray()
-                : Response::success($result->toArray());
-        });
+        return $result->isFailure()
+            ? ['success' => false] + $result->toArray()
+            : Response::success($result->toArray());
     }
 
     /**

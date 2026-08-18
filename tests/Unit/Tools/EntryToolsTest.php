@@ -116,11 +116,11 @@ describe('entry write notifications', function () {
         expect(substr_count($source, '$result->state === WriteMode::Live && $result->elementId !== null'))->toBe(2);
     });
 
-    it('threads the RequestContext through to SafeExecution::run() on the write tools', function () {
-        $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
-
-        expect(substr_count($source, '}, $context);'))->toBe(2);
-    });
+    // The context used to be threaded by hand into the two write tools, and
+    // this counted the occurrences in the source. ConfigRefresh now builds it
+    // from what the SDK injects on every call, so the guarantee covers all 61
+    // tools instead of 2 and is no longer a property of this file's text.
+    // ConfigRefreshTest owns it.
 });
 
 describe('get_entry lookups', function () {
