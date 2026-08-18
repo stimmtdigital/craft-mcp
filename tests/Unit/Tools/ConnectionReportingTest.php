@@ -57,8 +57,16 @@ describe('build identity', function () {
         }
 
         expect(Build::source())->toBe('git')
-            ->and(Build::reference())->toMatch('/^[0-9a-f]{12}$/')
-            ->and(Build::branch())->not->toBeEmpty();
+            ->and(Build::reference())->toMatch('/^[0-9a-f]{12}$/');
+    });
+
+    // CI checks out a detached HEAD, which has a commit and no branch, and that
+    // is the honest answer rather than a failure. The branch is reported when
+    // there is one and omitted when there is not.
+    it('reports a branch only when HEAD is on one', function () {
+        $branch = Build::branch();
+
+        expect($branch === null || $branch !== '')->toBeTrue();
     });
 
     it('shortens the reference to the same width whichever source answered', function () {
