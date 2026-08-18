@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use stimmt\craft\Mcp\support\FileHelper;
+use stimmt\craft\Mcp\support\Tail;
 
 beforeEach(function () {
     $this->tempDir = sys_get_temp_dir() . '/craft-mcp-tests';
@@ -21,9 +21,9 @@ afterEach(function () {
     }
 });
 
-describe('FileHelper::tail()', function () {
+describe('Tail::of()', function () {
     it('returns empty array for non-existent file', function () {
-        $result = FileHelper::tail('/non/existent/file.txt');
+        $result = Tail::of('/non/existent/file.txt');
 
         expect($result)->toBe([]);
     });
@@ -32,7 +32,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/test.txt';
         file_put_contents($filepath, "line1\nline2\nline3\nline4\nline5\n");
 
-        $result = FileHelper::tail($filepath, 3);
+        $result = Tail::of($filepath, 3);
 
         expect($result)
             ->toHaveCount(3)
@@ -43,7 +43,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/small.txt';
         file_put_contents($filepath, "line1\nline2\n");
 
-        $result = FileHelper::tail($filepath, 10);
+        $result = Tail::of($filepath, 10);
 
         expect($result)
             ->toHaveCount(2)
@@ -54,7 +54,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/empty.txt';
         file_put_contents($filepath, '');
 
-        $result = FileHelper::tail($filepath);
+        $result = Tail::of($filepath);
 
         expect($result)->toBe([]);
     });
@@ -63,7 +63,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/no-trailing.txt';
         file_put_contents($filepath, "line1\nline2\nline3"); // No trailing newline
 
-        $result = FileHelper::tail($filepath, 2);
+        $result = Tail::of($filepath, 2);
 
         expect($result)
             ->toHaveCount(2)
@@ -74,7 +74,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/single.txt';
         file_put_contents($filepath, 'single line');
 
-        $result = FileHelper::tail($filepath, 5);
+        $result = Tail::of($filepath, 5);
 
         expect($result)
             ->toHaveCount(1)
@@ -85,7 +85,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/ordered.txt';
         file_put_contents($filepath, "first\nsecond\nthird\nfourth\nfifth\n");
 
-        $result = FileHelper::tail($filepath, 5);
+        $result = Tail::of($filepath, 5);
 
         expect($result[0])->toBe('first')
             ->and($result[4])->toBe('fifth');
@@ -99,7 +99,7 @@ describe('FileHelper::tail()', function () {
         }
         file_put_contents($filepath, implode("\n", $lines) . "\n");
 
-        $result = FileHelper::tail($filepath);
+        $result = Tail::of($filepath);
 
         expect($result)
             ->toHaveCount(50)
@@ -111,7 +111,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/special.txt';
         file_put_contents($filepath, "line with spaces\nline\twith\ttabs\nline: with: colons\n");
 
-        $result = FileHelper::tail($filepath, 3);
+        $result = Tail::of($filepath, 3);
 
         expect($result)
             ->toContain('line with spaces')
@@ -123,7 +123,7 @@ describe('FileHelper::tail()', function () {
         $filepath = $this->tempDir . '/unicode.txt';
         file_put_contents($filepath, "Hello 世界\nПривет мир\n日本語\n");
 
-        $result = FileHelper::tail($filepath, 3);
+        $result = Tail::of($filepath, 3);
 
         expect($result)
             ->toContain('Hello 世界')

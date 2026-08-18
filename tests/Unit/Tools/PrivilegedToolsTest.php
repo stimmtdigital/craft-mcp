@@ -71,7 +71,7 @@ it('flags the install-introspection reads privileged', function (string $class, 
 ]);
 
 // The decision itself, rather than the source text of whichever class happens
-// to hold it. The previous version asserted that McpServerFactory's file
+// to hold it. The previous version asserted that ServerFactory's file
 // mentioned 'privileged', which pinned a location instead of a behaviour and
 // broke the moment the rule moved to its own class without changing.
 it('admits a plain tool on any scope', function (?Scope $scope) {

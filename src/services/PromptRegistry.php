@@ -115,7 +115,7 @@ final class PromptRegistry {
     /**
      * Get prompt definitions registered by external plugins (not core).
      *
-     * Used by McpServerFactory for manual registration of external prompts.
+     * Used by ServerFactory for manual registration of external prompts.
      *
      * @return PromptDefinition[]
      */

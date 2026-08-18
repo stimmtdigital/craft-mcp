@@ -18,12 +18,12 @@ use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\pipeline\ErrorBoundary;
 use stimmt\craft\Mcp\pipeline\Freshness;
 use stimmt\craft\Mcp\pipeline\Presenter;
-use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\services\ServerFactory;
 use stimmt\craft\Mcp\text\Palette;
 use stimmt\craft\Mcp\text\Renderer;
 
 /**
- * McpServerFactory::create() needs a booted Craft app, so this drives the real
+ * ServerFactory::create() needs a booted Craft app, so this drives the real
  * SDK CallToolHandler with the same collaborators the factory hands it. It is
  * the end-to-end proof that a tool payload now crosses the wire once: without
  * the Presenter, CallToolHandler emits `content` AND `structuredContent` for
@@ -145,7 +145,7 @@ describe('the error boundary', function () {
     });
 });
 
-describe('McpServerFactory wiring', function () {
+describe('ServerFactory wiring', function () {
     /**
      * create() itself needs a booted Craft app, so this pins the chain it
      * installs. The order is the design: ErrorBoundary has to sit outside the
@@ -153,8 +153,8 @@ describe('McpServerFactory wiring', function () {
      * in the Presenter itself, and an inner boundary would catch none of them.
      */
     it('wraps the SDK reference handler in the boundary, the refresher and the presenter', function () {
-        $handler = (new ReflectionMethod(McpServerFactory::class, 'presenter'))
-            ->invoke(new McpServerFactory());
+        $handler = (new ReflectionMethod(ServerFactory::class, 'presenter'))
+            ->invoke(new ServerFactory());
 
         $unwrap = static fn (object $decorator, string $class): object => (new ReflectionProperty($class, 'handler'))
             ->getValue($decorator);
@@ -170,7 +170,7 @@ describe('McpServerFactory wiring', function () {
     });
 
     it('passes the reference handler to the builder', function () {
-        $source = file_get_contents(dirname(__DIR__, 3) . '/src/services/McpServerFactory.php');
+        $source = file_get_contents(dirname(__DIR__, 3) . '/src/services/ServerFactory.php');
 
         expect($source)->toContain('->setReferenceHandler($this->presenter())');
     });

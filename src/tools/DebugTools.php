@@ -13,8 +13,8 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\EventHandlers;
-use stimmt\craft\Mcp\support\FileHelper;
 use stimmt\craft\Mcp\support\SqlReadGuard;
+use stimmt\craft\Mcp\support\Tail;
 use Throwable;
 
 /**
@@ -177,7 +177,7 @@ class DebugTools {
         $deprecations = [];
 
         if (file_exists($webLog)) {
-            $lines = FileHelper::tail($webLog, $limit * 5);
+            $lines = Tail::of($webLog, $limit * 5);
             $logFile = basename($webLog);
             $lineCount = count($lines);
             $context?->getClientLogger()?->info("Log window read: {$logFile}, last {$lineCount} lines");

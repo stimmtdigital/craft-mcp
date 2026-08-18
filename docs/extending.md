@@ -413,7 +413,7 @@ shared renderer handles the rest.
 ```php
 use Mcp\Capability\Attribute\Schema;
 use stimmt\craft\Mcp\enums\ResponseFormat;
-use stimmt\craft\Mcp\support\Presenter;
+use stimmt\craft\Mcp\pipeline\Presenter;
 
 #[McpTool(name: 'list_widgets', description: 'List widgets')]
 public function listWidgets(

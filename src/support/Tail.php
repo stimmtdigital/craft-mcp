@@ -5,11 +5,17 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\support;
 
 /**
- * File utility methods.
+ * The last N lines of a file, read from the end rather than by walking the
+ * whole thing.
+ *
+ * WHY it is not called FileHelper any more: Craft ships craft\helpers\FileHelper,
+ * and the two had to coexist by aliasing one of them at every call site that
+ * touched both. "Helper" also said nothing; this class does one thing, and now
+ * its name is that thing.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class FileHelper {
+final class Tail {
     /**
      * Default chunk size for reading files (8KB).
      */
@@ -25,7 +31,7 @@ final class FileHelper {
      * @param int $lines Number of lines to read
      * @return string[] Lines from the file (oldest first)
      */
-    public static function tail(string $filepath, int $lines = 50): array {
+    public static function of(string $filepath, int $lines = 50): array {
         if (!file_exists($filepath) || !is_readable($filepath)) {
             return [];
         }

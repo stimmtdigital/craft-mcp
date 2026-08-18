@@ -29,7 +29,7 @@ final readonly class Cache implements SimpleCacheInterface {
     /**
      * @param string $prefix Namespaces the keys, and carries the code revision
      *                       the cached discovery belongs to; see
-     *                       McpServerFactory::discoveryCache().
+     *                       ServerFactory::discoveryCache().
      * @param int|null $defaultTtl Applied when the caller stores without a TTL
      *                             of its own, which the SDK's CachedDiscoverer
      *                             always does. Null keeps the Yii default of

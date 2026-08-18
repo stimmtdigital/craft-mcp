@@ -5,24 +5,24 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\installer\clients;
 
 /**
- * MCP client configuration for Cursor.
+ * MCP client configuration for Claude Code.
  *
- * Generates `.cursor/mcp.json` in the project root.
+ * Generates `.mcp.json` in the project root.
  */
-final class CursorClient extends AbstractMcpClient {
+final class ClaudeCode extends Base {
     public function getId(): string {
-        return 'cursor';
+        return 'claude-code';
     }
 
     public function getName(): string {
-        return 'Cursor';
+        return 'Claude Code';
     }
 
     public function getDescription(): string {
-        return '.cursor/mcp.json';
+        return '.mcp.json in project root';
     }
 
     public function getConfigPath(): string {
-        return $this->configRoot . '/.cursor/mcp.json';
+        return $this->configRoot . '/.mcp.json';
     }
 }

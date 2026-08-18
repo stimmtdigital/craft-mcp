@@ -12,7 +12,7 @@ use Override;
  * Generates configuration in the OS-specific Claude Desktop config location.
  * Requires absolute paths and a `cwd` field since the config is global.
  */
-final class ClaudeDesktopClient extends AbstractMcpClient {
+final class ClaudeDesktop extends Base {
     public function getId(): string {
         return 'claude-desktop';
     }

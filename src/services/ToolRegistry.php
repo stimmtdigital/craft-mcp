@@ -134,7 +134,7 @@ final class ToolRegistry {
     /**
      * Get tool definitions registered by external plugins (not core).
      *
-     * Used by McpServerFactory for manual registration of external tools.
+     * Used by ServerFactory for manual registration of external tools.
      *
      * @return ToolDefinition[]
      */

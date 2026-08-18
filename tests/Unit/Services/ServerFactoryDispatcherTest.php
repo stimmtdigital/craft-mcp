@@ -11,7 +11,7 @@ use Mcp\Server\Protocol;
 use stimmt\craft\Mcp\psr\Dispatcher;
 
 /**
- * McpServerFactory::create() itself needs a booted Craft app (Craft::$app,
+ * ServerFactory::create() itself needs a booted Craft app (Craft::$app,
  * Mcp::getInstance(), ...), so these tests exercise the exact SDK calls it
  * makes (Registry(dispatcher), Builder::setEventDispatcher()) directly,
  * proving the wiring pattern the factory now uses actually fixes the two
@@ -54,7 +54,7 @@ describe('Dispatcher wired into the SDK Registry', function () {
 });
 
 describe('Builder::setEventDispatcher() truthfulness', function () {
-    it('advertises toolsListChanged true once a real dispatcher is set, matching McpServerFactory::create()', function () {
+    it('advertises toolsListChanged true once a real dispatcher is set, matching ServerFactory::create()', function () {
         $server = Server::builder()
             ->setServerInfo(name: 'Test Server', version: '1.0.0')
             ->setEventDispatcher(new Dispatcher())
@@ -94,7 +94,7 @@ function initializeCapabilities(Server $server): Mcp\Schema\ServerCapabilities {
 /**
  * mcp/sdk 0.7 defers loader-based element loading to the first registry
  * read, and Registry::unregisterTool() silently no-ops for elements that
- * are not loaded yet. McpServerFactory::filterTools() unregisters scoped
+ * are not loaded yet. ServerFactory::filterTools() unregisters scoped
  * and privileged tools right after Builder::build(), so it depends on the
  * SDK's documented exception: a registry supplied via setRegistry() is
  * loaded eagerly at build time. These tests pin that contract; if a future

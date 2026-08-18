@@ -10,7 +10,7 @@ namespace stimmt\craft\Mcp\installer\contracts;
  * Each implementation knows how to generate configuration for a specific
  * MCP client (Claude Code, Cursor, Claude Desktop, etc.).
  */
-interface McpClientInterface {
+interface Client {
     /**
      * Get the unique identifier for this client.
      *

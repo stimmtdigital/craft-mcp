@@ -147,7 +147,7 @@ final class ResourceRegistry {
     /**
      * Get resource definitions registered by external plugins (not core).
      *
-     * Used by McpServerFactory for manual registration of external resources.
+     * Used by ServerFactory for manual registration of external resources.
      *
      * @return ResourceDefinition[]
      */

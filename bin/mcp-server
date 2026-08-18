@@ -66,7 +66,7 @@ $app = require $basePath . '/vendor/craftcms/cms/bootstrap/console.php';
 
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\services\McpRegistry;
-use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\services\ServerFactory;
 use stimmt\craft\Mcp\support\SignalHandler;
 
 // Validate plugin is available and enabled
@@ -103,11 +103,11 @@ $signalHandler->register();
 // Build and run server with dedicated file logger (separate from Craft logs)
 try {
     $settings = Mcp::settings();
-    $logger = McpServerFactory::createFileLogger(logLevel: $settings->logLevel);
+    $logger = ServerFactory::createFileLogger(logLevel: $settings->logLevel);
 
     \stimmt\craft\Mcp\support\Runtime::bootstrap($logger);
 
-    $factory = new McpServerFactory(logger: $logger);
+    $factory = new ServerFactory(logger: $logger);
     $server = $factory->create();
     $transport = $factory->createTransport($signalHandler);
 

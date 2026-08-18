@@ -13,9 +13,9 @@ use craft\web\Request as WebRequest;
 use craft\web\UrlManager;
 use Override;
 use stimmt\craft\Mcp\models\Settings;
-use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\services\PromptRegistry;
 use stimmt\craft\Mcp\services\ResourceRegistry;
+use stimmt\craft\Mcp\services\ServerFactory;
 use stimmt\craft\Mcp\services\ToolRegistry;
 use stimmt\craft\Mcp\web\Cp;
 use yii\base\Event;
@@ -196,8 +196,8 @@ class Mcp extends BasePlugin {
      * The factory handles server building with proper SDK patterns,
      * including discovery, container, and logging configuration.
      */
-    public function getServerFactory(): McpServerFactory {
-        return new McpServerFactory();
+    public function getServerFactory(): ServerFactory {
+        return new ServerFactory();
     }
 
     /**

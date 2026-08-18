@@ -51,7 +51,7 @@ use stimmt\craft\Mcp\transport\Stdio;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-class McpServerFactory {
+class ServerFactory {
     /**
      * The revisions this server will serve over HTTP. 2024-11-05 is omitted on
      * purpose: it predates the Streamable HTTP transport it would arrive on.

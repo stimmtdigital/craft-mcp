@@ -37,7 +37,7 @@ it('hands back the same collection each time so a listener can rely on identity'
 });
 
 it('is attached by the stdio transport seam and nowhere else', function (): void {
-    $factory = file_get_contents(dirname(__DIR__, 3) . '/src/services/McpServerFactory.php');
+    $factory = file_get_contents(dirname(__DIR__, 3) . '/src/services/ServerFactory.php');
 
     expect($factory)->toContain('ConsoleHeaders::NAME, new ConsoleHeaders()');
 

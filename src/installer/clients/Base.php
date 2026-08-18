@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\installer\clients;
 
 use InvalidArgumentException;
-use stimmt\craft\Mcp\installer\contracts\McpClientInterface;
+use stimmt\craft\Mcp\installer\contracts\Client;
 use stimmt\craft\Mcp\installer\EnvironmentDetector;
 
 /**
@@ -13,7 +13,7 @@ use stimmt\craft\Mcp\installer\EnvironmentDetector;
  *
  * Provides shared configuration generation logic for DDEV and native PHP environments.
  */
-abstract class AbstractMcpClient implements McpClientInterface {
+abstract class Base implements Client {
     protected const BIN_PATH = 'vendor/stimmt/craft-mcp/bin/mcp-server';
 
     public function __construct(

@@ -7,7 +7,7 @@ namespace stimmt\craft\Mcp\logging;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
-use stimmt\craft\Mcp\support\FileHelper;
+use stimmt\craft\Mcp\support\Tail;
 
 /**
  * Parser for Craft CMS log files.
@@ -76,7 +76,7 @@ final readonly class Parser {
             return [];
         }
 
-        $lines = FileHelper::tail($filepath, $maxLines);
+        $lines = Tail::of($filepath, $maxLines);
         $filename = $this->getRelativePath($filepath);
 
         $entries = $this->parseLines($lines, $filename);

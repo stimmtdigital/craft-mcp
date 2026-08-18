@@ -16,7 +16,7 @@ use stimmt\craft\Mcp\http\Token;
 use stimmt\craft\Mcp\http\Tokens;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\Settings;
-use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\services\ServerFactory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Runtime;
 use yii\base\InvalidConfigException;
@@ -99,10 +99,10 @@ class HttpController extends Controller {
 
     private function serve(Token $token): Response {
         $settings = Mcp::settings();
-        $logger = McpServerFactory::createFileLogger(logLevel: $settings->logLevel);
+        $logger = ServerFactory::createFileLogger(logLevel: $settings->logLevel);
         Runtime::bootstrap($logger);
 
-        $factory = new McpServerFactory(logger: $logger);
+        $factory = new ServerFactory(logger: $logger);
         $store = $this->sessionStore($settings);
 
         $bridge = new Bridge();

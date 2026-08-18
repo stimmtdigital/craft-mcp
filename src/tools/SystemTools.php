@@ -6,7 +6,7 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\console\controllers\HelpController;
-use craft\helpers\FileHelper as CraftFileHelper;
+use craft\helpers\FileHelper;
 use craft\models\CategoryGroup;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
@@ -276,7 +276,7 @@ class SystemTools {
             return;
         }
 
-        CraftFileHelper::clearDirectory($path);
+        FileHelper::clearDirectory($path);
         $cleared[] = $name;
     }
 
