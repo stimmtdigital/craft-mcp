@@ -334,7 +334,7 @@ class EntryTools {
     #[McpTool(
         name: 'describe_entry_schema',
         title: 'Entry field reference',
-        description: 'Describe the fields a section/entry type accepts: handles, kinds, required flags, a per-field input shape (the exact payload each field takes: natural keys for relations, block types for matrix, link/option/table/container shapes for structured and third-party fields), native fields, writable meta attributes. Pass example (entry id or slug) to include a real entry payload as a golden fixture.',
+        description: 'Describe the fields a section/entry type accepts: handles, kinds, required flags, a per-field input shape (the exact payload each field takes: natural keys for relations, block types for matrix, link/option/table/container shapes for structured and third-party fields), native fields, writable meta attributes. On a multi-site install each field also reports its translation method and whether it holds a separate value per site, which is what says if writing it on one site changes another. Pass example (entry id or slug) to include a real entry payload as a golden fixture.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SCHEMA)]
@@ -361,7 +361,7 @@ class EntryTools {
 
         Craft::$app->getFields()->refreshFields();
 
-        $describer = new Describer();
+        $describer = new Describer(multiSite: Craft::$app->getIsMultiSite());
         $meta = new Meta();
         $layout = $entryType->getFieldLayout();
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\elements\schema;
 
+use craft\base\Field;
 use craft\fieldlayoutelements\BaseNativeField;
 use craft\fieldlayoutelements\CustomField;
 use craft\fields\BaseRelationField;
@@ -28,7 +29,13 @@ use craft\models\FieldLayout;
 final readonly class Describer {
     private Shape $shape;
 
-    public function __construct(?Shape $shape = null) {
+    /**
+     * @param bool $multiSite whether the install serves more than one site. Told
+     *                        rather than looked up: describing a layout is pure
+     *                        work over the models it is handed, and the caller
+     *                        is the one that already has an application to ask.
+     */
+    public function __construct(?Shape $shape = null, private bool $multiSite = false) {
         $this->shape = $shape ?? new Shape();
     }
 
@@ -79,6 +86,20 @@ final readonly class Describer {
             'required' => $element->required,
             'input' => $input,
         ];
+
+        // Only where the question exists. On a single-site install there is no
+        // "other site" to leak into, and the key would be pure token cost on
+        // every field of every schema an agent reads.
+        if ($this->multiSite) {
+            $described['translation'] = [
+                'method' => $field->translationMethod,
+                // True only for the method that gives every site its own
+                // value. The rest share a value with at least some other site,
+                // so false reads as "writing this may change another site",
+                // which is the safe direction to be wrong in.
+                'perSite' => $field->translationMethod === Field::TRANSLATION_METHOD_SITE,
+            ];
+        }
 
         if ($field instanceof BaseRelationField) {
             // The raw sources setting, not getInputSources(): the latter is
