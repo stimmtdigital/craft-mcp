@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0-beta.13] - 2026-08-18
+
 ### Added
 - `get_mcp_info` reports the connection it is answering on: transport, scope, user, and whether the connection may read install internals. An agent had no way to ask what it was allowed to do, so it found out by being refused
 - `get_mcp_info` and `list_mcp_tools` report how many tools this connection can actually call, not just how many are registered. On a scoped connection those are different numbers, and only one of them is useful
