@@ -8,16 +8,15 @@ use Craft;
 use craft\elements\Entry;
 use Mcp\Schema\Notification\ResourceUpdatedNotification;
 use Mcp\Server\RequestContext;
-use Mcp\Server\Resource\SessionSubscriptionManager;
 use Throwable;
 
 /**
  * Pushes notifications/resources/updated for a craft:// URI, but only to a
  * session that actually called resources/subscribe on it first.
- * SessionSubscriptionManager stores subscriptions on the session itself, so
- * a fresh instance per call is exactly as correct as a shared one. Fail-open
- * by design, matching ConfigFreshness: a broken push must never turn an
- * otherwise successful write into a reported tool failure.
+ * Subscriptions live on the session itself, so a fresh manager per call is
+ * exactly as correct as a shared one. Fail-open by design, matching
+ * ConfigFreshness: a broken push must never turn an otherwise successful write
+ * into a reported tool failure.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -28,8 +27,10 @@ final class ResourceChangeNotifier {
         }
 
         try {
-            $subscriptions = new SessionSubscriptionManager();
-            if (!$subscriptions->isSubscribed($context->getSession(), $uri)) {
+            // Our own manager, because it owns the stored subscription keys and
+            // is the only thing that can tell whether a concrete URI is covered
+            // by what the client actually subscribed to.
+            if (!(new Subscription())->isSubscribed($context->getSession(), $uri)) {
                 return;
             }
 

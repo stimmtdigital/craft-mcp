@@ -84,3 +84,16 @@ describe('Settings showClientConfigSnippet', function () {
         expect($settings->validate(['showClientConfigSnippet']))->toBeTrue();
     });
 });
+
+describe('Settings colorOutput', function () {
+    it('defaults to false so a model client never pays for escape sequences', function () {
+        expect((new Settings())->colorOutput)->toBeFalse();
+    });
+
+    it('validates as boolean', function () {
+        $settings = new Settings();
+        $settings->colorOutput = true;
+
+        expect($settings->validate(['colorOutput']))->toBeTrue();
+    });
+});

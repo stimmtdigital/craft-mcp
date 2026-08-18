@@ -94,6 +94,9 @@
         "test:type": "pest --type-coverage --min=90",
         "test:arch": "pest --filter=Arch",
         "analyse": "phpstan analyse --memory-limit=512M",
+        "smoke": "php tests/Smoke/run.php",
+        "smoke:baseline": "php tests/Smoke/run.php --baseline",
+        "smoke:heavy": "php tests/Smoke/run.php --heavy",
         "ci": [
             "@lint:test",
             "@refactor:dry",

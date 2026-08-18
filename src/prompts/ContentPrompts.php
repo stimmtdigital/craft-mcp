@@ -114,6 +114,7 @@ PROMPT);
     /**
      * Generate a prompt for debugging content issues.
      *
+     * @param string $issueDescription What is going wrong, in your own words: what you expected, what happened instead, and where you saw it.
      * @return array{array{role: string, content: string}}
      */
     #[McpPrompt(

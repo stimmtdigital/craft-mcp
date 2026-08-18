@@ -6,13 +6,13 @@ namespace stimmt\craft\Mcp\tools;
 
 use craft\elements\Category;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * Category MCP tools for Craft CMS.
@@ -25,24 +25,28 @@ class CategoryTools {
      */
     #[McpTool(
         name: 'list_categories',
+        title: 'Browse categories',
         description: 'List categories from Craft CMS. Filter by group handle.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
-    public function listCategories(?string $group = null, int $limit = 100, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($group, $limit): array {
-            $query = Category::find()->limit($limit);
+    public function listCategories(
+        #[Schema(description: 'Category group handle. Omit to list categories from every group.')]
+        ?string $group = null,
+        int $limit = 100,
+        ?RequestContext $context = null,
+    ): array {
+        $query = Category::find()->limit($limit);
 
-            if ($group !== null) {
-                $query->group($group);
-            }
+        if ($group !== null) {
+            $query->group($group);
+        }
 
-            Authorization::scopeQuery($query);
-            $categories = $query->all();
-            $results = array_map($this->serializeCategory(...), $categories);
+        Authorization::scopeQuery($query);
+        $categories = $query->all();
+        $results = array_map($this->serializeCategory(...), $categories);
 
-            return Response::list('categories', $results);
-        });
+        return Response::list('categories', $results);
     }
 
     /**

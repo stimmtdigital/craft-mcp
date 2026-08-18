@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use stimmt\craft\Mcp\tools\EntryTools;
 use stimmt\craft\Mcp\tools\EntryWorkflowTools;
+use stimmt\craft\Mcp\tools\NestedEntryTools;
 
 // Every entry-write tool must consult the acting-user guard before writing,
 // so content-scope HTTP tokens inherit the linked user's real CP permissions
@@ -28,4 +29,6 @@ it('guards every entry-write tool with the acting-user authorization', function 
     // The canonical-id publish path applies drafts[0]; the guard must check
     // that draft object itself (peer-draft permissions), not only the canonical.
     [EntryWorkflowTools::class, 'publishCanonical', 'assertCanPublish'],
+    [NestedEntryTools::class, 'createNestedEntry', 'assertCanSave'],
+    [NestedEntryTools::class, 'moveNestedEntry', 'assertCanSave'],
 ]);

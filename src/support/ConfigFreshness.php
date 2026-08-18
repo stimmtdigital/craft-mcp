@@ -43,8 +43,8 @@ final class ConfigFreshness {
     ];
 
     /**
-     * $context is optional and only supplied by call sites that thread a
-     * RequestContext through SafeExecution::run(); without it a detected
+     * $context comes from Freshness, which builds it from the session and
+     * request the SDK injects on every tool call. Without one a detected
      * refresh still happens, it just has no session to notify.
      */
     public static function ensure(?RequestContext $context = null): void {

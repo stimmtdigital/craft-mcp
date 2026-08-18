@@ -21,6 +21,14 @@ final class Meta {
         'id', 'uid', 'siteId', 'siteSettingsId', 'fieldLayoutId', 'contentId', 'canonicalId',
         'dateCreated', 'dateUpdated', 'dateDeleted', 'dateLastMerged', 'draftId', 'revisionId',
         'root', 'lft', 'rgt', 'level', 'structureId', 'searchScore', 'tempId', 'uri',
+        // Craft calls these safe, and they are, for Craft. They are not part of
+        // the payload contract: an agent addresses them through a named tool
+        // argument (section, type, parent) or not at all. Listing them told the
+        // agent it could send keys the write tools would reject, which is worse
+        // than not mentioning them, because the schema tool is the one thing it
+        // is told to trust before writing.
+        'sectionId', 'typeId', 'fieldId', 'ownerId', 'primaryOwnerId',
+        'sortOrder', 'isFresh', 'placeInStructure', 'authorIds', 'parentId',
     ];
 
     /**

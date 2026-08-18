@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\models;
 
+use Mcp\Schema\Icon;
 use stimmt\craft\Mcp\enums\PromptCategory;
 
 /**
@@ -12,6 +13,16 @@ use stimmt\craft\Mcp\enums\PromptCategory;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class PromptDefinition {
+    /**
+     * The trailing fields mirror #[McpPrompt] one for one, so an external prompt
+     * declaring them keeps them instead of arriving at the client as name and
+     * description only. They are appended rather than inserted, because
+     * third-party plugins construct this positionally; anything added later
+     * belongs after them for the same reason.
+     *
+     * @param Icon[]|null $icons
+     * @param array<string, mixed>|null $meta
+     */
     public function __construct(
         public string $name,
         public string $description,
@@ -22,6 +33,9 @@ final readonly class PromptDefinition {
         public ?string $condition = null,
         /** @var array<string, string> Parameter name => CompletionProvider class */
         public array $completionProviders = [],
+        public ?string $title = null,
+        public ?array $icons = null,
+        public ?array $meta = null,
     ) {
     }
 
@@ -79,9 +93,10 @@ final readonly class PromptDefinition {
     }
 
     /**
-     * Create a PromptDefinition from extracted metadata.
+     * Create a PromptDefinition from extracted metadata. Every key is optional,
+     * including the ones added after the first release of this factory.
      *
-     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, condition?: string|null, completionProviders?: array<string, string>} $data
+     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, condition?: string|null, completionProviders?: array<string, string>, title?: string|null, icons?: Icon[]|null, meta?: array<string, mixed>|null} $data
      */
     public static function fromArray(array $data): self {
         return new self(
@@ -93,6 +108,9 @@ final readonly class PromptDefinition {
             category: $data['category'] ?? PromptCategory::GENERAL->value,
             condition: $data['condition'] ?? null,
             completionProviders: $data['completionProviders'] ?? [],
+            title: $data['title'] ?? null,
+            icons: $data['icons'] ?? null,
+            meta: $data['meta'] ?? null,
         );
     }
 }

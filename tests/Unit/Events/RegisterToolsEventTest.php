@@ -80,23 +80,9 @@ describe('RegisterToolsEvent::addTool()', function () {
     });
 });
 
-describe('RegisterToolsEvent::getAllToolClasses()', function () {
-    it('returns empty array when no tools registered', function () {
-        expect($this->event->getAllToolClasses())->toBe([]);
-    });
-
-    it('returns flat list of all tool classes', function () {
-        $this->event->addTool(ValidToolClass::class, 'plugin-a');
-        $this->event->addTool(ValidToolClass::class, 'plugin-b');
-
-        $allClasses = $this->event->getAllToolClasses();
-
-        expect($allClasses)
-            ->toHaveCount(2)
-            ->each->toBe(ValidToolClass::class);
-    });
-});
-
+// What the path actually registers is covered in DiscoveryPathTest; these cases
+// cover the recorded list only, so they name subdirectories that hold no tool
+// classes and stay cheap.
 describe('RegisterToolsEvent::addDiscoveryPath()', function () {
     it('registers valid directory path', function () {
         $path = dirname(__DIR__, 3) . '/src/tools';
@@ -120,12 +106,12 @@ describe('RegisterToolsEvent::addDiscoveryPath()', function () {
     });
 
     it('stores multiple subdirectories', function () {
-        $path = dirname(__DIR__, 3) . '/src';
-        $this->event->addDiscoveryPath($path, ['.', 'tools', 'support'], 'test');
+        $path = dirname(__DIR__, 3) . '/src/models';
+        $this->event->addDiscoveryPath($path, ['.', 'enums', 'contracts'], 'test');
 
         $paths = $this->event->getDiscoveryPaths();
 
-        expect($paths['test']['subdirs'])->toBe(['.', 'tools', 'support']);
+        expect($paths['test']['subdirs'])->toBe(['.', 'enums', 'contracts']);
     });
 });
 

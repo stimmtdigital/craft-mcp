@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\Tests\Fixtures;
 
 use Closure;
+use craft\fields\Matrix;
+use craft\models\EntryType;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 use ReflectionObject;
 use stimmt\craft\Mcp\elements\refs\Keys;
+use stimmt\craft\Mcp\elements\refs\Resolution;
 
 /**
  * Shared unit-test builders for the elements module.
@@ -30,13 +33,28 @@ final class Layouts {
     }
 
     /**
+     * A real Matrix field whose private entry-type storage is set via
+     * reflection, bypassing only setEntryTypes() (which resolves every type
+     * through Craft::$app's entries service); type lookups by handle run
+     * unmocked.
+     *
+     * @param EntryType[] $entryTypes
+     */
+    public static function matrix(string $handle, array $entryTypes = [], ?int $id = null): Matrix {
+        $field = new Matrix(['handle' => $handle, 'id' => $id]);
+        (new ReflectionObject($field))->getProperty('_entryTypes')->setValue($field, $entryTypes);
+
+        return $field;
+    }
+
+    /**
      * Keys with injected lookups, so no Craft element queries run. The
      * defaults resolve the canonical fixture key {section: pages, slug: about}
      * to id 7 and back.
      */
     public static function keysWith(?Closure $lookupId = null, ?Closure $lookupKey = null): Keys {
         return new Keys(
-            lookupId: $lookupId ?? static fn (string $type, array $key, ?string $site): ?int => $key === ['section' => 'pages', 'slug' => 'about'] ? 7 : null,
+            lookupId: $lookupId ?? static fn (string $type, array $key, ?string $site): Resolution => $key === ['section' => 'pages', 'slug' => 'about'] ? Resolution::one(7) : Resolution::none(),
             lookupKey: $lookupKey ?? static fn (string $type, int $id, ?string $site): ?array => $id === 7 ? ['section' => 'pages', 'slug' => 'about'] : null,
         );
     }

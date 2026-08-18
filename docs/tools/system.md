@@ -114,7 +114,7 @@ Search through recent log entries with filtering by severity level, log source, 
 | `level` | string | null | Filter by log level: "error", "warning", or "info" |
 | `source` | string | null | Filter by log source: "web", "console", "queue", or a plugin name |
 | `pattern` | string | null | Case-insensitive search pattern to filter log messages |
-| `output` | string | "structured" | Output format: "structured" (JSON) or "text" (human-readable with ANSI colors) |
+| `output` | string | "structured" | Output format: "structured" (JSON) or "text" (human-readable log lines) |
 
 **Examples:**
 
@@ -134,7 +134,7 @@ read_logs pattern="database" limit=20
 # Filter by log source
 read_logs source="web" level="error"
 
-# Get human-readable colored output
+# Get human-readable output
 read_logs output="text" limit=10
 ```
 
@@ -166,12 +166,17 @@ read_logs output="text" limit=10
 
 **Response (text):**
 
-When using `output="text"`, returns ANSI-colored human-readable output:
-- Timestamps appear dimmed
-- ERROR level appears in red
-- WARNING level appears in yellow
-- INFO level appears dimmed
-- Stack traces are indented and dimmed
+When using `output="text"`, returns one line per entry as
+`timestamp [LEVEL] category: message`, with any stack trace indented beneath it:
+
+```
+2026-01-07 10:30:00 [ERROR] app\Service: Something failed
+  #0 /var/www/src/Service.php(123): SomeClass->method()
+```
+
+The lines are plain text by default. Enabling the `colorOutput` setting dims the timestamp,
+category and stack trace, and colours the level (red for ERROR, yellow for WARNING). See
+[Text Output](README.md#text-output).
 
 ---
 

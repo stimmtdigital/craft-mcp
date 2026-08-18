@@ -5,10 +5,10 @@ declare(strict_types=1);
 use Mcp\Schema\Notification\ResourceUpdatedNotification;
 use Mcp\Schema\Request\PingRequest;
 use Mcp\Server\RequestContext;
-use Mcp\Server\Resource\SessionSubscriptionManager;
 use Mcp\Server\Session\InMemorySessionStore;
 use Mcp\Server\Session\Session;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
+use stimmt\craft\Mcp\support\Subscription;
 
 /**
  * Runs the notifier inside a real Fiber because ClientGateway::notify()
@@ -33,7 +33,7 @@ function runNotifyInFiber(RequestContext $context, string $uri): array {
 describe('ResourceChangeNotifier', function () {
     it('sends a ResourceUpdatedNotification when the session subscribed to the URI', function () {
         $session = new Session(new InMemorySessionStore());
-        (new SessionSubscriptionManager())->subscribe($session, 'craft://entries/news/hello-world');
+        (new Subscription())->subscribe($session, 'craft://entries/news/hello-world');
         $context = new RequestContext($session, new PingRequest());
 
         $result = runNotifyInFiber($context, 'craft://entries/news/hello-world');
@@ -57,7 +57,7 @@ describe('ResourceChangeNotifier', function () {
 
     it('does not notify a session subscribed to a different URI', function () {
         $session = new Session(new InMemorySessionStore());
-        (new SessionSubscriptionManager())->subscribe($session, 'craft://entries/news/other-entry');
+        (new Subscription())->subscribe($session, 'craft://entries/news/other-entry');
         $context = new RequestContext($session, new PingRequest());
 
         $result = runNotifyInFiber($context, 'craft://entries/news/hello-world');

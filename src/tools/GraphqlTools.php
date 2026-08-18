@@ -10,12 +10,12 @@ use GraphQL\Error\SyntaxError;
 use GraphQL\Language\AST\OperationDefinitionNode;
 use GraphQL\Language\Parser;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\SafeExecution;
 use Throwable;
 
 /**
@@ -29,34 +29,33 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'list_graphql_schemas',
+        title: 'GraphQL schemas',
         description: 'List all GraphQL schemas in Craft CMS with their scopes and permissions',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
     public function listGraphqlSchemas(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $gql = Craft::$app->getGql();
-            $schemas = $gql->getSchemas();
+        $gql = Craft::$app->getGql();
+        $schemas = $gql->getSchemas();
 
-            $result = array_map(
-                $this->serializeSchema(...),
-                $schemas,
-            );
+        $result = array_map(
+            $this->serializeSchema(...),
+            $schemas,
+        );
 
-            // Also include the public schema if it exists
-            $publicSchema = $gql->getPublicSchema();
-            if ($publicSchema !== null && !$this->hasSchemaId($result, $publicSchema->id)) {
-                array_unshift($result, [
-                    ...$this->serializeSchema($publicSchema),
-                    'isPublic' => true,
-                ]);
-            }
+        // Also include the public schema if it exists
+        $publicSchema = $gql->getPublicSchema();
+        if ($publicSchema !== null && !$this->hasSchemaId($result, $publicSchema->id)) {
+            array_unshift($result, [
+                ...$this->serializeSchema($publicSchema),
+                'isPublic' => true,
+            ]);
+        }
 
-            return [
-                'count' => count($result),
-                'schemas' => $result,
-            ];
-        });
+        return [
+            'count' => count($result),
+            'schemas' => $result,
+        ];
     }
 
     /**
@@ -64,46 +63,51 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'get_graphql_schema',
+        title: 'GraphQL schema definition',
         description: 'Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL)]
-    public function getGraphqlSchema(?int $id = null, ?string $uid = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $uid): array {
-            if ($id === null && $uid === null) {
-                throw new ToolCallException('Either id or uid must be provided');
-            }
+    public function getGraphqlSchema(
+        #[Schema(description: 'Schema id, as list_graphql_schemas reports it.')]
+        ?int $id = null,
+        #[Schema(description: 'Schema uid, as an alternative to id.')]
+        ?string $uid = null,
+        ?RequestContext $context = null,
+    ): array {
+        if ($id === null && $uid === null) {
+            throw new ToolCallException('Either id or uid must be provided');
+        }
 
-            $gql = Craft::$app->getGql();
+        $gql = Craft::$app->getGql();
 
-            $schema = $id !== null
-                ? $gql->getSchemaById($id)
-                : $gql->getSchemaByUid($uid);
+        $schema = $id !== null
+            ? $gql->getSchemaById($id)
+            : $gql->getSchemaByUid($uid);
 
-            if ($schema === null) {
-                $identifier = $id !== null ? "ID {$id}" : "UID '{$uid}'";
+        if ($schema === null) {
+            $identifier = $id !== null ? "ID {$id}" : "UID '{$uid}'";
 
-                throw new ToolCallException("Schema with {$identifier} not found");
-            }
+            throw new ToolCallException("Schema with {$identifier} not found");
+        }
 
-            // Get the SDL for this schema
-            $sdl = null;
+        // Get the SDL for this schema
+        $sdl = null;
 
-            try {
-                $sdl = (string) $gql->getSchemaDef($schema);
-            } catch (Throwable) {
-                // SDL generation might fail for some schemas
-            }
+        try {
+            $sdl = (string) $gql->getSchemaDef($schema);
+        } catch (Throwable) {
+            // SDL generation might fail for some schemas
+        }
 
-            return [
-                'success' => true,
-                'schema' => [
-                    ...$this->serializeSchema($schema),
-                    'sdl' => $sdl,
-                    'sdlLength' => $sdl !== null ? strlen($sdl) : 0,
-                ],
-            ];
-        });
+        return [
+            'success' => true,
+            'schema' => [
+                ...$this->serializeSchema($schema),
+                'sdl' => $sdl,
+                'sdlLength' => $sdl !== null ? strlen($sdl) : 0,
+            ],
+        ];
     }
 
     /**
@@ -111,22 +115,25 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'query_graphql',
+        title: 'Run a GraphQL query',
         description: 'Run a read-only GraphQL query against Craft\'s GraphQL API. Mutations and subscriptions are rejected before execution, so this is safe for browsing any GraphQL-exposed data (assets, categories, users, plugin types) with exactly the response shape you ask for. Use get_graphql_schema to discover the available types first.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL, privileged: true)]
     public function queryGraphql(
+        #[Schema(description: 'The GraphQL document. Only query operations are accepted; a mutation or subscription is rejected at the AST level, before execution.')]
         string $query,
+        #[Schema(description: 'Query variables as a JSON-encoded STRING (not a nested object).')]
         ?string $variables = null,
+        #[Schema(description: 'Which operation to run, when the document defines more than one.')]
         ?string $operationName = null,
+        #[Schema(description: 'Schema id from list_graphql_schemas, which decides what the query may reach. Omit to use the public schema.')]
         ?int $schemaId = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($query, $variables, $operationName, $schemaId, $context): array {
-            $this->assertReadOnly($query);
+        $this->assertReadOnly($query);
 
-            return $this->execute($query, $variables, $operationName, $schemaId, $context);
-        });
+        return $this->execute($query, $variables, $operationName, $schemaId, $context);
     }
 
     /**
@@ -134,18 +141,23 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'execute_graphql',
+        title: 'Execute GraphQL, mutations included',
         description: 'Execute a GraphQL query against Craft CMS. WARNING: This is a dangerous operation that can modify data via mutations.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL, dangerous: true)]
     public function executeGraphql(
+        #[Schema(description: 'The GraphQL document. Mutations run here, so this can create, change, and delete data.')]
         string $query,
+        #[Schema(description: 'Query variables as a JSON-encoded STRING (not a nested object).')]
         ?string $variables = null,
+        #[Schema(description: 'Which operation to run, when the document defines more than one.')]
         ?string $operationName = null,
+        #[Schema(description: 'Schema id from list_graphql_schemas, which decides what the operation may reach. Omit to use the public schema.')]
         ?int $schemaId = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(fn (): array => $this->execute($query, $variables, $operationName, $schemaId, $context));
+        return $this->execute($query, $variables, $operationName, $schemaId, $context);
     }
 
     /**
@@ -217,39 +229,38 @@ class GraphqlTools {
      */
     #[McpTool(
         name: 'list_graphql_tokens',
+        title: 'GraphQL tokens',
         description: 'List all GraphQL tokens (API keys) with their associated schemas',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::GRAPHQL, privileged: true)]
     public function listGraphqlTokens(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $gql = Craft::$app->getGql();
-            $tokens = $gql->getTokens();
+        $gql = Craft::$app->getGql();
+        $tokens = $gql->getTokens();
 
-            $result = [];
-            foreach ($tokens as $token) {
-                // Get associated schema
-                $schema = $token->getSchema();
+        $result = [];
+        foreach ($tokens as $token) {
+            // Get associated schema
+            $schema = $token->getSchema();
 
-                $result[] = [
-                    'id' => $token->id,
-                    'uid' => $token->uid,
-                    'name' => $token->name,
-                    'enabled' => $token->enabled,
-                    'expiryDate' => $token->expiryDate?->format('Y-m-d H:i:s'),
-                    'schema' => $schema ? [
-                        'id' => $schema->id,
-                        'name' => $schema->name,
-                    ] : null,
-                    'dateCreated' => $token->dateCreated?->format('Y-m-d H:i:s'),
-                ];
-            }
-
-            return [
-                'count' => count($result),
-                'tokens' => $result,
+            $result[] = [
+                'id' => $token->id,
+                'uid' => $token->uid,
+                'name' => $token->name,
+                'enabled' => $token->enabled,
+                'expiryDate' => $token->expiryDate?->format('Y-m-d H:i:s'),
+                'schema' => $schema ? [
+                    'id' => $schema->id,
+                    'name' => $schema->name,
+                ] : null,
+                'dateCreated' => $token->dateCreated?->format('Y-m-d H:i:s'),
             ];
-        });
+        }
+
+        return [
+            'count' => count($result),
+            'tokens' => $result,
+        ];
     }
 
     /**

@@ -14,3 +14,14 @@ it('sums by_source to total in getSummary()', function () {
     expect(array_sum($summary['by_source']))->toBe($summary['total'])
         ->and(array_sum($summary['by_category']))->toBe($summary['total']);
 });
+
+// The registry definitions are what list_mcp_tools serves and what the
+// scope/danger filters run on, so the nested tools must surface here as
+// dangerous content tools or they silently fall out of both.
+it('registers the nested-entry tools as dangerous content tools', function (string $name) {
+    $definition = Mcp::getToolRegistry()->getDefinition($name);
+
+    expect($definition)->not->toBeNull()
+        ->and($definition->category)->toBe('content')
+        ->and($definition->dangerous)->toBeTrue();
+})->with([['create_nested_entry'], ['move_nested_entry']]);

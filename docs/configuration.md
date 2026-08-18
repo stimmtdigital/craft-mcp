@@ -126,6 +126,13 @@ return [
     // Turn off on installs that provision MCP clients their own way.
     // Default: true
     'showClientConfigSnippet' => true,
+
+    // Whether human-readable tool output (output="text") carries ANSI colour.
+    // Off by default: the usual consumer is an AI client, which receives the
+    // escape sequences as literal noise and pays tokens for them. Turn it on
+    // when a person reads this server's output in a terminal.
+    // Default: false
+    'colorOutput' => false,
 ];
 ```
 
@@ -151,6 +158,7 @@ return [
 | `disabledScopes` | `array` | `[]` | Since 1.4.0. Scope names (`readonly`, `content`, `full`) closed on this install for everyone, admin included: they cannot be minted, and existing tokens of a disabled scope stop authenticating (rejected exactly like an unknown token) until the scope is re-enabled, which restores them without recreation. Regenerating an existing token stays possible so it survives the closure |
 | `additionalInstructions` | `string` | `''` | Since 1.4.0. Text appended to the server instructions, on every transport (stdio and HTTP alike), after everything else the plugin adds |
 | `showClientConfigSnippet` | `bool` | `true` | Since 1.4.0. Whether the token-reveal screen (My Account -> MCP Tokens) shows the ready-to-paste Claude Desktop config block alongside the new token |
+| `colorOutput` | `bool` | `false` | Whether human-readable output (`output="text"`, including `read_logs`) carries ANSI colour. Off by default because escape sequences are noise to an AI client; see [Text Output](tools/README.md#text-output) |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 

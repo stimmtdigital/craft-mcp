@@ -183,4 +183,35 @@ All tools return consistent response structures that AI assistants can easily pa
 - **Operations** return `success: true` with their data. Failures are not a payload: the tool call
   itself fails, and the client receives an MCP tool error (`isError: true`) whose text is the reason
 
+Every payload crosses the wire exactly once, as the tool result's single `content` item. Tools do
+not declare an output schema, so no `structuredContent` copy is sent alongside it.
+
 See individual tool documentation for specific response formats and examples.
+
+## Text Output
+
+Some tools accept an `output` parameter and can lay their payload out for a person instead of
+returning JSON:
+
+| Value | Result |
+|-------|--------|
+| `structured` (default) | The JSON payload documented for that tool |
+| `text` | The same data as aligned text: uniform rows become a table, key-value data and breakdowns become aligned blocks, nesting is indented |
+
+```
+get_table_counts output="text"
+
+          label           count
+--------  --------------  -----
+elements  Total elements  1234
+entries   Entries         567
+```
+
+Nothing is lost in the text view: it is a rendering of the same payload, and anything that does not
+lay out cleanly falls back to pretty-printed JSON. Tools that do not list `output` in their
+parameter table always return the structured payload.
+
+Text output is plain by default. ANSI colour is a single install-wide setting (`colorOutput`, off by
+default) because escape sequences are noise to an AI client and cost tokens for nothing; turn it on
+when a person reads this server's output in a terminal. See the
+[Configuration Guide](../configuration.md).
