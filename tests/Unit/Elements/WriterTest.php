@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../Fixtures/CraftStub.php';
 use craft\fieldlayoutelements\CustomField;
 use craft\fields\Entries;
 use stimmt\craft\Mcp\elements\Context;
+use stimmt\craft\Mcp\elements\refs\Resolution;
 use stimmt\craft\Mcp\elements\refs\Translator;
 use stimmt\craft\Mcp\elements\Writer;
 use stimmt\craft\Mcp\Tests\Fixtures\Layouts;
@@ -27,7 +28,7 @@ describe('Writer', function () {
     });
 
     it('collects warnings for unresolvable keys and keeps the rest', function () {
-        $writer = new Writer(Translator::withDefaults(Layouts::keysWith(lookupId: fn (): ?int => null)));
+        $writer = new Writer(Translator::withDefaults(Layouts::keysWith(lookupId: fn (): Resolution => Resolution::none())));
 
         $context = new Context('en');
         $prepared = $writer->prepare($this->layout, ['related' => [['section' => 'x', 'slug' => 'y'], 42]], $context);

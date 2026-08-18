@@ -30,6 +30,10 @@ final readonly class Keys {
         GlobalSet::class => ['handle'],
     ];
 
+    /**
+     * @param Closure(string, array<string, mixed>, ?string): Resolution|null $lookupId
+     * @param Closure(string, int, ?string): (array<string, string>|null)|null $lookupKey
+     */
     public function __construct(
         private ?AssetKey $assets = null,
         private ?Closure $lookupId = null,
@@ -41,20 +45,28 @@ final readonly class Keys {
         return $elementType === Asset::class || isset(self::SHAPES[$elementType]);
     }
 
-    public function idFor(string $elementType, array $key, ?string $site): ?int {
+    /**
+     * Resolve one natural key to the element it names.
+     *
+     * An asset key cannot be ambiguous: volume plus path plus filename is a
+     * unique address, so the one id AssetKey finds is the only one there is.
+     */
+    public function resolve(string $elementType, array $key, ?string $site): Resolution {
         if ($elementType === Asset::class) {
-            return ($this->assets ?? new AssetKey())->idFor($key);
+            $id = ($this->assets ?? new AssetKey())->idFor($key);
+
+            return $id === null ? Resolution::none() : Resolution::one($id);
         }
 
         if (!$this->wellFormed($elementType, $key)) {
-            return null;
+            return Resolution::none();
         }
 
         if ($this->lookupId !== null) {
             return ($this->lookupId)($elementType, $key, $site);
         }
 
-        return $this->queryId($elementType, $key, $site);
+        return $this->resolveByQuery($elementType, $key, $site);
     }
 
     public function keyFor(string $elementType, int $id, ?string $site): ?array {
@@ -70,13 +82,13 @@ final readonly class Keys {
             return ($this->lookupKey)($elementType, $id, $site);
         }
 
-        return $this->queryKey($elementType, $id, $site);
+        return $this->keyByQuery($elementType, $id, $site);
     }
 
     /**
      * The natural-key field list for a target element class, or null when the
      * type has no natural key. Single source of truth shared with the schema
-     * describer so a documented shape never drifts from idFor()/keyFor().
+     * describer so a documented shape never drifts from resolve()/keyFor().
      *
      * @return string[]|null
      */
@@ -123,7 +135,7 @@ final readonly class Keys {
         }
     }
 
-    private function queryId(string $elementType, array $key, ?string $site): ?int {
+    private function resolveByQuery(string $elementType, array $key, ?string $site): Resolution {
         $query = $elementType::find();
         $this->resolvable($query, $site);
 
@@ -138,13 +150,21 @@ final readonly class Keys {
 
         // Never run the query unconstrained: an unsupported type must miss.
         if ($constrained === null) {
-            return null;
+            return Resolution::none();
         }
 
-        return $constrained->ids()[0] ?? null;
+        // Two is all it takes to know the key is not specific enough, and
+        // stopping there keeps the cost of the common single-match case flat.
+        $ids = $constrained->limit(2)->ids();
+
+        return match (count($ids)) {
+            0 => Resolution::none(),
+            1 => Resolution::one((int) $ids[0]),
+            default => Resolution::ambiguous(),
+        };
     }
 
-    private function queryKey(string $elementType, int $id, ?string $site): ?array {
+    private function keyByQuery(string $elementType, int $id, ?string $site): ?array {
         // The read half of the same defect: an entry legitimately relating to
         // an unpublished draft read back as a bare integer id, because this
         // lookup could not see the draft and Relations::toKeys() falls through

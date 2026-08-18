@@ -11,6 +11,7 @@ use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 use ReflectionObject;
 use stimmt\craft\Mcp\elements\refs\Keys;
+use stimmt\craft\Mcp\elements\refs\Resolution;
 
 /**
  * Shared unit-test builders for the elements module.
@@ -53,7 +54,7 @@ final class Layouts {
      */
     public static function keysWith(?Closure $lookupId = null, ?Closure $lookupKey = null): Keys {
         return new Keys(
-            lookupId: $lookupId ?? static fn (string $type, array $key, ?string $site): ?int => $key === ['section' => 'pages', 'slug' => 'about'] ? 7 : null,
+            lookupId: $lookupId ?? static fn (string $type, array $key, ?string $site): Resolution => $key === ['section' => 'pages', 'slug' => 'about'] ? Resolution::one(7) : Resolution::none(),
             lookupKey: $lookupKey ?? static fn (string $type, int $id, ?string $site): ?array => $id === 7 ? ['section' => 'pages', 'slug' => 'about'] : null,
         );
     }

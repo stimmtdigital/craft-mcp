@@ -88,9 +88,9 @@ final readonly class Relations implements FieldTranslator {
                 continue;
             }
 
-            $id = $this->keys->idFor($target, $item, $context->site);
-            if ($id !== null) {
-                $ids[] = $id;
+            $resolution = $this->keys->resolve($target, $item, $context->site);
+            if ($resolution->id !== null) {
+                $ids[] = $resolution->id;
                 continue;
             }
 
@@ -99,7 +99,7 @@ final readonly class Relations implements FieldTranslator {
                 (string) $field->handle,
                 $field->handle . '.' . $index,
                 $item,
-                'No ' . $shortName . ' matches this key',
+                $resolution->explain($shortName),
             ));
         }
 

@@ -20,6 +20,7 @@ use stimmt\craft\Mcp\elements\query\Filters;
 use stimmt\craft\Mcp\elements\query\Projection;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\refs\Keys;
+use stimmt\craft\Mcp\elements\refs\Resolution;
 use stimmt\craft\Mcp\elements\schema\Describer;
 use stimmt\craft\Mcp\elements\schema\Meta;
 use stimmt\craft\Mcp\elements\WriteMode;
@@ -481,9 +482,17 @@ class EntryTools {
             return (int) $parent;
         }
 
-        $id = $section === null ? null : $this->keys->idFor(Entry::class, ['section' => $section, 'slug' => $parent], $site);
+        $resolution = $section === null
+            ? Resolution::none()
+            : $this->keys->resolve(Entry::class, ['section' => $section, 'slug' => $parent], $site);
 
-        return $id ?? throw new ToolCallException("Parent entry '{$parent}' not found");
+        if ($resolution->ambiguous) {
+            throw new ToolCallException(
+                "Parent slug '{$parent}' matches more than one entry in section '{$section}'; pass the parent entry's id instead",
+            );
+        }
+
+        return $resolution->id ?? throw new ToolCallException("Parent entry '{$parent}' not found");
     }
 
     private function authorId(): ?int {

@@ -10,6 +10,7 @@ use craft\elements\Tag;
 use craft\elements\User;
 use stimmt\craft\Mcp\elements\refs\AssetKey;
 use stimmt\craft\Mcp\elements\refs\Keys;
+use stimmt\craft\Mcp\elements\refs\Resolution;
 
 describe('Keys', function () {
     it('routes asset keys through AssetKey', function () {
@@ -18,28 +19,28 @@ describe('Keys', function () {
             lookupKey: fn (): ?array => ['volume' => 'images', 'filename' => 'hero.jpg'],
         ));
 
-        expect($keys->idFor(Asset::class, ['volume' => 'images', 'filename' => 'hero.jpg'], null))->toBe(42)
+        expect($keys->resolve(Asset::class, ['volume' => 'images', 'filename' => 'hero.jpg'], null)->id)->toBe(42)
             ->and($keys->keyFor(Asset::class, 42, null))->toBe(['volume' => 'images', 'filename' => 'hero.jpg']);
     });
 
     it('routes other targets through the injected lookups with the element type', function () {
         $keys = new Keys(
-            lookupId: fn (string $type, array $key, ?string $site): ?int => match ([$type, $key, $site]) {
-                [Entry::class, ['section' => 'pages', 'slug' => 'about'], 'en'] => 7,
-                [Category::class, ['group' => 'topics', 'slug' => 'news'], 'en'] => 8,
-                [Tag::class, ['group' => 'labels', 'slug' => 'hot'], 'en'] => 9,
-                [User::class, ['username' => 'max'], 'en'] => 10,
-                default => null,
+            lookupId: fn (string $type, array $key, ?string $site): Resolution => match ([$type, $key, $site]) {
+                [Entry::class, ['section' => 'pages', 'slug' => 'about'], 'en'] => Resolution::one(7),
+                [Category::class, ['group' => 'topics', 'slug' => 'news'], 'en'] => Resolution::one(8),
+                [Tag::class, ['group' => 'labels', 'slug' => 'hot'], 'en'] => Resolution::one(9),
+                [User::class, ['username' => 'max'], 'en'] => Resolution::one(10),
+                default => Resolution::none(),
             },
             lookupKey: fn (string $type, int $id, ?string $site): ?array => $id === 7
                 ? ['section' => 'pages', 'slug' => 'about']
                 : null,
         );
 
-        expect($keys->idFor(Entry::class, ['section' => 'pages', 'slug' => 'about'], 'en'))->toBe(7)
-            ->and($keys->idFor(Category::class, ['group' => 'topics', 'slug' => 'news'], 'en'))->toBe(8)
-            ->and($keys->idFor(Tag::class, ['group' => 'labels', 'slug' => 'hot'], 'en'))->toBe(9)
-            ->and($keys->idFor(User::class, ['username' => 'max'], 'en'))->toBe(10)
+        expect($keys->resolve(Entry::class, ['section' => 'pages', 'slug' => 'about'], 'en')->id)->toBe(7)
+            ->and($keys->resolve(Category::class, ['group' => 'topics', 'slug' => 'news'], 'en')->id)->toBe(8)
+            ->and($keys->resolve(Tag::class, ['group' => 'labels', 'slug' => 'hot'], 'en')->id)->toBe(9)
+            ->and($keys->resolve(User::class, ['username' => 'max'], 'en')->id)->toBe(10)
             ->and($keys->keyFor(Entry::class, 7, 'en'))->toBe(['section' => 'pages', 'slug' => 'about']);
     });
 
@@ -51,12 +52,12 @@ describe('Keys', function () {
     });
 
     it('returns null for malformed keys without calling lookups', function () {
-        $keys = new Keys(lookupId: function (): ?int {
+        $keys = new Keys(lookupId: function (): Resolution {
             throw new RuntimeException('must not be called');
         });
 
-        expect($keys->idFor(Entry::class, ['slug' => 'about'], null))->toBeNull()
-            ->and($keys->idFor(User::class, [], null))->toBeNull();
+        expect($keys->resolve(Entry::class, ['slug' => 'about'], null)->id)->toBeNull()
+            ->and($keys->resolve(User::class, [], null)->id)->toBeNull();
     });
 
     it('exposes the natural-key shape per target type', function () {
@@ -69,5 +70,32 @@ describe('Keys', function () {
             ->and($keys->keyShape(GlobalSet::class))->toBe(['handle'])
             ->and($keys->keyShape(Asset::class))->toBe(['volume', 'path?', 'filename'])
             ->and($keys->keyShape('some\\plugin\\Product'))->toBeNull();
+    });
+
+    it('separates a key that matches nothing from one that matches too much', function () {
+        expect(Resolution::none()->id)->toBeNull()
+            ->and(Resolution::none()->ambiguous)->toBeFalse()
+            ->and(Resolution::ambiguous()->id)->toBeNull()
+            ->and(Resolution::ambiguous()->ambiguous)->toBeTrue()
+            ->and(Resolution::one(7)->id)->toBe(7)
+            ->and(Resolution::one(7)->ambiguous)->toBeFalse();
+    });
+
+    it('never offers an id for an ambiguous key, so no caller can relate to a guess', function () {
+        $keys = new Keys(lookupId: fn (): Resolution => Resolution::ambiguous());
+
+        $resolution = $keys->resolve(Entry::class, ['section' => 'pages', 'slug' => 'child'], null);
+
+        expect($resolution->id)->toBeNull()
+            ->and($resolution->ambiguous)->toBeTrue();
+    });
+
+    // An asset is addressed by volume plus path plus filename, which the
+    // filesystem already keeps unique, so the ambiguous case cannot arise and
+    // must not be invented for it.
+    it('treats an asset key as unambiguous', function () {
+        $keys = new Keys(assets: new AssetKey(lookupId: fn (): ?int => 42));
+
+        expect($keys->resolve(Asset::class, ['volume' => 'images', 'filename' => 'hero.jpg'], null)->ambiguous)->toBeFalse();
     });
 });
