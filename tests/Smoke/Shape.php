@@ -159,25 +159,56 @@ final class Shape {
      * @return array<string, mixed>
      */
     private static function mergeObjects(array $left, array $right): array {
+        $left = self::byBareName($left);
+        $right = self::byBareName($right);
+
         $merged = [];
         foreach (array_keys($left + $right) as $key) {
             $name = (string) $key;
-            $inLeft = array_key_exists($key, $left);
-            $inRight = array_key_exists($key, $right);
+            $here = $left[$name] ?? null;
+            $there = $right[$name] ?? null;
 
-            if ($inLeft && $inRight) {
-                $merged[$name] = self::merge($left[$key], $right[$key]);
+            $value = $here === null || $there === null
+                ? ($here ?? $there)['value']
+                : self::merge($here['value'], $there['value']);
 
-                continue;
-            }
-
-            $present = $inLeft ? $left[$key] : $right[$key];
-            $merged[$name . '?'] = $present;
+            // Absent from either side, or already known to be absent
+            // sometimes, and the key is optional for good.
+            $optional = $here === null || $there === null || $here['optional'] || $there['optional'];
+            $merged[$name . ($optional ? '?' : '')] = $value;
         }
 
         ksort($merged);
 
         return $merged;
+    }
+
+    /**
+     * Objects keyed by their bare name, carrying whether the name was already
+     * marked optional.
+     *
+     * WHY: merging is pairwise across a list, so a shape produced by an earlier
+     * merge comes back in carrying its own "?" markers. Appending another one
+     * grew "section?" into "section??" and left the same field in the baseline
+     * under several names at once, which made the recorded shape depend on how
+     * many rows happened to disagree rather than on the payload.
+     *
+     * @param array<array-key, mixed> $object
+     * @return array<string, array{value: mixed, optional: bool}>
+     */
+    private static function byBareName(array $object): array {
+        $byName = [];
+        foreach ($object as $key => $value) {
+            $name = rtrim((string) $key, '?');
+            $seen = $byName[$name] ?? null;
+
+            $byName[$name] = [
+                'value' => $seen === null ? $value : self::merge($seen['value'], $value),
+                'optional' => $name !== (string) $key || ($seen['optional'] ?? false),
+            ];
+        }
+
+        return $byName;
     }
 
     /**
