@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../Fixtures/CraftStub.php';
 
-use stimmt\craft\Mcp\support\FileLogger;
+use stimmt\craft\Mcp\logging\FileLogger;
 
 beforeEach(function () {
     $this->logPath = sys_get_temp_dir() . '/mcp-test-' . uniqid() . '.log';

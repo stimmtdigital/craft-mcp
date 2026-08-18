@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\logging;
 
 use Throwable;
 
@@ -27,7 +27,7 @@ use Throwable;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final class LogContext {
+final class Context {
     /**
      * Array nesting kept before a value is replaced by a marker. Deep enough
      * for a realistic tool payload, shallow enough to terminate on a cycle.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\logging;
 
 use Craft;
 use craft\config\GeneralConfig;
@@ -42,7 +42,7 @@ class FileLogger extends AbstractLogger {
     public function __construct(
         private readonly string $logPath,
         string $minLevel = 'error',
-        private readonly LogContext $encoder = new LogContext(),
+        private readonly Context $encoder = new Context(),
     ) {
         $minLevel = strtolower($minLevel);
 

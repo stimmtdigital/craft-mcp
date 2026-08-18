@@ -17,7 +17,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
-use stimmt\craft\Mcp\support\Serializer;
+use stimmt\craft\Mcp\text\Serializer;
 
 /**
  * Asset-related MCP tools for Craft CMS.

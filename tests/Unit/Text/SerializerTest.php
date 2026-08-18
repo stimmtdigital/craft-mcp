@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use stimmt\craft\Mcp\support\Serializer;
+use stimmt\craft\Mcp\text\Serializer;
 
 describe('Serializer::serialize() with scalars', function () {
     it('returns null as-is', function () {

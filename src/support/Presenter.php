@@ -11,6 +11,7 @@ use Mcp\Schema\Content\Content;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use stimmt\craft\Mcp\enums\ResponseFormat;
+use stimmt\craft\Mcp\text\Renderer;
 
 /**
  * Decides what a tool call actually puts on the wire.

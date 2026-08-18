@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\logging;
 
 /**
  * Immutable value object representing a single stack trace frame.

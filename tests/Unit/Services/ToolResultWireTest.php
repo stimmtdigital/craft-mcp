@@ -18,9 +18,9 @@ use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\support\ConfigRefresh;
 use stimmt\craft\Mcp\support\ErrorBoundary;
-use stimmt\craft\Mcp\support\Palette;
 use stimmt\craft\Mcp\support\Presenter;
-use stimmt\craft\Mcp\support\Renderer;
+use stimmt\craft\Mcp\text\Palette;
+use stimmt\craft\Mcp\text\Renderer;
 
 /**
  * McpServerFactory::create() needs a booted Craft app, so this drives the real

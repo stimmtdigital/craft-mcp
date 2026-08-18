@@ -17,11 +17,11 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\LogEntry;
-use stimmt\craft\Mcp\support\LogFormatter;
-use stimmt\craft\Mcp\support\LogParser;
-use stimmt\craft\Mcp\support\Palette;
+use stimmt\craft\Mcp\logging\Entry;
+use stimmt\craft\Mcp\logging\Formatter;
+use stimmt\craft\Mcp\logging\Parser;
 use stimmt\craft\Mcp\support\Presenter;
+use stimmt\craft\Mcp\text\Palette;
 
 /**
  * System-related MCP tools for Craft CMS.
@@ -98,10 +98,10 @@ class SystemTools {
         $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
 
         return match ($output) {
-            ResponseFormat::TEXT => (new LogFormatter(Palette::fromSettings()))->format($entries),
+            ResponseFormat::TEXT => (new Formatter(Palette::fromSettings()))->format($entries),
             ResponseFormat::STRUCTURED => [
                 'count' => count($entries),
-                'entries' => array_map(static fn (LogEntry $e): array => $e->toArray(), $entries),
+                'entries' => array_map(static fn (Entry $e): array => $e->toArray(), $entries),
             ],
         };
     }
@@ -109,7 +109,7 @@ class SystemTools {
     /**
      * Fetch and sort log entries.
      *
-     * @return LogEntry[]
+     * @return Entry[]
      */
     private function fetchLogEntries(
         int $limit,
@@ -118,7 +118,7 @@ class SystemTools {
         ?string $source,
         ?RequestContext $context,
     ): array {
-        $parser = new LogParser(Craft::$app->getPath()->getLogPath());
+        $parser = new Parser(Craft::$app->getPath()->getLogPath());
 
         $files = $parser->discoverLogFiles($source);
         $entries = [];
@@ -134,7 +134,7 @@ class SystemTools {
             );
         }
 
-        usort($entries, static fn (LogEntry $a, LogEntry $b): int => $b->timestamp <=> $a->timestamp);
+        usort($entries, static fn (Entry $a, Entry $b): int => $b->timestamp <=> $a->timestamp);
 
         return array_slice($entries, 0, $limit);
     }

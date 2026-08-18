@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\logging;
 
 /**
  * Immutable value object representing a parsed log entry.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final readonly class LogEntry {
+final readonly class Entry {
     /**
      * @param string $timestamp Log timestamp (YYYY-MM-DD HH:MM:SS)
      * @param string $channel Log channel (web, console, queue, etc.)

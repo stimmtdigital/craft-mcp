@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use stimmt\craft\Mcp\support\LogEntry;
-use stimmt\craft\Mcp\support\LogParser;
+use stimmt\craft\Mcp\logging\Entry;
+use stimmt\craft\Mcp\logging\Parser;
 
 beforeEach(function () {
     $this->tempDir = sys_get_temp_dir() . '/craft-mcp-log-tests';
@@ -24,9 +24,9 @@ afterEach(function () {
     rmdir($this->tempDir);
 });
 
-describe('LogParser::discoverLogFiles()', function () {
+describe('Parser::discoverLogFiles()', function () {
     it('returns empty array for non-existent directory', function () {
-        $parser = new LogParser('/non/existent/path');
+        $parser = new Parser('/non/existent/path');
 
         expect($parser->discoverLogFiles())->toBe([]);
     });
@@ -35,7 +35,7 @@ describe('LogParser::discoverLogFiles()', function () {
         file_put_contents($this->tempDir . '/web.log', 'test');
         file_put_contents($this->tempDir . '/console.log', 'test');
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $files = $parser->discoverLogFiles();
 
         expect($files)->toHaveCount(2);
@@ -46,7 +46,7 @@ describe('LogParser::discoverLogFiles()', function () {
         file_put_contents($this->tempDir . '/web.log', 'test');
         file_put_contents($this->tempDir . '/plugins/myplugin.log', 'test');
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $files = $parser->discoverLogFiles();
 
         expect($files)->toHaveCount(2);
@@ -57,7 +57,7 @@ describe('LogParser::discoverLogFiles()', function () {
         file_put_contents($this->tempDir . '/web-2026-01-07.log', 'test');
         file_put_contents($this->tempDir . '/console.log', 'test');
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $files = $parser->discoverLogFiles('web');
 
         expect($files)->toHaveCount(2);
@@ -71,16 +71,16 @@ describe('LogParser::discoverLogFiles()', function () {
             file_put_contents($this->tempDir . "/log{$i}.log", 'test');
         }
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $files = $parser->discoverLogFiles();
 
         expect($files)->toHaveCount(5);
     });
 });
 
-describe('LogParser::parseFile()', function () {
+describe('Parser::parseFile()', function () {
     it('returns empty array for non-existent file', function () {
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
 
         expect($parser->parseFile('/non/existent/file.log'))->toBe([]);
     });
@@ -92,11 +92,11 @@ describe('LogParser::parseFile()', function () {
 LOG;
         file_put_contents($this->tempDir . '/web.log', $logContent);
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $entries = $parser->parseFile($this->tempDir . '/web.log');
 
         expect($entries)->toHaveCount(2)
-            ->and($entries[0])->toBeInstanceOf(LogEntry::class)
+            ->and($entries[0])->toBeInstanceOf(Entry::class)
             ->and($entries[0]->level)->toBe('info')
             ->and($entries[1]->level)->toBe('error');
     });
@@ -109,7 +109,7 @@ LOG;
 LOG;
         file_put_contents($this->tempDir . '/web.log', $logContent);
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $entries = $parser->parseFile($this->tempDir . '/web.log', 'error');
 
         expect($entries)->toHaveCount(1)
@@ -124,7 +124,7 @@ LOG;
 LOG;
         file_put_contents($this->tempDir . '/web.log', $logContent);
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $entries = $parser->parseFile($this->tempDir . '/web.log', pattern: 'database');
 
         expect($entries)->toHaveCount(2);
@@ -139,7 +139,7 @@ Additional context line 2
 LOG;
         file_put_contents($this->tempDir . '/web.log', $logContent);
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $entries = $parser->parseFile($this->tempDir . '/web.log');
 
         expect($entries)->toHaveCount(2)
@@ -155,7 +155,7 @@ LOG;
 LOG;
         file_put_contents($this->tempDir . '/web.log', $logContent);
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $entries = $parser->parseFile($this->tempDir . '/web.log');
 
         expect($entries)->toHaveCount(2)
@@ -170,7 +170,7 @@ LOG;
         mkdir($this->tempDir . '/subdir', 0755, true);
         file_put_contents($this->tempDir . '/subdir/plugin.log', $logContent);
 
-        $parser = new LogParser($this->tempDir);
+        $parser = new Parser($this->tempDir);
         $entries = $parser->parseFile($this->tempDir . '/subdir/plugin.log');
 
         expect($entries[0]->file)->toBe('subdir/plugin.log');

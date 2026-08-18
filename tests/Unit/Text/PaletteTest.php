@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
 
-use stimmt\craft\Mcp\support\Ansi;
-use stimmt\craft\Mcp\support\Palette;
+use stimmt\craft\Mcp\text\Ansi;
+use stimmt\craft\Mcp\text\Palette;
 
 describe('Palette when colour is off', function () {
     it('returns every role unchanged', function (string $role) {

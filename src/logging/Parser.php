@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\logging;
 
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
+use stimmt\craft\Mcp\support\FileHelper;
 
 /**
  * Parser for Craft CMS log files.
@@ -15,7 +16,7 @@ use SplFileInfo;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final readonly class LogParser {
+final readonly class Parser {
     /**
      * Log line format: 2026-01-03 04:01:45 [web.INFO] [category] message
      */
@@ -63,7 +64,7 @@ final readonly class LogParser {
      * @param string|null $levelFilter Filter by log level
      * @param string|null $pattern Filter by message content (case-insensitive)
      * @param int $maxLines Maximum lines to read from file
-     * @return LogEntry[]
+     * @return Entry[]
      */
     public function parseFile(
         string $filepath,
@@ -147,16 +148,16 @@ final readonly class LogParser {
     }
 
     /**
-     * Parse lines into LogEntry objects with multi-line support.
+     * Parse lines into Entry objects with multi-line support.
      *
      * @param string[] $lines
-     * @return LogEntry[]
+     * @return Entry[]
      */
     private function parseLines(array $lines, string $filename): array {
         $rawEntries = $this->groupLinesIntoRawEntries($lines);
 
         return array_map(
-            fn (array $raw): LogEntry => $this->createLogEntry($raw, $filename),
+            fn (array $raw): Entry => $this->createLogEntry($raw, $filename),
             $rawEntries,
         );
     }
@@ -213,11 +214,11 @@ final readonly class LogParser {
     }
 
     /**
-     * Create LogEntry from raw grouped data.
+     * Create Entry from raw grouped data.
      *
      * @param array{header: string, continuation: string[]} $raw
      */
-    private function createLogEntry(array $raw, string $filename): LogEntry {
+    private function createLogEntry(array $raw, string $filename): Entry {
         $parsed = $this->parseLogLine($raw['header']);
 
         // Fallback for unparseable lines (shouldn't happen, but be defensive)
@@ -259,12 +260,12 @@ final readonly class LogParser {
     }
 
     /**
-     * Finalize an entry by creating LogEntry with parsed stack trace.
+     * Finalize an entry by creating Entry with parsed stack trace.
      *
      * @param array{timestamp: string, channel: string, level: string, category: string, message: string} $data
      * @param string[] $continuationLines
      */
-    private function finalizeEntry(array $data, array $continuationLines, string $filename): LogEntry {
+    private function finalizeEntry(array $data, array $continuationLines, string $filename): Entry {
         $stackTrace = $this->parseStackTrace($continuationLines);
 
         // If we have continuation lines but they're not a stack trace, append to message
@@ -273,7 +274,7 @@ final readonly class LogParser {
             $message .= "\n" . implode("\n", $continuationLines);
         }
 
-        return new LogEntry(
+        return new Entry(
             timestamp: $data['timestamp'],
             channel: $data['channel'],
             level: $data['level'],
@@ -305,13 +306,13 @@ final readonly class LogParser {
     /**
      * Filter entries by level and/or pattern.
      *
-     * @param LogEntry[] $entries
-     * @return LogEntry[]
+     * @param Entry[] $entries
+     * @return Entry[]
      */
     private function filterEntries(array $entries, ?string $levelFilter, ?string $pattern): array {
         return array_values(array_filter(
             $entries,
-            static function (LogEntry $entry) use ($levelFilter, $pattern): bool {
+            static function (Entry $entry) use ($levelFilter, $pattern): bool {
                 if ($levelFilter !== null && !$entry->matchesLevel($levelFilter)) {
                     return false;
                 }

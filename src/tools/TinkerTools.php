@@ -19,7 +19,7 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\OutputMode;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\MutexGuard;
-use stimmt\craft\Mcp\support\Transcript;
+use stimmt\craft\Mcp\text\Transcript;
 use Throwable;
 
 /**

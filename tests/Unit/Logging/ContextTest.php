@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use stimmt\craft\Mcp\support\LogContext;
+use stimmt\craft\Mcp\logging\Context;
 
 function decoded(array $context): array {
     /** @var array<string, mixed> $decoded */
-    $decoded = json_decode((new LogContext())->encode($context), true, 512, JSON_THROW_ON_ERROR);
+    $decoded = json_decode((new Context())->encode($context), true, 512, JSON_THROW_ON_ERROR);
 
     return $decoded;
 }
@@ -23,7 +23,7 @@ function deepException(int $depth): RuntimeException {
     return deepException($depth - 1);
 }
 
-describe('LogContext', function () {
+describe('Context', function () {
     describe('plain context', function () {
         it('leaves scalar values untouched', function () {
             expect(decoded(['name' => 'reload_mcp', 'count' => 3, 'ok' => false]))
@@ -36,7 +36,7 @@ describe('LogContext', function () {
         });
 
         it('does not escape slashes', function () {
-            expect((new LogContext())->encode(['path' => 'storage/logs/mcp-server.log']))
+            expect((new Context())->encode(['path' => 'storage/logs/mcp-server.log']))
                 ->toContain('storage/logs/mcp-server.log');
         });
     });
@@ -80,7 +80,7 @@ describe('LogContext', function () {
                 $exception = new RuntimeException("link {$link}", 0, $exception);
             }
 
-            expect((new LogContext())->encode(['exception' => $exception]))
+            expect((new Context())->encode(['exception' => $exception]))
                 ->toContain('[truncated: previous chain]');
         });
 
@@ -102,7 +102,7 @@ describe('LogContext', function () {
         });
 
         it('never emits a raw newline, so one entry stays one log line', function () {
-            expect((new LogContext())->encode(['exception' => deepException(5)]))
+            expect((new Context())->encode(['exception' => deepException(5)]))
                 ->not->toContain("\n");
         });
     });
@@ -111,7 +111,7 @@ describe('LogContext', function () {
         it('degrades a resource instead of throwing', function () {
             $handle = fopen('php://memory', 'rb');
 
-            $encoded = (new LogContext())->encode(['handle' => $handle]);
+            $encoded = (new Context())->encode(['handle' => $handle]);
             fclose($handle);
 
             expect($encoded)->toBeString()->not->toBe('');
@@ -121,12 +121,12 @@ describe('LogContext', function () {
             $cycle = ['name' => 'loop'];
             $cycle['self'] = &$cycle;
 
-            expect((new LogContext())->encode(['cycle' => $cycle]))
+            expect((new Context())->encode(['cycle' => $cycle]))
                 ->toContain('[truncated: max depth]');
         });
 
         it('replaces invalid utf-8 rather than failing the whole line', function () {
-            expect((new LogContext())->encode(['raw' => "valid\xB1\x31invalid"]))
+            expect((new Context())->encode(['raw' => "valid\xB1\x31invalid"]))
                 ->toContain('raw');
         });
     });

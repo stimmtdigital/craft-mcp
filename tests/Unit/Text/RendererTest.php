@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use stimmt\craft\Mcp\support\Palette;
-use stimmt\craft\Mcp\support\Renderer;
+use stimmt\craft\Mcp\text\Palette;
+use stimmt\craft\Mcp\text\Renderer;
 
 function renderPlain(array $payload): string {
     return (new Renderer(new Palette(false)))->render($payload);

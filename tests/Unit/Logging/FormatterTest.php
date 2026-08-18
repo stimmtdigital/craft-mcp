@@ -3,26 +3,26 @@
 declare(strict_types=1);
 
 use Mcp\Schema\Content\TextContent;
-use stimmt\craft\Mcp\support\LogEntry;
-use stimmt\craft\Mcp\support\LogFormatter;
-use stimmt\craft\Mcp\support\Palette;
-use stimmt\craft\Mcp\support\StackFrame;
+use stimmt\craft\Mcp\logging\Entry;
+use stimmt\craft\Mcp\logging\Formatter;
+use stimmt\craft\Mcp\logging\StackFrame;
+use stimmt\craft\Mcp\text\Palette;
 
 /**
  * Colour on by default here: that is the output read_logs produced before the
  * palette existed, and these assertions are the regression baseline for it.
  *
- * @param LogEntry[] $entries
+ * @param Entry[] $entries
  */
 function formatLogs(array $entries, bool $color = true): TextContent {
-    return (new LogFormatter(new Palette($color)))->format($entries);
+    return (new Formatter(new Palette($color)))->format($entries);
 }
 
-describe('LogFormatter', function () {
+describe('Formatter', function () {
     describe('format()', function () {
         it('returns TextContent', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'info',
@@ -46,7 +46,7 @@ describe('LogFormatter', function () {
 
         it('formats single entry', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'info',
@@ -67,7 +67,7 @@ describe('LogFormatter', function () {
 
         it('formats multiple entries with separator', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'info',
@@ -75,7 +75,7 @@ describe('LogFormatter', function () {
                     message: 'First',
                     file: 'web.log',
                 ),
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:01',
                     channel: 'web',
                     level: 'error',
@@ -95,7 +95,7 @@ describe('LogFormatter', function () {
 
         it('colorizes error level in red', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'error',
@@ -113,7 +113,7 @@ describe('LogFormatter', function () {
 
         it('colorizes warning level in yellow', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'warning',
@@ -131,7 +131,7 @@ describe('LogFormatter', function () {
 
         it('uses dim for info level', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'info',
@@ -149,7 +149,7 @@ describe('LogFormatter', function () {
 
         it('includes stack trace when present', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'error',
@@ -172,7 +172,7 @@ describe('LogFormatter', function () {
 
         it('indents stack trace lines', function () {
             $entries = [
-                new LogEntry(
+                new Entry(
                     timestamp: '2026-01-07 10:30:00',
                     channel: 'web',
                     level: 'error',
@@ -193,10 +193,10 @@ describe('LogFormatter', function () {
     });
 });
 
-describe('LogFormatter without colour', function () {
+describe('Formatter without colour', function () {
     it('emits the same text with no escape sequences', function () {
         $entries = [
-            new LogEntry(
+            new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'error',
@@ -218,7 +218,7 @@ describe('LogFormatter without colour', function () {
 
     it('lays out identically to the coloured output', function () {
         $entries = [
-            new LogEntry(
+            new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'warning',

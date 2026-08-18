@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use stimmt\craft\Mcp\support\LogEntry;
-use stimmt\craft\Mcp\support\StackFrame;
+use stimmt\craft\Mcp\logging\Entry;
+use stimmt\craft\Mcp\logging\StackFrame;
 
-describe('LogEntry', function () {
+describe('Entry', function () {
     it('creates from constructor', function () {
-        $entry = new LogEntry(
+        $entry = new Entry(
             timestamp: '2026-01-07 10:30:00',
             channel: 'web',
             level: 'error',
@@ -31,7 +31,7 @@ describe('LogEntry', function () {
             new StackFrame(1, '/file2.php', 20, 'OtherClass->call()'),
         ];
 
-        $entry = new LogEntry(
+        $entry = new Entry(
             timestamp: '2026-01-07 10:30:00',
             channel: 'web',
             level: 'error',
@@ -47,7 +47,7 @@ describe('LogEntry', function () {
 
     describe('matchesLevel()', function () {
         it('matches exact level', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'error',
@@ -61,7 +61,7 @@ describe('LogEntry', function () {
         });
 
         it('is case insensitive', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'error',
@@ -77,7 +77,7 @@ describe('LogEntry', function () {
 
     describe('matchesPattern()', function () {
         it('finds substring in message', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'error',
@@ -92,7 +92,7 @@ describe('LogEntry', function () {
         });
 
         it('is case insensitive', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'error',
@@ -108,7 +108,7 @@ describe('LogEntry', function () {
 
     describe('hasStackTrace()', function () {
         it('returns false when null', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'info',
@@ -121,7 +121,7 @@ describe('LogEntry', function () {
         });
 
         it('returns false when empty array', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'info',
@@ -135,7 +135,7 @@ describe('LogEntry', function () {
         });
 
         it('returns true when has frames', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'error',
@@ -151,7 +151,7 @@ describe('LogEntry', function () {
 
     describe('toArray()', function () {
         it('converts entry without stack trace', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'info',
@@ -173,7 +173,7 @@ describe('LogEntry', function () {
         });
 
         it('includes stack trace when present', function () {
-            $entry = new LogEntry(
+            $entry = new Entry(
                 timestamp: '2026-01-07 10:30:00',
                 channel: 'web',
                 level: 'error',

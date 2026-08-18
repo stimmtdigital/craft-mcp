@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace stimmt\craft\Mcp\support;
+namespace stimmt\craft\Mcp\logging;
 
 use Mcp\Schema\Content\TextContent;
+use stimmt\craft\Mcp\text\Palette;
 
 /**
  * Formats log entries as human-readable text.
@@ -17,14 +18,14 @@ use Mcp\Schema\Content\TextContent;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
-final readonly class LogFormatter {
+final readonly class Formatter {
     public function __construct(private Palette $palette) {
     }
 
     /**
      * Format log entries as text.
      *
-     * @param LogEntry[] $entries
+     * @param Entry[] $entries
      */
     public function format(array $entries): TextContent {
         if ($entries === []) {
@@ -39,7 +40,7 @@ final readonly class LogFormatter {
     /**
      * Format a single log entry.
      */
-    private function formatEntry(LogEntry $entry): string {
+    private function formatEntry(Entry $entry): string {
         $level = strtoupper($entry->level);
         $levelFormatted = $this->colorizeLevel($level, $entry->level);
 
