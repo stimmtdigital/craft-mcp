@@ -14,6 +14,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
@@ -163,11 +164,16 @@ class EntryWorkflowTools {
         $entry = $this->find($id, $site, withDrafts: true);
         Authorization::assertCanDelete($entry);
 
+        // Read before the delete, while the element still has site rows to
+        // report. Afterwards the answer would need the trashed scope and would
+        // be describing the aftermath rather than what the call did.
+        $affected = Reach::of($entry);
+
         if (!Craft::$app->getElements()->deleteElement($entry)) {
             throw new ToolCallException('Failed to delete entry');
         }
 
-        return Response::success(['deleted' => $id, 'restorable' => true]);
+        return Response::success(['deleted' => $id, 'affectedSites' => $affected, 'restorable' => true]);
     }
 
     #[McpTool(
@@ -315,7 +321,10 @@ class EntryWorkflowTools {
         $applied = Craft::$app->getDrafts()->applyDraft($draft);
         ResourceChangeNotifier::notifyEntry($context, (int) $applied->id);
 
-        return Response::success(['entry' => $this->reader->read($applied, $site)]);
+        return Response::success([
+            'entry' => $this->reader->read($applied, $site),
+            'affectedSites' => Reach::of($applied),
+        ]);
     }
 
     private function publishCanonical(Entry $entry, ?string $site, ?RequestContext $context): array {
@@ -341,7 +350,10 @@ class EntryWorkflowTools {
             $this->enable($entry);
             ResourceChangeNotifier::notifyEntry($context, (int) $entry->id);
 
-            return Response::success(['entry' => $this->reader->read($entry, $site)]);
+            return Response::success([
+                'entry' => $this->reader->read($entry, $site),
+                'affectedSites' => Reach::of($entry),
+            ]);
         }
 
         throw new ToolCallException("Entry {$entry->id} has no pending draft and is already enabled; nothing to publish");

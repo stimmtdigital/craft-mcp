@@ -16,6 +16,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Result;
 use stimmt\craft\Mcp\elements\Warning;
 use stimmt\craft\Mcp\elements\WriteMode;
@@ -68,7 +69,7 @@ class NestedEntryTools {
         ?string $title = null,
         #[Schema(description: 'The block\'s own field values as a JSON-encoded STRING (not a nested object), in the payload format describe_entry_schema documents for that block type.')]
         ?string $fields = null,
-        #[Schema(description: 'Site handle to write on; list_sites reports the handles.')]
+        #[Schema(description: 'Site handle to write on, and to report the result in. The block itself is added on every site the owner exists on; only the values of site-translatable fields differ per site.')]
         ?string $site = null,
         #[Schema(description: '"draft" puts the block on a draft of the owner for review, "live" adds it to the canonical owner directly. Omitted follows the entryWriteMode setting, which defaults to draft.')]
         ?string $mode = null,
@@ -130,7 +131,7 @@ class NestedEntryTools {
         int $id,
         #[Schema(description: '1-based target slot within the field. A position past the end clamps to the last slot, and the response reports the slot actually taken.')]
         int $position,
-        #[Schema(description: 'Site handle to reorder on; list_sites reports the handles.')]
+        #[Schema(description: 'Site handle to locate the block by. Reordering is not per-site: a block\'s position is shared across sites, so the new order becomes the order on every site the owner exists on.')]
         ?string $site = null,
         #[Schema(description: '"draft" stages the reorder on a draft of the owner entry, "live" reorders the canonical owner directly. Omitted follows the entryWriteMode setting, which defaults to draft.')]
         ?string $mode = null,
@@ -398,6 +399,11 @@ class NestedEntryTools {
             'draftElementId' => $isDraft ? (int) $target->id : null,
             'state' => $isDraft ? WriteMode::Draft->value : WriteMode::Live->value,
             'position' => $position,
+            // A block's presence and its position are shared: elements_owners
+            // is keyed by block and owner with no site column, so adding or
+            // moving one lands on every site the owner exists on. Only the
+            // values of site-translatable fields differ per site.
+            'affectedSites' => Reach::of($target),
             'cpEditUrl' => $target->getCpEditUrl(),
             'warnings' => array_map(static fn (Warning $warning): array => $warning->toArray(), $warnings),
             'errors' => [],
