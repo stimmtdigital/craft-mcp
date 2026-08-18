@@ -627,7 +627,13 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": {
+                    "detail": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Include the parts that cost something to produce or to read: the reason each unavailable tool is unavailable, the text of any registration errors, and install facts. Off by default because this tool is often the first call of a session."
+                    }
+                }
             }
         },
         "get_project_config_diff": {
@@ -1528,11 +1534,24 @@
         "get_mcp_info": {
             "status": "ok",
             "shape": {
+                "branch": "<string>",
                 "build": "<string>",
+                "buildSource": "<string>",
                 "configuration": {
                     "disabledTools": []
                 },
+                "connection": {
+                    "admin": true,
+                    "privileged": true,
+                    "scope": "<string>",
+                    "transport": "<string>",
+                    "user": "<string>"
+                },
                 "handle": "<string>",
+                "health": {
+                    "ok": true,
+                    "registrationErrors": "<number>"
+                },
                 "name": "<string>",
                 "schemaVersion": "<string>",
                 "status": {
@@ -1541,6 +1560,7 @@
                     "environment": "<string>"
                 },
                 "tools": {
+                    "available": "<number>",
                     "byCategory": {
                         "backup": "<number>",
                         "content": "<number>",
@@ -1556,8 +1576,68 @@
                         "core": "<number>"
                     },
                     "dangerous": "<number>",
-                    "errors": "<number>",
-                    "total": "<number>"
+                    "total": "<number>",
+                    "unavailable": "<number>"
+                },
+                "version": "<string>"
+            }
+        },
+        "get_mcp_info.detail": {
+            "status": "ok",
+            "shape": {
+                "branch": "<string>",
+                "build": "<string>",
+                "buildSource": "<string>",
+                "configuration": {
+                    "disabledTools": []
+                },
+                "connection": {
+                    "admin": true,
+                    "privileged": true,
+                    "scope": "<string>",
+                    "transport": "<string>",
+                    "user": "<string>"
+                },
+                "handle": "<string>",
+                "health": {
+                    "craftVersion": "<string>",
+                    "errors": [],
+                    "ok": true,
+                    "phpVersion": "<string>",
+                    "registrationErrors": "<number>"
+                },
+                "name": "<string>",
+                "schemaVersion": "<string>",
+                "status": {
+                    "dangerousToolsEnabled": true,
+                    "enabled": true,
+                    "environment": "<string>"
+                },
+                "tools": {
+                    "available": "<number>",
+                    "byCategory": {
+                        "backup": "<number>",
+                        "content": "<number>",
+                        "core": "<number>",
+                        "database": "<number>",
+                        "debugging": "<number>",
+                        "graphql": "<number>",
+                        "multisite": "<number>",
+                        "schema": "<number>",
+                        "system": "<number>"
+                    },
+                    "bySource": {
+                        "core": "<number>"
+                    },
+                    "dangerous": "<number>",
+                    "total": "<number>",
+                    "unavailable": "<number>",
+                    "unavailableTools": [
+                        {
+                            "name": "<string>",
+                            "reason": "<string>"
+                        }
+                    ]
                 },
                 "version": "<string>"
             }
@@ -1565,6 +1645,7 @@
         "list_mcp_tools": {
             "status": "ok",
             "shape": {
+                "available": "<number>",
                 "byCategory": {
                     "backup": "<number>",
                     "content": "<number>",
@@ -1582,13 +1663,14 @@
                 "count": "<number>",
                 "tools": [
                     {
+                        "available": "<bool|false|true>",
                         "category": "<string>",
                         "dangerous": "<bool|false|true>",
                         "description": "<string>",
-                        "enabled": true,
                         "name": "<string>",
                         "privileged": "<bool|false|true>",
-                        "source": "<string>"
+                        "source": "<string>",
+                        "unavailableBecause": "<null|string>"
                     }
                 ]
             }

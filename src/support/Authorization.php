@@ -87,6 +87,15 @@ final class Authorization {
     }
 
     /**
+     * The same rule assertPrivileged() enforces, asked rather than asserted.
+     * A tool that REPORTS on the install has to be able to withhold a section
+     * and say so, which throwing cannot express.
+     */
+    public static function isPrivileged(): bool {
+        return self::$user === null || self::$user->admin;
+    }
+
+    /**
      * Gate for privileged install-introspection resources (config, routes,
      * sites, volumes, plugins). Mirrors the McpToolMeta privileged flag the
      * tool surface uses, but resources are never filtered out of a list, so
@@ -94,7 +103,7 @@ final class Authorization {
      * a no-op for admins; $what names the resource in the denial message.
      */
     public static function assertPrivileged(string $what): void {
-        if (self::$user === null || self::$user->admin) {
+        if (self::isPrivileged()) {
             return;
         }
 

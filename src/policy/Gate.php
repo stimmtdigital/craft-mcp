@@ -29,7 +29,13 @@ use stimmt\craft\Mcp\models\ToolDefinition;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Gate {
-    public function __construct(private ?Scope $scope = null) {
+    /**
+     * The scope is public because the Gate is the only thing that knows which
+     * connection this is, and "what am I connected as" is a question the caller
+     * is entitled to ask. Null means stdio, which carries no token and is
+     * therefore unscoped.
+     */
+    public function __construct(public ?Scope $scope = null) {
     }
 
     public function admitsTool(ToolDefinition $definition): Decision {

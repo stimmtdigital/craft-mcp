@@ -65,12 +65,33 @@ final class Plan {
             [
                 'tool' => 'get_mcp_info',
                 'args' => [],
-                'assert' => ['tools.total' => '>=50', 'status.enabled' => true],
+                'capture' => ['mcp.available' => 'tools.available'],
+                'assert' => [
+                    'tools.total' => '>=50',
+                    'status.enabled' => true,
+                    'tools.available' => '>=1',
+                    'connection.transport' => 'notEmpty',
+                    'buildSource' => 'notEmpty',
+                ],
+            ],
+            [
+                'tool' => 'get_mcp_info',
+                'name' => 'get_mcp_info.detail',
+                'args' => ['detail' => true],
+                'assert' => ['tools.total' => '>=50', 'health.registrationErrors' => 0],
             ],
             [
                 'tool' => 'list_mcp_tools',
                 'args' => [],
-                'assert' => ['count' => '>=50', 'tools' => 'notEmpty'],
+                // The two tools that answer "what may I call" have to answer it
+                // the same. They did not: on a readonly connection this one
+                // counted every registered tool and called 42 callable ones 55,
+                // because it asked the settings instead of the Gate.
+                'assert' => [
+                    'count' => '>=50',
+                    'tools' => 'notEmpty',
+                    'available' => '{{mcp.available}}',
+                ],
             ],
             ['tool' => 'get_system_info', 'args' => []],
             ['tool' => 'get_environment', 'args' => []],

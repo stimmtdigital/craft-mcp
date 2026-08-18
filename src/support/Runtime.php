@@ -15,6 +15,7 @@ use stimmt\craft\Mcp\events\RegisterFieldTranslatorsEvent;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\tools\EntryTools;
 use stimmt\craft\Mcp\tools\EntryWorkflowTools;
+use stimmt\craft\Mcp\tools\McpTools;
 use stimmt\craft\Mcp\tools\NestedEntryTools;
 use stimmt\craft\Mcp\tools\TinkerTools;
 
@@ -50,7 +51,7 @@ final class Runtime {
         // Named so the SDK's container lookup finds them and injects, rather
         // than reaching its bare-instantiation fallback and silently skipping
         // every dependency these classes declare.
-        foreach ([TinkerTools::class, EntryTools::class, EntryWorkflowTools::class, NestedEntryTools::class] as $tool) {
+        foreach ([TinkerTools::class, EntryTools::class, EntryWorkflowTools::class, NestedEntryTools::class, McpTools::class] as $tool) {
             Craft::$container->set($tool);
         }
     }

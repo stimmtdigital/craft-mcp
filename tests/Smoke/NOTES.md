@@ -176,6 +176,10 @@ Facts established by running it, recorded so they are not rediscovered:
   the site handles the operation actually landed on. Wherever an operation is
   wider than the `site` argument suggests, that list is the thing that says so
   at runtime rather than in a description nobody read.
+- **`get_mcp_info` and `list_mcp_tools` report `available` separately from the
+  total**, because on a scoped connection they differ: readonly registers 55 and
+  can call 42. Both ask the same Gate the server filtered the registry with, and
+  the plan pins them to agree, which is the drift that existed before.
 - **`describe_entry_schema` reports translation per field** on a multi-site
   install: `translation.method` and `translation.perSite`. `perSite` is true
   only for the method that gives every site its own value, so false reads as

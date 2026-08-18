@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\elements\User;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\Notification\ToolListChangedNotification;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\policy\Gate;
 use stimmt\craft\Mcp\psr\Cache;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Build;
 use stimmt\craft\Mcp\support\PluginReloader;
 use stimmt\craft\Mcp\support\Response;
@@ -24,6 +28,19 @@ use yii\caching\TagDependency;
  * @author Max van Essen <support@stimmt.digital>
  */
 class McpTools {
+    private readonly Gate $gate;
+
+    /**
+     * The Gate is the connection: it knows the scope, and it is what the server
+     * itself filtered the registry with. Reading it here rather than
+     * re-deriving means these tools cannot report a different answer from the
+     * one tools/list acts on. An unscoped default keeps the class
+     * constructible where no connection was served, such as a unit test.
+     */
+    public function __construct(?Gate $gate = null) {
+        $this->gate = $gate ?? new Gate();
+    }
+
     /**
      * Get information about the MCP plugin itself.
      */
@@ -34,37 +51,142 @@ class McpTools {
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CORE)]
-    public function getMcpInfo(?RequestContext $context = null): array {
+    public function getMcpInfo(
+        #[Schema(description: 'Include the parts that cost something to produce or to read: the reason each unavailable tool is unavailable, the text of any registration errors, and install facts. Off by default because this tool is often the first call of a session.')]
+        bool $detail = false,
+        ?RequestContext $context = null,
+    ): array {
         $plugin = Mcp::getInstance();
         $settings = Mcp::settings();
         $registry = Mcp::getToolRegistry();
 
         $summary = $registry->getSummary();
+        $admitted = $this->admitted();
 
         return [
             'name' => $plugin !== null ? $plugin->name : 'Craft MCP',
             'handle' => $plugin !== null ? $plugin->handle : 'mcp',
             'version' => $plugin !== null ? $plugin->version : 'unknown',
-            // The commit, because the version alone cannot tell two deploys of
-            // the same branch apart, and 'dev-main' is what a branch install
-            // reports for every commit it will ever have.
             'build' => Build::reference(),
+            // Which of the two answers above was observed from the code on disk
+            // rather than taken from composer's record of what it installed.
+            // A path or symlink install runs code composer never re-read, so
+            // the recorded version can name a branch that is no longer checked
+            // out, and did.
+            'buildSource' => Build::source(),
+            // Only on a working copy, and only then because the version above
+            // can name the branch composer installed rather than the one on disk.
+            'branch' => Build::branch(),
             'schemaVersion' => $plugin !== null ? $plugin->schemaVersion : 'unknown',
             'status' => [
                 'enabled' => $settings->enabled,
                 'dangerousToolsEnabled' => $settings->enableDangerousTools,
                 'environment' => Craft::$app->env ?? getenv('CRAFT_ENVIRONMENT') ?: 'production',
             ],
+            'connection' => $this->connection(),
             'tools' => [
                 'total' => $summary['total'],
+                // What this connection may actually call. Equal to total on an
+                // unscoped connection; the gap is the point of reporting both.
+                'available' => count($admitted['allowed']),
+                'unavailable' => count($admitted['denied']),
                 'bySource' => $summary['by_source'],
                 'byCategory' => $summary['by_category'],
                 'dangerous' => $summary['dangerous'],
-                'errors' => $summary['errors'],
-            ],
+            ] + ($detail ? ['unavailableTools' => $admitted['denied']] : []),
+            'health' => $this->health($detail),
             'configuration' => [
                 'disabledTools' => $settings->disabledTools,
             ],
+        ];
+    }
+
+    /**
+     * What this connection is, in the terms it was granted.
+     *
+     * The transport is read from the request rather than passed in, because a
+     * console request is what stdio actually runs as and a web request is what
+     * the HTTP endpoint actually runs as. Observing it cannot fall out of step
+     * with the truth the way a flag threaded through three constructors can.
+     *
+     * @return array<string, mixed>
+     */
+    private function connection(): array {
+        // getIdentity() answers with the interface, and only a Craft user has a
+        // username and an admin flag to report.
+        $identity = Craft::$app->getUser()->getIdentity();
+        $user = $identity instanceof User ? $identity : null;
+
+        return [
+            'transport' => Craft::$app->getRequest()->getIsConsoleRequest() ? 'stdio' : 'http',
+            // Null on stdio, which carries no token and is therefore unscoped.
+            'scope' => $this->gate->scope?->value,
+            'user' => $user?->username,
+            // Null rather than false when there is no user at all: stdio is
+            // not a non-admin, it is unauthenticated and unrestricted, and
+            // false would read as a limit that is not there.
+            'admin' => $user?->admin,
+            // The operative fact, and the one worth acting on: whether this
+            // connection may read install internals.
+            'privileged' => Authorization::isPrivileged(),
+        ];
+    }
+
+    /**
+     * Every registered tool sorted into what this connection may call and what
+     * it may not, each refusal carrying the Gate's own reason.
+     *
+     * @return array{allowed: list<string>, denied: list<array{name: string, reason: ?string}>}
+     */
+    private function admitted(): array {
+        $allowed = [];
+        $denied = [];
+
+        foreach (Mcp::getToolRegistry()->getDefinitions() as $definition) {
+            $decision = $this->gate->admitsTool($definition);
+
+            if ($decision->allowed) {
+                $allowed[] = $definition->name;
+
+                continue;
+            }
+
+            $denied[] = ['name' => $definition->name, 'reason' => $decision->reason];
+        }
+
+        return ['allowed' => $allowed, 'denied' => $denied];
+    }
+
+    /**
+     * What is wrong right now, if anything.
+     *
+     * The error TEXT is privileged: registration failures name classes and
+     * paths on the install. A connection that may not read install internals
+     * is told the count and told why it cannot have the rest, rather than
+     * being handed a silently shorter answer.
+     *
+     * @return array<string, mixed>
+     */
+    private function health(bool $detail): array {
+        $errors = Mcp::getToolRegistry()->getErrors();
+
+        $health = [
+            'registrationErrors' => count($errors),
+            'ok' => $errors === [],
+        ];
+
+        if (!$detail) {
+            return $health;
+        }
+
+        if (!Authorization::isPrivileged()) {
+            return $health + ['detail' => 'withheld: reading install internals needs a full-scope or admin connection'];
+        }
+
+        return $health + [
+            'errors' => array_values($errors),
+            'craftVersion' => Craft::$app->getVersion(),
+            'phpVersion' => PHP_VERSION,
         ];
     }
 
@@ -84,6 +206,8 @@ class McpTools {
 
         $tools = [];
         foreach ($definitions as $definition) {
+            $decision = $this->gate->admitsTool($definition);
+
             $tools[] = [
                 'name' => $definition->name,
                 'description' => $definition->description,
@@ -95,7 +219,12 @@ class McpTools {
                 // tool can still be refused; say so rather than letting
                 // the listing imply every row is callable.
                 'privileged' => $definition->privileged,
-                'enabled' => Mcp::isToolEnabled($definition->name),
+                // Asked of the Gate, not of the settings. Settings are one of
+                // three reasons a tool may be unavailable, so a settings-only
+                // check called 42 callable tools 55 on a readonly connection
+                // and marked the 13 it could not call enabled.
+                'available' => $decision->allowed,
+                'unavailableBecause' => $decision->reason,
             ];
         }
 
@@ -124,6 +253,10 @@ class McpTools {
 
         return [
             'count' => count($tools),
+            // The number that matters on a scoped connection, and the one whose
+            // absence let the drift hide: count is everything registered,
+            // available is what this caller can actually invoke.
+            'available' => count(array_filter($tools, static fn (array $tool): bool => $tool['available'])),
             'bySource' => $bySource,
             'byCategory' => $byCategory,
             'tools' => $tools,

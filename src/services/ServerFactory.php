@@ -77,6 +77,12 @@ class ServerFactory {
      * the HTTP path. A session store overrides the SDK in-memory default.
      */
     public function create(?Scope $scope = null, ?SessionStoreInterface $sessionStore = null): Server {
+        // One Gate, shared: the Loader filters the registry with it and the
+        // informational tools report from it, so "may I call this" cannot have
+        // two answers on the same connection.
+        $gate = new Gate($scope);
+        Craft::$container->setSingleton(Gate::class, static fn (): Gate => $gate);
+
         $logger = $this->logger ?? new NullLogger();
         // Shared between the Registry and the Builder: capabilities (e.g.
         // toolsListChanged) are only advertised as true when the Builder's
@@ -106,7 +112,7 @@ class ServerFactory {
                 basePath: $basePath,
                 scanDirs: ['tools', 'prompts', 'resources'],
                 cache: $this->discoveryCache($basePath),
-                gate: new Gate($scope),
+                gate: $gate,
                 logger: $logger,
             ))
             // Ours rather than the SDK's default, because it owns the stored
