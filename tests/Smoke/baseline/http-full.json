@@ -308,7 +308,7 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Site handle to write on; list_sites reports the handles."
+                        "description": "Site handle to write on, and to report the result in. The block itself is added on every site the owner exists on; only the values of site-translatable fields differ per site."
                     },
                     "mode": {
                         "type": [
@@ -361,7 +361,7 @@
             }
         },
         "describe_entry_schema": {
-            "description": "Describe the fields a section/entry type accepts: handles, kinds, required flags, a per-field input shape (the exact payload each field takes: natural keys for relations, block types for matrix, link/option/table/container shapes for structured and third-party fields), native fields, writable meta attributes. Pass example (entry id or slug) to include a real entry payload as a golden fixture.",
+            "description": "Describe the fields a section/entry type accepts: handles, kinds, required flags, a per-field input shape (the exact payload each field takes: natural keys for relations, block types for matrix, link/option/table/container shapes for structured and third-party fields), native fields, writable meta attributes. On a multi-site install each field also reports its translation method and whether it holds a separate value per site, which is what says if writing it on one site changes another. Pass example (entry id or slug) to include a real entry payload as a golden fixture.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -1345,7 +1345,7 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Site handle to reorder on; list_sites reports the handles."
+                        "description": "Site handle to locate the block by. Reordering is not per-site: a block's position is shared across sites, so the new order becomes the order on every site the owner exists on."
                     },
                     "mode": {
                         "type": [
@@ -3012,6 +3012,10 @@
                                             "elementType": "<string>",
                                             "sources": "<string>"
                                         },
+                                        "translation": {
+                                            "method": "<string>",
+                                            "perSite": false
+                                        },
                                         "type": "<string>"
                                     }
                                 ],
@@ -3047,6 +3051,10 @@
                             "sources": [
                                 "<string>"
                             ]
+                        },
+                        "translation": {
+                            "method": "<string>",
+                            "perSite": "<bool>"
                         },
                         "type": "<string>"
                     }
@@ -3264,6 +3272,10 @@
                                             "elementType": "<string>",
                                             "sources": "<string>"
                                         },
+                                        "translation": {
+                                            "method": "<string>",
+                                            "perSite": false
+                                        },
                                         "type": "<string>"
                                     }
                                 ],
@@ -3299,6 +3311,10 @@
                             "sources": [
                                 "<string>"
                             ]
+                        },
+                        "translation": {
+                            "method": "<string>",
+                            "perSite": "<bool>"
                         },
                         "type": "<string>"
                     }
@@ -3509,6 +3525,9 @@
             "status": "ok",
             "shape": {
                 "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
                 "blockId": "<number>",
                 "cpEditUrl": "<string>",
                 "draftElementId": "<number>",
@@ -3525,6 +3544,9 @@
             "status": "ok",
             "shape": {
                 "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
                 "blockId": "<number>",
                 "cpEditUrl": "<string>",
                 "draftElementId": "<number>",
@@ -3541,6 +3563,9 @@
             "status": "ok",
             "shape": {
                 "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
                 "blockId": "<number>",
                 "cpEditUrl": "<string>",
                 "draftElementId": "<number>",
@@ -3556,6 +3581,9 @@
         "publish_entry": {
             "status": "ok",
             "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
                 "entry": {
                     "authorId": "<number>",
                     "canonicalId": "<number>",
@@ -3703,6 +3731,9 @@
         "delete_entry.cross_site_draft": {
             "status": "ok",
             "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
                 "deleted": "<number>",
                 "restorable": true,
                 "success": true
@@ -3711,6 +3742,9 @@
         "delete_entry.relating": {
             "status": "ok",
             "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
                 "deleted": "<number>",
                 "restorable": true,
                 "success": true
@@ -3719,6 +3753,9 @@
         "delete_entry.copy": {
             "status": "ok",
             "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
                 "deleted": "<number>",
                 "restorable": true,
                 "success": true
@@ -3727,6 +3764,9 @@
         "delete_entry.published": {
             "status": "ok",
             "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
                 "deleted": "<number>",
                 "restorable": true,
                 "success": true

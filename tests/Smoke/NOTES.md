@@ -165,6 +165,22 @@ Facts established by running it, recorded so they are not rediscovered:
 - **`copy_entry_to_site` copies field values only**, not title or slug, and
   lands as a draft on the target site. Leaving the target's own title and slug
   alone is what makes it usable for translation.
+- **A nested block's position is shared across sites.** `elements_owners` is
+  keyed by block and owner with no site column, so reordering a block on one
+  site reorders it on all of them. Proved by moving a block on the second site
+  and reading the primary back changed. The block's field VALUES are still
+  per-site when the Matrix field is site-translatable, so content and order
+  differ in how far a write reaches.
+- **The write tools report their own reach.** `publish_entry`, `delete_entry`,
+  `create_nested_entry` and `move_nested_entry` answer with `affectedSites`,
+  the site handles the operation actually landed on. Wherever an operation is
+  wider than the `site` argument suggests, that list is the thing that says so
+  at runtime rather than in a description nobody read.
+- **`describe_entry_schema` reports translation per field** on a multi-site
+  install: `translation.method` and `translation.perSite`. `perSite` is true
+  only for the method that gives every site its own value, so false reads as
+  "writing this may change another site". Absent entirely on a single-site
+  install, where the question does not exist.
 
 ## Coverage gaps, deliberately visible
 

@@ -112,7 +112,7 @@ final class Plan {
                 // Two sites must not read as one. If this ever came back as the
                 // primary, every per-site read below would be reading the same
                 // content twice and passing while proving nothing.
-                'assert' => ['success' => true, 'site.primary' => false, 'site.handle' => 'notEmpty'],
+                'assert' => ['success' => true, 'site.primary' => false, 'site.handle' => '{{site.second}}'],
             ],
             [
                 'tool' => 'list_sections',
@@ -286,13 +286,22 @@ final class Plan {
             [
                 'tool' => 'move_nested_entry',
                 'args' => ['id' => '{{block.second}}', 'position' => 1],
-                'assert' => ['success' => true, 'position' => 1],
+                // A block's position is shared across sites, so the response
+                // has to say which sites the new order landed on. An empty or
+                // missing list means the reach went unreported, which is the
+                // state this whole field exists to prevent.
+                'assert' => ['success' => true, 'position' => 1, 'affectedSites' => 'notEmpty'],
             ],
             [
                 'tool' => 'publish_entry',
                 'args' => ['id' => '{{draft.id}}'],
                 'capture' => ['published.id' => 'entry.id'],
-                'assert' => ['success' => true, 'entry.id' => 'isInt', 'entry.draftId' => null],
+                'assert' => [
+                    'success' => true,
+                    'entry.id' => 'isInt',
+                    'entry.draftId' => null,
+                    'affectedSites' => 'notEmpty',
+                ],
             ],
             [
                 'tool' => 'duplicate_entry',
@@ -312,7 +321,14 @@ final class Plan {
                 'tool' => 'get_entry',
                 'name' => 'get_entry.second_site',
                 'args' => ['id' => '{{published.id}}', 'site' => '{{site.second}}'],
-                'assert' => ['found' => true, 'entry.siteHandle' => 'notEmpty', 'entry.id' => 'isInt'],
+                // Naming the handle is the point: a server that accepted the
+                // site argument and read the primary anyway would satisfy
+                // "notEmpty" and fail this.
+                'assert' => [
+                    'found' => true,
+                    'entry.id' => 'isInt',
+                    'entry.siteHandle' => '{{site.second}}',
+                ],
             ],
             [
                 'tool' => 'copy_entry_to_site',
@@ -348,7 +364,7 @@ final class Plan {
                 'tool' => 'delete_entry',
                 'name' => 'delete_entry.published',
                 'args' => ['id' => '{{published.id}}'],
-                'assert' => ['success' => true, 'deleted' => 'present'],
+                'assert' => ['success' => true, 'deleted' => 'present', 'affectedSites' => 'notEmpty'],
             ],
         ];
     }
