@@ -171,14 +171,35 @@ final class Runner {
             return ['status' => 'tool-error', 'message' => $message, 'diagnosis' => self::diagnose($message)];
         }
 
-        $rules = is_array($step['assert'] ?? null) ? $step['assert'] : [];
-        $failures = $rules === [] ? [] : Assert::check($payload, $rules);
+        return $this->checked($step, $payload);
+    }
 
-        if ($failures !== []) {
-            return ['status' => 'assert-failed', 'failures' => $failures, 'shape' => Shape::of($payload)];
+    /**
+     * The value checks, with captured values substituted into the expectations
+     * the same way they are into arguments.
+     *
+     * WHY an expectation may name a capture: a rule is only ever as strong as
+     * what it compares against. Proving that a `site` argument reached the
+     * query means checking the answer carries the handle that was asked for,
+     * and `notEmpty` holds just as well on an install where the argument was
+     * accepted and quietly dropped.
+     *
+     * @param array<string, mixed> $step
+     * @return array<string, mixed>
+     */
+    private function checked(array $step, mixed $payload): array {
+        $rules = is_array($step['assert'] ?? null) ? $step['assert'] : [];
+        $resolved = $rules === [] ? [] : $this->resolve($rules);
+
+        if ($resolved === null) {
+            return ['status' => 'skipped', 'reason' => 'an earlier step did not produce the value an assertion needs'];
         }
 
-        return ['status' => 'ok', 'shape' => Shape::of($payload)];
+        $failures = $resolved === [] ? [] : Assert::check($payload, $resolved);
+
+        return $failures === []
+            ? ['status' => 'ok', 'shape' => Shape::of($payload)]
+            : ['status' => 'assert-failed', 'failures' => $failures, 'shape' => Shape::of($payload)];
     }
 
     /**
