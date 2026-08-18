@@ -153,6 +153,18 @@ Facts established by running it, recorded so they are not rediscovered:
   the tool, is the broken thing.
 - **`reload_mcp` destroys its own response over HTTP**, on every call. See the
   register.
+- **An unknown site handle is refused**, not quietly swapped for the primary
+  site: `Site 'nope' not found. Use list_sites for available handles.`
+- **Publishing is not per-site.** `publish_entry` applies the draft to every
+  site it exists on; its `site` argument only picks which site's values come
+  back, so publishing a draft edited on a second site reports the primary
+  site's values unless that site is named.
+- **Deleting is not per-site either.** `delete_entry` sets `dateDeleted` on the
+  element, so the entry is trashed on every site at once. There is no way to
+  remove one translation; disable it there instead.
+- **`copy_entry_to_site` copies field values only**, not title or slug, and
+  lands as a draft on the target site. Leaving the target's own title and slug
+  alone is what makes it usable for translation.
 
 ## Coverage gaps, deliberately visible
 
@@ -162,7 +174,6 @@ drift in the catalogue, so coverage cannot rot quietly.
 
 Currently uncovered and why:
 
-- `copy_entry_to_site`: needs a second site; this install has one.
 - `create_backup`: writes a database dump, so it is behind `--heavy`.
 - `get_asset`: no assets exist on this install to address.
 - `query_graphql`, `execute_graphql`: uncovered on stdio only, where they are
@@ -194,13 +205,20 @@ Stated so nobody mistakes a pass for more than it is:
    all are left at this install's values.
 6. **The plan is install-specific.** Section, entry type and Matrix field are
    constants at the top of `Plan.php`. On another install the content steps fail
-   loudly rather than skipping quietly, which is the intended trade.
+   loudly rather than skipping quietly, which is the intended trade. The
+   multi-site steps are the exception: they hang off a second site handle
+   captured from `list_sites`, so on a single-site install they report
+   themselves skipped instead of failing.
 7. **Values are only checked where an assertion says so.** Everything else is
    shape.
 8. **A boundary violation writes.** The readonly probe calls `create_entry` with
    arguments that would work. On a correct server it is refused and nothing
    happens; on a broken one the run leaves a draft behind, which is the cost of
    proving the boundary by crossing it rather than by reading a list.
+9. **Multi-site coverage is two sites in one group.** Both sites here serve the
+   same sections with the same URI formats, so nothing exercises a section
+   enabled for one site only, a section whose propagation method is not `all`,
+   or a second site group.
 
 ## Manual probes
 

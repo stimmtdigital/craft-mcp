@@ -1194,7 +1194,7 @@
                         "handle": "<string>",
                         "id": "<number>",
                         "name": "<string>",
-                        "primary": true
+                        "primary": "<bool>"
                     }
                 ]
             }
@@ -1312,9 +1312,7 @@
                     {
                         "pattern": "<string>",
                         "section?": "<string>",
-                        "section??": "<string>",
                         "siteId?": "<number>",
-                        "siteId??": "<number>",
                         "template": "<null|string>",
                         "type": "<string>"
                     }
@@ -1395,7 +1393,7 @@
                         "id": "<number>",
                         "language": "<string>",
                         "name": "<string>",
-                        "primary": true,
+                        "primary": "<bool>",
                         "sortOrder": "<number>",
                         "uid": "<string>"
                     }
@@ -1436,6 +1434,29 @@
                     "language": "<string>",
                     "name": "<string>",
                     "primary": true,
+                    "sortOrder": "<number>",
+                    "uid": "<string>"
+                },
+                "success": true
+            }
+        },
+        "get_site.second": {
+            "status": "ok",
+            "shape": {
+                "site": {
+                    "baseUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "enabled": true,
+                    "group": {
+                        "id": "<number>",
+                        "name": "<string>"
+                    },
+                    "handle": "<string>",
+                    "id": "<number>",
+                    "language": "<string>",
+                    "name": "<string>",
+                    "primary": false,
                     "sortOrder": "<number>",
                     "uid": "<string>"
                 },
@@ -2093,8 +2114,8 @@
                                     "fields": {
                                         "buttons": [],
                                         "contentExtensive": "<string>",
-                                        "image??": [],
-                                        "reverseView??": true
+                                        "image?": [],
+                                        "reverseView?": true
                                     },
                                     "position": "<number>",
                                     "slug": null,
@@ -2273,14 +2294,13 @@
                                     {
                                         "handle": "<string>",
                                         "input": {
-                                            "elementType????": "<string>",
-                                            "hint??": "<string>",
-                                            "hint????": "<string>",
-                                            "item????": [
+                                            "elementType?": "<string>",
+                                            "hint?": "<string>",
+                                            "item?": [
                                                 "<string>"
                                             ],
                                             "kind": "<string>",
-                                            "linkTypes??": {
+                                            "linkTypes?": {
                                                 "default-verbb-hyper-links-custom": {
                                                     "fields": {
                                                         "fields": {
@@ -2408,147 +2428,16 @@
                                                     }
                                                 }
                                             },
-                                            "linkTypes???": {
-                                                "default-verbb-hyper-links-custom": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-email": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-entry": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-phone": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkIcon2": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-url": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "multiple????": true,
-                                            "note??": "<string>",
-                                            "note???": "<string>",
-                                            "payload??": "<string>",
-                                            "payload???": "<string>",
-                                            "valueType?": "<string>",
-                                            "valueType????": "<string>"
+                                            "multiple?": true,
+                                            "note?": "<string>",
+                                            "payload?": "<string>",
+                                            "valueType?": "<string>"
                                         },
                                         "instructions": "<string>",
                                         "kind": "<string>",
                                         "name": "<string>",
                                         "required": false,
-                                        "target????": {
+                                        "target?": {
                                             "elementType": "<string>",
                                             "sources": "<string>"
                                         },
@@ -2657,14 +2546,13 @@
                                     {
                                         "handle": "<string>",
                                         "input": {
-                                            "elementType????": "<string>",
-                                            "hint??": "<string>",
-                                            "hint????": "<string>",
-                                            "item????": [
+                                            "elementType?": "<string>",
+                                            "hint?": "<string>",
+                                            "item?": [
                                                 "<string>"
                                             ],
                                             "kind": "<string>",
-                                            "linkTypes??": {
+                                            "linkTypes?": {
                                                 "default-verbb-hyper-links-custom": {
                                                     "fields": {
                                                         "fields": {
@@ -2792,147 +2680,16 @@
                                                     }
                                                 }
                                             },
-                                            "linkTypes???": {
-                                                "default-verbb-hyper-links-custom": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-email": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-entry": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-phone": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkIcon2": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-url": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "multiple????": true,
-                                            "note??": "<string>",
-                                            "note???": "<string>",
-                                            "payload??": "<string>",
-                                            "payload???": "<string>",
-                                            "valueType?": "<string>",
-                                            "valueType????": "<string>"
+                                            "multiple?": true,
+                                            "note?": "<string>",
+                                            "payload?": "<string>",
+                                            "valueType?": "<string>"
                                         },
                                         "instructions": "<string>",
                                         "kind": "<string>",
                                         "name": "<string>",
                                         "required": false,
-                                        "target????": {
+                                        "target?": {
                                             "elementType": "<string>",
                                             "sources": "<string>"
                                         },
@@ -3108,9 +2865,17 @@
             "status": "skipped",
             "reason": "not advertised by this connection"
         },
+        "get_entry.second_site": {
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
+        },
         "copy_entry_to_site": {
             "status": "skipped",
-            "reason": "needs a second site; this install has one"
+            "reason": "not advertised by this connection"
+        },
+        "delete_entry.cross_site_draft": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
         },
         "delete_entry.relating": {
             "status": "skipped",

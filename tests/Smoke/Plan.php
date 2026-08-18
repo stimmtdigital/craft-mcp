@@ -94,10 +94,26 @@ final class Plan {
             [
                 'tool' => 'list_sites',
                 'args' => [],
-                'capture' => ['site.handle' => 'sites.0.handle'],
+                // The second handle is what makes the multi-site steps run at
+                // all. On a single-site install it captures nothing, every step
+                // that names it reports itself skipped, and the snapshot says
+                // which coverage this install could not provide.
+                'capture' => [
+                    'site.handle' => 'sites.0.handle',
+                    'site.second' => 'sites.1.handle',
+                ],
             ],
             ['tool' => 'list_site_groups', 'args' => []],
             ['tool' => 'get_site', 'args' => ['handle' => '{{site.handle}}']],
+            [
+                'tool' => 'get_site',
+                'name' => 'get_site.second',
+                'args' => ['handle' => '{{site.second}}'],
+                // Two sites must not read as one. If this ever came back as the
+                // primary, every per-site read below would be reading the same
+                // content twice and passing while proving nothing.
+                'assert' => ['success' => true, 'site.primary' => false, 'site.handle' => 'notEmpty'],
+            ],
             [
                 'tool' => 'list_sections',
                 'args' => [],
@@ -288,10 +304,33 @@ final class Plan {
                 'capture' => ['copy.id' => 'entry.id'],
                 'assert' => ['success' => true, 'entry.id' => 'isInt', 'entry.draftId' => 'isInt'],
             ],
+            // The published entry propagated to every site its section serves,
+            // so it can be read there. Reading it on the second site proves the
+            // site argument reaches the query rather than being accepted and
+            // dropped, which a single-site run cannot tell apart.
+            [
+                'tool' => 'get_entry',
+                'name' => 'get_entry.second_site',
+                'args' => ['id' => '{{published.id}}', 'site' => '{{site.second}}'],
+                'assert' => ['found' => true, 'entry.siteHandle' => 'notEmpty', 'entry.id' => 'isInt'],
+            ],
             [
                 'tool' => 'copy_entry_to_site',
-                'args' => [],
-                'skip' => 'needs a second site; this install has one',
+                'args' => [
+                    'id' => '{{published.id}}',
+                    'fromSite' => '{{site.handle}}',
+                    'toSite' => '{{site.second}}',
+                ],
+                'capture' => ['crossSite.draftId' => 'draftElementId'],
+                // A copy lands as a draft like every other write, so nothing
+                // reaches the second site's live content without review.
+                'assert' => ['success' => true, 'state' => 'draft', 'draftElementId' => 'isInt'],
+            ],
+            [
+                'tool' => 'delete_entry',
+                'name' => 'delete_entry.cross_site_draft',
+                'args' => ['id' => '{{crossSite.draftId}}'],
+                'assert' => ['success' => true],
             ],
             [
                 'tool' => 'delete_entry',
