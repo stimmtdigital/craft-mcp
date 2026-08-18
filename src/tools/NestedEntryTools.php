@@ -16,6 +16,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\Lookup;
 use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Result;
 use stimmt\craft\Mcp\elements\Warning;
@@ -161,25 +162,8 @@ class NestedEntryTools {
         throw new ToolCallException("position must be 1 or greater, got {$position}");
     }
 
-    /**
-     * Id lookup across every element state: drafts are legal owners (the
-     * whole point of the owner-draft model) and revisions must be FOUND so
-     * they can be rejected with a message naming the canonical, instead of a
-     * blind "not found".
-     */
-    private function find(int $id, ?string $site): Entry {
-        SiteResolver::resolve($site);
-
-        $query = Entry::find()->id($id)->status(null)->drafts(null)->revisions(null);
-        if ($site !== null) {
-            $query->site($site);
-        }
-
-        return $query->one() ?? throw new ToolCallException("Entry {$id} not found");
-    }
-
     private function ownerFor(int $id, ?string $site): Entry {
-        $owner = $this->find($id, $site);
+        $owner = Lookup::inAnyState($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
         if ($owner->getIsRevision()) {
             throw new ToolCallException(
                 "Entry {$id} is a revision; revisions are read-only history and cannot receive or reorder blocks. Target the canonical entry {$owner->getCanonicalId()} instead.",
@@ -197,7 +181,7 @@ class NestedEntryTools {
      * field.
      */
     private function blockFor(int $id, ?string $site): Entry {
-        $block = $this->find($id, $site);
+        $block = Lookup::inAnyState($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
 
         if ($block->fieldId === null || $block->getOwnerId() === null) {
             throw new ToolCallException(

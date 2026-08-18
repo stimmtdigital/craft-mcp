@@ -14,6 +14,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\Lookup;
 use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\WriteMode;
@@ -137,7 +138,7 @@ class EntryWorkflowTools {
         ?string $site = null,
         ?RequestContext $context = null,
     ): array {
-        $entry = $this->find($id, $site, withDrafts: true);
+        $entry = Lookup::withDrafts($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
         Authorization::assertCanPublish($entry);
 
         if ($entry->getIsDraft()) {
@@ -161,7 +162,7 @@ class EntryWorkflowTools {
         ?string $site = null,
         ?RequestContext $context = null,
     ): array {
-        $entry = $this->find($id, $site, withDrafts: true);
+        $entry = Lookup::withDrafts($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
         Authorization::assertCanDelete($entry);
 
         // Read before the delete, while the element still has site rows to
@@ -196,7 +197,7 @@ class EntryWorkflowTools {
         ?string $fields = null,
         ?RequestContext $context = null,
     ): array {
-        $entry = $this->find($id, $site);
+        $entry = Lookup::canonical($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
         Authorization::assertCanDuplicate($entry);
 
         $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
@@ -240,7 +241,7 @@ class EntryWorkflowTools {
         SiteResolver::resolve($fromSite);
         SiteResolver::resolve($toSite);
 
-        $source = $this->find($id, $fromSite);
+        $source = Lookup::canonical($id, SiteResolver::resolve($fromSite)) ?? throw new ToolCallException("Entry {$id} not found");
         $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
             ?? throw new ToolCallException("Entry {$id} does not exist on site '{$toSite}'; the section may not be enabled for it");
         Authorization::assertCanSave($targetEntry);
@@ -383,19 +384,5 @@ class EntryWorkflowTools {
         if (!Craft::$app->getElements()->saveElement($entry)) {
             throw new ToolCallException('Failed to enable entry: ' . json_encode($entry->getErrors()));
         }
-    }
-
-    private function find(int $id, ?string $site, bool $withDrafts = false): Entry {
-        SiteResolver::resolve($site);
-
-        $query = Entry::find()->id($id)->status(null);
-        if ($site !== null) {
-            $query->site($site);
-        }
-        if ($withDrafts) {
-            $query->drafts(null);
-        }
-
-        return $query->one() ?? throw new ToolCallException("Entry with ID {$id} not found");
     }
 }
