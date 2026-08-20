@@ -91,6 +91,11 @@ final class Plan {
                     'count' => '>=50',
                     'tools' => 'notEmpty',
                     'available' => '{{mcp.available}}',
+                    // Every row says which edition it needs, so a tool that
+                    // stopped carrying one is visible here rather than only in
+                    // whatever it silently allowed.
+                    'tools.0.requiredEdition' => 'notEmpty',
+                    'tools.0.locked' => false,
                 ],
             ],
             ['tool' => 'get_system_info', 'args' => []],

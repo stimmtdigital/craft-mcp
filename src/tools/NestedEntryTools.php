@@ -16,12 +16,14 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\elements\Lookup;
 use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Result;
 use stimmt\craft\Mcp\elements\Warning;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
@@ -59,6 +61,7 @@ class NestedEntryTools {
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function createNestedEntry(
         #[Schema(description: 'Id of the entry that owns the Matrix field: a canonical entry, or a draft of one (pass a draftElementId to stack another block onto the same pending draft).')]
         int $owner,
@@ -127,6 +130,7 @@ class NestedEntryTools {
         annotations: new ToolAnnotations(destructiveHint: true, idempotentHint: true, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function moveNestedEntry(
         #[Schema(description: 'The block\'s own entry id, and the canonical one: a draft or revision copy of a block carries a stale position row.')]
         int $id,

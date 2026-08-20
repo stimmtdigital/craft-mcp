@@ -15,6 +15,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\elements\query\Buckets;
 use stimmt\craft\Mcp\elements\query\Filters;
 use stimmt\craft\Mcp\elements\query\Projection;
@@ -25,6 +26,7 @@ use stimmt\craft\Mcp\elements\schema\Describer;
 use stimmt\craft\Mcp\elements\schema\Meta;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ResponseFormat;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\pipeline\Presenter;
@@ -208,6 +210,7 @@ class EntryTools {
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function createEntry(
         #[Schema(description: 'Handle of the section to create the entry in; list_sections reports the handles.')]
         string $section,
@@ -277,6 +280,7 @@ class EntryTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function updateEntry(
         #[Schema(description: 'Element id to write: a canonical entry, a draft (draftElementId), or a single Matrix block by its own entry id.')]
         int $id,

@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\policy;
 
 use Craft;
 use craft\elements\User;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\PromptDefinition;
@@ -51,7 +52,30 @@ final readonly class Gate {
             return Decision::deny('an install-introspection tool, and this connection is neither full scope nor an admin');
         }
 
-        return Decision::keep();
+        return $this->edition($definition);
+    }
+
+    /**
+     * The edition axis. A tool above the running edition is either hidden or
+     * kept visible and inert, which is the site owner's choice: quiet by
+     * default, discoverable when showLockedProTools is on.
+     *
+     * Checked last on purpose. A tool that is disabled, out of scope or beyond
+     * this connection's privilege should say so, rather than advertising an
+     * upgrade for something the caller still could not use afterwards.
+     */
+    private function edition(ToolDefinition $definition): Decision {
+        $required = $definition->requiredEdition;
+
+        if (Mcp::currentEdition()->atLeast($required)) {
+            return Decision::keep();
+        }
+
+        $reason = "requires the {$required->value} edition, and this install runs " . Mcp::currentEdition()->value;
+
+        return Mcp::settings()->showLockedProTools
+            ? Decision::substitute($reason, "[{$required->name}]", Edition::proUpgradeMessage())
+            : Decision::deny($reason);
     }
 
     public function admitsPrompt(PromptDefinition $definition): Decision {

@@ -36,6 +36,14 @@ it('defaults httpSessionStore to null (built-in DB store)', function () {
     expect((new Settings())->httpSessionStore)->toBeNull();
 });
 
+it('defaults showLockedProTools to false and validates it as boolean', function () {
+    $settings = new Settings();
+    expect($settings->showLockedProTools)->toBeFalse();
+
+    $settings->showLockedProTools = true;
+    expect($settings->validate())->toBeTrue();
+});
+
 it('defaults additionalInstructions to an empty string and validates as a string', function () {
     $settings = new Settings();
 

@@ -14,11 +14,13 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\elements\Lookup;
 use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
@@ -131,6 +133,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function publishEntry(
         #[Schema(description: 'The draft element id to apply, or a canonical entry id that has exactly one pending draft (or none and is merely disabled).')]
         int $id,
@@ -155,6 +158,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function deleteEntry(
         #[Schema(description: 'Element id to trash: an entry, a draft (draftElementId, which discards the draft and leaves the canonical entry untouched), or a single Matrix block by its own entry id.')]
         int $id,
@@ -184,6 +188,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function duplicateEntry(
         #[Schema(description: 'Id of the entry to copy.')]
         int $id,
@@ -229,6 +234,7 @@ class EntryWorkflowTools {
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+    #[RequiresEdition(Edition::Pro)]
     public function copyEntryToSite(
         #[Schema(description: 'Entry id, which is the same id on every site the entry exists on.')]
         int $id,

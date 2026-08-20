@@ -9,10 +9,12 @@ use Mcp\Capability\Discovery\Discoverer;
 use Mcp\Capability\Discovery\DiscoveryState;
 use Mcp\Capability\Registry\Loader\LoaderInterface;
 use Mcp\Capability\RegistryInterface;
+use Mcp\Schema\Tool;
 use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ResourceDefinition;
+use stimmt\craft\Mcp\policy\Decision;
 use stimmt\craft\Mcp\policy\Gate;
 
 /**
@@ -74,6 +76,12 @@ final readonly class Loader implements LoaderInterface {
                 ? $this->gate->admitsUnknown()
                 : $this->gate->admitsTool($definition);
 
+            if ($decision->substitutes()) {
+                $registry->registerTool($this->inert($reference->tool, $decision), static fn (): string => (string) $decision->notice);
+
+                continue;
+            }
+
             if (!$decision->allowed) {
                 $this->logger->debug("Not registering tool '{$name}': {$decision->reason}");
 
@@ -82,6 +90,37 @@ final readonly class Loader implements LoaderInterface {
 
             $registry->registerTool($reference->tool, $reference->handler);
         }
+    }
+
+    /**
+     * The same tool, marked in its description and stripped back to a schema
+     * that accepts anything.
+     *
+     * WHY the permissive schema: the real one would have the SDK reject a
+     * malformed call with a validation error, and the caller would never reach
+     * the notice explaining why the tool cannot do anything. A locked tool has
+     * to be able to answer every call it is offered.
+     */
+    private function inert(Tool $tool, Decision $decision): Tool {
+        return new Tool(
+            name: $tool->name,
+            title: $tool->title,
+            // The discovered schema with nothing mandatory, so a call carrying
+            // no arguments still reaches the notice.
+            //
+            // WHY reuse it rather than substitute a bare permissive one: the
+            // SDK normalises an empty `properties` to an object when it builds
+            // a schema, and a hand-written empty PHP array encodes as `[]`,
+            // which its own validator then rejects with "properties must be an
+            // object". The caller got a schema error instead of the sentence
+            // explaining why the tool cannot run.
+            inputSchema: ['required' => []] + $tool->inputSchema,
+            description: trim($decision->label . ' ' . ($tool->description ?? '')),
+            annotations: $tool->annotations,
+            icons: $tool->icons,
+            meta: $tool->meta,
+            outputSchema: $tool->outputSchema,
+        );
     }
 
     private function loadPrompts(RegistryInterface $registry, DiscoveryState $discovered): void {

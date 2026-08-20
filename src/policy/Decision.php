@@ -21,6 +21,8 @@ final readonly class Decision {
     private function __construct(
         public bool $allowed,
         public ?string $reason = null,
+        public ?string $label = null,
+        public ?string $notice = null,
     ) {
     }
 
@@ -30,5 +32,23 @@ final readonly class Decision {
 
     public static function deny(string $reason): self {
         return new self(false, $reason);
+    }
+
+    /**
+     * The third answer the class comment promised: the element stays listed,
+     * but with $label marking its description and a handler that answers
+     * $notice instead of doing the work.
+     *
+     * `allowed` is false, because the tool may not do what it advertises. The
+     * caller that registers elements is the one that has to ask substitutes()
+     * first; anything that only counts what a connection can really call is
+     * right to treat this as a refusal.
+     */
+    public static function substitute(string $reason, string $label, string $notice): self {
+        return new self(false, $reason, $label, $notice);
+    }
+
+    public function substitutes(): bool {
+        return $this->notice !== null;
     }
 }

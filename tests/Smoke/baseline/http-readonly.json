@@ -1245,8 +1245,10 @@
                         "category": "<string>",
                         "dangerous": "<bool|false|true>",
                         "description": "<string>",
+                        "locked": false,
                         "name": "<string>",
                         "privileged": "<bool|false|true>",
+                        "requiredEdition": "<string>",
                         "source": "<string>",
                         "unavailableBecause": "<null|string>"
                     }
