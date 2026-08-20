@@ -265,7 +265,7 @@ class RegisterToolsEvent extends Event {
 
             $methodEditionAttrs = $method->getAttributes(RequiresEdition::class);
             $requiredEdition = empty($methodEditionAttrs)
-                ? ($classEdition ?? Edition::Standard)
+                ? ($classEdition ?? Edition::Lite)
                 : $methodEditionAttrs[0]->newInstance()->edition;
 
             $definitions[] = new ToolDefinition(

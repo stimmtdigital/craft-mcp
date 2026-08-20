@@ -19,7 +19,7 @@ it('maps requiredEdition and a locked flag onto a tool row', function () {
     $free = ToolDefinition::fromArray(['name' => 'get_entry']);
 
     // No plugin instance is loaded in a unit test, so the active edition is
-    // Standard: a Pro tool is locked, a Standard tool is not.
+    // Lite: a Pro tool is locked, a Lite tool is not.
     expect(McpTools::editionFields($pro))->toBe(['requiredEdition' => 'pro', 'locked' => true])
-        ->and(McpTools::editionFields($free))->toBe(['requiredEdition' => 'standard', 'locked' => false]);
+        ->and(McpTools::editionFields($free))->toBe(['requiredEdition' => 'lite', 'locked' => false]);
 });

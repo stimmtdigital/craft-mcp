@@ -22,11 +22,11 @@ it('teaches the tool-selection ladder in the base instructions', function () {
         ->toContain('last resort');
 });
 
-it('appends a Standard edition note that retracts the write promises', function () {
+it('appends a Lite edition note that retracts the write promises', function () {
     $note = (new ReflectionMethod(McpServerFactory::class, 'editionNoteFor'))
-        ->invoke(new McpServerFactory(), Edition::Standard);
+        ->invoke(new McpServerFactory(), Edition::Lite);
 
-    expect($note)->toContain('Standard edition')
+    expect($note)->toContain('Lite edition')
         ->toContain('create_entry')
         ->toContain('not available');
 });

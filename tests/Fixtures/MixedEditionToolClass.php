@@ -11,7 +11,7 @@ use stimmt\craft\Mcp\enums\Edition;
 #[RequiresEdition(Edition::Pro)]
 class MixedEditionToolClass {
     #[McpTool(name: 'fixture_mixed_free', description: 'free')]
-    #[RequiresEdition(Edition::Standard)]
+    #[RequiresEdition(Edition::Lite)]
     public function free(): array {
         return [];
     }

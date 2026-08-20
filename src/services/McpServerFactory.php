@@ -381,7 +381,7 @@ class McpServerFactory {
         }
 
         return "\n\n## Edition\n\n"
-            . 'This install runs the Standard edition. The content-writing tools '
+            . 'This install runs the Lite edition. The content-writing tools '
             . '(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site) '
             . 'are a Pro feature and are not available here, so any write instructions above do not apply. '
             . 'Reading, browsing, and inspection are fully available. '

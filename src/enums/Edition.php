@@ -12,11 +12,11 @@ namespace stimmt\craft\Mcp\enums;
  * @author Max van Essen <support@stimmt.digital>
  */
 enum Edition: string {
-    case Standard = 'standard';
+    case Lite = 'lite';
     case Pro = 'pro';
 
     /**
-     * Call to action shared by the upgrade message and the Standard-edition
+     * Call to action shared by the upgrade message and the Lite-edition
      * instructions note.
      */
     public const UPGRADE_CTA = 'Upgrade in the Craft control panel under Settings > Plugins.';
@@ -31,15 +31,15 @@ enum Edition: string {
     }
 
     /**
-     * Resolve a stored edition handle, falling back to Standard for unknown or
+     * Resolve a stored edition handle, falling back to Lite for unknown or
      * empty values.
      */
     public static function fromHandle(?string $handle): self {
         if ($handle === null) {
-            return self::Standard;
+            return self::Lite;
         }
 
-        return self::tryFrom($handle) ?? self::Standard;
+        return self::tryFrom($handle) ?? self::Lite;
     }
 
     /**

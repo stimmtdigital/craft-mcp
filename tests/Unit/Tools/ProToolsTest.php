@@ -21,7 +21,7 @@ it('marks the six entry-mutation tools as requiring Pro', function (string $clas
     [EntryWorkflowTools::class, 'copyEntryToSite'],
 ]);
 
-it('leaves content reads and schema on Standard', function (string $class, string $method) {
+it('leaves content reads and schema on Lite', function (string $class, string $method) {
     expect((new ReflectionMethod($class, $method))->getAttributes(RequiresEdition::class))->toBeEmpty();
 })->with([
     [EntryTools::class, 'listEntries'],
@@ -56,7 +56,7 @@ it('marks exactly the six documented tools as Pro across every tool class', func
 
             $methodAttrs = $method->getAttributes(RequiresEdition::class);
             $edition = $methodAttrs === []
-                ? ($classEdition ?? Edition::Standard)
+                ? ($classEdition ?? Edition::Lite)
                 : $methodAttrs[0]->newInstance()->edition;
 
             if ($edition === Edition::Pro) {

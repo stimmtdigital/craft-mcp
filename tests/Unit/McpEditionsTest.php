@@ -9,10 +9,10 @@ use stimmt\craft\Mcp\Mcp;
 
 describe('Mcp editions', function () {
     it('declares standard and pro in order', function () {
-        expect(Mcp::editions())->toBe(['standard', 'pro']);
+        expect(Mcp::editions())->toBe(['lite', 'pro']);
     });
 
-    it('resolves the current edition, defaulting to Standard', function () {
+    it('resolves the current edition, defaulting to Lite', function () {
         expect(Mcp::currentEdition())->toBeInstanceOf(Edition::class);
     });
 });

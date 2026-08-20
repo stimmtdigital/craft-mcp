@@ -176,16 +176,16 @@ describe('RequiresEdition extraction', function () {
         $event->addTool(\stimmt\craft\Mcp\Tests\Fixtures\MixedEditionToolClass::class, 'test-plugin');
 
         $defs = $event->getDefinitions();
-        expect($defs['fixture_mixed_free']->requiredEdition)->toBe(Edition::Standard)
+        expect($defs['fixture_mixed_free']->requiredEdition)->toBe(Edition::Lite)
             ->and($defs['fixture_mixed_pro']->requiredEdition)->toBe(Edition::Pro);
     });
 
-    it('defaults unmarked tools to Standard', function () {
+    it('defaults unmarked tools to Lite', function () {
         $event = new RegisterToolsEvent();
         $event->addTool(\stimmt\craft\Mcp\Tests\Fixtures\ValidToolClass::class, 'test-plugin');
 
         foreach ($event->getDefinitions() as $def) {
-            expect($def->requiredEdition)->toBe(Edition::Standard);
+            expect($def->requiredEdition)->toBe(Edition::Lite);
         }
     });
 });

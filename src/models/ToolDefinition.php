@@ -22,7 +22,7 @@ final readonly class ToolDefinition {
         public string $category,
         public bool $dangerous,
         public bool $privileged,
-        public Edition $requiredEdition = Edition::Standard,
+        public Edition $requiredEdition = Edition::Lite,
         public ?string $condition = null,
     ) {
     }
@@ -90,7 +90,7 @@ final readonly class ToolDefinition {
             category: $data['category'] ?? ToolCategory::GENERAL->value,
             dangerous: $data['dangerous'] ?? false,
             privileged: $data['privileged'] ?? false,
-            requiredEdition: $data['requiredEdition'] ?? Edition::Standard,
+            requiredEdition: $data['requiredEdition'] ?? Edition::Lite,
             condition: $data['condition'] ?? null,
         );
     }

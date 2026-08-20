@@ -100,7 +100,7 @@ class Mcp extends BasePlugin {
     }
 
     /**
-     * The plugin's active edition, defaulting to Standard when the plugin is
+     * The plugin's active edition, defaulting to Lite when the plugin is
      * not yet loaded or the stored handle is unknown.
      */
     public static function currentEdition(): Edition {

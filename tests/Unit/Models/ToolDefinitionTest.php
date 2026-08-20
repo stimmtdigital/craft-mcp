@@ -6,9 +6,9 @@ use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\models\ToolDefinition;
 
 describe('ToolDefinition edition', function () {
-    it('defaults requiredEdition to Standard', function () {
+    it('defaults requiredEdition to Lite', function () {
         $def = ToolDefinition::fromArray(['name' => 'get_entry']);
-        expect($def->requiredEdition)->toBe(Edition::Standard);
+        expect($def->requiredEdition)->toBe(Edition::Lite);
     });
 
     it('accepts a requiredEdition and serializes it', function () {
