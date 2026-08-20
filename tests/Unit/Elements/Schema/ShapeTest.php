@@ -181,6 +181,25 @@ describe('Shape::of', function () {
             ->and($out['blockTypes'])->toBe(['contentBlock' => ['hasTitleField' => true]]);
     });
 
+    it('advertises the position key that controls block order', function () {
+        // The read path stamps position onto every block and the write path
+        // honours it, but this payload string did not mention it, so
+        // describe_entry_schema, the tool an agent is told to read first, was
+        // wrong about the one key that decides ordering. The `?` marks it
+        // optional on input, which is exactly how the writer treats it.
+        $matrix = new class () extends Matrix {
+            public function __construct() {
+                parent::__construct(['handle' => 'builder']);
+            }
+
+            public function getEntryTypes(): array {
+                return [];
+            }
+        };
+
+        expect((new Shape())->of($matrix)['payload'])->toContain('position?');
+    });
+
     it('walks a layout into native attributes and recursed custom fields', function () {
         $dropdown = new CustomField(new Dropdown([
             'handle' => 'style',

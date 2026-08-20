@@ -123,6 +123,7 @@ Count entries, optionally grouped: by attribute (`status`, `type`, `section`, `s
 | `createdAfter` | string | null | ISO date/datetime; only entries created on or after this |
 | `createdBefore` | string | null | ISO date/datetime; only entries created before this |
 | `groupBy` | string | null | An attribute (`status`, `type`, `section`, `site`, `author`), a date bucket (`granularity:dateAttribute`, e.g. `"month:dateUpdated"`), or a field handle. Omit for a plain total |
+| `output` | string | "structured" | "structured" for the JSON payload, "text" for an aligned breakdown table. See [Text Output](README.md#text-output) |
 
 **Examples:**
 
@@ -162,6 +163,21 @@ With `groupBy`, a `buckets` list is added, one entry per distinct value, sorted 
   ],
   "groupBy": "month:dateUpdated"
 }
+```
+
+The same breakdown with `output="text"`:
+
+```
+count_entries section="news" groupBy="month:dateUpdated" output="text"
+
+success: true
+total:   245
+buckets:
+  key      count
+  -------  -----
+  2023-12  18
+  2024-01  32
+groupBy: month:dateUpdated
 ```
 
 ```json
@@ -299,6 +315,7 @@ Update an entry by id. In draft mode (the default) a live entry gets a draft on 
 | `fields` | string | No | JSON string in the payload format, containing field values to update |
 | `mode` | string | No | `"draft"` or `"live"`, overriding the `entryWriteMode` setting for this call |
 | `parent` | string | No | New parent entry: its numeric id, or its slug within the entry's own section |
+| `expectedDateUpdated` | string | No | The `dateUpdated` string `get_entry` returned; the write fails when the entry changed since, instead of overwriting the newer content |
 
 **Examples:**
 
@@ -314,7 +331,12 @@ update_entry id=123 fields='{"summary": "Updated summary text"}'
 
 # Update live instead of drafting on top
 update_entry id=123 title="New Title" mode="live"
+
+# Reject the write if anything else touched the entry since the read
+update_entry id=123 fields='{"summary": "..."}' expectedDateUpdated="2024-01-15 14:22:00"
 ```
+
+When `expectedDateUpdated` is given and the canonical entry's `dateUpdated` no longer matches it, the call fails naming both timestamps; re-read with `get_entry` and rebuild the payload from the fresh values. Timestamps compare as instants, so timezone formatting differences never produce false conflicts. Omitting the parameter keeps the previous unchecked behavior. See [Content Writing: Conflict detection](../content-writing.md#conflict-detection-expecteddateupdated).
 
 **Response:**
 
@@ -333,6 +355,94 @@ Same shape as `create_entry`, with `action` set to `"updated"`:
   "errors": []
 }
 ```
+
+---
+
+### create_nested_entry
+
+Add a single block to a Matrix field on an owner entry, without resending the owner's other blocks. This is the direct "create a card" path: rewriting the owner's whole field value through `update_entry` replaces the field's entire contents and deletes any block left out of the payload, while this tool touches nothing but the new block. It also covers the first-ever block of a type that doesn't appear anywhere in the field yet, which no duplicate-based workaround can reach.
+
+In draft mode (the default) the block lands on a draft **of the owner**, exactly like adding a block in the control panel: siblings and the live page stay untouched until `publish_entry` applies the owner draft. Passing an `owner` that already is a draft's element id stacks the block onto that same draft instead of creating another one.
+
+> **Note:** This is a dangerous tool that can be disabled via configuration.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `owner` | int | Yes | id of the entry that owns the Matrix field; pass a `draftElementId` from an earlier response to stack more blocks onto the same owner draft |
+| `field` | string | Yes | Matrix field handle on the owner |
+| `type` | string | Yes | Entry type handle of the block to create; `describe_entry_schema` lists the valid handles under the field's `blockTypes` |
+| `title` | string | No | Block title, for block types that show one |
+| `fields` | string | No | JSON string in the payload format with the block's custom field values |
+| `site` | string | No | Site handle (defaults to the primary site) |
+| `mode` | string | No | `"draft"` or `"live"`, overriding the `entryWriteMode` setting for this call |
+| `position` | int | No | 1-based position among the field's blocks; omitted appends at the end, past-the-end clamps to the last slot |
+
+**Examples:**
+
+```
+# Add a block at the end of the field, as a draft of the owner
+create_nested_entry owner=123 field="contentBuilder" type="text" fields='{"contentExtensive": "<p>Hello</p>"}'
+
+# Add a quote block as the second block
+create_nested_entry owner=123 field="contentBuilder" type="quote" position=2 fields='{"quote": "Less, but better."}'
+
+# Stack a second block onto the same owner draft
+create_nested_entry owner=890 field="contentBuilder" type="text"
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "action": "created",
+  "blockId": 512,
+  "ownerId": 123,
+  "draftId": 14,
+  "draftElementId": 890,
+  "state": "draft",
+  "position": 3,
+  "cpEditUrl": "https://example.com/admin/entries/pages/890-about",
+  "warnings": [],
+  "errors": []
+}
+```
+
+`blockId` is the new block's own entry id. `ownerId` is the canonical owner. `draftElementId` is the **owner draft's** element id: what `publish_entry` accepts, what `get_entry` shows the block in context on, and what follow-up `create_nested_entry`/`update_entry` calls take to keep working on the same draft; both draft keys are `null` for live-mode calls, whose `state` is `"live"`. `position` is the 1-based slot the block actually took (a clamped position reports the real one). After publishing, re-read the owner: Craft duplicates a draft-owned block onto the canonical entry on apply, so the block's final id comes from the published owner, not from this response.
+
+Failure responses carry `success: false` and per-field validation messages under `errors`, same as `create_entry`. Unknown `field` handles fail listing the owner's available Matrix handles; unknown `type` handles fail listing the field's allowed types; revision owners are rejected by name.
+
+---
+
+### move_nested_entry
+
+Move a Matrix block to a new 1-based position within its field, by the block's own entry id. In draft mode (the default) the reorder lands on a draft of the owner entry for review, and `publish_entry` applies it; live mode reorders the canonical entry directly.
+
+> **Note:** This is a dangerous tool that can be disabled via configuration.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `id` | int | Yes | The block's own entry id (the block key `get_entry` returned) |
+| `position` | int | Yes | Target 1-based position; past-the-end clamps to the last slot |
+| `site` | string | No | Site handle (defaults to the primary site) |
+| `mode` | string | No | `"draft"` or `"live"`, overriding the `entryWriteMode` setting for this call |
+
+**Example:**
+
+```
+# Make block 512 the first block of its field, staged on an owner draft
+move_nested_entry id=512 position=1
+```
+
+**Response:**
+
+Same shape as `create_nested_entry`, with `action` set to `"moved"` and `position` reporting the slot actually taken.
+
+The tool rejects, with named errors instead of a silent success: ids that aren't nested elements, draft or revision copies of a block (the message names the canonical block id to use), blocks living in non-Matrix fields (a CKEditor-nested entry's order is markup-driven, so it has no position to move), and owners that are revisions.
 
 ---
 

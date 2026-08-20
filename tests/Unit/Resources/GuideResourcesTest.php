@@ -14,4 +14,16 @@ describe('GuideResources', function () {
             ->and($guide)->toContain('list_drafts')
             ->and($guide)->toContain('warnings');
     });
+
+    // The guide is the contract an agent is told to trust before it writes, so
+    // every capability the write tools gained has to be in it. A tool change
+    // that leaves the guide behind fails here rather than misleading an agent.
+    it('documents the capabilities the write tools actually have', function () {
+        $guide = (new GuideResources())->contentWriting();
+
+        expect($guide)->toContain('position')
+            ->and($guide)->toContain('create_nested_entry')
+            ->and($guide)->toContain('move_nested_entry')
+            ->and($guide)->toContain('expectedDateUpdated');
+    });
 });

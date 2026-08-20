@@ -102,6 +102,7 @@ list_mcp_tools
       "source": "craft-mcp",
       "category": "content",
       "dangerous": false,
+      "privileged": false,
       "enabled": true
     },
     {
@@ -110,6 +111,7 @@ list_mcp_tools
       "source": "craft-mcp",
       "category": "debugging",
       "dangerous": true,
+      "privileged": false,
       "enabled": false
     },
     {
@@ -118,13 +120,14 @@ list_mcp_tools
       "source": "my-plugin",
       "category": "plugin",
       "dangerous": false,
+      "privileged": false,
       "enabled": true
     }
   ]
 }
 ```
 
-Tools are sorted by source, then category, then name. The `enabled` field reflects both the dangerous tools setting and the `disabledTools` configuration, a tool shows as disabled if either condition prevents it from running.
+Tools are sorted by source, then category, then name. The `enabled` field reflects both the dangerous tools setting and the `disabledTools` configuration, a tool shows as disabled if either condition prevents it from running. `privileged` marks the install-introspection reads (logs, config, database structure and contents, environment): they are hidden from readonly and content connections whose Craft user is not an admin, unless the tool is opened through `scopedTokenPrivilegedTools`, so a listed privileged tool can still be unavailable on the connection asking for it.
 
 ---
 

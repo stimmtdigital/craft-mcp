@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\elements\refs;
 use Closure;
 use craft\elements\Asset;
 use craft\elements\Category;
+use craft\elements\db\ElementQuery;
 use craft\elements\Entry;
 use craft\elements\GlobalSet;
 use craft\elements\Tag;
@@ -29,6 +30,10 @@ final readonly class Keys {
         GlobalSet::class => ['handle'],
     ];
 
+    /**
+     * @param Closure(string, array<string, mixed>, ?string): Resolution|null $lookupId
+     * @param Closure(string, int, ?string): (array<string, string>|null)|null $lookupKey
+     */
     public function __construct(
         private ?AssetKey $assets = null,
         private ?Closure $lookupId = null,
@@ -40,20 +45,28 @@ final readonly class Keys {
         return $elementType === Asset::class || isset(self::SHAPES[$elementType]);
     }
 
-    public function idFor(string $elementType, array $key, ?string $site): ?int {
+    /**
+     * Resolve one natural key to the element it names.
+     *
+     * An asset key cannot be ambiguous: volume plus path plus filename is a
+     * unique address, so the one id AssetKey finds is the only one there is.
+     */
+    public function resolve(string $elementType, array $key, ?string $site): Resolution {
         if ($elementType === Asset::class) {
-            return ($this->assets ?? new AssetKey())->idFor($key);
+            $id = ($this->assets ?? new AssetKey())->idFor($key);
+
+            return $id === null ? Resolution::none() : Resolution::one($id);
         }
 
         if (!$this->wellFormed($elementType, $key)) {
-            return null;
+            return Resolution::none();
         }
 
         if ($this->lookupId !== null) {
             return ($this->lookupId)($elementType, $key, $site);
         }
 
-        return $this->queryId($elementType, $key, $site);
+        return $this->resolveByQuery($elementType, $key, $site);
     }
 
     public function keyFor(string $elementType, int $id, ?string $site): ?array {
@@ -69,13 +82,13 @@ final readonly class Keys {
             return ($this->lookupKey)($elementType, $id, $site);
         }
 
-        return $this->queryKey($elementType, $id, $site);
+        return $this->keyByQuery($elementType, $id, $site);
     }
 
     /**
      * The natural-key field list for a target element class, or null when the
      * type has no natural key. Single source of truth shared with the schema
-     * describer so a documented shape never drifts from idFor()/keyFor().
+     * describer so a documented shape never drifts from resolve()/keyFor().
      *
      * @return string[]|null
      */
@@ -96,11 +109,35 @@ final readonly class Keys {
         return array_all($shape, fn ($part) => is_string($key[$part] ?? null) && $key[$part] !== '');
     }
 
-    private function queryId(string $elementType, array $key, ?string $site): ?int {
-        $query = $elementType::find()->status(null);
+    /**
+     * A query that can see unpublished drafts, and only those.
+     *
+     * WHY: writes land as drafts by default, so the ordinary session is to
+     * create an entry and then relate to it from the next one. With Craft's
+     * default (`drafts` false, which appends `elements.draftId IS NULL`) that
+     * relation could never resolve, and the agent got "No entry matches this
+     * key" for an entry it had just created.
+     *
+     * Only UNPUBLISHED drafts, though, and the distinction is not cosmetic.
+     * `Drafts::applyDraft()` publishes an unpublished draft in place, keeping
+     * the element id, so storing that id in a relation is safe. A DERIVATIVE
+     * draft is hard deleted on publish once its canonical has been updated, so
+     * its id would take the relation with it. `draftOf(false)` is Craft's own
+     * spelling for the first group: it adds `drafts.canonicalId IS NULL` over a
+     * LEFT JOIN, which a canonical element satisfies too. Derivative drafts
+     * also share their canonical's slug, so admitting them would make the
+     * result order-dependent as well as unsafe.
+     */
+    private function resolvable(ElementQuery $query, ?string $site): void {
+        $query->status(null)->drafts(null)->draftOf(false);
         if ($site !== null) {
             $query->site($site);
         }
+    }
+
+    private function resolveByQuery(string $elementType, array $key, ?string $site): Resolution {
+        $query = $elementType::find();
+        $this->resolvable($query, $site);
 
         $constrained = match ($elementType) {
             Entry::class => $query->section($key['section'])->slug($key['slug']),
@@ -113,19 +150,29 @@ final readonly class Keys {
 
         // Never run the query unconstrained: an unsupported type must miss.
         if ($constrained === null) {
-            return null;
+            return Resolution::none();
         }
 
-        return $constrained->ids()[0] ?? null;
+        // Two is all it takes to know the key is not specific enough, and
+        // stopping there keeps the cost of the common single-match case flat.
+        $ids = $constrained->limit(2)->ids();
+
+        return match (count($ids)) {
+            0 => Resolution::none(),
+            1 => Resolution::one((int) $ids[0]),
+            default => Resolution::ambiguous(),
+        };
     }
 
-    private function queryKey(string $elementType, int $id, ?string $site): ?array {
-        $query = $elementType::find()->id($id)->status(null);
-        if ($site !== null) {
-            $query->site($site);
-        }
+    private function keyByQuery(string $elementType, int $id, ?string $site): ?array {
+        // The read half of the same defect: an entry legitimately relating to
+        // an unpublished draft read back as a bare integer id, because this
+        // lookup could not see the draft and Relations::toKeys() falls through
+        // to the raw id when no key resolves.
+        $query = $elementType::find();
+        $this->resolvable($query, $site);
 
-        $element = $query->one();
+        $element = $query->id($id)->one();
         if ($element === null) {
             return null;
         }

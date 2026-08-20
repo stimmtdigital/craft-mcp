@@ -117,7 +117,11 @@ The detailed view shows you everything you need to write effective queries: colu
 
 Get a quick overview of how much content exists in your Craft installation. This returns row counts for all core Craft tables, giving you a sense of the site's scale at a glance.
 
-**Parameters:** None
+**Parameters:**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `output` | string | "structured" | "structured" for the JSON payload, "text" for an aligned table. See [Text Output](README.md#text-output) |
 
 **Example:**
 
@@ -164,6 +168,7 @@ Execute read-only SQL queries against your database. Best suited for custom plug
 |------|------|---------|-------------|
 | `sql` | string | Required | The SQL SELECT query to execute |
 | `limit` | int | 100 | Maximum number of rows to return |
+| `output` | string | "structured" | "structured" for the JSON payload, "text" for an aligned table of rows. See [Text Output](README.md#text-output) |
 
 **Security restrictions:**
 
@@ -200,12 +205,27 @@ run_query sql="SELECT e.id, el.title, el.slug FROM craft_entries e JOIN craft_el
 }
 ```
 
+**Text response:**
+
+```
+run_query sql="SELECT id, title FROM craft_entries LIMIT 2" output="text"
+
+success: true
+count:   2
+columns: id, title
+rows:
+  id  title
+  --  ------------
+  1   First Entry
+  2   Second Entry
+```
+
 **Error response:**
 
 ```json
 {
-  "success": false,
-  "error": "Only SELECT queries are allowed for safety."
+  "content": [{ "type": "text", "text": "Only SELECT queries are allowed for safety." }],
+  "isError": true
 }
 ```
 

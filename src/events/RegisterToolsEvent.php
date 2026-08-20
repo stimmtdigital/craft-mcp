@@ -6,12 +6,14 @@ namespace stimmt\craft\Mcp\events;
 
 use InvalidArgumentException;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Discovery\Discoverer;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\attributes\RequiresEdition;
-use stimmt\craft\Mcp\contracts\ConditionalToolProvider;
+use stimmt\craft\Mcp\contracts\ConditionalProvider;
 use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\models\ToolDefinition;
@@ -111,20 +113,6 @@ class RegisterToolsEvent extends Event {
     }
 
     /**
-     * Get flat list of all tool classes.
-     *
-     * @return string[]
-     */
-    public function getAllToolClasses(): array {
-        $classes = [];
-        foreach ($this->tools as $sourceTools) {
-            $classes = array_merge($classes, $sourceTools);
-        }
-
-        return $classes;
-    }
-
-    /**
      * Get all tool definitions.
      *
      * @return array<string, ToolDefinition>
@@ -148,20 +136,6 @@ class RegisterToolsEvent extends Event {
     }
 
     /**
-     * Get tool definitions grouped by category.
-     *
-     * @return array<string, ToolDefinition[]>
-     */
-    public function getDefinitionsByCategory(): array {
-        $byCategory = [];
-        foreach ($this->definitions as $definition) {
-            $byCategory[$definition->category][] = $definition;
-        }
-
-        return $byCategory;
-    }
-
-    /**
      * Get validation errors that occurred during registration.
      *
      * @return string[]
@@ -173,7 +147,10 @@ class RegisterToolsEvent extends Event {
     /**
      * Register a directory for MCP tool discovery.
      *
-     * The directory should contain classes with #[McpTool] attributes.
+     * The directory should contain classes with #[McpTool] attributes. Every
+     * class found is registered exactly as if addTool() had been called for it,
+     * so the path is a shorthand for a list of classes rather than a second
+     * registration mechanism with its own rules.
      *
      * @param string $path Absolute path to the directory containing tool classes
      * @param string[] $subdirs Subdirectories to scan (e.g., ['.', 'tools'])
@@ -190,6 +167,8 @@ class RegisterToolsEvent extends Event {
             'path' => $path,
             'subdirs' => $subdirs,
         ];
+
+        $this->registerToolsUnder($path, $subdirs, $source);
     }
 
     /**
@@ -199,6 +178,36 @@ class RegisterToolsEvent extends Event {
      */
     public function getDiscoveryPaths(): array {
         return $this->discoveryPaths;
+    }
+
+    /**
+     * Register every tool class the SDK's own discoverer finds under the path.
+     *
+     * A reserved source is skipped: core registers its classes by name through
+     * addCoreTools(), and its declared path is the whole plugin tree, so
+     * scanning it would tokenize every file in src/ to find nothing new.
+     *
+     * @param string[] $subdirs
+     */
+    private function registerToolsUnder(string $path, array $subdirs, string $source): void {
+        if (in_array($source, self::RESERVED_SOURCES, true)) {
+            return;
+        }
+
+        $classes = [];
+        foreach ((new Discoverer())->discover($path, $subdirs)->getTools() as $reference) {
+            $handler = $reference->handler;
+            $class = is_array($handler) ? ($handler[0] ?? null) : null;
+            if (!is_string($class)) {
+                continue;
+            }
+
+            $classes[$class] = true;
+        }
+
+        foreach (array_keys($classes) as $class) {
+            $this->registerToolClass($class, $source);
+        }
     }
 
     /**
@@ -212,8 +221,21 @@ class RegisterToolsEvent extends Event {
             return;
         }
 
-        // Check class-level condition
-        if (is_subclass_of($class, ConditionalToolProvider::class) && !$class::isAvailable()) {
+        // Tested against the base interface, not the deprecated subinterface:
+        // a class implementing ConditionalProvider directly had its condition
+        // silently ignored here, while the prompt and resource events honoured
+        // it. Deprecated implementers still match, because the old interface
+        // extends this one.
+        if (is_subclass_of($class, ConditionalProvider::class) && !$class::isAvailable()) {
+            return;
+        }
+
+        /** @var class-string $classString */
+        $classString = $class;
+        $definitions = $this->extractToolDefinitions($classString, $source);
+        if ($definitions === []) {
+            $this->errors[] = "[{$source}] Class '{$class}' has no public methods with #[McpTool] attribute";
+
             return;
         }
 
@@ -223,10 +245,7 @@ class RegisterToolsEvent extends Event {
         }
         $this->tools[$source][] = $class;
 
-        // Extract and store definitions
-        /** @var class-string $classString */
-        $classString = $class;
-        foreach ($this->extractToolDefinitions($classString, $source) as $definition) {
+        foreach ($definitions as $definition) {
             $this->definitions[$definition->name] = $definition;
         }
     }
@@ -234,59 +253,131 @@ class RegisterToolsEvent extends Event {
     /**
      * Extract tool definitions from a class.
      *
+     * A class-level attribute is honoured first, dispatching through __invoke
+     * with the class short name as the default tool name, because that is the
+     * invokable shape the SDK's own discoverer supports and ours used to produce
+     * no definition for at all.
+     *
      * @param class-string $class
      * @return ToolDefinition[]
      */
     private function extractToolDefinitions(string $class, string $source): array {
-        $definitions = [];
-
         try {
             $reflection = new ReflectionClass($class);
         } catch (ReflectionException) {
             return [];
         }
 
-        $classEditionAttrs = $reflection->getAttributes(RequiresEdition::class);
-        $classEdition = $classEditionAttrs === []
-            ? null
-            : $classEditionAttrs[0]->newInstance()->edition;
+        $classEdition = $this->declaredEdition($reflection);
 
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $mcpToolAttrs = $method->getAttributes(McpTool::class);
-            if (empty($mcpToolAttrs)) {
+        $invoke = $this->invokable($reflection);
+        $classAttrs = $invoke === null
+            ? []
+            : $reflection->getAttributes(McpTool::class, ReflectionAttribute::IS_INSTANCEOF);
+
+        if ($invoke !== null && $classAttrs !== []) {
+            return [$this->toolDefinition($classAttrs[0]->newInstance(), $invoke, $source, $reflection->getShortName(), $classEdition)];
+        }
+
+        $definitions = [];
+        foreach ($this->dispatchableMethods($reflection) as $method) {
+            $attrs = $method->getAttributes(McpTool::class, ReflectionAttribute::IS_INSTANCEOF);
+            if ($attrs === []) {
                 continue;
             }
 
-            $mcpTool = $mcpToolAttrs[0]->newInstance();
-
-            // Get optional McpToolMeta attribute
-            $metaAttrs = $method->getAttributes(McpToolMeta::class);
-            $meta = empty($metaAttrs) ? null : $metaAttrs[0]->newInstance();
-
-            $methodEditionAttrs = $method->getAttributes(RequiresEdition::class);
-            $requiredEdition = empty($methodEditionAttrs)
-                ? ($classEdition ?? Edition::Lite)
-                : $methodEditionAttrs[0]->newInstance()->edition;
-
-            $definitions[] = new ToolDefinition(
-                name: $mcpTool->name ?? '',
-                description: $mcpTool->description ?? '',
-                class: $class,
-                method: $method->getName(),
-                source: $source,
-                category: $meta?->category->value ?? ToolCategory::GENERAL->value,
-                dangerous: $meta !== null && $meta->dangerous,
-                privileged: $meta !== null && $meta->privileged,
-                requiredEdition: $requiredEdition,
-                condition: $meta?->condition,
-            );
+            $definitions[] = $this->toolDefinition($attrs[0]->newInstance(), $method, $source, $method->getName(), $classEdition);
         }
 
         return $definitions;
     }
 
     /**
-     * Validate a tool class before registration.
+     * Build one definition from the SDK attribute plus our own policy metadata.
+     */
+    private function toolDefinition(
+        McpTool $mcpTool,
+        ReflectionMethod $method,
+        string $source,
+        string $defaultName,
+        ?Edition $classEdition = null,
+    ): ToolDefinition {
+        $metaAttrs = $method->getAttributes(McpToolMeta::class, ReflectionAttribute::IS_INSTANCEOF);
+        $toolMeta = $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
+
+        return new ToolDefinition(
+            name: $mcpTool->name ?? $defaultName,
+            description: $mcpTool->description ?? '',
+            class: $method->getDeclaringClass()->getName(),
+            method: $method->getName(),
+            source: $source,
+            category: $toolMeta?->category->value ?? ToolCategory::GENERAL->value,
+            dangerous: $toolMeta !== null && $toolMeta->dangerous,
+            privileged: $toolMeta !== null && $toolMeta->privileged,
+            requiredEdition: $this->declaredEdition($method) ?? $classEdition ?? Edition::Lite,
+            condition: $toolMeta?->condition,
+            title: $mcpTool->title,
+            annotations: $mcpTool->annotations,
+            icons: $mcpTool->icons,
+            meta: $mcpTool->meta,
+            outputSchema: $mcpTool->outputSchema,
+        );
+    }
+
+    /**
+     * The edition a class or method declares with #[RequiresEdition], or null
+     * when it declares none. Read with IS_INSTANCEOF so a plugin may subclass
+     * the attribute, the same way McpTool and McpToolMeta are read.
+     *
+     * @param ReflectionClass<object>|ReflectionMethod $target
+     */
+    private function declaredEdition(ReflectionClass|ReflectionMethod $target): ?Edition {
+        $attrs = $target->getAttributes(RequiresEdition::class, ReflectionAttribute::IS_INSTANCEOF);
+
+        return $attrs === [] ? null : $attrs[0]->newInstance()->edition;
+    }
+
+    /**
+     * The __invoke a class-level attribute would dispatch through, or null when
+     * the class has none the SDK could use.
+     *
+     * @param ReflectionClass<object> $reflection
+     */
+    private function invokable(ReflectionClass $reflection): ?ReflectionMethod {
+        if (!$reflection->hasMethod('__invoke')) {
+            return null;
+        }
+
+        $invoke = $reflection->getMethod('__invoke');
+
+        return $invoke->isPublic() && !$invoke->isStatic() ? $invoke : null;
+    }
+
+    /**
+     * The methods the SDK's discoverer would actually dispatch: declared on this
+     * class, and never static, abstract, the constructor, the destructor or
+     * __invoke. Accepting a method it skips advertises a tool through
+     * list_mcp_tools that tools/call then answers METHOD_NOT_FOUND for.
+     *
+     * @param ReflectionClass<object> $reflection
+     * @return ReflectionMethod[]
+     */
+    private function dispatchableMethods(ReflectionClass $reflection): array {
+        return array_filter(
+            $reflection->getMethods(ReflectionMethod::IS_PUBLIC),
+            static fn (ReflectionMethod $method): bool => $method->getDeclaringClass()->getName() === $reflection->getName()
+                && !$method->isStatic()
+                && !$method->isAbstract()
+                && !$method->isConstructor()
+                && !$method->isDestructor()
+                && $method->getName() !== '__invoke',
+        );
+    }
+
+    /**
+     * Validate a tool class before registration. Whether it carries any usable
+     * attribute is answered by extraction itself, so the two never disagree
+     * about which methods count.
      *
      * @return string|null Error message or null if valid
      */
@@ -307,20 +398,6 @@ class RegisterToolsEvent extends Event {
 
         if (!$reflection->isInstantiable()) {
             return "Class '{$class}' is not instantiable";
-        }
-
-        // Check for at least one method with McpTool attribute
-        $hasToolMethod = false;
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $attributes = $method->getAttributes(McpTool::class);
-            if (!empty($attributes)) {
-                $hasToolMethod = true;
-                break;
-            }
-        }
-
-        if (!$hasToolMethod) {
-            return "Class '{$class}' has no public methods with #[McpTool] attribute";
         }
 
         return null;

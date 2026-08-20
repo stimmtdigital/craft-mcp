@@ -9,11 +9,14 @@ use craft\behaviors\DraftBehavior;
 use craft\behaviors\RevisionBehavior;
 use craft\elements\Entry;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\elements\Lookup;
+use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\elements\WriteMode;
 use stimmt\craft\Mcp\elements\Writer;
@@ -21,10 +24,11 @@ use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\NestedPosition;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\support\SafeExecution;
 use stimmt\craft\Mcp\support\SiteResolver;
+use stimmt\craft\Mcp\support\WriteParams;
 
 /**
  * Entry workflow: the pending-drafts review queue, publish, delete, duplicate, copy to site.
@@ -43,184 +47,217 @@ class EntryWorkflowTools {
 
     #[McpTool(
         name: 'list_drafts',
+        title: 'Draft review queue',
         description: 'List pending (non-provisional) entry drafts awaiting review, newest first. Filter by section, site, or creator username/email. Each row carries the draft element id publish_entry accepts and a cpEditUrl for human review.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listDrafts(
+        #[Schema(description: 'Section handle to narrow the queue to; list_sections reports the handles.')]
         ?string $section = null,
+        #[Schema(description: 'Site handle to narrow the queue to; list_sites reports the handles.')]
         ?string $site = null,
+        #[Schema(description: 'Username or email address of the person who created the draft.')]
         ?string $creator = null,
         int $limit = 20,
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($section, $site, $creator, $limit, $offset): array {
-            SiteResolver::resolve($site);
+        SiteResolver::resolve($site);
 
-            $query = Entry::find()
-                ->drafts()
-                ->provisionalDrafts(false)
-                ->status(null)
-                ->limit($limit)
-                ->offset($offset)
-                ->orderBy(['dateUpdated' => SORT_DESC]);
+        $query = Entry::find()
+            ->drafts()
+            ->provisionalDrafts(false)
+            ->status(null)
+            ->limit($limit)
+            ->offset($offset)
+            ->orderBy(['dateUpdated' => SORT_DESC]);
 
-            foreach (['section' => $section, 'site' => $site] as $method => $value) {
-                if ($value !== null) {
-                    $query->$method($value);
-                }
+        foreach (['section' => $section, 'site' => $site] as $method => $value) {
+            if ($value !== null) {
+                $query->$method($value);
             }
+        }
 
-            if ($creator !== null) {
-                $user = Craft::$app->getUsers()->getUserByUsernameOrEmail($creator)
-                    ?? throw new ToolCallException("No user found for '{$creator}'");
-                $query->draftCreator($user);
-            }
+        if ($creator !== null) {
+            $user = Craft::$app->getUsers()->getUserByUsernameOrEmail($creator)
+                ?? throw new ToolCallException("No user found for '{$creator}'");
+            $query->draftCreator($user);
+        }
 
-            Authorization::scopeQuery($query);
-            $drafts = array_map($this->draftSummary(...), $query->all());
+        Authorization::scopeQuery($query);
+        $drafts = array_map($this->draftSummary(...), $query->all());
 
-            return Response::paginated('drafts', $drafts, (int) $query->count(), $limit, $offset);
-        });
+        return Response::paginated('drafts', $drafts, (int) $query->count(), $limit, $offset);
     }
 
     #[McpTool(
         name: 'list_revisions',
+        title: 'Entry history',
         description: 'List an entry\'s saved revisions, newest first: who saved each one, when, and with what notes. Answers "when did this change and by whom". Read a revision\'s full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listRevisions(
+        #[Schema(description: 'Canonical entry id whose history to list.')]
         int $id,
+        #[Schema(description: 'Site handle whose revisions to list; list_sites reports the handles.')]
         ?string $site = null,
         int $limit = 20,
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $limit, $offset): array {
-            SiteResolver::resolve($site);
+        SiteResolver::resolve($site);
 
-            $query = Entry::find()
-                ->revisionOf($id)
-                ->revisions()
-                ->status(null)
-                ->limit($limit)
-                ->offset($offset)
-                ->orderBy(['dateCreated' => SORT_DESC, 'revisions.num' => SORT_DESC]);
-            if ($site !== null) {
-                $query->site($site);
-            }
+        $query = Entry::find()
+            ->revisionOf($id)
+            ->revisions()
+            ->status(null)
+            ->limit($limit)
+            ->offset($offset)
+            ->orderBy(['dateCreated' => SORT_DESC, 'revisions.num' => SORT_DESC]);
+        if ($site !== null) {
+            $query->site($site);
+        }
 
-            Authorization::scopeQuery($query);
-            $revisions = array_map($this->revisionSummary(...), $query->all());
+        Authorization::scopeQuery($query);
+        $revisions = array_map($this->revisionSummary(...), $query->all());
 
-            return Response::paginated('revisions', $revisions, (int) $query->count(), $limit, $offset);
-        });
+        return Response::paginated('revisions', $revisions, (int) $query->count(), $limit, $offset);
     }
 
     #[McpTool(
         name: 'publish_entry',
+        title: 'Publish an entry',
         description: 'Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     #[RequiresEdition(Edition::Pro)]
-    public function publishEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $site, $context): array {
-            $entry = $this->find($id, $site, withDrafts: true);
-            Authorization::assertCanPublish($entry);
+    public function publishEntry(
+        #[Schema(description: 'The draft element id to apply, or a canonical entry id that has exactly one pending draft (or none and is merely disabled).')]
+        int $id,
+        #[Schema(description: 'Site handle to locate the entry by and to report the result in. Publishing is not per-site: the draft is applied to every site it exists on, so this only selects which site\'s values come back.')]
+        ?string $site = null,
+        ?RequestContext $context = null,
+    ): array {
+        $entry = Lookup::withDrafts($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
+        Authorization::assertCanPublish($entry);
 
-            if ($entry->getIsDraft()) {
-                return $this->applyDraft($entry, $site, $context);
-            }
+        if ($entry->getIsDraft()) {
+            return $this->applyDraft($entry, $site, $context);
+        }
 
-            return $this->publishCanonical($entry, $site, $context);
-        });
+        return $this->publishCanonical($entry, $site, $context);
     }
 
     #[McpTool(
         name: 'delete_entry',
+        title: 'Move an entry to the trash',
         description: 'Soft-delete an entry (moves to trash, restorable in the control panel). Matrix-family blocks are entries too: pass a block\'s own id to delete just that block without touching its siblings.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     #[RequiresEdition(Edition::Pro)]
-    public function deleteEntry(int $id, ?string $site = null, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $site): array {
-            $entry = $this->find($id, $site, withDrafts: true);
-            Authorization::assertCanDelete($entry);
+    public function deleteEntry(
+        #[Schema(description: 'Element id to trash: an entry, a draft (draftElementId, which discards the draft and leaves the canonical entry untouched), or a single Matrix block by its own entry id.')]
+        int $id,
+        #[Schema(description: 'Site handle to locate the entry by. Deleting is not per-site: the entry is trashed on EVERY site it exists on, so this cannot be used to remove one translation. To take an entry out of one site only, disable it there.')]
+        ?string $site = null,
+        ?RequestContext $context = null,
+    ): array {
+        $entry = Lookup::withDrafts($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
+        Authorization::assertCanDelete($entry);
 
-            if (!Craft::$app->getElements()->deleteElement($entry)) {
-                throw new ToolCallException('Failed to delete entry');
-            }
+        // Read before the delete, while the element still has site rows to
+        // report. Afterwards the answer would need the trashed scope and would
+        // be describing the aftermath rather than what the call did.
+        $affected = Reach::of($entry);
 
-            return Response::success(['deleted' => $id, 'restorable' => true]);
-        });
+        if (!Craft::$app->getElements()->deleteElement($entry)) {
+            throw new ToolCallException('Failed to delete entry');
+        }
+
+        return Response::success(['deleted' => $id, 'affectedSites' => $affected, 'restorable' => true]);
     }
 
     #[McpTool(
         name: 'duplicate_entry',
+        title: 'Duplicate an entry',
         description: 'Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for "like X but change these".',
-        annotations: new ToolAnnotations(destructiveHint: true),
+        annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     #[RequiresEdition(Edition::Pro)]
     public function duplicateEntry(
+        #[Schema(description: 'Id of the entry to copy.')]
         int $id,
+        #[Schema(description: 'Site handle to copy on; list_sites reports the handles.')]
         ?string $site = null,
+        #[Schema(description: 'Title for the copy. Omit to keep the original\'s.')]
         ?string $title = null,
+        #[Schema(description: 'Slug for the copy. Omit to let Craft derive a unique one.')]
         ?string $slug = null,
+        #[Schema(description: 'Field values to change on the copy, as a JSON-encoded STRING (not a nested object) in the payload format. Only the handles present are overwritten; the rest are copied as they were.')]
         ?string $fields = null,
         ?RequestContext $context = null,
     ): array {
-        return SafeExecution::run(function () use ($id, $site, $title, $slug, $fields): array {
-            $entry = $this->find($id, $site);
-            Authorization::assertCanDuplicate($entry);
+        $entry = Lookup::canonical($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
+        Authorization::assertCanDuplicate($entry);
 
-            $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
-            $duplicate = Craft::$app->getElements()->duplicateElement($entry, $attributes, asUnpublishedDraft: true);
+        $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
+        $duplicate = Craft::$app->getElements()->duplicateElement($entry, $attributes, asUnpublishedDraft: true);
 
-            if ($fields !== null) {
-                $decoded = json_decode($fields, true);
-                if (!is_array($decoded)) {
-                    throw new ToolCallException('Invalid JSON in fields parameter');
-                }
+        $result = $fields === null
+            ? null
+            : $this->writer->update($duplicate, [], WriteParams::fieldsPayload($fields), WriteMode::Draft, $site);
 
-                $result = $this->writer->update($duplicate, [], $decoded, WriteMode::Draft, $site);
-                if ($result->isFailure()) {
-                    return ['success' => false] + $result->toArray();
-                }
-            }
+        if ($result !== null && $result->isFailure()) {
+            return Response::failure($result->toArray());
+        }
 
-            return Response::success(['entry' => $this->reader->read($duplicate, $site)]);
-        });
+        // The warnings ride along on success too. A fields payload naming a
+        // relation that cannot be resolved is dropped rather than guessed,
+        // and this was the one write path that then reported plain success,
+        // so the caller could not tell a complete duplicate from a partial
+        // one. Every other write surfaces them; this one now agrees.
+        return Response::success([
+            'entry' => $this->reader->read($duplicate, $site),
+            'warnings' => $result === null ? [] : $result->toArray()['warnings'],
+        ]);
     }
 
     #[McpTool(
         name: 'copy_entry_to_site',
+        title: 'Copy an entry to another site',
         description: 'Copy an entry\'s field values from one site to another as a draft on the target site. Copies values; does not machine-translate.',
-        annotations: new ToolAnnotations(destructiveHint: true),
+        annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
     #[RequiresEdition(Edition::Pro)]
-    public function copyEntryToSite(int $id, string $fromSite, string $toSite, ?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($id, $fromSite, $toSite): array {
-            SiteResolver::resolve($fromSite);
-            SiteResolver::resolve($toSite);
+    public function copyEntryToSite(
+        #[Schema(description: 'Entry id, which is the same id on every site the entry exists on.')]
+        int $id,
+        #[Schema(description: 'Site handle to read the field values from.')]
+        string $fromSite,
+        #[Schema(description: 'Site handle to write the draft on. The entry must already exist there, which means its section is enabled for that site.')]
+        string $toSite,
+        ?RequestContext $context = null,
+    ): array {
+        SiteResolver::resolve($fromSite);
+        SiteResolver::resolve($toSite);
 
-            $source = $this->find($id, $fromSite);
-            $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
-                ?? throw new ToolCallException("Entry {$id} does not exist on site '{$toSite}'; the section may not be enabled for it");
-            Authorization::assertCanSave($targetEntry);
+        $source = Lookup::canonical($id, SiteResolver::resolve($fromSite)) ?? throw new ToolCallException("Entry {$id} not found");
+        $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
+            ?? throw new ToolCallException("Entry {$id} does not exist on site '{$toSite}'; the section may not be enabled for it");
+        Authorization::assertCanSave($targetEntry);
 
-            $payload = $this->reader->read($source, $fromSite);
-            $result = $this->writer->update($targetEntry, [], $payload['fields'], WriteMode::Draft, $toSite);
+        $payload = $this->reader->read($source, $fromSite);
+        $result = $this->writer->update($targetEntry, [], $payload['fields'], WriteMode::Draft, $toSite);
 
-            return $result->isFailure()
-                ? ['success' => false] + $result->toArray()
-                : Response::success($result->toArray());
-        });
+        return $result->isFailure()
+            ? Response::failure($result->toArray())
+            : Response::success($result->toArray());
     }
 
     /**
@@ -278,10 +315,23 @@ class EntryWorkflowTools {
      * default draft-first flow, so this is where the resource push belongs.
      */
     private function applyDraft(Entry $draft, ?string $site, ?RequestContext $context): array {
+        // A nested block's draft must carry the canonical's current position
+        // into the apply, or Craft appends the block to the end of its field:
+        // applyDraft clones with draftId nulled, which skips saveOwnership()'s
+        // sortOrder recovery and falls through to max+1. Presetting the value
+        // writes the right position inside the apply transaction.
+        $sortOrder = NestedPosition::capture($draft);
+        if ($sortOrder !== null) {
+            $draft->setSortOrder($sortOrder);
+        }
+
         $applied = Craft::$app->getDrafts()->applyDraft($draft);
         ResourceChangeNotifier::notifyEntry($context, (int) $applied->id);
 
-        return Response::success(['entry' => $this->reader->read($applied, $site)]);
+        return Response::success([
+            'entry' => $this->reader->read($applied, $site),
+            'affectedSites' => Reach::of($applied),
+        ]);
     }
 
     private function publishCanonical(Entry $entry, ?string $site, ?RequestContext $context): array {
@@ -307,7 +357,10 @@ class EntryWorkflowTools {
             $this->enable($entry);
             ResourceChangeNotifier::notifyEntry($context, (int) $entry->id);
 
-            return Response::success(['entry' => $this->reader->read($entry, $site)]);
+            return Response::success([
+                'entry' => $this->reader->read($entry, $site),
+                'affectedSites' => Reach::of($entry),
+            ]);
         }
 
         throw new ToolCallException("Entry {$entry->id} has no pending draft and is already enabled; nothing to publish");
@@ -337,19 +390,5 @@ class EntryWorkflowTools {
         if (!Craft::$app->getElements()->saveElement($entry)) {
             throw new ToolCallException('Failed to enable entry: ' . json_encode($entry->getErrors()));
         }
-    }
-
-    private function find(int $id, ?string $site, bool $withDrafts = false): Entry {
-        SiteResolver::resolve($site);
-
-        $query = Entry::find()->id($id)->status(null);
-        if ($site !== null) {
-            $query->site($site);
-        }
-        if ($withDrafts) {
-            $query->drafts(null);
-        }
-
-        return $query->one() ?? throw new ToolCallException("Entry with ID {$id} not found");
     }
 }

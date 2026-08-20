@@ -11,10 +11,41 @@ namespace stimmt\craft\Mcp\support;
  */
 final class Response {
     /**
+     * The key a tool payload states its own outcome under. One constant, so
+     * the producer (success/failure) and the reader (isFailure, which the
+     * Presenter uses to raise isError on the wire) can never disagree about
+     * what a failed call looks like.
+     */
+    private const string OUTCOME = 'success';
+
+    /**
      * Success response with data.
      */
     public static function success(array $data = []): array {
-        return ['success' => true, ...$data];
+        return [self::OUTCOME => true, ...$data];
+    }
+
+    /**
+     * Failure response with data: a call the tool itself refused.
+     *
+     * The transport is what a client reads an outcome from, so this is not
+     * decoration. Presenter::handle() turns a payload this produced into a
+     * CallToolResult with isError set, which is the flag that tells a model
+     * to self-correct rather than to trust the call and move on.
+     */
+    public static function failure(array $data = []): array {
+        return [self::OUTCOME => false, ...$data];
+    }
+
+    /**
+     * Whether a tool return states its own failure.
+     *
+     * Deliberately identity-compared against false: a payload with no outcome
+     * key at all (every read tool) is not a failure, and neither is one that
+     * merely carries a falsy value under some other key.
+     */
+    public static function isFailure(mixed $payload): bool {
+        return is_array($payload) && ($payload[self::OUTCOME] ?? null) === false;
     }
 
     /**

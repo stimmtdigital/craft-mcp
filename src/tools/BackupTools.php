@@ -11,7 +11,6 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\SafeExecution;
 
 /**
  * Database backup tools for Craft CMS.
@@ -24,62 +23,61 @@ class BackupTools {
      */
     #[McpTool(
         name: 'list_backups',
+        title: 'Database backups',
         description: 'List available database backups from storage/backups directory',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::BACKUP, privileged: true)]
     public function listBackups(?RequestContext $context = null): array {
-        return SafeExecution::run(function (): array {
-            $backupPath = Craft::$app->getPath()->getDbBackupPath();
+        $backupPath = Craft::$app->getPath()->getDbBackupPath();
 
-            if (!is_dir($backupPath)) {
-                return [
-                    'count' => 0,
-                    'backups' => [],
-                    'path' => $backupPath,
-                ];
-            }
-
-            $files = glob($backupPath . '/*.sql') ?: [];
-            $backups = [];
-
-            foreach ($files as $file) {
-                $size = filesize($file);
-                $modified = filemtime($file);
-                // Skip files that vanished between glob() and stat (cleanup race).
-                if ($size === false) {
-                    continue;
-                }
-                if ($modified === false) {
-                    continue;
-                }
-
-                $filename = basename($file);
-
-                $backups[] = [
-                    'filename' => $filename,
-                    'path' => $file,
-                    'size' => $this->formatBytes($size),
-                    'sizeBytes' => $size,
-                    'created' => date('Y-m-d H:i:s', $modified),
-                    'timestamp' => $modified,
-                ];
-            }
-
-            // Sort by timestamp descending (newest first)
-            usort($backups, fn (array $a, array $b) => $b['timestamp'] <=> $a['timestamp']);
-
-            // Remove internal timestamp field
-            foreach ($backups as &$backup) {
-                unset($backup['timestamp']);
-            }
-
+        if (!is_dir($backupPath)) {
             return [
-                'count' => count($backups),
-                'backups' => $backups,
+                'count' => 0,
+                'backups' => [],
                 'path' => $backupPath,
             ];
-        });
+        }
+
+        $files = glob($backupPath . '/*.sql') ?: [];
+        $backups = [];
+
+        foreach ($files as $file) {
+            $size = filesize($file);
+            $modified = filemtime($file);
+            // Skip files that vanished between glob() and stat (cleanup race).
+            if ($size === false) {
+                continue;
+            }
+            if ($modified === false) {
+                continue;
+            }
+
+            $filename = basename($file);
+
+            $backups[] = [
+                'filename' => $filename,
+                'path' => $file,
+                'size' => $this->formatBytes($size),
+                'sizeBytes' => $size,
+                'created' => date('Y-m-d H:i:s', $modified),
+                'timestamp' => $modified,
+            ];
+        }
+
+        // Sort by timestamp descending (newest first)
+        usort($backups, fn (array $a, array $b) => $b['timestamp'] <=> $a['timestamp']);
+
+        // Remove internal timestamp field
+        foreach ($backups as &$backup) {
+            unset($backup['timestamp']);
+        }
+
+        return [
+            'count' => count($backups),
+            'backups' => $backups,
+            'path' => $backupPath,
+        ];
     }
 
     /**
@@ -87,37 +85,36 @@ class BackupTools {
      */
     #[McpTool(
         name: 'create_backup',
+        title: 'Create a database backup',
         description: 'Create a new database backup. WARNING: This is a dangerous operation that creates files on the server.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::BACKUP, dangerous: true)]
     public function createBackup(?RequestContext $context = null): array {
-        return SafeExecution::run(function () use ($context): array {
-            $context?->getClientGateway()?->progress(0, 2, 'Creating database backup...');
+        $context?->getClientGateway()?->progress(0, 2, 'Creating database backup...');
 
-            /** @var Connection $db */
-            $db = Craft::$app->getDb();
-            $backupPath = $db->backup();
+        /** @var Connection $db */
+        $db = Craft::$app->getDb();
+        $backupPath = $db->backup();
 
-            $context?->getClientGateway()?->progress(2, 2, 'Backup complete');
+        $context?->getClientGateway()?->progress(2, 2, 'Backup complete');
 
-            $filename = basename($backupPath);
-            $size = file_exists($backupPath) ? filesize($backupPath) : 0;
-            if ($size === false) {
-                $size = 0;
-            }
+        $filename = basename($backupPath);
+        $size = file_exists($backupPath) ? filesize($backupPath) : 0;
+        if ($size === false) {
+            $size = 0;
+        }
 
-            return [
-                'success' => true,
-                'backup' => [
-                    'filename' => $filename,
-                    'path' => $backupPath,
-                    'size' => $this->formatBytes($size),
-                    'sizeBytes' => $size,
-                    'created' => date('Y-m-d H:i:s'),
-                ],
-            ];
-        });
+        return [
+            'success' => true,
+            'backup' => [
+                'filename' => $filename,
+                'path' => $backupPath,
+                'size' => $this->formatBytes($size),
+                'sizeBytes' => $size,
+                'created' => date('Y-m-d H:i:s'),
+            ],
+        ];
     }
 
     /**

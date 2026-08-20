@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use craft\base\Field;
 use craft\fieldlayoutelements\CustomField;
 use craft\fieldlayoutelements\TitleField;
 use craft\fields\Entries;
@@ -182,5 +183,37 @@ describe('Describer', function () {
         // only fired for the outermost matrix field (the `top` flag); now
         // any matrix names its block types once its own budget runs out.
         expect($innerField['blockTypes'])->toBe([['handle' => 'innerBlock', 'name' => 'Inner Block']]);
+    });
+
+    // The multi-site question an agent actually has before writing: if I set
+    // this field on one site, does another site change with it? Absent
+    // entirely on a single-site install, where there is no other site.
+    it('reports per-field translation only where a second site exists', function () {
+        $body = new CustomField(new PlainText(['handle' => 'body', 'name' => 'Body']));
+
+        $single = (new Describer(multiSite: false))->describe(Layouts::with([$body]));
+        $multi = (new Describer(multiSite: true))->describe(Layouts::with([$body]));
+
+        expect($single[0])->not->toHaveKey('translation')
+            ->and($multi[0]['translation'])->toHaveKeys(['method', 'perSite']);
+    });
+
+    it('calls a field per-site only when every site gets its own value', function () {
+        $shared = new CustomField(new PlainText(['handle' => 'shared', 'translationMethod' => Field::TRANSLATION_METHOD_NONE]));
+        $perSite = new CustomField(new PlainText(['handle' => 'perSite', 'translationMethod' => Field::TRANSLATION_METHOD_SITE]));
+        $byLanguage = new CustomField(new PlainText(['handle' => 'byLanguage', 'translationMethod' => Field::TRANSLATION_METHOD_LANGUAGE]));
+
+        $byHandle = array_column(
+            (new Describer(multiSite: true))->describe(Layouts::with([$shared, $perSite, $byLanguage])),
+            null,
+            'handle',
+        );
+
+        // Anything short of per-site reads as false, because false is the
+        // answer that makes the caller careful.
+        expect($byHandle['shared']['translation']['perSite'])->toBeFalse()
+            ->and($byHandle['perSite']['translation']['perSite'])->toBeTrue()
+            ->and($byHandle['byLanguage']['translation']['perSite'])->toBeFalse()
+            ->and($byHandle['shared']['translation']['method'])->toBe(Field::TRANSLATION_METHOD_NONE);
     });
 });

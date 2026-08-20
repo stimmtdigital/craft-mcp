@@ -401,6 +401,41 @@ return [
 
 These patterns give AI assistants predictable structures to work with, making it easier for them to chain tool calls and report results to users.
 
+### Offering a Text View
+
+Return the array and stop there: the server sends it as the tool result's single content item, and
+there is no second copy to keep in sync.
+
+A tool can also offer the same payload laid out for a person to read. That is opt-in by signature,
+and needs no formatting code of its own: declare a `ResponseFormat $output` parameter and the
+shared renderer handles the rest.
+
+```php
+use Mcp\Capability\Attribute\Schema;
+use stimmt\craft\Mcp\enums\ResponseFormat;
+use stimmt\craft\Mcp\pipeline\Presenter;
+
+#[McpTool(name: 'list_widgets', description: 'List widgets')]
+public function listWidgets(
+    ?string $status = null,
+    #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
+    ResponseFormat $output = ResponseFormat::STRUCTURED,
+): array {
+    return ['count' => count($widgets), 'widgets' => $widgets];
+}
+```
+
+The parameter is deliberately unused in the method body. Declaring it puts the enum in the tool's
+JSON schema, which is what advertises the text view to clients and what the server keys off; a tool
+that does not declare it always returns the structured payload. Uniform rows render as an aligned
+table, key-value data and breakdowns as aligned blocks, and anything that will not lay out cleanly
+falls back to pretty-printed JSON, so no payload shape can break the view.
+
+Return a `TextContent` (or a full `CallToolResult`) instead when your output is genuinely special
+and a generic layout would lose what makes it readable: it is passed through untouched. Never
+colour it yourself. Colour is one install-wide setting, applied centrally, because ANSI escapes are
+noise to an AI client.
+
 ## Security Best Practices
 
 MCP tools have direct access to your plugin's functionality, so security is important. Follow these guidelines:

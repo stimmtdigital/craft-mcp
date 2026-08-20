@@ -56,22 +56,6 @@ final class ResourceRegistry {
     private bool $initialized = false;
 
     /**
-     * Get all resource classes for MCP server registration.
-     *
-     * @return string[]
-     */
-    public function getResourceClasses(): array {
-        $this->ensureInitialized();
-
-        $classes = [];
-        foreach ($this->resources as $sourceResources) {
-            $classes = array_merge($classes, $sourceResources);
-        }
-
-        return $classes;
-    }
-
-    /**
      * Get resources grouped by source for debugging/info.
      *
      * @return array<string, string[]>
@@ -147,22 +131,6 @@ final class ResourceRegistry {
     }
 
     /**
-     * Get resource definitions grouped by category.
-     *
-     * @return array<string, ResourceDefinition[]>
-     */
-    public function getDefinitionsByCategory(): array {
-        $this->ensureInitialized();
-
-        $byCategory = [];
-        foreach ($this->definitions as $definition) {
-            $byCategory[$definition->category][] = $definition;
-        }
-
-        return $byCategory;
-    }
-
-    /**
      * Get resources that have completion providers (templates only).
      *
      * @return ResourceDefinition[]
@@ -179,7 +147,7 @@ final class ResourceRegistry {
     /**
      * Get resource definitions registered by external plugins (not core).
      *
-     * Used by McpServerFactory for manual registration of external resources.
+     * Used by ServerFactory for manual registration of external resources.
      *
      * @return ResourceDefinition[]
      */

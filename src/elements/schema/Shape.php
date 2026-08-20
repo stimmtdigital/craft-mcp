@@ -182,7 +182,11 @@ final readonly class Shape {
             $blockTypes[(string) $type->handle] = ['hasTitleField' => (bool) $type->hasTitleField];
         }
 
-        return ['kind' => 'matrix', 'payload' => '{blockKey: {type, enabled, title?, fields}}', 'blockTypes' => $blockTypes];
+        // position is optional on the way in and always present on the way out.
+        // Leaving it out here made describe_entry_schema, the tool the server
+        // instructions tell an agent to read first, wrong about the one key
+        // that controls block order.
+        return ['kind' => 'matrix', 'payload' => '{blockKey: {type, enabled, title?, position?, fields}}', 'blockTypes' => $blockTypes];
     }
 
     /**

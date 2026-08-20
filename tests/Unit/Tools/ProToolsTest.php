@@ -7,8 +7,9 @@ use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\tools\EntryTools;
 use stimmt\craft\Mcp\tools\EntryWorkflowTools;
+use stimmt\craft\Mcp\tools\NestedEntryTools;
 
-it('marks the six entry-mutation tools as requiring Pro', function (string $class, string $method) {
+it('marks every content-writing tool as requiring Pro', function (string $class, string $method) {
     $attrs = (new ReflectionMethod($class, $method))->getAttributes(RequiresEdition::class);
     expect($attrs)->not->toBeEmpty()
         ->and($attrs[0]->newInstance()->edition)->toBe(Edition::Pro);
@@ -19,6 +20,8 @@ it('marks the six entry-mutation tools as requiring Pro', function (string $clas
     [EntryWorkflowTools::class, 'deleteEntry'],
     [EntryWorkflowTools::class, 'duplicateEntry'],
     [EntryWorkflowTools::class, 'copyEntryToSite'],
+    [NestedEntryTools::class, 'createNestedEntry'],
+    [NestedEntryTools::class, 'moveNestedEntry'],
 ]);
 
 it('leaves content reads and schema on Lite', function (string $class, string $method) {
@@ -34,7 +37,7 @@ it('leaves content reads and schema on Lite', function (string $class, string $m
 
 // Closed-set guard: a stray #[RequiresEdition(Edition::Pro)] on any other tool
 // (say clear_caches) would silently paywall it. Scan every tool class and assert
-// the Pro set is exactly the six documented mutation tools. Mirrors the
+// the Pro set is exactly the documented content-writing tools. Mirrors the
 // class-then-method precedence the extractor uses.
 it('marks exactly the six documented tools as Pro across every tool class', function () {
     $proMethods = [];
@@ -67,11 +70,16 @@ it('marks exactly the six documented tools as Pro across every tool class', func
 
     sort($proMethods);
 
+    // Every tool that writes content, and nothing else. The nested-block pair
+    // is here because creating and reordering blocks is writing content: a
+    // gate that let those through would sell the tier and then leak it.
     expect($proMethods)->toBe([
         'copyEntryToSite',
         'createEntry',
+        'createNestedEntry',
         'deleteEntry',
         'duplicateEntry',
+        'moveNestedEntry',
         'publishEntry',
         'updateEntry',
     ]);

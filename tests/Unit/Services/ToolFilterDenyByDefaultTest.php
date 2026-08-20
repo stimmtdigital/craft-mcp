@@ -4,38 +4,56 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../Fixtures/RealCraft.php';
 
-use Mcp\Capability\Registry;
-use Mcp\Schema\Tool;
-use Psr\Log\NullLogger;
-use stimmt\craft\Mcp\services\McpServerFactory;
-use stimmt\craft\Mcp\support\EventDispatcher;
+use stimmt\craft\Mcp\models\PromptDefinition;
+use stimmt\craft\Mcp\models\ToolDefinition;
+use stimmt\craft\Mcp\policy\Gate;
 
 /**
- * SDK attribute discovery (McpServerFactory::create()'s setDiscovery()) registers
- * every #[McpTool] method it finds unconditionally, including
- * ConditionalToolProvider classes whose isAvailable() is false. Those never make
- * it into the informational ToolRegistry's definitions, so a tool with no
- * definition must be denied by default in filterTools() or it bypasses
- * disabledTools, scope, and privileged checks entirely (issue #57).
+ * Attribute discovery finds every #[McpTool] method there is, including ones on
+ * classes the informational registry deliberately omits (a ConditionalProvider
+ * reporting unavailable, for instance). Such an element has been offered to
+ * none of the checks, so it must be refused rather than left live and
+ * ungoverned (issue #57).
+ *
+ * This used to be a sweep that unregistered strays after the fact, tested by
+ * reflecting into a private method on the server factory. The rule is now a
+ * named decision the loader consults before registering anything, so the test
+ * asks the rule instead of reaching through a class that happens to hold it.
+ * The end-to-end result is covered by the smoke profiles, where a full,
+ * content and readonly connection each advertise a different tool count.
  */
-it('unregisters a discovery-registered tool with no definition, keeping a real one', function () {
-    $tool = static fn (string $name): Tool => new Tool(
-        name: $name,
-        title: null,
-        inputSchema: ['type' => 'object'],
-        description: null,
-        annotations: null,
+it('refuses an element the informational registry does not know', function () {
+    $decision = (new Gate())->admitsUnknown();
+
+    expect($decision->allowed)->toBeFalse()
+        ->and($decision->reason)->toContain('absent from the informational registry');
+});
+
+it('admits a tool the registry does know and settings allow', function () {
+    $definition = new ToolDefinition(
+        name: 'get_entry',
+        description: 'fixture',
+        class: 'Fixture',
+        method: 'run',
+        source: 'core',
+        category: 'content',
+        dangerous: false,
+        privileged: false,
     );
 
-    $registry = new Registry(new EventDispatcher(), new NullLogger());
-    $registry->registerTool($tool('get_entry'), static fn (): string => 'ok');
-    $registry->registerTool($tool('stray_conditional_tool'), static fn (): string => 'ok');
+    expect((new Gate())->admitsTool($definition)->allowed)->toBeTrue();
+});
 
-    $method = new ReflectionMethod(McpServerFactory::class, 'filterTools');
-    $method->invoke(new McpServerFactory(), $registry, null);
+it('applies the same rule to prompts, which carry no scope axis', function () {
+    $definition = new PromptDefinition(
+        name: 'create_entry_guide',
+        description: 'fixture',
+        class: 'Fixture',
+        method: 'run',
+        source: 'core',
+        category: 'content',
+    );
 
-    $names = array_keys($registry->getTools()->references);
-
-    expect($names)->toContain('get_entry')
-        ->and($names)->not->toContain('stray_conditional_tool');
+    expect((new Gate())->admitsPrompt($definition)->allowed)->toBeTrue()
+        ->and((new Gate())->admitsUnknown()->allowed)->toBeFalse();
 });

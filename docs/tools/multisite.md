@@ -117,8 +117,8 @@ get_site handle="german"
 
 ```json
 {
-  "success": false,
-  "error": "Site with handle 'nonexistent' not found"
+  "content": [{ "type": "text", "text": "Site with handle 'nonexistent' not found" }],
+  "isError": true
 }
 ```
 

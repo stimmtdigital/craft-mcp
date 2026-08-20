@@ -66,7 +66,7 @@ $app = require $basePath . '/vendor/craftcms/cms/bootstrap/console.php';
 
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\services\McpRegistry;
-use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\services\ServerFactory;
 use stimmt\craft\Mcp\support\SignalHandler;
 
 // Validate plugin is available and enabled
@@ -103,35 +103,13 @@ $signalHandler->register();
 // Build and run server with dedicated file logger (separate from Craft logs)
 try {
     $settings = Mcp::settings();
-    $logger = McpServerFactory::createFileLogger(logLevel: $settings->logLevel);
+    $logger = ServerFactory::createFileLogger(logLevel: $settings->logLevel);
 
-    // Register logger so Yii can inject it into tool constructors.
-    // TinkerTools must also be registered so the SDK's container lookup
-    // finds it via Psr11ContainerAdapter::has() instead of falling back
-    // to bare instantiation (which would skip DI and use NullLogger).
-    Craft::$container->setSingleton(\Psr\Log\LoggerInterface::class, fn() => $logger);
-    Craft::$container->set(\stimmt\craft\Mcp\tools\TinkerTools::class);
+    \stimmt\craft\Mcp\support\Runtime::bootstrap($logger);
 
-    // Elements module: shared translator registry, event-extensible.
-    $keys = new \stimmt\craft\Mcp\elements\refs\Keys();
-    $registry = new \stimmt\craft\Mcp\elements\refs\Registry();
-    $translator = \stimmt\craft\Mcp\elements\refs\Translator::withDefaults($keys, $registry);
-
-    $event = new \stimmt\craft\Mcp\events\RegisterFieldTranslatorsEvent();
-    $plugin->trigger(\stimmt\craft\Mcp\Mcp::EVENT_REGISTER_FIELD_TRANSLATORS, $event);
-    foreach ($event->translators as $fieldTranslator) {
-        $registry->register($fieldTranslator);
-    }
-
-    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\refs\Translator::class, fn() => $translator);
-    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Reader::class, fn() => new \stimmt\craft\Mcp\elements\Reader($translator));
-    Craft::$container->setSingleton(\stimmt\craft\Mcp\elements\Writer::class, fn() => new \stimmt\craft\Mcp\elements\Writer($translator));
-    Craft::$container->set(\stimmt\craft\Mcp\tools\EntryTools::class);
-    Craft::$container->set(\stimmt\craft\Mcp\tools\EntryWorkflowTools::class);
-
-    $factory = new McpServerFactory(logger: $logger);
+    $factory = new ServerFactory(logger: $logger);
     $server = $factory->create();
-    $transport = $factory->createTransport();
+    $transport = $factory->createTransport($signalHandler);
 
     $server->run($transport);
 

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\http\Scope;
+use stimmt\craft\Mcp\models\ToolDefinition;
+use stimmt\craft\Mcp\policy\Decision;
+use stimmt\craft\Mcp\policy\Gate;
 use stimmt\craft\Mcp\tools\BackupTools;
 use stimmt\craft\Mcp\tools\CommerceTools;
 use stimmt\craft\Mcp\tools\DatabaseTools;
@@ -12,6 +15,19 @@ use stimmt\craft\Mcp\tools\DebugTools;
 use stimmt\craft\Mcp\tools\GlobalSetTools;
 use stimmt\craft\Mcp\tools\GraphqlTools;
 use stimmt\craft\Mcp\tools\SystemTools;
+
+function toolDefinition(bool $privileged): ToolDefinition {
+    return new ToolDefinition(
+        name: 'a_tool',
+        description: 'fixture',
+        class: 'Fixture',
+        method: 'run',
+        source: 'test',
+        category: 'system',
+        dangerous: false,
+        privileged: $privileged,
+    );
+}
 
 // Install-introspection reads (logs, config, db schema/contents,
 // environment) are locked to admins by default over read-scoped HTTP
@@ -54,9 +70,24 @@ it('flags the install-introspection reads privileged', function (string $class, 
     [BackupTools::class, 'listBackups'],
 ]);
 
-it('filters privileged tools for enforced scopes in the factory', function () {
-    $src = (string) file_get_contents((new ReflectionClass(McpServerFactory::class))->getFileName());
+// The decision itself, rather than the source text of whichever class happens
+// to hold it. The previous version asserted that ServerFactory's file
+// mentioned 'privileged', which pinned a location instead of a behaviour and
+// broke the moment the rule moved to its own class without changing.
+it('admits a plain tool on any scope', function (?Scope $scope) {
+    $decision = (new Gate($scope))->admitsTool(toolDefinition(privileged: false));
 
-    expect($src)->toContain('privileged')
-        ->and($src)->toContain('scopedTokenPrivilegedTools');
+    expect($decision->allowed)->toBeTrue()
+        ->and($decision->reason)->toBeNull();
+})->with([null, Scope::Full]);
+
+it('admits a privileged tool on stdio and full scope, where the axis does not apply', function (?Scope $scope) {
+    expect((new Gate($scope))->admitsTool(toolDefinition(privileged: true))->allowed)->toBeTrue();
+})->with([null, Scope::Full]);
+
+it('explains a denial rather than just refusing', function () {
+    $decision = Decision::deny('outside the readonly scope');
+
+    expect($decision->allowed)->toBeFalse()
+        ->and($decision->reason)->toBe('outside the readonly scope');
 });

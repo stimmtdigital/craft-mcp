@@ -9,6 +9,7 @@ use craft\web\Response as CraftResponse;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use yii\web\HeaderCollection;
 
 /**
  * Converts between Craft's Yii request/response and PSR-7. Pure conversion:
@@ -57,11 +58,28 @@ final readonly class Bridge {
         $response->format = CraftResponse::FORMAT_RAW;
         $response->setStatusCode($psr7->getStatusCode());
         foreach ($psr7->getHeaders() as $name => $values) {
-            $response->getHeaders()->set($name, implode(', ', $values));
+            $this->replaceHeader($response->getHeaders(), (string) $name, $values);
         }
 
         $response->content = (string) $psr7->getBody();
 
         return $response;
+    }
+
+    /**
+     * One line per value, not one comma-joined line.
+     *
+     * No SDK response repeats a header today, so this is latent rather than
+     * broken, but the moment one does (an accumulated Vary, or a Set-Cookie,
+     * which must never be folded) the joined form is silently wrong in a way
+     * nothing here would notice.
+     *
+     * @param list<string> $values
+     */
+    private function replaceHeader(HeaderCollection $headers, string $name, array $values): void {
+        $headers->remove($name);
+        foreach ($values as $value) {
+            $headers->add($name, $value);
+        }
     }
 }

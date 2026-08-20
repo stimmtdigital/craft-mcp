@@ -8,11 +8,11 @@ use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\Settings;
-use stimmt\craft\Mcp\services\McpServerFactory;
+use stimmt\craft\Mcp\services\ServerFactory;
 
 it('teaches the tool-selection ladder in the base instructions', function () {
-    $method = new ReflectionMethod(McpServerFactory::class, 'baseInstructions');
-    $instructions = $method->invoke(new McpServerFactory());
+    $method = new ReflectionMethod(ServerFactory::class, 'baseInstructions');
+    $instructions = $method->invoke(new ServerFactory());
 
     expect($instructions)->toContain('## Choosing Tools')
         ->toContain('count_entries')
@@ -23,8 +23,8 @@ it('teaches the tool-selection ladder in the base instructions', function () {
 });
 
 it('appends a Lite edition note that retracts the write promises', function () {
-    $note = (new ReflectionMethod(McpServerFactory::class, 'editionNoteFor'))
-        ->invoke(new McpServerFactory(), Edition::Lite);
+    $note = (new ReflectionMethod(ServerFactory::class, 'editionNoteFor'))
+        ->invoke(new ServerFactory(), Edition::Lite);
 
     expect($note)->toContain('Lite edition')
         ->toContain('create_entry')
@@ -32,28 +32,28 @@ it('appends a Lite edition note that retracts the write promises', function () {
 });
 
 it('adds no edition note on Pro', function () {
-    $note = (new ReflectionMethod(McpServerFactory::class, 'editionNoteFor'))
-        ->invoke(new McpServerFactory(), Edition::Pro);
+    $note = (new ReflectionMethod(ServerFactory::class, 'editionNoteFor'))
+        ->invoke(new ServerFactory(), Edition::Pro);
 
     expect($note)->toBe('');
 });
 
 it('softens the Full scope note to admit only what this install exposes', function () {
-    $method = new ReflectionMethod(McpServerFactory::class, 'scopeNote');
-    $note = $method->invoke(new McpServerFactory(), Scope::Full);
+    $method = new ReflectionMethod(ServerFactory::class, 'scopeNote');
+    $note = $method->invoke(new ServerFactory(), Scope::Full);
 
     expect($note)->toContain('every tool the server exposes on this install');
 });
 
 it('returns an empty availability note when nothing cited is disabled', function () {
-    $method = new ReflectionMethod(McpServerFactory::class, 'availabilityNote');
+    $method = new ReflectionMethod(ServerFactory::class, 'availabilityNote');
 
-    expect($method->invoke(new McpServerFactory(), []))->toBe('');
+    expect($method->invoke(new ServerFactory(), []))->toBe('');
 });
 
 it('lists exactly the given disabled tool names in the availability note', function () {
-    $method = new ReflectionMethod(McpServerFactory::class, 'availabilityNote');
-    $note = $method->invoke(new McpServerFactory(), ['run_query', 'tinker']);
+    $method = new ReflectionMethod(ServerFactory::class, 'availabilityNote');
+    $note = $method->invoke(new ServerFactory(), ['run_query', 'tinker']);
 
     expect($note)->toContain('## Availability')
         ->toContain('`run_query`')
@@ -62,22 +62,22 @@ it('lists exactly the given disabled tool names in the availability note', funct
 });
 
 it('leaves the install note absent from getInstructions() when additionalInstructions is unset', function () {
-    $method = new ReflectionMethod(McpServerFactory::class, 'getInstructions');
-    $instructions = $method->invoke(new McpServerFactory());
+    $method = new ReflectionMethod(ServerFactory::class, 'getInstructions');
+    $instructions = $method->invoke(new ServerFactory());
 
     expect($instructions)->not->toContain('## This Install');
 });
 
 it('returns an empty install note for blank additionalInstructions', function () {
-    $method = new ReflectionMethod(McpServerFactory::class, 'installNote');
+    $method = new ReflectionMethod(ServerFactory::class, 'installNote');
 
-    expect($method->invoke(new McpServerFactory(), ''))->toBe('')
-        ->and($method->invoke(new McpServerFactory(), '   '))->toBe('');
+    expect($method->invoke(new ServerFactory(), ''))->toBe('')
+        ->and($method->invoke(new ServerFactory(), '   '))->toBe('');
 });
 
 it('renders non-empty additionalInstructions under a This Install heading', function () {
-    $method = new ReflectionMethod(McpServerFactory::class, 'installNote');
-    $note = $method->invoke(new McpServerFactory(), 'Read the house style guide before writing content.');
+    $method = new ReflectionMethod(ServerFactory::class, 'installNote');
+    $note = $method->invoke(new ServerFactory(), 'Read the house style guide before writing content.');
 
     expect($note)->toContain('## This Install')
         ->toContain('Read the house style guide before writing content.');
@@ -87,12 +87,12 @@ it('renders non-empty additionalInstructions under a This Install heading', func
 // the base instructions actually cite, or the availability note silently
 // stops covering a newly cited tool and the instructions lie again.
 it('keeps CITED_TOOLS in sync with the tool names cited in the base instructions', function () {
-    $base = (new ReflectionMethod(McpServerFactory::class, 'baseInstructions'))->invoke(new McpServerFactory());
+    $base = (new ReflectionMethod(ServerFactory::class, 'baseInstructions'))->invoke(new ServerFactory());
     preg_match_all('/`([a-z0-9_]+)`/', $base, $matches);
 
     $registryNames = array_keys(Mcp::getToolRegistry()->getDefinitions());
     $cited = array_values(array_unique(array_intersect($matches[1], $registryNames)));
-    $declared = (new ReflectionClassConstant(McpServerFactory::class, 'CITED_TOOLS'))->getValue();
+    $declared = (new ReflectionClassConstant(ServerFactory::class, 'CITED_TOOLS'))->getValue();
 
     sort($cited);
     sort($declared);
@@ -110,8 +110,8 @@ it('appends the install note absolutely last, after the availability note', func
         $settings->additionalInstructions = 'Read the house style guide before writing content.';
         $settingsProperty->setValue(null, $settings);
 
-        $method = new ReflectionMethod(McpServerFactory::class, 'getInstructions');
-        $instructions = $method->invoke(new McpServerFactory());
+        $method = new ReflectionMethod(ServerFactory::class, 'getInstructions');
+        $instructions = $method->invoke(new ServerFactory());
 
         expect($instructions)->toContain('## Availability')
             ->toContain('## This Install')

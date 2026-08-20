@@ -13,13 +13,10 @@ use craft\web\Request as WebRequest;
 use craft\web\UrlManager;
 use Override;
 use stimmt\craft\Mcp\enums\Edition;
-use stimmt\craft\Mcp\events\RegisterPromptsEvent;
-use stimmt\craft\Mcp\events\RegisterResourcesEvent;
-use stimmt\craft\Mcp\events\RegisterToolsEvent;
 use stimmt\craft\Mcp\models\Settings;
-use stimmt\craft\Mcp\services\McpServerFactory;
 use stimmt\craft\Mcp\services\PromptRegistry;
 use stimmt\craft\Mcp\services\ResourceRegistry;
+use stimmt\craft\Mcp\services\ServerFactory;
 use stimmt\craft\Mcp\services\ToolRegistry;
 use stimmt\craft\Mcp\web\Cp;
 use yii\base\Event;
@@ -216,8 +213,8 @@ class Mcp extends BasePlugin {
      * The factory handles server building with proper SDK patterns,
      * including discovery, container, and logging configuration.
      */
-    public function getServerFactory(): McpServerFactory {
-        return new McpServerFactory();
+    public function getServerFactory(): ServerFactory {
+        return new ServerFactory();
     }
 
     /**
@@ -452,71 +449,5 @@ class Mcp extends BasePlugin {
      */
     public static function getDangerousTools(): array {
         return self::getToolRegistry()->getDangerousTools();
-    }
-
-    /**
-     * Collect tool classes from other plugins via event.
-     *
-     * @deprecated Use getToolRegistry() instead. The registry now handles all tool collection.
-     * @return RegisterToolsEvent The event containing registered tools and any errors
-     */
-    public static function collectExternalTools(): RegisterToolsEvent {
-        $event = new RegisterToolsEvent();
-
-        $plugin = self::getInstance();
-        if ($plugin !== null && $plugin->hasEventHandlers(self::EVENT_REGISTER_TOOLS)) {
-            $plugin->trigger(self::EVENT_REGISTER_TOOLS, $event);
-        }
-
-        // Log any validation errors
-        foreach ($event->getErrors() as $error) {
-            Craft::warning("MCP tool registration error: {$error}", __METHOD__);
-        }
-
-        return $event;
-    }
-
-    /**
-     * Collect prompt classes from other plugins via event.
-     *
-     * @deprecated Use getPromptRegistry() instead. The registry now handles all prompt collection.
-     * @return RegisterPromptsEvent The event containing registered prompts and any errors
-     */
-    public static function collectExternalPrompts(): RegisterPromptsEvent {
-        $event = new RegisterPromptsEvent();
-
-        $plugin = self::getInstance();
-        if ($plugin !== null && $plugin->hasEventHandlers(self::EVENT_REGISTER_PROMPTS)) {
-            $plugin->trigger(self::EVENT_REGISTER_PROMPTS, $event);
-        }
-
-        // Log any validation errors
-        foreach ($event->getErrors() as $error) {
-            Craft::warning("MCP prompt registration error: {$error}", __METHOD__);
-        }
-
-        return $event;
-    }
-
-    /**
-     * Collect resource classes from other plugins via event.
-     *
-     * @deprecated Use getResourceRegistry() instead. The registry now handles all resource collection.
-     * @return RegisterResourcesEvent The event containing registered resources and any errors
-     */
-    public static function collectExternalResources(): RegisterResourcesEvent {
-        $event = new RegisterResourcesEvent();
-
-        $plugin = self::getInstance();
-        if ($plugin !== null && $plugin->hasEventHandlers(self::EVENT_REGISTER_RESOURCES)) {
-            $plugin->trigger(self::EVENT_REGISTER_RESOURCES, $event);
-        }
-
-        // Log any validation errors
-        foreach ($event->getErrors() as $error) {
-            Craft::warning("MCP resource registration error: {$error}", __METHOD__);
-        }
-
-        return $event;
     }
 }

@@ -90,8 +90,8 @@ create_backup
 
 ```json
 {
-  "success": false,
-  "error": "Unable to create backup: Permission denied"
+  "content": [{ "type": "text", "text": "Unable to create backup: Permission denied" }],
+  "isError": true
 }
 ```
 

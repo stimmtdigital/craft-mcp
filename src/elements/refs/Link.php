@@ -65,7 +65,10 @@ final readonly class Link implements FieldTranslator {
 
         $handle = (string) ($value['type'] ?? '');
         $target = self::TARGETS[$handle] ?? null;
-        $id = $target !== null ? $this->keys->idFor($target, $key, $context->site) : null;
+        $resolution = $target !== null
+            ? $this->keys->resolve($target, $key, $context->site)
+            : Resolution::none();
+        $id = $resolution->id;
         $ref = $this->parseRef($value['value'] ?? null);
 
         if ($id !== null) {
@@ -81,7 +84,7 @@ final readonly class Link implements FieldTranslator {
                 (string) $field->handle,
                 (string) $field->handle,
                 $key,
-                'Link key does not resolve',
+                $resolution->explain('link target'),
             ));
         }
 

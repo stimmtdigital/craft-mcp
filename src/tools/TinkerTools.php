@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
-use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -18,11 +18,8 @@ use Psy\Exception\ParseErrorException;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\OutputMode;
 use stimmt\craft\Mcp\enums\ToolCategory;
-use stimmt\craft\Mcp\support\Ansi;
 use stimmt\craft\Mcp\support\MutexGuard;
-use stimmt\craft\Mcp\support\SafeExecution;
-use Symfony\Component\VarDumper\Cloner\VarCloner;
-use Symfony\Component\VarDumper\Dumper\CliDumper;
+use stimmt\craft\Mcp\text\Transcript;
 use Throwable;
 
 /**
@@ -68,6 +65,7 @@ class TinkerTools {
 
     public function __construct(
         private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly Transcript $transcript = new Transcript(),
     ) {
     }
 
@@ -79,79 +77,83 @@ class TinkerTools {
      */
     #[McpTool(
         name: 'tinker',
+        title: 'Run PHP in Craft context',
         description: 'Execute PHP code within Craft CMS context. Prefer a specific tool when one exists (content, schema, database tools); reach for tinker when none can express the job, such as cross-entry computation. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.',
         annotations: new ToolAnnotations(destructiveHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING, dangerous: true)]
     public function tinker(
+        #[Schema(description: 'PHP statements to run in Craft\'s context. $app is bound to Craft::$app, and the value the code returns is what gets rendered. Anything echoed is captured and returned alongside it.')]
         string $code,
-        #[CompletionProvider(enum: OutputMode::class)]
-        string $output = 'dump',
+        // Typed as the enum rather than a string carrying a CompletionProvider:
+        // MCP has no completion channel for tool arguments, so that attribute
+        // was dead and the generated schema advertised neither the allowed
+        // values nor a description. An unrecognised value silently became dump.
+        #[Schema(description: 'How the return value is rendered.')]
+        OutputMode $output = OutputMode::DUMP,
         ?RequestContext $context = null,
     ): TextContent {
         // SafeExecution is the outer safety net for unexpected failures
         // (e.g. CodeCleaner instantiation). The inner try/catch handles
         // expected errors with REPL-style formatting.
-        return SafeExecution::run(function () use ($code, $output, $context): TextContent {
-            $outputMode = OutputMode::tryFrom($output) ?? OutputMode::DUMP;
+        $outputMode = $output;
 
-            $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
+        $this->logger->debug('Tinker executing', ['code' => mb_substr($code, 0, 200)]);
 
-            foreach (self::BLOCKED_PATTERNS as $pattern) {
-                if (!preg_match($pattern, $code)) {
-                    continue;
-                }
-
-                $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
-                $context?->getClientLogger()?->warning("Tinker code rejected by security pattern: {$pattern}");
-
-                return $this->response(
-                    $code,
-                    $this->formatError('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
-                );
+        foreach (self::BLOCKED_PATTERNS as $pattern) {
+            if (!preg_match($pattern, $code)) {
+                continue;
             }
 
-            $context?->getClientLogger()?->info('Tinker code accepted for execution');
-            $context?->getClientLogger()?->debug("Tinker code: {$code}");
+            $this->logger->debug('Tinker blocked by security pattern', ['pattern' => $pattern]);
+            $context?->getClientLogger()?->warning("Tinker code rejected by security pattern: {$pattern}");
 
-            $baseLevel = ob_get_level();
+            return $this->response(
+                $code,
+                $this->transcript->error('SecurityError', 'Code contains a blocked pattern. Shell commands, file writes, eval, and unbounded output-buffer teardown loops are not allowed.'),
+            );
+        }
 
-            try {
-                $cleaner = $this->getCodeCleaner();
-                $cleanedCode = $cleaner->clean([$code]);
+        $context?->getClientLogger()?->info('Tinker code accepted for execution');
+        $context?->getClientLogger()?->debug("Tinker code: {$code}");
 
-                $app = Craft::$app;
+        $baseLevel = ob_get_level();
 
-                ob_start();
-                $result = eval($cleanedCode);
-                $stdout = $this->drainCapturedOutput($baseLevel);
+        try {
+            $cleaner = $this->getCodeCleaner();
+            $cleanedCode = $cleaner->clean([$code]);
 
-                $this->logger->debug('Tinker completed');
-                $context?->getClientLogger()?->info('Tinker execution completed');
+            $app = Craft::$app;
 
-                return $this->response(
-                    $code,
-                    $this->formatOutput($result, $outputMode),
-                    $stdout,
-                );
-            } catch (ParseErrorException|ParseError $e) {
-                $this->drainCapturedOutput($baseLevel);
+            ob_start();
+            $result = eval($cleanedCode);
+            $stdout = $this->drainCapturedOutput($baseLevel);
 
-                $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
-                $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
+            $this->logger->debug('Tinker completed');
+            $context?->getClientLogger()?->info('Tinker execution completed');
 
-                return $this->response($code, $this->formatError('ParseError', $e->getMessage()));
-            } catch (Throwable $e) {
-                $this->drainCapturedOutput($baseLevel);
+            return $this->response(
+                $code,
+                $this->transcript->output($result, $outputMode),
+                $stdout,
+            );
+        } catch (ParseErrorException|ParseError $e) {
+            $this->drainCapturedOutput($baseLevel);
 
-                $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
-                $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
+            $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+            $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
 
-                return $this->response($code, $this->formatError($e::class, $e->getMessage(), $e));
-            } finally {
-                MutexGuard::releaseAll();
-            }
-        });
+            return $this->response($code, $this->transcript->error('ParseError', $e->getMessage()));
+        } catch (Throwable $e) {
+            $this->drainCapturedOutput($baseLevel);
+
+            $this->logger->debug('Tinker caught error', ['error' => $e->getMessage()]);
+            $context?->getClientLogger()?->warning('Tinker execution failed: ' . $e::class);
+
+            return $this->response($code, $this->transcript->error($e::class, $e->getMessage(), $e));
+        } finally {
+            MutexGuard::releaseAll();
+        }
     }
 
     /**
@@ -182,7 +184,7 @@ class TinkerTools {
      * Build the complete response.
      */
     private function response(string $code, string $result, ?string $stdout = null): TextContent {
-        $output = $this->formatInput($code);
+        $output = $this->transcript->input($code);
 
         if ($stdout !== null) {
             $output .= $stdout . "\n";
@@ -194,75 +196,6 @@ class TinkerTools {
     }
 
     /**
-     * Format the input line.
-     */
-    private function formatInput(string $code): string {
-        return Ansi::dim(Ansi::prefixLines(Ansi::PROMPT, $code)) . "\n";
-    }
-
-    /**
-     * Format the output line.
-     */
-    private function formatOutput(mixed $value, OutputMode $mode): string {
-        $formatted = trim($this->formatResult($value, $mode));
-
-        return Ansi::prefixLines(Ansi::dim(Ansi::RESULT), $formatted);
-    }
-
-    /**
-     * Format an error.
-     */
-    private function formatError(string $type, string $message, ?Throwable $e = null): string {
-        $shortType = str_contains($type, '\\') ? substr($type, strrpos($type, '\\') + 1) : $type;
-
-        // Strip internal eval noise from error messages
-        $message = preg_replace('/, called in .+eval\(\)\'d code on line \d+/', '', $message) ?? $message;
-
-        $output = Ansi::red(Ansi::ERROR . ' ' . $shortType . ':') . ' ' . $message;
-
-        $location = $e !== null ? $this->getUsefulLocation($e) : null;
-        if ($location !== null) {
-            $output .= "\n" . Ansi::gray('   at ' . $location);
-        }
-
-        return $output;
-    }
-
-    /**
-     * Get a useful error location, filtering out internal noise.
-     */
-    private function getUsefulLocation(Throwable $e): ?string {
-        // Check exception's own file first
-        $file = $e->getFile();
-        $line = $e->getLine();
-
-        // Skip if it's eval'd code or internal
-        if ($this->isInternalFile($file)) {
-            // Look through trace for first useful entry
-            foreach ($e->getTrace() as $frame) {
-                $frameFile = $frame['file'] ?? '';
-                if ($frameFile !== '' && !$this->isInternalFile($frameFile)) {
-                    return basename($frameFile) . ':' . ($frame['line'] ?? 0);
-                }
-            }
-
-            return null;
-        }
-
-        return basename($file) . ':' . $line;
-    }
-
-    /**
-     * Check if a file path is internal (should be filtered from traces).
-     */
-    private function isInternalFile(string $file): bool {
-        return str_contains($file, 'eval')
-            || str_contains($file, 'TinkerTools')
-            || str_contains($file, 'mcp/sdk')
-            || str_contains($file, 'mcp-server');
-    }
-
-    /**
      * Get the PsySH CodeCleaner for proper PHP parsing.
      */
     private function getCodeCleaner(): CodeCleaner {
@@ -271,51 +204,5 @@ class TinkerTools {
         }
 
         return $this->cleaner;
-    }
-
-    /**
-     * Format a value based on output mode.
-     */
-    private function formatResult(mixed $value, OutputMode $mode): string {
-        return match ($mode) {
-            OutputMode::DUMP => $this->formatDump($value),
-            OutputMode::JSON => $this->formatJson($value),
-            OutputMode::RAW => $this->formatRaw($value),
-            OutputMode::PRINT_R => $this->formatPrintR($value),
-        };
-    }
-
-    /**
-     * Format using VarDumper (colored).
-     */
-    private function formatDump(mixed $value): string {
-        $cloner = new VarCloner();
-        $dumper = new CliDumper();
-        $dumper->setColors(true);
-
-        return $dumper->dump($cloner->cloneVar($value), true) ?? '';
-    }
-
-    /**
-     * Format as JSON.
-     */
-    private function formatJson(mixed $value): string {
-        $json = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        return $json !== false ? $json : '(JSON encoding failed)';
-    }
-
-    /**
-     * Format using var_export.
-     */
-    private function formatRaw(mixed $value): string {
-        return var_export($value, true);
-    }
-
-    /**
-     * Format using print_r.
-     */
-    private function formatPrintR(mixed $value): string {
-        return print_r($value, true);
     }
 }

@@ -6,6 +6,7 @@ use craft\elements\Entry;
 use craft\fields\Link as LinkField;
 use stimmt\craft\Mcp\elements\Context;
 use stimmt\craft\Mcp\elements\refs\Link;
+use stimmt\craft\Mcp\elements\refs\Resolution;
 use stimmt\craft\Mcp\Tests\Fixtures\Layouts;
 
 // Mirrors BaseElementLinkType::supports()/elementQuery() in craftcms/cms:
@@ -15,7 +16,7 @@ const CORE_ENTRY_LINK_REF = '/^\{entry:(\d+)(@(\d+))?:url\}$/';
 describe('Link', function () {
     beforeEach(function () {
         $this->link = new Link(Layouts::keysWith(
-            lookupId: fn (string $type, array $key, ?string $site): ?int => ($type === Entry::class && $key === ['section' => 'pages', 'slug' => 'about']) ? 7 : null,
+            lookupId: fn (string $type, array $key, ?string $site): Resolution => ($type === Entry::class && $key === ['section' => 'pages', 'slug' => 'about']) ? Resolution::one(7) : Resolution::none(),
             lookupKey: fn (string $type, int $id, ?string $site): ?array => ($type === Entry::class && $id === 7) ? ['section' => 'pages', 'slug' => 'about'] : null,
         ));
     });

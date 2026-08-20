@@ -120,12 +120,20 @@ class Settings extends Model {
     public bool $showClientConfigSnippet = true;
 
     /**
+     * Whether human-readable tool output (`output=text`) carries ANSI colour.
+     * False by default: the usual consumer is a model, and escape sequences
+     * reach it as literal `[2m` noise that costs tokens and means nothing.
+     * Turn it on when a person reads this server's output in a terminal.
+     */
+    public bool $colorOutput = false;
+
+    /**
      * @return array<int, array<int|string, mixed>>
      */
     #[Override]
     public function defineRules(): array {
         return [
-            [['enabled', 'enableDangerousTools', 'httpTransport', 'showLockedProTools', 'showClientConfigSnippet'], 'boolean'],
+            [['enabled', 'enableDangerousTools', 'httpTransport', 'showLockedProTools', 'showClientConfigSnippet', 'colorOutput'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
             [['disabledScopes'], 'each', 'rule' => ['in', 'range' => array_column(Scope::cases(), 'value')]],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],

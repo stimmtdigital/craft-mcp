@@ -126,10 +126,13 @@ final readonly class Filters {
             );
         }
 
-        return $this->keys->idFor($field::elementType(), $value, $site)
-            ?? throw new InvalidArgumentException(
-                "No element found for the natural key in filters.{$handle}: " . json_encode($value),
-            );
+        $resolution = $this->keys->resolve($field::elementType(), $value, $site);
+
+        return $resolution->id ?? throw new InvalidArgumentException(
+            $resolution->ambiguous
+                ? "The natural key in filters.{$handle} matches more than one element; filter by id instead: " . json_encode($value)
+                : "No element found for the natural key in filters.{$handle}: " . json_encode($value),
+        );
     }
 
     /**
@@ -141,9 +144,15 @@ final readonly class Filters {
                 continue;
             }
 
-            $id = $this->keys->idFor($type, $key, $site);
-            if ($id !== null) {
-                return $id;
+            $resolution = $this->keys->resolve($type, $key, $site);
+            if ($resolution->ambiguous) {
+                throw new InvalidArgumentException(
+                    'The relatedTo key matches more than one element; relate by id instead: ' . json_encode($key),
+                );
+            }
+
+            if ($resolution->id !== null) {
+                return $resolution->id;
             }
         }
 

@@ -46,7 +46,7 @@ describe('Filters structure', function () {
     it('resolves natural keys through Keys and refuses unknown field handles', function () {
         $source = (string) file_get_contents((new ReflectionClass(Filters::class))->getFileName());
 
-        expect($source)->toContain('idFor(')
+        expect($source)->toContain('resolve(')
             ->and($source)->toContain('getFieldByHandle(')
             ->and($source)->toContain('InvalidArgumentException');
     });

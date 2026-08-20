@@ -126,6 +126,13 @@ return [
     // Turn off on installs that provision MCP clients their own way.
     // Default: true
     'showClientConfigSnippet' => true,
+
+    // Whether human-readable tool output (output="text") carries ANSI colour.
+    // Off by default: the usual consumer is an AI client, which receives the
+    // escape sequences as literal noise and pays tokens for them. Turn it on
+    // when a person reads this server's output in a terminal.
+    // Default: false
+    'colorOutput' => false,
 ];
 ```
 
@@ -148,9 +155,10 @@ return [
 | `httpSessionStore` | `mixed` | `null` | Session storage for the HTTP transport. Null uses the built-in database-backed store; set a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable returning one, for a custom store |
 | `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
 | `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
-| `disabledScopes` | `array` | `[]` | Since 1.4.0. Scope names (`readonly`, `content`, `full`) that cannot be minted on this install by anyone, admin included; existing tokens of a disabled scope keep working and can still be regenerated |
+| `disabledScopes` | `array` | `[]` | Since 1.4.0. Scope names (`readonly`, `content`, `full`) closed on this install for everyone, admin included: they cannot be minted, and existing tokens of a disabled scope stop authenticating (rejected exactly like an unknown token) until the scope is re-enabled, which restores them without recreation. Regenerating an existing token stays possible so it survives the closure |
 | `additionalInstructions` | `string` | `''` | Since 1.4.0. Text appended to the server instructions, on every transport (stdio and HTTP alike), after everything else the plugin adds |
 | `showClientConfigSnippet` | `bool` | `true` | Since 1.4.0. Whether the token-reveal screen (My Account -> MCP Tokens) shows the ready-to-paste Claude Desktop config block alongside the new token |
+| `colorOutput` | `bool` | `false` | Whether human-readable output (`output="text"`, including `read_logs`) carries ANSI colour. Off by default because escape sequences are noise to an AI client; see [Text Output](tools/README.md#text-output) |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.
 

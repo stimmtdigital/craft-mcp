@@ -20,6 +20,7 @@ use stimmt\craft\Mcp\tools\EntryWorkflowTools;
 use stimmt\craft\Mcp\tools\GlobalSetTools;
 use stimmt\craft\Mcp\tools\GraphqlTools;
 use stimmt\craft\Mcp\tools\McpTools;
+use stimmt\craft\Mcp\tools\NestedEntryTools;
 use stimmt\craft\Mcp\tools\SiteTools;
 use stimmt\craft\Mcp\tools\SystemTools;
 use stimmt\craft\Mcp\tools\TinkerTools;
@@ -49,16 +50,12 @@ final class ToolRegistry {
         GlobalSetTools::class,
         GraphqlTools::class,
         McpTools::class,
+        NestedEntryTools::class,
         SiteTools::class,
         SystemTools::class,
         TinkerTools::class,
         UserTools::class,
     ];
-
-    /**
-     * @var array<string, string[]> Tool classes grouped by source
-     */
-    private array $tools = [];
 
     /**
      * @var array<string, ToolDefinition> Tool definitions by name
@@ -79,33 +76,6 @@ final class ToolRegistry {
      * @var bool Whether tools have been collected
      */
     private bool $initialized = false;
-
-    /**
-     * Get all tool classes for MCP server registration.
-     *
-     * @return string[]
-     */
-    public function getToolClasses(): array {
-        $this->ensureInitialized();
-
-        $classes = [];
-        foreach ($this->tools as $sourceTools) {
-            $classes = array_merge($classes, $sourceTools);
-        }
-
-        return $classes;
-    }
-
-    /**
-     * Get tools grouped by source for debugging/info.
-     *
-     * @return array<string, string[]>
-     */
-    public function getToolsBySource(): array {
-        $this->ensureInitialized();
-
-        return $this->tools;
-    }
 
     /**
      * Get a specific tool definition by name.
@@ -144,22 +114,6 @@ final class ToolRegistry {
     }
 
     /**
-     * Get tool definitions grouped by category.
-     *
-     * @return array<string, ToolDefinition[]>
-     */
-    public function getDefinitionsByCategory(): array {
-        $this->ensureInitialized();
-
-        $byCategory = [];
-        foreach ($this->definitions as $definition) {
-            $byCategory[$definition->category][] = $definition;
-        }
-
-        return $byCategory;
-    }
-
-    /**
      * Get all dangerous tool names.
      *
      * @return string[]
@@ -180,7 +134,7 @@ final class ToolRegistry {
     /**
      * Get tool definitions registered by external plugins (not core).
      *
-     * Used by McpServerFactory for manual registration of external tools.
+     * Used by ServerFactory for manual registration of external tools.
      *
      * @return ToolDefinition[]
      */
@@ -251,7 +205,6 @@ final class ToolRegistry {
      */
     public function reset(): void {
         $this->initialized = false;
-        $this->tools = [];
         $this->definitions = [];
         $this->discoveryPaths = [];
         $this->errors = [];
@@ -278,7 +231,6 @@ final class ToolRegistry {
         }
 
         // Collect everything from the event
-        $this->tools = $event->getTools();
         $this->definitions = $event->getDefinitions();
         $this->discoveryPaths = $event->getDiscoveryPaths();
         $this->errors = $event->getErrors();

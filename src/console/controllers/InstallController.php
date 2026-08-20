@@ -10,11 +10,11 @@ use craft\helpers\Console;
 use Exception;
 use JsonException;
 use Override;
-use stimmt\craft\Mcp\installer\clients\ClaudeCodeClient;
-use stimmt\craft\Mcp\installer\clients\ClaudeDesktopClient;
-use stimmt\craft\Mcp\installer\clients\CursorClient;
+use stimmt\craft\Mcp\installer\clients\ClaudeCode;
+use stimmt\craft\Mcp\installer\clients\ClaudeDesktop;
+use stimmt\craft\Mcp\installer\clients\Cursor;
 use stimmt\craft\Mcp\installer\ConfigWriter;
-use stimmt\craft\Mcp\installer\contracts\McpClientInterface;
+use stimmt\craft\Mcp\installer\contracts\Client;
 use stimmt\craft\Mcp\installer\EnvironmentDetector;
 use stimmt\craft\Mcp\installer\ProjectRootResolver;
 use stimmt\craft\Mcp\installer\WriteResult;
@@ -190,7 +190,7 @@ class InstallController extends Controller {
     /**
      * Let user select which clients to configure.
      *
-     * @return McpClientInterface[]
+     * @return Client[]
      */
     private function selectClients(string $craftRoot, string $configRoot, EnvironmentDetector $envDetector): array {
         $available = $this->getAvailableClients($craftRoot, $configRoot, $envDetector);
@@ -215,20 +215,20 @@ class InstallController extends Controller {
     /**
      * Get all available MCP clients.
      *
-     * @return McpClientInterface[]
+     * @return Client[]
      */
     private function getAvailableClients(string $craftRoot, string $configRoot, EnvironmentDetector $envDetector): array {
         return [
-            new ClaudeCodeClient($craftRoot, $configRoot, $envDetector),
-            new CursorClient($craftRoot, $configRoot, $envDetector),
-            new ClaudeDesktopClient($craftRoot, $configRoot, $envDetector),
+            new ClaudeCode($craftRoot, $configRoot, $envDetector),
+            new Cursor($craftRoot, $configRoot, $envDetector),
+            new ClaudeDesktop($craftRoot, $configRoot, $envDetector),
         ];
     }
 
     /**
      * Check if any client requires absolute paths.
      *
-     * @param McpClientInterface[] $clients
+     * @param Client[] $clients
      */
     private function anyClientRequiresAbsolutePaths(array $clients): bool {
         return array_any($clients, fn ($client) => $client->requiresAbsolutePaths());
@@ -237,7 +237,7 @@ class InstallController extends Controller {
     /**
      * Resolve the project path if any client needs absolute paths.
      *
-     * @param McpClientInterface[] $clients
+     * @param Client[] $clients
      */
     private function resolveProjectPath(array $clients, string $defaultPath): ?string {
         $needsAbsolutePaths = $this->anyClientRequiresAbsolutePaths($clients);
@@ -257,7 +257,7 @@ class InstallController extends Controller {
     /**
      * Resolve the server name, checking for conflicts.
      *
-     * @param McpClientInterface[] $clients
+     * @param Client[] $clients
      */
     private function resolveServerName(ConfigWriter $configWriter, array $clients): string {
         $this->stdout(PHP_EOL);
@@ -302,7 +302,7 @@ class InstallController extends Controller {
      * Write configuration for a single client.
      */
     private function writeClientConfig(
-        McpClientInterface $client,
+        Client $client,
         string $environment,
         ?string $projectPath,
         ?string $craftSubdirectory,
