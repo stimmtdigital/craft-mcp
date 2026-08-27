@@ -259,6 +259,25 @@ Mark a tool as dangerous if it:
 - Creates files on the filesystem
 - Makes external API calls that have side effects
 
+### Requiring an Edition
+
+A tool can require a minimum plugin edition with `#[RequiresEdition]`, on a method or on the whole class. A method-level attribute wins over a class-level one, and anything unmarked is available on every edition:
+
+```php
+use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\enums\Edition;
+
+#[McpTool(name: 'my_writer', description: 'Writes something')]
+#[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
+#[RequiresEdition(Edition::Pro)]
+public function myWriter(): array
+{
+    // ...
+}
+```
+
+The edition is checked after the settings, scope and permission checks, so a tool refused for one of those reasons reports that reason rather than advertising an upgrade that would not make it callable. See [Editions](editions.md).
+
 ### Method-Level Conditions
 
 For fine-grained control, you can make individual tools conditionally available:

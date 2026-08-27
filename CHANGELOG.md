@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Two editions. Everything that reads, inspects or queries the install is Lite; the eight tools that write entry content (`create_entry`, `update_entry`, `publish_entry`, `delete_entry`, `duplicate_entry`, `copy_entry_to_site`, `create_nested_entry`, `move_nested_entry`) are Pro. On Lite those tools are not advertised at all, and the server instructions gain a section naming them and withdrawing the write guidance, so an agent is never taught a workflow the install cannot perform. See [Editions](docs/editions.md)
+- `showLockedProTools` config setting: keep the Pro tools listed on a Lite install, marked `[Pro]` and answering any call with an upgrade message, instead of hiding them. Off by default
+- `list_mcp_tools` reports `requiredEdition` and `locked` per tool, so a client can build an upgrade prompt without hard-coding which tools are paid
+- A plugin registering its own tools can require an edition with `#[RequiresEdition]`, on a method or a whole class, with the method-level attribute taking precedence
+
 ## [1.4.0-beta.13] - 2026-08-18
 
 ### Added

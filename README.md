@@ -62,6 +62,8 @@ Entry reads and writes share one payload format: relations as natural keys (`{"s
 | [Self-Awareness](docs/tools/mcp.md) | Plugin info, tool listing with risk annotations, hot reload |
 | [Commerce](docs/tools/commerce.md) | Products, orders, and statuses (when Craft Commerce is installed) |
 
+The eight tools that write entry content require the **Pro** edition; everything else is available on Lite. See [Editions](docs/editions.md).
+
 Tools that modify data or execute code are flagged `dangerous`: they sit behind the `enableDangerousTools` setting, carry a `destructiveHint` annotation in `tools/list`, and are excluded from `readonly` and (except entry workflow) `content` HTTP scopes. See the [Tools Overview](docs/tools/README.md) for the complete reference.
 
 ## Extending
@@ -75,6 +77,7 @@ The [documentation index](docs/README.md) links everything; the direct routes:
 - **[Installation](docs/installation.md)** - Requirements, Composer setup, detailed installation steps
 - **[Client Setup](docs/client-setup.md)** - Wizard and manual configs for Claude Code, Cursor, Claude Desktop
 - **[Configuration](docs/configuration.md)** - All configuration options and security settings
+- **[Editions](docs/editions.md)** - What Lite and Pro each include, and how a Lite install behaves
 - **[HTTP Transport](docs/http-transport.md)** - Remote access with per-user scoped bearer tokens
 - **[Content Writing](docs/content-writing.md)** - The payload format, draft workflow, and schema discovery for agents
 - **[Tools Reference](docs/tools/README.md)** - Complete documentation for every tool

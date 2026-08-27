@@ -24,6 +24,7 @@ If you're new to Craft MCP, we recommend following these steps:
 - **[Installation](installation.md)** - Requirements, Composer setup, and installation steps
 - **[Client Setup](client-setup.md)** - Wizard and manual MCP client configuration (Claude Code, Cursor, Claude Desktop, SSH)
 - **[Configuration](configuration.md)** - All configuration options, environment variables, and security settings
+- **[Editions](editions.md)** - What Lite and Pro each include, how a Lite install behaves, and requiring an edition from your own tools
 - **[HTTP Transport](http-transport.md)** - Remote access over HTTP with per-user scoped bearer tokens (`readonly`/`content`/`full`), token management, and troubleshooting
 
 ### Working with Content
