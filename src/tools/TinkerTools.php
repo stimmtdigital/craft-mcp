@@ -199,9 +199,7 @@ class TinkerTools {
      * Get the PsySH CodeCleaner for proper PHP parsing.
      */
     private function getCodeCleaner(): CodeCleaner {
-        if ($this->cleaner === null) {
-            $this->cleaner = new CodeCleaner();
-        }
+        $this->cleaner ??= new CodeCleaner();
 
         return $this->cleaner;
     }

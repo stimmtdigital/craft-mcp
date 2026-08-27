@@ -261,9 +261,7 @@ class ServerFactory {
      * This is separate from Craft's logging system.
      */
     public static function createFileLogger(?string $logPath = null, string $logLevel = 'error'): LoggerInterface {
-        if ($logPath === null) {
-            $logPath = Craft::getAlias('@storage/logs/mcp-server.log');
-        }
+        $logPath ??= Craft::getAlias('@storage/logs/mcp-server.log');
 
         return new FileLogger($logPath, $logLevel);
     }

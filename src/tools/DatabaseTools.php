@@ -48,10 +48,8 @@ class DatabaseTools {
             $fullTableName = $tablePrefix . $table;
             $tableSchema = $schema->getTableSchema($fullTableName);
 
-            if ($tableSchema === null) {
-                // Try without prefix
-                $tableSchema = $schema->getTableSchema($table);
-            }
+            // Try without prefix
+            $tableSchema ??= $schema->getTableSchema($table);
 
             if ($tableSchema === null) {
                 throw new ToolCallException("Table '{$table}' not found");

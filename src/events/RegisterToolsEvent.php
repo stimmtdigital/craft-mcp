@@ -240,9 +240,7 @@ class RegisterToolsEvent extends Event {
         }
 
         // Store class for backwards compatibility
-        if (!isset($this->tools[$source])) {
-            $this->tools[$source] = [];
-        }
+        $this->tools[$source] ??= [];
         $this->tools[$source][] = $class;
 
         foreach ($definitions as $definition) {

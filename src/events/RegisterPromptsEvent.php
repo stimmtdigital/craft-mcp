@@ -162,9 +162,7 @@ class RegisterPromptsEvent extends Event {
         }
 
         // Store class for backwards compatibility
-        if (!isset($this->prompts[$source])) {
-            $this->prompts[$source] = [];
-        }
+        $this->prompts[$source] ??= [];
         $this->prompts[$source][] = $class;
 
         foreach ($definitions as $definition) {

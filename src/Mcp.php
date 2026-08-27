@@ -144,9 +144,7 @@ class Mcp extends BasePlugin {
      * Get the tool registry instance.
      */
     public static function getToolRegistry(): ToolRegistry {
-        if (self::$toolRegistry === null) {
-            self::$toolRegistry = new ToolRegistry();
-        }
+        self::$toolRegistry ??= new ToolRegistry();
 
         return self::$toolRegistry;
     }
@@ -155,9 +153,7 @@ class Mcp extends BasePlugin {
      * Get the prompt registry instance.
      */
     public static function getPromptRegistry(): PromptRegistry {
-        if (self::$promptRegistry === null) {
-            self::$promptRegistry = new PromptRegistry();
-        }
+        self::$promptRegistry ??= new PromptRegistry();
 
         return self::$promptRegistry;
     }
@@ -166,9 +162,7 @@ class Mcp extends BasePlugin {
      * Get the resource registry instance.
      */
     public static function getResourceRegistry(): ResourceRegistry {
-        if (self::$resourceRegistry === null) {
-            self::$resourceRegistry = new ResourceRegistry();
-        }
+        self::$resourceRegistry ??= new ResourceRegistry();
 
         return self::$resourceRegistry;
     }
