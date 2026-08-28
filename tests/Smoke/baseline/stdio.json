@@ -30,7 +30,7 @@
             }
         },
         "copy_entry_to_site": {
-            "description": "Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps nothing per site and the two sites already read the same. describe_entry_schema reports each field's translation method.",
+            "description": "Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps no field per site, so its fields already match on both sites, though their titles and slugs still may not. describe_entry_schema reports each field's translation method.",
             "annotations": {
                 "destructiveHint": false,
                 "openWorldHint": false
@@ -590,7 +590,9 @@
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     }
                 }
             }
@@ -731,7 +733,9 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     }
                 }
             }
@@ -866,11 +870,15 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 }
             }
@@ -905,7 +913,9 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 100
+                        "default": 100,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     }
                 }
             }
@@ -956,11 +966,15 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 20
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 }
             }
@@ -1077,13 +1091,13 @@
                     "limit": {
                         "type": "integer",
                         "default": 20,
-                        "description": "How many entries to return. 1 or greater; count_entries answers a total without listing rows.",
+                        "description": "How many rows to return. 1 or greater. count_entries answers a total without listing rows.",
                         "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
                         "default": 0,
-                        "description": "How many entries to skip before the first returned row. 0 or greater.",
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
                         "minimum": 0
                     }
                 }
@@ -1215,11 +1229,15 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 20
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 },
                 "required": [
@@ -1303,7 +1321,7 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Account status: active, pending, suspended, locked, or inactive."
+                        "description": "Account status: active, pending, suspended, locked, inactive, or credentialed (active or pending, which is every account that can sign in)."
                     },
                     "email": {
                         "type": [
@@ -1315,7 +1333,9 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     }
                 }
             }
@@ -1452,7 +1472,9 @@
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "level": {
                         "type": [
@@ -1519,7 +1541,8 @@
                     "limit": {
                         "type": "integer",
                         "default": 100,
-                        "description": "Row cap, appended as a LIMIT clause only when the statement does not already carry one."
+                        "description": "Row cap, appended as a LIMIT clause only when the statement does not already carry one. How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "output": {
                         "type": "string",
