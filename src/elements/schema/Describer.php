@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\elements\schema;
 
-use craft\base\Field;
 use craft\fieldlayoutelements\BaseNativeField;
 use craft\fieldlayoutelements\CustomField;
 use craft\fields\BaseRelationField;
@@ -29,6 +28,8 @@ use craft\models\FieldLayout;
 final readonly class Describer {
     private Shape $shape;
 
+    private Translation $translation;
+
     /**
      * @param bool $multiSite whether the install serves more than one site. Told
      *                        rather than looked up: describing a layout is pure
@@ -37,6 +38,7 @@ final readonly class Describer {
      */
     public function __construct(?Shape $shape = null, private bool $multiSite = false) {
         $this->shape = $shape ?? new Shape();
+        $this->translation = new Translation();
     }
 
     public function describe(?FieldLayout $layout, int $depth = 1): array {
@@ -91,14 +93,7 @@ final readonly class Describer {
         // "other site" to leak into, and the key would be pure token cost on
         // every field of every schema an agent reads.
         if ($this->multiSite) {
-            $described['translation'] = [
-                'method' => $field->translationMethod,
-                // True only for the method that gives every site its own
-                // value. The rest share a value with at least some other site,
-                // so false reads as "writing this may change another site",
-                // which is the safe direction to be wrong in.
-                'perSite' => $field->translationMethod === Field::TRANSLATION_METHOD_SITE,
-            ];
+            $described['translation'] = $this->translation->of($field);
         }
 
         if ($field instanceof BaseRelationField) {
