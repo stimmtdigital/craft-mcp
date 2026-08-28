@@ -68,7 +68,9 @@ The `permissions` object transforms the raw scope strings into a readable struct
 
 ### get_graphql_schema
 
-Get detailed information about a specific schema, including its full SDL (Schema Definition Language). The SDL shows exactly what types, queries, and fields are available.
+Explore a schema's types. A Craft schema prints to hundreds of kilobytes of SDL,
+far more than one response can carry, so this answers in three widening steps:
+ask for the index, then one type, then one field.
 
 **Parameters:**
 
@@ -76,42 +78,47 @@ Get detailed information about a specific schema, including its full SDL (Schema
 |------|------|----------|-------------|
 | `id` | int | No | Schema ID (takes precedence if both provided) |
 | `uid` | string | No | Schema UID |
+| `type` | string | No | Return this type's SDL instead of the index |
+| `field` | string | No | Return only this field of `type`. Requires `type` |
 
-At least one parameter must be provided.
+At least one of `id` or `uid` must be provided.
 
 **Examples:**
 
 ```
-# Get by ID
+# The index: every type, its kind, field count, and printed size
 get_graphql_schema id=1
 
-# Get by UID
-get_graphql_schema uid="a1b2c3d4-..."
+# One type's SDL
+get_graphql_schema id=1 type="AssetInterface"
+
+# One field, for a type too large to return whole
+get_graphql_schema id=1 type="EntryInterface" field="title"
 ```
 
-**Response:**
+**Response, without `type`:**
 
 ```json
 {
   "success": true,
-  "schema": {
-    "id": 1,
-    "uid": "a1b2c3d4-...",
-    "name": "Public Schema",
-    "scope": ["sections.news:read"],
-    "permissions": {
-      "sections": {
-        "news": ["read"]
-      }
-    },
-    "isPublic": true,
-    "sdl": "type Query {\n  entries(section: [String]): [EntryInterface]\n  ...\n}",
-    "sdlLength": 15420
-  }
+  "schema": { "id": 1, "name": "Public Schema", "isPublic": true },
+  "sdlBytes": 579488,
+  "roots": { "query": "Query", "mutation": "Mutation", "subscription": null },
+  "count": 42,
+  "types": [
+    { "name": "AssetInterface", "kind": "interface", "fields": 37, "sdlBytes": 17392 }
+  ]
 }
 ```
 
-The `sdl` field contains the complete schema definition, this can be quite large for schemas with broad access. The `sdlLength` field tells you how many characters the SDL contains.
+The per-type `sdlBytes` is the useful part: it tells you which types come back
+whole and which need narrowing, before you ask. A type over the per-call limit
+is refused with a message naming its fields, so `field` is always the next step
+rather than a guess.
+
+Craft's own argument descriptions are what make types large. `Query`,
+`EntryInterface` and the per-entry-type types all print at 87 KB or more, while
+the largest single field of any of them is under 10 KB.
 
 ---
 

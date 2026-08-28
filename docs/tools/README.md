@@ -117,7 +117,7 @@ These tools provide access to Craft's GraphQL API:
 | Tool | Description |
 |------|-------------|
 | `list_graphql_schemas` | List all GraphQL schemas with their scopes and permissions |
-| `get_graphql_schema` | Get schema details including the SDL (Schema Definition Language) |
+| `get_graphql_schema` | Explore a schema: the type index, then one type, then one field |
 | `query_graphql` | Run a read-only GraphQL query; mutations and subscriptions are rejected before execution |
 | `execute_graphql` | Execute GraphQL queries and mutations against your Craft installation |
 | `list_graphql_tokens` | List API tokens with their associated schemas |
