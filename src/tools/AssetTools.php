@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\HandleResolver;
+use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\text\Serializer;
 
@@ -86,13 +87,7 @@ class AssetTools {
             $results[] = $this->serializeAsset($asset);
         }
 
-        return [
-            'count' => count($results),
-            'total' => $query->count(),
-            'limit' => $limit,
-            'offset' => $offset,
-            'assets' => $results,
-        ];
+        return Response::paginated('assets', $results, (int) $query->count(), $limit, $offset);
     }
 
     /**

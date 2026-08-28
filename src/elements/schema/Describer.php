@@ -30,6 +30,8 @@ final readonly class Describer {
 
     private Translation $translation;
 
+    private Target $target;
+
     /**
      * @param bool $multiSite whether the install serves more than one site. Told
      *                        rather than looked up: describing a layout is pure
@@ -39,6 +41,7 @@ final readonly class Describer {
     public function __construct(?Shape $shape = null, private bool $multiSite = false) {
         $this->shape = $shape ?? new Shape();
         $this->translation = new Translation();
+        $this->target = new Target();
     }
 
     public function describe(?FieldLayout $layout, int $depth = 1): array {
@@ -97,14 +100,7 @@ final readonly class Describer {
         }
 
         if ($field instanceof BaseRelationField) {
-            // The raw sources setting, not getInputSources(): the latter is
-            // permission-filtered and requires a user session, which the
-            // console MCP process does not have. Schema description wants
-            // the configured sources anyway.
-            $described['target'] = [
-                'elementType' => $field::elementType(),
-                'sources' => $field->sources ?? '*',
-            ];
+            $described['target'] = $this->target->of($field);
         }
 
         if ($field instanceof Matrix) {

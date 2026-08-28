@@ -19,6 +19,10 @@ use stimmt\craft\Mcp\support\Window;
  * and holds each of them to both halves of the rule, the schema minimum a
  * client reads before it calls and the assert that holds without one.
  *
+ * The same enumeration carries the window's other half, the envelope those
+ * tools answer with, so the two rules can never disagree about which tools
+ * they apply to.
+ *
  * Helpers are closures because Pest shares one global function namespace
  * across the suite.
  *
@@ -173,5 +177,57 @@ describe('every tool taking a page window', function () use ($windowedTools, $me
         }
 
         expect($late)->toBe([]);
+    });
+});
+
+/**
+ * The window's other half: what a caller is told about the cap on the way
+ * back. list_categories took a limit and answered {"count": 1, "categories":
+ * [...]}, so an agent handed exactly `limit` rows could not tell a page from
+ * the whole set, nor even which cap produced it when the limit came from a
+ * default it never sent.
+ */
+describe('the envelope every windowed tool answers with', function () use ($windowedTools, $methodSource) {
+    // Built in Response so the shape cannot be repaired tool by tool and drift
+    // apart again: paginated() for the tools that take an offset, capped() for
+    // the ones that only cap.
+    it('builds it in Response rather than by hand', function () use ($windowedTools, $methodSource) {
+        $bare = array_values(array_map(
+            static fn (array $tool): string => $tool['tool'],
+            array_filter($windowedTools(), static function (array $tool) use ($methodSource): bool {
+                $source = $methodSource($tool['class'], $tool['method']);
+
+                return !str_contains($source, 'Response::paginated(')
+                    && !str_contains($source, 'Response::capped(');
+            }),
+        ));
+        sort($bare);
+
+        // Named one by one rather than skipped, so a NEW list tool answering
+        // with a bare count fails here instead of joining a silent majority,
+        // and so fixing one of these fails until it comes off the list.
+        //
+        // What each still needs: get_queue_jobs already counts every status,
+        // so the count for the status asked for is the total to hand capped().
+        // read_logs and get_deprecations read a backward scan that stops as
+        // soon as it has enough matches, so neither can produce a total
+        // without redoing the whole read: they pass none and report the cap.
+        expect($bare)->toBe(['get_deprecations', 'get_queue_jobs', 'read_logs']);
+    });
+
+    // The envelope mirrors the signature: a tool that takes an offset echoes
+    // one and can be walked, and a tool that does not takes none back, because
+    // a zero there would advertise paging that does not exist.
+    it('pages exactly where the tool takes an offset', function () use ($windowedTools, $methodSource) {
+        $mismatched = [];
+        foreach ($windowedTools() as $tool) {
+            $pages = str_contains($methodSource($tool['class'], $tool['method']), 'Response::paginated(');
+
+            if ($pages !== in_array('offset', $tool['parameters'], true)) {
+                $mismatched[] = $tool['tool'];
+            }
+        }
+
+        expect($mismatched)->toBe([]);
     });
 });

@@ -179,6 +179,17 @@ By default, these tools are disabled when `CRAFT_ENVIRONMENT` is set to `product
 All tools return consistent response structures that AI assistants can easily parse:
 
 - **List operations** return `count` and an array of items
+- **Bounded list operations**, meaning every tool that takes a `limit`, return the same envelope
+  alongside those items, so a page can never be mistaken for a complete set:
+
+  | Key | Meaning |
+  |-----|---------|
+  | `count` | Rows in this response |
+  | `total` | Rows matching the request in full, or `null` where the tool cannot count them without redoing the read |
+  | `limit` | The row cap that was applied, or `null` where the tool applied none |
+  | `offset` | Where this page started. Present only on tools that take an `offset`, since only those can be walked |
+  | `hasMore` | Whether rows are left behind this response. `null` means the tool cannot tell, with `count` and `limit` there to judge by |
+
 - **Single record lookups** return `found: true/false` with the record or an error message
 - **Operations** return `success: true` with their data. Failures are not a payload: the tool call
   itself fails, and the client receives an MCP tool error (`isError: true`) whose text is the reason

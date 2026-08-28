@@ -44,11 +44,13 @@ class UserTools {
         ?string $email = null,
         #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
+        int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        Window::assert($limit);
+        Window::assert($limit, $offset);
         $groupModel = HandleResolver::userGroup($group);
-        $query = User::find()->limit($limit);
+        $query = User::find()->limit($limit)->offset($offset);
 
         // By id, not by handle: Craft's own group() hands a string it could
         // not resolve to a helper that only takes arrays, so the parameter
@@ -68,7 +70,9 @@ class UserTools {
         $users = $query->all();
         $results = array_map($this->serializeUser(...), $users);
 
-        return Response::list('users', $results);
+        // Counted after the scope is applied, so the total describes the rows
+        // this caller may see rather than the ones the install holds.
+        return Response::paginated('users', $results, (int) $query->count(), $limit, $offset);
     }
 
     /**

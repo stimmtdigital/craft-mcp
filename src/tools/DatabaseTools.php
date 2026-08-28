@@ -161,7 +161,8 @@ class DatabaseTools {
         // decision reads the statement's skeleton rather than its text, since
         // the word inside `WHERE 'limit' = 'limit'` is data, and taking it for
         // a clause meant a call asking for two rows returned the whole table.
-        $statement = SqlSkeleton::of($trimmedSql)->bounded($limit);
+        $skeleton = SqlSkeleton::of($trimmedSql);
+        $statement = $skeleton->bounded($limit);
 
         $context?->getClientLogger()?->debug("SQL query text: {$statement}");
 
@@ -172,11 +173,18 @@ class DatabaseTools {
         $context?->getClientLogger()?->info("SQL query returned {$rowCount} rows");
         $context?->getClientGateway()?->progress(2, 2, 'Query complete');
 
-        return Response::success([
-            'count' => $rowCount,
-            'columns' => empty($results) ? [] : array_keys($results[0]),
-            'rows' => $results,
-        ]);
+        // No total: counting the matching rows means wrapping and running the
+        // caller's statement a second time, which for the aggregate SQL this
+        // tool exists for is the expensive half of the work. And the cap is
+        // only reported when it was the one in force: a statement carrying its
+        // own LIMIT is bounded by that instead, and echoing this parameter
+        // would name a cap that never applied.
+        return Response::success(Response::capped(
+            'rows',
+            $results,
+            limit: $skeleton->has('LIMIT') ? null : $limit,
+            meta: ['columns' => empty($results) ? [] : array_keys($results[0])],
+        ));
     }
 
     /**

@@ -409,14 +409,18 @@ return [
 When returning a subset of a larger result set:
 
 ```php
-return [
-    'count' => count($items),
-    'total' => $totalCount,
-    'limit' => $limit,
-    'offset' => $offset,
-    'items' => $items,
-];
+use stimmt\craft\Mcp\support\Response;
+
+return Response::paginated('items', $items, $totalCount, $limit, $offset);
 ```
+
+That answers with `count`, `total`, `limit`, `offset`, `hasMore` and the items, which is the envelope every bounded list tool in this server shares. Reach for `Response::capped()` instead when your tool takes a `limit` but has no offset to page by, and pass the total only when you have one:
+
+```php
+return Response::capped('jobs', $jobs, $limit, $totalCount);
+```
+
+Leaving the total out reports `total` and `hasMore` as null, which says the tool cannot tell rather than guessing from a full page.
 
 These patterns give AI assistants predictable structures to work with, making it easier for them to chain tool calls and report results to users.
 

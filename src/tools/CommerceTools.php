@@ -16,6 +16,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\contracts\ConditionalProvider;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\Window;
 
 /**
@@ -94,10 +95,7 @@ class CommerceTools implements ConditionalProvider {
             $products,
         );
 
-        return [
-            'count' => count($result),
-            'products' => $result,
-        ];
+        return Response::paginated('products', $result, (int) $query->count(), $limit, $offset);
     }
 
     /**
@@ -210,10 +208,7 @@ class CommerceTools implements ConditionalProvider {
             ];
         }
 
-        return [
-            'count' => count($result),
-            'orders' => $result,
-        ];
+        return Response::paginated('orders', $result, (int) $query->count(), $limit, $offset);
     }
 
     /**
