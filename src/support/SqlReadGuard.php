@@ -27,9 +27,10 @@ final class SqlReadGuard {
     /**
      * Assert the query is a read-only SELECT and return it trimmed.
      *
-     * Keywords are matched on word boundaries so column names that merely
-     * contain a keyword as a substring (e.g. `dateCreated`, `dateUpdated`)
-     * are not falsely rejected.
+     * Keywords are matched on word boundaries, and against the statement's
+     * skeleton rather than its raw text, so neither a column name containing a
+     * keyword (`dateUpdated`) nor one quoted as data (`LIKE '%update%'`) is
+     * mistaken for a write.
      *
      * @throws ToolCallException if the query is not a bare SELECT or contains a blocked keyword
      */
@@ -40,10 +41,17 @@ final class SqlReadGuard {
             throw new ToolCallException('Only SELECT queries are allowed for safety.');
         }
 
-        foreach (self::BLOCKED_KEYWORDS as $keyword) {
-            if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/i', $trimmed)) {
-                throw new ToolCallException("Query contains blocked keyword: {$keyword}");
-            }
+        $skeleton = SqlSkeleton::of($trimmed);
+        $blocked = array_find(
+            self::BLOCKED_KEYWORDS,
+            static fn (string $keyword): bool => $skeleton->has($keyword),
+        );
+
+        if ($blocked !== null) {
+            throw new ToolCallException(
+                "Query contains blocked keyword: {$blocked}. Only SELECT statements are allowed; "
+                . 'a blocked word inside a string literal is fine, but not as SQL.',
+            );
         }
 
         return $trimmed;

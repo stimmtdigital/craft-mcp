@@ -103,7 +103,7 @@ describe('Tool client-logger calls interpolate their data into the message strin
     it('interpolates the row count and full SQL text into DatabaseTools::runQuery messages', function () use ($toolFiles) {
         $source = (string) file_get_contents($toolFiles['DatabaseTools.php']);
 
-        expect($source)->toContain('"SQL query text: {$sql}"')
+        expect($source)->toContain('"SQL query text: {$statement}"')
             ->and($source)->toContain('"SQL query returned {$rowCount} rows"');
     });
 

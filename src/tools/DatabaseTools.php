@@ -16,6 +16,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SqlReadGuard;
+use stimmt\craft\Mcp\support\SqlSkeleton;
 use stimmt\craft\Mcp\support\Window;
 use Throwable;
 
@@ -156,15 +157,18 @@ class DatabaseTools {
         $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
         $context?->getClientLogger()?->info('SQL query validated by the read guard');
 
-        // Add LIMIT if not present
-        if (!preg_match('/\bLIMIT\b/i', $trimmedSql)) {
-            $sql = rtrim($trimmedSql, ';') . " LIMIT {$limit}";
-        }
+        // Bound the result set unless the caller already bounded it. Asked of
+        // the statement's skeleton rather than its text: the word inside
+        // `WHERE 'limit' = 'limit'` is data, and reading it as a clause meant a
+        // call asking for two rows silently returned every row in the table.
+        $statement = SqlSkeleton::of($trimmedSql)->has('LIMIT')
+            ? $trimmedSql
+            : rtrim($trimmedSql, ';') . " LIMIT {$limit}";
 
-        $context?->getClientLogger()?->debug("SQL query text: {$sql}");
+        $context?->getClientLogger()?->debug("SQL query text: {$statement}");
 
         $db = Craft::$app->getDb();
-        $results = $db->createCommand($sql)->queryAll();
+        $results = $db->createCommand($statement)->queryAll();
         $rowCount = count($results);
 
         $context?->getClientLogger()?->info("SQL query returned {$rowCount} rows");
