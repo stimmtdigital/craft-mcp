@@ -43,7 +43,7 @@
             }
         },
         "count_entries": {
-            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Same filters as list_entries. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers \"how many per X\" without listing anything.",
+            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Same filters as list_entries, and the same top-level scope: nested Matrix blocks are left out unless includeNested, so a total here matches the one list_entries reports. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers \"how many per X\" without listing anything.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -57,7 +57,12 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Section handle to count within; list_sections reports the handles. Omit to count across every section."
+                        "description": "Section handle to count within; list_sections reports the handles. Omit to count across every section, which is every top-level entry the install has."
+                    },
+                    "includeNested": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Count nested Matrix blocks alongside top-level entries, exactly as in list_entries. Left out by default, so the two tools answer about the same set of entries."
                     },
                     "type": {
                         "type": [
@@ -864,6 +869,12 @@
                         "default": 100,
                         "description": "How many rows to return. 1 or greater.",
                         "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 }
             }
@@ -928,7 +939,7 @@
             }
         },
         "list_entries": {
-            "description": "List entries. Filter by section, type, status, site, full-text search, field values (with :empty:/:notempty: and natural keys for relations), relatedTo, author, and date ranges. Returns entries in the payload format (natural keys for relations).",
+            "description": "List entries. Filter by section, type, status, site, full-text search, field values (with :empty:/:notempty: and natural keys for relations), relatedTo, author, and date ranges. Returns entries in the payload format (natural keys for relations). Lists top-level entries: a Matrix block is an entry too, but it belongs to no section, so blocks are left out unless includeNested.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -942,7 +953,12 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Section handle to list from; list_sections reports the handles. Omit to list across every section."
+                        "description": "Section handle to list from; list_sections reports the handles. Omit to list across every section, which is every top-level entry the install has."
+                    },
+                    "includeNested": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "List nested Matrix blocks alongside top-level entries. A block is an entry in Craft, but it belongs to no section and carries no title or slug of its own, so blocks are left out by default; pass true to audit block content across owners. Has no effect when section is set, because no block is in a section. To read one block, call get_entry with the block's own id."
                     },
                     "type": {
                         "type": [
@@ -1284,6 +1300,12 @@
                         "default": 50,
                         "description": "How many rows to return. 1 or greater.",
                         "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 }
             }
@@ -1819,11 +1841,17 @@
             "shape": {
                 "fromDatabase": {
                     "count": "<number>",
-                    "deprecations": []
+                    "deprecations": [],
+                    "hasMore": null,
+                    "limit": "<number>",
+                    "total": null
                 },
                 "fromLogs": {
                     "count": "<number>",
-                    "deprecations": []
+                    "deprecations": [],
+                    "hasMore": null,
+                    "limit": "<number>",
+                    "total": null
                 },
                 "hint": "<string>"
             }
@@ -1837,6 +1865,7 @@
                     "pending": "<number>",
                     "reserved": "<number>"
                 },
+                "hasMore": true,
                 "jobs": [
                     {
                         "channel": "<string>",
@@ -1849,7 +1878,9 @@
                         "ttr": "<number>"
                     }
                 ],
-                "status": "<string>"
+                "limit": "<number>",
+                "status": "<string>",
+                "total": "<number>"
             }
         },
         "list_console_commands": {
@@ -1926,7 +1957,10 @@
                         "message": "<string>",
                         "timestamp": "<string>"
                     }
-                ]
+                ],
+                "hasMore": null,
+                "limit": "<number>",
+                "total": null
             }
         },
         "read_logs.text": {
@@ -2109,13 +2143,21 @@
             "status": "ok",
             "shape": {
                 "categories": [],
-                "count": "<number>"
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
             }
         },
         "list_users": {
             "status": "ok",
             "shape": {
                 "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>",
                 "users": [
                     {
                         "admin": true,
@@ -2135,7 +2177,7 @@
             "status": "ok",
             "shape": {
                 "key": "<string>",
-                "value": "<string>"
+                "value": true
             }
         },
         "get_project_config_diff": {
@@ -2628,6 +2670,7 @@
                         "warnings": []
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2645,6 +2688,7 @@
                         "title": "<string>"
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2696,6 +2740,7 @@
                         "warnings": []
                     }
                 ],
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2732,6 +2777,7 @@
                         "warnings": []
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -3036,7 +3082,9 @@
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
-                                "<string>"
+                                {
+                                    "unresolved": "<string>"
+                                }
                             ]
                         },
                         "translation": {
@@ -3297,7 +3345,9 @@
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
-                                "<string>"
+                                {
+                                    "unresolved": "<string>"
+                                }
                             ]
                         },
                         "translation": {
@@ -3347,6 +3397,7 @@
                         "type": "<string>"
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -3356,6 +3407,7 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "revisions": [
@@ -3377,6 +3429,7 @@
             "shape": {
                 "assets": [],
                 "count": "<number>",
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
