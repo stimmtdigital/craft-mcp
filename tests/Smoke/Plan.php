@@ -150,7 +150,15 @@ final class Plan {
             ['tool' => 'list_globals', 'args' => []],
             ['tool' => 'list_categories', 'args' => ['limit' => 5]],
             ['tool' => 'list_users', 'args' => ['limit' => 5]],
-            ['tool' => 'get_config', 'args' => ['key' => 'devMode']],
+            // A real key. This asked for 'devMode' with no category, which is
+            // not one, and the answer was the sentence "Unknown config
+            // category: devMode" delivered as the VALUE of a successful call.
+            // The step passed for as long as the tool kept doing that.
+            [
+                'tool' => 'get_config',
+                'args' => ['key' => 'general.devMode'],
+                'assert' => ['key' => 'general.devMode'],
+            ],
             ['tool' => 'get_project_config_diff', 'args' => []],
             ['tool' => 'get_database_info', 'args' => []],
             ['tool' => 'get_database_schema', 'args' => ['table' => 'entries']],

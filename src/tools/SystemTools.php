@@ -11,6 +11,7 @@ use craft\models\CategoryGroup;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
+use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -54,15 +55,13 @@ class SystemTools {
         $config = Craft::$app->getConfig();
 
         $value = match ($category) {
-            'general' => $setting
-                ? $config->getGeneral()->$setting ?? null
-                : (array) $config->getGeneral(),
+            'general' => $this->setting($config->getGeneral(), $setting, $key),
             // The credential settings are listed rather than left out: leaving
             // them out is what made the category disagree with the keyed read,
             // and told a caller the install has no database password. Which of
             // them are withheld is not decided here.
-            'db' => $setting
-                ? $config->getDb()->$setting ?? null
+            'db' => $setting !== null
+                ? $this->setting($config->getDb(), $setting, $key)
                 : [
                     'driver' => $config->getDb()->driver,
                     'server' => $config->getDb()->server,
@@ -75,13 +74,51 @@ class SystemTools {
                     'password' => $config->getDb()->password,
                 ],
             'custom' => $config->getConfigFromFile($setting ?? 'custom'),
-            default => "Unknown config category: {$category}",
+            default => throw new ToolCallException($this->unknownCategory($category)),
         };
 
         return [
             'key' => $key,
             'value' => Secrets::conceal($key, $value),
         ];
+    }
+
+    /**
+     * One setting off a config object, or the whole object as an array.
+     *
+     * A name that does not exist is refused rather than answered with null.
+     * Craft has settings that are legitimately null, so null for a misspelled
+     * name told a caller their typo was an unset setting, and nothing on the
+     * outside could tell those two apart.
+     */
+    private function setting(object $config, ?string $setting, string $key): mixed {
+        if ($setting === null) {
+            return (array) $config;
+        }
+
+        if (!property_exists($config, $setting)) {
+            $category = explode('.', $key, 2)[0];
+
+            throw new ToolCallException(
+                "Unknown config setting '{$key}'. Read the whole category to see what it holds: "
+                . "call get_config with key '{$category}'.",
+            );
+        }
+
+        return $config->$setting;
+    }
+
+    /**
+     * The suggestion is the useful half. A bare setting name is the likely
+     * mistake, and `devMode` used to answer with this very sentence as the
+     * VALUE of a successful call, which an agent has no way to read as failure.
+     */
+    private function unknownCategory(string $category): string {
+        $message = "Unknown config category '{$category}'. Use 'general', 'db', or 'custom.<file>'.";
+
+        return property_exists(Craft::$app->getConfig()->getGeneral(), $category)
+            ? $message . " Did you mean 'general.{$category}'?"
+            : $message;
     }
 
     /**
