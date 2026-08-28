@@ -16,15 +16,39 @@ arch('tools do not use echo or print')
 
 arch('no debugging functions in source')
     ->expect('stimmt\craft\Mcp')
-    ->not->toUse(['dd', 'dump', 'var_dump', 'print_r']);
+    ->not->toUse(['dd', 'dump', 'var_dump']);
+
+// print_r is banned as debug residue everywhere except the single class that
+// renders OutputMode::PRINT_R, which is a tinker output mode a caller asks for
+// by name. Transcript::printR() IS that feature; deleting the call would break
+// the mode. The exemption is one class wide on purpose: Transcript stays bound
+// by the rule above, and any other file reaching for print_r still fails.
+arch('print_r only renders the tinker output mode')
+    ->expect('stimmt\craft\Mcp')
+    ->not->toUse('print_r')
+    ->ignoring('stimmt\craft\Mcp\text\Transcript');
 
 arch('events extend yii base Event')
     ->expect('stimmt\craft\Mcp\events')
     ->toExtend('yii\base\Event');
 
-arch('models extend craft base Model')
+// src/models holds two different kinds of thing. Craft models (Settings) are
+// configured, validated and saved by Craft, so they must extend its base Model.
+// The three *Definition classes are not Craft models at all: they are final
+// readonly DTOs mirroring the SDK's #[McpTool], #[McpPrompt] and #[McpResource]
+// attributes field for field, and third-party plugins construct them
+// positionally. Extending craft\base\Model would give them setters, scenarios
+// and validation they must not have. They are named one by one rather than
+// excluded as a namespace, so a new class in src/models has to make the choice
+// deliberately instead of inheriting an exemption.
+arch('craft models extend craft base Model')
     ->expect('stimmt\craft\Mcp\models')
-    ->toExtend('craft\base\Model');
+    ->toExtend('craft\base\Model')
+    ->ignoring([
+        'stimmt\craft\Mcp\models\PromptDefinition',
+        'stimmt\craft\Mcp\models\ResourceDefinition',
+        'stimmt\craft\Mcp\models\ToolDefinition',
+    ]);
 
 arch('tool classes use strict types')
     ->expect('stimmt\craft\Mcp\tools')

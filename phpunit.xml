@@ -16,6 +16,13 @@
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
+        <!-- Arch lives outside tests/Unit, so it needs its own suite or it is
+             never collected. Keep it listed here: a plain `pest` run (composer
+             ci) executes every suite, and `composer test:arch` selects this
+             one by name instead of guessing at test names with a filter. -->
+        <testsuite name="Arch">
+            <file>tests/ArchTest.php</file>
+        </testsuite>
     </testsuites>
     <source>
         <include>
