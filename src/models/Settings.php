@@ -73,6 +73,18 @@ class Settings extends Model {
     public int $paginationLimit = 100;
 
     /**
+     * Largest single tool result to send, in bytes. 0 disables the check.
+     *
+     * Deliberately generous. Measured against this install, a `list_entries` at
+     * the default page size is about 118 KB and `describe_entry_schema` about
+     * 35 KB, so anything tight enough to prevent the transport deadlock would
+     * refuse ordinary calls. This catches the pathological end only, where a
+     * result nothing downstream can read is better refused with a sentence the
+     * caller can act on.
+     */
+    public int $maxResponseBytes = 1048576;
+
+    /**
      * Default save mode for entry writes: 'draft' (reviewable) or 'live'.
      */
     public string $entryWriteMode = 'draft';

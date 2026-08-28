@@ -1,0 +1,4 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "p", "version": "1"}}}
+{"jsonrpc": "2.0", "method": "notifications/initialized"}
+{"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": "list_entries", "arguments": {"limit": 100}}}
+{"jsonrpc": "2.0", "id": 21, "method": "tools/call", "params": {"name": "describe_entry_schema", "arguments": {"section": "pages"}}}

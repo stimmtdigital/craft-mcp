@@ -11,6 +11,8 @@ use Mcp\Schema\Content\Content;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use stimmt\craft\Mcp\enums\ResponseFormat;
+use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\support\Payload;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\text\Renderer;
 
@@ -83,8 +85,17 @@ final readonly class Presenter implements ReferenceHandlerInterface {
             return new CallToolResult($this->content($reference, $result, $arguments), isError: true);
         }
 
+        $content = $this->content($reference, $result, $arguments);
+        $refusal = Payload::overBudget($content, Mcp::settings()->maxResponseBytes);
+
+        // isError, not a successful result carrying an apology: a client reads
+        // the flag, and a tool that could not answer has not answered.
+        if ($refusal !== null) {
+            return new CallToolResult([new TextContent($refusal)], isError: true);
+        }
+
         return new CallToolResult(
-            $this->content($reference, $result, $arguments),
+            $content,
             structuredContent: $this->structured($reference, $result),
         );
     }
