@@ -28,6 +28,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\EntryResolver;
+use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\NestedPosition;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
@@ -71,6 +72,11 @@ class EntryWorkflowTools {
         ?RequestContext $context = null,
     ): array {
         SiteResolver::resolve($site);
+        // Resolved for the refusal, not the value: an unknown handle went
+        // straight to the query, which matched nothing, so a typo read as an
+        // empty review queue while 58 drafts sat in it. The tool's other two
+        // filters already refuse what they cannot resolve.
+        HandleResolver::section($section);
         Window::assert($limit, $offset);
 
         $query = Entry::find()

@@ -73,6 +73,18 @@ final class Buckets {
     /**
      * @return array{total: int, buckets?: list<array{key: string, count: int}>, truncated?: bool}
      */
+    /**
+     * Whether this grouping asks a question no single-site query can answer.
+     *
+     * Every row reports the site it was fetched from, so counting by site over
+     * a query pinned to one of them names that site and calls every other one
+     * empty. Asked before the query runs, because widening it afterwards is
+     * too late.
+     */
+    public static function spansSites(?string $groupBy): bool {
+        return $groupBy === 'site';
+    }
+
     public function collect(EntryQuery $query, ?string $groupBy): array {
         $total = (int) $query->count();
         if ($groupBy === null) {

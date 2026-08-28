@@ -88,7 +88,7 @@ final readonly class Loader implements LoaderInterface {
                 continue;
             }
 
-            $registry->registerTool($reference->tool, $reference->handler);
+            $registry->registerTool($this->strict($reference->tool), $reference->handler);
         }
     }
 
@@ -102,6 +102,40 @@ final readonly class Loader implements LoaderInterface {
      * to be able to answer every call it is offered.
      */
     private function inert(Tool $tool, Decision $decision): Tool {
+        return $this->rebuild(
+            $tool,
+            ['required' => []] + $tool->inputSchema,
+            trim($decision->label . ' ' . ($tool->description ?? '')),
+        );
+    }
+
+    /**
+     * The tool with unknown arguments refused rather than dropped.
+     *
+     * The SDK builds a top-level schema of type, properties and required, and
+     * never says whether anything else is allowed, so JSON Schema's default
+     * applies and a name nobody declared is simply ignored. The tool then
+     * answers as though the argument had never been passed:
+     * count_entries(sectionHandle: 'pages') counted every entry in the install
+     * and reported it as confidently as the spelling that works.
+     *
+     * That is the worst shape a wrong answer takes here, because nothing in the
+     * response marks it, and it applies to every parameter of every tool. The
+     * validator already runs, which is why the published minimums on limit and
+     * offset are enforced; it was only ever missing this one key.
+     *
+     * Set here rather than on each tool so a new tool cannot be added without
+     * it. Per-property permissiveness is untouched: the object parameters that
+     * accept free-form keys, filters and relatedTo, declare that on themselves.
+     */
+    private function strict(Tool $tool): Tool {
+        return $this->rebuild($tool, $tool->inputSchema + ['additionalProperties' => false], $tool->description);
+    }
+
+    /**
+     * @param array<string, mixed> $inputSchema
+     */
+    private function rebuild(Tool $tool, array $inputSchema, ?string $description): Tool {
         return new Tool(
             name: $tool->name,
             title: $tool->title,
@@ -114,8 +148,8 @@ final readonly class Loader implements LoaderInterface {
             // which its own validator then rejects with "properties must be an
             // object". The caller got a schema error instead of the sentence
             // explaining why the tool cannot run.
-            inputSchema: ['required' => []] + $tool->inputSchema,
-            description: trim($decision->label . ' ' . ($tool->description ?? '')),
+            inputSchema: $inputSchema + ['additionalProperties' => false],
+            description: $description,
             annotations: $tool->annotations,
             icons: $tool->icons,
             meta: $tool->meta,

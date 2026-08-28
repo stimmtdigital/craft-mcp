@@ -196,6 +196,13 @@ class EntryTools {
         }
 
         $this->filters->apply($query, $filters, $relatedTo, $author, $updatedAfter, $updatedBefore, $createdAfter, $createdBefore, $site);
+
+        // Only when the caller has not pinned a site themselves: having asked
+        // about one site, a single bucket for it is the honest answer.
+        if ($site === null && Buckets::spansSites($groupBy)) {
+            $query->siteId('*');
+        }
+
         Authorization::scopeQuery($query);
 
         $result = (new Buckets())->collect($query, $groupBy);

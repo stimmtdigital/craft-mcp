@@ -50,4 +50,15 @@ describe('Buckets eager loading', function () {
         expect($source)->toContain("['status' => null]")
             ->and($source)->toContain('EagerLoadingFieldInterface');
     });
+
+    // Counting by site over a query pinned to one site names that site and
+    // calls every other one empty: both sites here hold 60 entries, and the
+    // answer was "default 60" with nl absent entirely.
+    it('knows that counting by site needs more than one site', function () {
+        expect(Buckets::spansSites('site'))->toBeTrue();
+    });
+
+    it('leaves every other grouping to the query it was given', function (?string $groupBy) {
+        expect(Buckets::spansSites($groupBy))->toBeFalse();
+    })->with([['section'], ['status'], ['type'], ['author'], ['month:dateUpdated'], [null], ['siteName']]);
 });
