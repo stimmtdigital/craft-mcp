@@ -71,4 +71,26 @@ describe('SqlSkeleton', function () {
             ini_set('pcre.backtrack_limit', (string) $limit);
         }
     });
+
+    // The clause has to land as code. Appended inline it was swallowed by a
+    // trailing comment, so `-- x` turned `limit: 1` into the whole table: the
+    // same silent wrong answer the skeleton exists to prevent, through the
+    // other door.
+    it('puts an appended limit where the database will see it', function (string $sql) {
+        expect(SqlSkeleton::of($sql)->bounded(1))->toEndWith("\nLIMIT 1");
+    })->with([
+        'trailing line comment' => 'SELECT id FROM sites -- x',
+        'trailing hash comment' => 'SELECT id FROM sites # trailing',
+        'a commented limit is not a limit' => 'SELECT id FROM elements -- LIMIT 5',
+        'no comment at all' => 'SELECT id FROM sites',
+        'trailing semicolon' => 'SELECT id FROM sites;',
+    ]);
+
+    it('leaves a statement the caller already bounded exactly as it is', function (string $sql) {
+        expect(SqlSkeleton::of($sql)->bounded(99))->toBe($sql);
+    })->with([
+        'plain' => 'SELECT id FROM sites LIMIT 3',
+        'with offset' => 'SELECT id FROM sites LIMIT 3 OFFSET 2',
+        'lowercase' => 'select id from sites limit 3',
+    ]);
 });

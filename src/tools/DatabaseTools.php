@@ -157,13 +157,11 @@ class DatabaseTools {
         $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
         $context?->getClientLogger()?->info('SQL query validated by the read guard');
 
-        // Bound the result set unless the caller already bounded it. Asked of
-        // the statement's skeleton rather than its text: the word inside
-        // `WHERE 'limit' = 'limit'` is data, and reading it as a clause meant a
-        // call asking for two rows silently returned every row in the table.
-        $statement = SqlSkeleton::of($trimmedSql)->has('LIMIT')
-            ? $trimmedSql
-            : rtrim($trimmedSql, ';') . " LIMIT {$limit}";
+        // Bound the result set unless the caller already bounded it. The
+        // decision reads the statement's skeleton rather than its text, since
+        // the word inside `WHERE 'limit' = 'limit'` is data, and taking it for
+        // a clause meant a call asking for two rows returned the whole table.
+        $statement = SqlSkeleton::of($trimmedSql)->bounded($limit);
 
         $context?->getClientLogger()?->debug("SQL query text: {$statement}");
 

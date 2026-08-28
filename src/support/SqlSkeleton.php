@@ -35,6 +35,7 @@ final readonly class SqlSkeleton {
         REGEX;
 
     private function __construct(
+        private string $sql,
         private string $code,
     ) {
     }
@@ -59,7 +60,26 @@ final readonly class SqlSkeleton {
             );
         }
 
-        return new self($code);
+        return new self($sql, $code);
+    }
+
+    /**
+     * The statement with a row limit guaranteed, left alone when the caller
+     * already bounded it.
+     *
+     * The clause goes on its own line because a statement may end in a comment.
+     * Appended inline, `SELECT id FROM sites -- x` became
+     * `SELECT id FROM sites -- x LIMIT 1`, where the limit is inside the
+     * comment and the database never sees it: the caller asked for one row and
+     * got the table. A newline ends a line comment, so the clause lands as
+     * code either way.
+     */
+    public function bounded(int $limit): string {
+        if ($this->has('LIMIT')) {
+            return $this->sql;
+        }
+
+        return rtrim($this->sql, "; \t\n\r") . "\nLIMIT {$limit}";
     }
 
     /**
