@@ -15,6 +15,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\EventHandlers;
 use stimmt\craft\Mcp\support\SqlReadGuard;
 use stimmt\craft\Mcp\support\Tail;
+use stimmt\craft\Mcp\support\Window;
 use Throwable;
 
 /**
@@ -36,9 +37,15 @@ class DebugTools {
     public function getQueueJobs(
         #[Schema(description: 'Which jobs to list: pending, reserved (currently running), failed, or done. "done" returns a count only. Any other value is refused.')]
         string $status = 'pending',
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
         ?RequestContext $context = null,
     ): array {
+        // Before the value reaches a LIMIT clause it is interpolated into:
+        // out of range it is not a wrong answer but a SQL syntax error
+        // handing the caller the whole statement.
+        Window::assert($limit);
+
         $db = Craft::$app->getDb();
         $prefix = $db->tablePrefix;
         $table = $prefix . 'queue';
@@ -170,7 +177,13 @@ class DebugTools {
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::DEBUGGING)]
-    public function getDeprecations(int $limit = 50, ?RequestContext $context = null): array {
+    public function getDeprecations(
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
+        int $limit = 50,
+        ?RequestContext $context = null,
+    ): array {
+        Window::assert($limit);
+
         $logPath = Craft::$app->getPath()->getLogPath();
         $webLog = $logPath . '/web.log';
 

@@ -14,6 +14,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\Window;
 
 /**
  * Category MCP tools for Craft CMS.
@@ -34,9 +35,11 @@ class CategoryTools {
     public function listCategories(
         #[Schema(description: 'Category group handle. Omit to list categories from every group.')]
         ?string $group = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 100,
         ?RequestContext $context = null,
     ): array {
+        Window::assert($limit);
         $groupModel = HandleResolver::categoryGroup($group);
         $query = Category::find()->limit($limit);
 

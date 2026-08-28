@@ -27,10 +27,12 @@ use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\EntryResolver;
 use stimmt\craft\Mcp\support\NestedPosition;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SiteResolver;
+use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\support\WriteParams;
 
 /**
@@ -62,11 +64,14 @@ class EntryWorkflowTools {
         ?string $site = null,
         #[Schema(description: 'Username or email address of the person who created the draft.')]
         ?string $creator = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 20,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
         SiteResolver::resolve($site);
+        Window::assert($limit, $offset);
 
         $query = Entry::find()
             ->drafts()
@@ -106,11 +111,14 @@ class EntryWorkflowTools {
         int $id,
         #[Schema(description: 'Site handle whose revisions to list; list_sites reports the handles.')]
         ?string $site = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 20,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
         $this->assertCanonical($id, SiteResolver::resolve($site));
+        Window::assert($limit, $offset);
 
         $query = Entry::find()
             ->revisionOf($id)
@@ -144,7 +152,7 @@ class EntryWorkflowTools {
         ?string $site = null,
         ?RequestContext $context = null,
     ): array {
-        $entry = Lookup::withDrafts($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
+        $entry = EntryResolver::writable($id, SiteResolver::resolve($site), 'publish_entry');
         Authorization::assertCanPublish($entry);
 
         if ($entry->getIsDraft()) {
@@ -169,7 +177,7 @@ class EntryWorkflowTools {
         ?string $site = null,
         ?RequestContext $context = null,
     ): array {
-        $entry = Lookup::withDrafts($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
+        $entry = EntryResolver::writable($id, SiteResolver::resolve($site), 'delete_entry');
         Authorization::assertCanDelete($entry);
 
         // Read before the delete, while the element still has site rows to
@@ -234,7 +242,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'copy_entry_to_site',
         title: 'Copy an entry to another site',
-        description: 'Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps nothing per site and the two sites already read the same. describe_entry_schema reports each field\'s translation method.',
+        description: 'Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps no field per site, so its fields already match on both sites, though their titles and slugs still may not. describe_entry_schema reports each field\'s translation method.',
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
@@ -261,7 +269,13 @@ class EntryWorkflowTools {
         if ($fields === []) {
             return Response::success([
                 'copiedFields' => [],
-                'message' => "Nothing to copy: entry {$id} has no field that holds a separate value per site, so '{$toSite}' already reads the same as '{$fromSite}'. describe_entry_schema reports each field's translation method.",
+                // Scoped to the fields on purpose. This sentence used to end
+                // "so '{$toSite}' already reads the same as '{$fromSite}'",
+                // which is a claim about the whole entry that the tool has no
+                // basis for: title and slug are per-site and deliberately left
+                // alone, so two sites whose FIELDS all match can still read
+                // "Audit Probe Alpha" and "Audit Probe Alpha Updated".
+                'message' => "Nothing to copy: entry {$id} has no field that holds a separate value per site, so every field already reads the same on '{$toSite}' as on '{$fromSite}'. Title and slug are per-site and this tool never copies them, so those may still differ. describe_entry_schema reports each field's translation method.",
             ]);
         }
 

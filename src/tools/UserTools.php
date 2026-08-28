@@ -14,6 +14,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\Window;
 
 /**
  * User MCP tools for Craft CMS.
@@ -34,13 +35,18 @@ class UserTools {
     public function listUsers(
         #[Schema(description: 'User group handle. Omit to list users from every group.')]
         ?string $group = null,
-        #[Schema(description: 'Account status: active, pending, suspended, locked, or inactive.')]
+        // credentialed is the sixth value the guard accepts and the error
+        // advertises, and it works; leaving it out of the description was the
+        // doc being wrong about the guard, not the guard being wrong.
+        #[Schema(description: 'Account status: active, pending, suspended, locked, inactive, or credentialed (active or pending, which is every account that can sign in).')]
         ?string $status = null,
         #[Schema(description: 'Exact email address to match.')]
         ?string $email = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
         ?RequestContext $context = null,
     ): array {
+        Window::assert($limit);
         $groupModel = HandleResolver::userGroup($group);
         $query = User::find()->limit($limit);
 

@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\HandleResolver;
+use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\text\Serializer;
 
 /**
@@ -46,10 +47,14 @@ class AssetTools {
         ?string $kind = null,
         #[Schema(description: 'Matched as a substring of the filename, not as an exact name.')]
         ?string $filename = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
+        Window::assert($limit, $offset);
+
         $volumeModel = HandleResolver::volume($volume);
         $folder = HandleResolver::assetFolder($folderId);
 

@@ -5,10 +5,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../Fixtures/RealCraft.php';
 require_once __DIR__ . '/../../Fixtures/CustomFieldBehaviorStub.php';
 
-use craft\elements\Entry;
 use Mcp\Capability\Discovery\DocBlockParser;
 use Mcp\Capability\Discovery\SchemaGenerator;
-use Mcp\Exception\ToolCallException;
 use stimmt\craft\Mcp\elements\query\Projection;
 use stimmt\craft\Mcp\tools\EntryTools;
 
@@ -72,40 +70,19 @@ describe('get_entry on an address that matches several entries', function () use
     });
 });
 
-describe('update_entry on a revision', function () use ($guard, $methodBody) {
+describe('update_entry on a revision', function () use ($methodBody) {
     // Revisions stay findable on purpose: a blind miss could not name the id
     // that does work. Reads keep working on them, which is what history is
     // for; only the write path refuses.
-    it('refuses a revision id and names the canonical entry to write instead', function () use ($guard) {
-        $revision = new Entry(['id' => 3040, 'revisionId' => 9, 'canonicalId' => 3011, 'siteId' => 1]);
-
-        expect(fn () => $guard('assertWritable', [$revision]))
-            ->toThrow(ToolCallException::class, 'Entry 3040 is a revision of entry 3011');
+    //
+    // The refusal itself moved to EntryResolver, which publish_entry and
+    // delete_entry now share (they answered "not found" for an id get_entry
+    // reads in full); EntryResolverTest owns its wording. What stays here is
+    // that update_entry asks it, and asks it in time.
+    it('asks the shared guard rather than keeping a copy', function () use ($methodBody) {
+        expect($methodBody('updateEntry'))
+            ->toContain("EntryResolver::assertWritable(\$entry, 'update_entry')");
     });
-
-    it('points the caller at the id that works', function () use ($guard) {
-        $revision = new Entry(['id' => 3040, 'revisionId' => 9, 'canonicalId' => 3011, 'siteId' => 1]);
-
-        try {
-            $guard('assertWritable', [$revision]);
-        } catch (ToolCallException $e) {
-            expect($e->getMessage())->toContain('frozen history')
-                ->toContain('Call update_entry with id 3011');
-
-            return;
-        }
-
-        throw new RuntimeException('Expected a ToolCallException for a revision id');
-    });
-
-    it('lets a canonical entry and a draft through', function (array $config) use ($guard) {
-        $guard('assertWritable', [new Entry($config)]);
-
-        expect(true)->toBeTrue();
-    })->with([
-        'canonical' => [['id' => 3011, 'siteId' => 1]],
-        'draft' => [['id' => 3099, 'draftId' => 4, 'canonicalId' => 3011, 'siteId' => 1]],
-    ]);
 
     // Ordering is the whole point: a revision rejected after the write would
     // still have written. Behaviour of the write itself needs a booted
@@ -113,8 +90,8 @@ describe('update_entry on a revision', function () use ($guard, $methodBody) {
     it('guards before anything is written', function () use ($methodBody) {
         $body = $methodBody('updateEntry');
 
-        expect(strpos($body, '$this->assertWritable($entry)'))->toBeInt()
-            ->and(strpos($body, '$this->assertWritable($entry)'))
+        expect(strpos($body, 'EntryResolver::assertWritable('))->toBeInt()
+            ->and(strpos($body, 'EntryResolver::assertWritable('))
             ->toBeLessThan((int) strpos($body, '$this->writer->update('));
     });
 });
@@ -137,27 +114,24 @@ describe('unknown section, type and status', function () use ($entryToolsSource)
     });
 });
 
-describe('limit and offset outside their range', function () use ($guard) {
+describe('limit and offset outside their range', function () use ($methodBody) {
     // One rule for all three, because they were three different unstated
     // behaviours: a negative limit dropped the LIMIT clause and returned the
     // whole section, 0 returned nothing, and a negative offset was ignored.
     // Refused rather than clamped, because the response echoes both values
     // back and a silent correction reads as a value that was honoured.
-    it('refuses a limit below one and points at count_entries', function (int $limit) use ($guard) {
-        expect(fn () => $guard('assertWindow', [$limit, 0]))
-            ->toThrow(ToolCallException::class, 'limit must be 1 or greater');
-    })->with([[0], [-5]]);
+    //
+    // The rule itself is Window's now, and it is swept across every tool
+    // taking the same two parameters by WindowSurfaceTest, which is what the
+    // per-tool copy could not be. Here: that list_entries asks for it, and
+    // still publishes the range a client reads before calling.
+    it('asks the shared guard before it builds the query', function () use ($methodBody) {
+        $body = $methodBody('listEntries');
 
-    it('refuses a negative offset', function () use ($guard) {
-        expect(fn () => $guard('assertWindow', [20, -10]))
-            ->toThrow(ToolCallException::class, 'offset must be 0 or greater, got -10');
+        expect(strpos($body, 'Window::assert($limit, $offset)'))->toBeInt()
+            ->and(strpos($body, 'Window::assert($limit, $offset)'))
+            ->toBeLessThan((int) strpos($body, 'Entry::find()'));
     });
-
-    it('accepts the defaults and the smallest usable page', function (int $limit, int $offset) use ($guard) {
-        $guard('assertWindow', [$limit, $offset]);
-
-        expect(true)->toBeTrue();
-    })->with([[20, 0], [1, 0], [500, 1000]]);
 
     it('publishes the range in the schema, so a client can refuse it first', function () {
         $properties = (new SchemaGenerator(new DocBlockParser()))
@@ -165,6 +139,15 @@ describe('limit and offset outside their range', function () use ($guard) {
 
         expect($properties['limit'])->toMatchArray(['type' => 'integer', 'default' => 20, 'minimum' => 1])
             ->and($properties['offset'])->toMatchArray(['type' => 'integer', 'default' => 0, 'minimum' => 0]);
+    });
+
+    // The hint is specific to this tool, so it survives the move to a shared
+    // description: count_entries is the answer to "I only wanted the total".
+    it('still points at count_entries for a total without rows', function () {
+        $properties = (new SchemaGenerator(new DocBlockParser()))
+            ->generate(new ReflectionMethod(EntryTools::class, 'listEntries'))['properties'];
+
+        expect($properties['limit']['description'])->toContain('count_entries');
     });
 });
 

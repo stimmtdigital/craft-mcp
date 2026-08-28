@@ -75,6 +75,36 @@ describe('list_revisions refuses an id that is not canonical', function () {
     });
 });
 
+// publish_entry and delete_entry resolved their id with Lookup::withDrafts,
+// which excludes revisions, so a revisionElementId came back as "Entry 3306
+// not found" in the same session where get_entry 3306 returned the full
+// payload and update_entry 3306 named the canonical. The element plainly
+// exists; only the lookup refused to see it, which sends an agent hunting for
+// a missing id instead of at the canonical one.
+describe('publish_entry and delete_entry on a revision id', function () {
+    it('resolves the id through the shared write guard', function (string $method, string $tool) {
+        expect(workflowMethodBody($method))
+            ->toContain("EntryResolver::writable(\$id, SiteResolver::resolve(\$site), '{$tool}')")
+            ->and(workflowMethodBody($method))->not->toContain('Lookup::withDrafts($id');
+    })->with([
+        'publish' => ['publishEntry', 'publish_entry'],
+        'delete' => ['deleteEntry', 'delete_entry'],
+    ]);
+
+    // Naming the canonical is only possible while the revision is still
+    // findable, which is why the shared guard resolves in every state and
+    // refuses afterwards; EntryResolverTest owns the diagnosis it produces.
+    it('refuses before it acts', function (string $method, string $acts) {
+        $body = workflowMethodBody($method);
+
+        expect(strpos($body, 'EntryResolver::writable('))->toBeInt()
+            ->and(strpos($body, 'EntryResolver::writable('))->toBeLessThan((int) strpos($body, $acts));
+    })->with([
+        'publish' => ['publishEntry', '$this->applyDraft('],
+        'delete' => ['deleteEntry', 'deleteElement('],
+    ]);
+});
+
 // copy_entry_to_site claimed to "copy field values" while copying every field,
 // translatable or not. A field Craft does not treat as translatable already
 // holds one value shared by every site, so copying it states what was already
@@ -104,6 +134,27 @@ describe('copy_entry_to_site copies only what a site can hold separately', funct
         expect($this->body)->toContain('if ($fields === []) {')
             ->and($this->body)->toContain("'copiedFields' => [],")
             ->and($this->body)->toContain('Nothing to copy');
+    });
+
+    // The sentence used to end "so 'nl' already reads the same as 'default'",
+    // which is a claim about the whole entry from a tool that only looked at
+    // the fields. Observed live with the titles reading "Audit Probe Alpha"
+    // and "Audit Probe Alpha Updated", so the sentence was simply false.
+    it('claims only what it looked at when there is nothing to copy', function () {
+        // The method body still quotes the old sentence in the comment saying
+        // why it went, so the check is on the message line itself.
+        $message = (string) strstr($this->body, "'message' => \"Nothing to copy");
+
+        expect($message)->toContain('every field already reads the same on')
+            ->toContain('Title and slug are per-site and this tool never copies them')
+            ->and($message)->not->toContain("already reads the same as '{\$fromSite}'");
+    });
+
+    it('makes the same narrower claim in its description', function () {
+        $description = workflowToolDescription('copyEntryToSite');
+
+        expect($description)->toContain('its fields already match on both sites')
+            ->and($description)->not->toContain('the two sites already read the same');
     });
 
     it('says in its description that shared fields are left alone', function () {

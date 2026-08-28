@@ -21,6 +21,7 @@ use stimmt\craft\Mcp\logging\Entry;
 use stimmt\craft\Mcp\logging\Formatter;
 use stimmt\craft\Mcp\logging\Parser;
 use stimmt\craft\Mcp\pipeline\Presenter;
+use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\text\Palette;
 
 /**
@@ -84,6 +85,7 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function readLogs(
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
         #[Schema(description: 'Exact level to keep, case-insensitive, as the log line spells it (error, warning, info, trace). It is not a minimum, so "warning" excludes errors.')]
         ?string $level = null,
@@ -95,6 +97,8 @@ class SystemTools {
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array|TextContent {
+        Window::assert($limit);
+
         $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
 
         return match ($output) {

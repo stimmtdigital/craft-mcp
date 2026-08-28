@@ -16,6 +16,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\contracts\ConditionalProvider;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\Window;
 
 /**
  * Commerce tools for Craft CMS.
@@ -70,11 +71,14 @@ class CommerceTools implements ConditionalProvider {
     public function listProducts(
         #[Schema(description: 'Product type handle; list_product_types reports the handles.')]
         ?string $type = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 20,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
         $this->assertCommerceAvailable();
+        Window::assert($limit, $offset);
 
         $query = Product::find();
 
@@ -167,11 +171,14 @@ class CommerceTools implements ConditionalProvider {
     public function listOrders(
         #[Schema(description: 'Order status handle; list_order_statuses reports the handles. Only completed orders are listed either way, so carts never appear.')]
         ?string $status = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 20,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
         $this->assertCommerceAvailable();
+        Window::assert($limit, $offset);
 
         $query = Order::find();
 

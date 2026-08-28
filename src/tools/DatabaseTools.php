@@ -16,6 +16,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SqlReadGuard;
+use stimmt\craft\Mcp\support\Window;
 use Throwable;
 
 /**
@@ -140,12 +141,16 @@ class DatabaseTools {
     public function runQuery(
         #[Schema(description: 'The SELECT statement to run. Anything the read guard does not recognise as read-only is refused before execution.')]
         string $sql,
-        #[Schema(description: 'Row cap, appended as a LIMIT clause only when the statement does not already carry one.')]
+        #[Schema(description: 'Row cap, appended as a LIMIT clause only when the statement does not already carry one. ' . Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 100,
         #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array {
+        // Interpolated into the LIMIT clause below, so out of range this is a
+        // SQL syntax error carrying the whole statement, not an answer.
+        Window::assert($limit);
+
         $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
 
         $trimmedSql = SqlReadGuard::assertSelectOnly($sql);

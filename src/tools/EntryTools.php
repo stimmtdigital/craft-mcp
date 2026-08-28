@@ -32,10 +32,12 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\ElementModule;
+use stimmt\craft\Mcp\support\EntryResolver;
 use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SiteResolver;
+use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\support\WriteParams;
 
 /**
@@ -99,15 +101,15 @@ class EntryTools {
         ?string $createdBefore = null,
         #[Schema(type: 'array', description: 'Projection: return only these attributes and field handles per entry (id and title always included) instead of the full payload. Ideal for scanning many entries.', items: ['type' => 'string'])]
         ?array $fields = null,
-        #[Schema(description: 'How many entries to return. 1 or greater; count_entries answers a total without listing rows.', minimum: 1)]
+        #[Schema(description: Window::LIMIT_DESCRIPTION . ' count_entries answers a total without listing rows.', minimum: Window::MIN_LIMIT)]
         int $limit = 20,
-        #[Schema(description: 'How many entries to skip before the first returned row. 0 or greater.', minimum: 0)]
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
         SiteResolver::resolve($site);
         $this->assertScope($section, $type, $status);
-        $this->assertWindow($limit, $offset);
+        Window::assert($limit, $offset);
 
         $query = Entry::find()->limit($limit)->offset($offset);
 
@@ -310,7 +312,7 @@ class EntryTools {
         ?RequestContext $context = null,
     ): array {
         $entry = $this->find($id, null, null, $site);
-        $this->assertWritable($entry);
+        EntryResolver::assertWritable($entry, 'update_entry');
         Authorization::assertCanSave($entry);
         $this->assertUnchanged($entry, $expectedDateUpdated);
 
@@ -460,27 +462,6 @@ class EntryTools {
     }
 
     /**
-     * A revision is frozen history. Writing to one saved an element nobody
-     * reads and reported success under the CANONICAL id, which was never
-     * touched, so the agent believed an edit that does not exist. Refused
-     * here rather than made unfindable, because being found is what lets the
-     * refusal name the id that does work; get_entry still reads a revision,
-     * which is the whole point of keeping history.
-     */
-    private function assertWritable(Entry $entry): void {
-        if (!$entry->getIsRevision()) {
-            return;
-        }
-
-        $canonicalId = (int) $entry->getCanonicalId();
-
-        throw new ToolCallException(
-            "Entry {$entry->id} is a revision of entry {$canonicalId}; revisions are frozen history and cannot be written to."
-            . " Call update_entry with id {$canonicalId} instead.",
-        );
-    }
-
-    /**
      * Refuse a section, type or status the install does not have.
      *
      * WHY: an unknown handle reached Craft as a filter nothing matches, so
@@ -492,33 +473,6 @@ class EntryTools {
     private function assertScope(?string $section, ?string $type, ?string $status): void {
         HandleResolver::entryType($type, HandleResolver::section($section));
         HandleResolver::entryStatus($status);
-    }
-
-    /**
-     * WHY refused rather than clamped: the response echoes limit and offset
-     * back, so a value quietly corrected reads as a value that was honoured.
-     * The three out-of-range spellings each behaved differently underneath and
-     * none of them was what the caller asked for: a negative limit dropped the
-     * LIMIT clause and returned the entire section into the model's context, 0
-     * returned nothing, and a negative offset was ignored. count_entries is
-     * the tool for a total without rows.
-     *
-     * The same range is published as a schema minimum, which is what an agent
-     * reads before it calls and what the SDK enforces on the wire, so this
-     * runs only for a direct PHP call. It stays because the range is the
-     * method's own invariant, not something it may only hold when a validating
-     * transport happens to be in front of it.
-     */
-    private function assertWindow(int $limit, int $offset): void {
-        if ($limit < 1) {
-            throw new ToolCallException(
-                "limit must be 1 or greater, got {$limit}. Use count_entries for a total without listing rows.",
-            );
-        }
-
-        if ($offset < 0) {
-            throw new ToolCallException("offset must be 0 or greater, got {$offset}");
-        }
     }
 
     private function example(string $example, string $section): Entry {
