@@ -12,6 +12,15 @@
          displayDetailsOnTestsThatTriggerErrors="true"
          displayDetailsOnTestsThatTriggerNotices="true"
          displayDetailsOnTestsThatTriggerWarnings="true">
+    <!-- Pest's architecture tests parse every source file and its vendor
+         dependencies, which needs more than PHP's 128M default: the host CLI
+         hit the ceiling and died mid-suite ("Premature end of PHP process")
+         while the same tests passed in DDEV, whose limit is higher. Setting it
+         here rather than in the composer script keeps the gate identical
+         wherever it runs, including from an IDE. -->
+    <php>
+        <ini name="memory_limit" value="512M"/>
+    </php>
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
