@@ -14,7 +14,7 @@
     "toolCount": 50,
     "tools": {
         "copy_entry_to_site": {
-            "description": "Copy an entry's field values from one site to another as a draft on the target site. Copies values; does not machine-translate.",
+            "description": "Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps nothing per site and the two sites already read the same. describe_entry_schema reports each field's translation method.",
             "annotations": {
                 "destructiveHint": false,
                 "openWorldHint": false
@@ -374,7 +374,7 @@
             }
         },
         "duplicate_entry": {
-            "description": "Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for \"like X but change these\".",
+            "description": "Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for \"like X but change these\". In a structure section the copy keeps the original's place: same parent, immediately after it. The response reports that parent, null meaning top level or a section without a structure.",
             "annotations": {
                 "destructiveHint": false,
                 "openWorldHint": false
@@ -750,7 +750,7 @@
                             "integer"
                         ],
                         "default": null,
-                        "description": "Folder id to list the children of. Omit for the children of the volume's root folder."
+                        "description": "Folder id to list the children of; a folder id names its volume on its own, so volume is optional beside it. Omit for the children of the volume's root folder."
                     }
                 }
             }
@@ -1008,11 +1008,15 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 20
+                        "default": 20,
+                        "description": "How many entries to return. 1 or greater; count_entries answers a total without listing rows.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many entries to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 }
             }
@@ -1121,7 +1125,7 @@
             }
         },
         "list_revisions": {
-            "description": "List an entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers \"when did this change and by whom\". Read a revision's full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.",
+            "description": "List a canonical entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers \"when did this change and by whom\". Read a revision's full content with get_entry using its revisionElementId; the canonical entry id always holds the current content. History belongs to the canonical entry, so a draftElementId from list_drafts is refused, naming the canonicalId to ask for instead.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -1131,7 +1135,7 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Canonical entry id whose history to list."
+                        "description": "Canonical entry id whose history to list. A draft or revision id is refused with the canonical id to ask for instead."
                     },
                     "site": {
                         "type": [
@@ -1440,7 +1444,7 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Element id to write: a canonical entry, a draft (draftElementId), or a single Matrix block by its own entry id."
+                        "description": "Element id to write: a canonical entry, a draft (draftElementId), or a single Matrix block by its own entry id. A revisionElementId is refused, naming the canonical id to write instead."
                     },
                     "site": {
                         "type": [
@@ -2044,20 +2048,10 @@
                             "companyName": null,
                             "companyZipcode": null,
                             "facebook": null,
-                            "favicon": {
-                                "__class": "<string>",
-                                "__note": "<string>",
-                                "count": "<number>",
-                                "elements": []
-                            },
+                            "favicon": [],
                             "instagram": null,
                             "linkedin": null,
-                            "logo": {
-                                "__class": "<string>",
-                                "__note": "<string>",
-                                "count": "<number>",
-                                "elements": []
-                            }
+                            "logo": []
                         },
                         "handle": "<string>",
                         "id": "<number>",
@@ -2989,7 +2983,8 @@
                         },
                         "translation": {
                             "method": "<string>",
-                            "perSite": "<bool>"
+                            "perSite": false,
+                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }
@@ -3249,7 +3244,8 @@
                         },
                         "translation": {
                             "method": "<string>",
-                            "perSite": "<bool>"
+                            "perSite": false,
+                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }
@@ -3601,6 +3597,7 @@
                     "url": "<string>",
                     "warnings": []
                 },
+                "parent": null,
                 "success": true,
                 "warnings": []
             }
@@ -3652,27 +3649,14 @@
         "copy_entry_to_site": {
             "status": "ok",
             "shape": {
-                "action": "<string>",
-                "cpEditUrl": "<string>",
-                "draftElementId": "<number>",
-                "draftId": "<number>",
-                "elementId": "<number>",
-                "errors": [],
-                "state": "<string>",
-                "success": true,
-                "warnings": []
+                "copiedFields": [],
+                "message": "<string>",
+                "success": true
             }
         },
         "delete_entry.cross_site_draft": {
-            "status": "ok",
-            "shape": {
-                "affectedSites": [
-                    "<string>"
-                ],
-                "deleted": "<number>",
-                "restorable": true,
-                "success": true
-            }
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
         },
         "delete_entry.relating": {
             "status": "ok",

@@ -491,7 +491,7 @@
                             "integer"
                         ],
                         "default": null,
-                        "description": "Folder id to list the children of. Omit for the children of the volume's root folder."
+                        "description": "Folder id to list the children of; a folder id names its volume on its own, so volume is optional beside it. Omit for the children of the volume's root folder."
                     }
                 }
             }
@@ -749,11 +749,15 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 20
+                        "default": 20,
+                        "description": "How many entries to return. 1 or greater; count_entries answers a total without listing rows.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many entries to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 }
             }
@@ -862,7 +866,7 @@
             }
         },
         "list_revisions": {
-            "description": "List an entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers \"when did this change and by whom\". Read a revision's full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.",
+            "description": "List a canonical entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers \"when did this change and by whom\". Read a revision's full content with get_entry using its revisionElementId; the canonical entry id always holds the current content. History belongs to the canonical entry, so a draftElementId from list_drafts is refused, naming the canonicalId to ask for instead.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -872,7 +876,7 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Canonical entry id whose history to list."
+                        "description": "Canonical entry id whose history to list. A draft or revision id is refused with the canonical id to ask for instead."
                     },
                     "site": {
                         "type": [
@@ -1622,20 +1626,10 @@
                             "companyName": null,
                             "companyZipcode": null,
                             "facebook": null,
-                            "favicon": {
-                                "__class": "<string>",
-                                "__note": "<string>",
-                                "count": "<number>",
-                                "elements": []
-                            },
+                            "favicon": [],
                             "instagram": null,
                             "linkedin": null,
-                            "logo": {
-                                "__class": "<string>",
-                                "__note": "<string>",
-                                "count": "<number>",
-                                "elements": []
-                            }
+                            "logo": []
                         },
                         "handle": "<string>",
                         "id": "<number>",
@@ -2567,7 +2561,8 @@
                         },
                         "translation": {
                             "method": "<string>",
-                            "perSite": "<bool>"
+                            "perSite": false,
+                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }
@@ -2827,7 +2822,8 @@
                         },
                         "translation": {
                             "method": "<string>",
-                            "perSite": "<bool>"
+                            "perSite": false,
+                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }

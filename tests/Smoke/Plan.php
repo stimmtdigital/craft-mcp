@@ -364,9 +364,13 @@ final class Plan {
                     'toSite' => '{{site.second}}',
                 ],
                 'capture' => ['crossSite.draftId' => 'draftElementId'],
-                // A copy lands as a draft like every other write, so nothing
-                // reaches the second site's live content without review.
-                'assert' => ['success' => true, 'state' => 'draft', 'draftElementId' => 'isInt'],
+                // What it copied, always reported, because the answer depends on
+                // the install: only fields the target site keeps separately are
+                // worth copying, and on an install where none are, the honest
+                // result is an empty list and no draft at all. The delete step
+                // below captures the draft id and skips itself when there is
+                // none, so both outcomes stay covered.
+                'assert' => ['success' => true, 'copiedFields' => 'present'],
             ],
             [
                 'tool' => 'delete_entry',
