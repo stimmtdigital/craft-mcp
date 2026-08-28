@@ -117,7 +117,7 @@ class EntryWorkflowTools {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        $this->assertCanonical($id, SiteResolver::resolve($site));
+        $this->canonical($id, SiteResolver::resolve($site), 'list_revisions');
         Window::assert($limit, $offset);
 
         $query = Entry::find()
@@ -213,7 +213,12 @@ class EntryWorkflowTools {
         ?string $fields = null,
         ?RequestContext $context = null,
     ): array {
-        $entry = Lookup::canonical($id, SiteResolver::resolve($site)) ?? throw new ToolCallException("Entry {$id} not found");
+        // Canonical entries only, unchanged: what a copy should hold is the
+        // published content, and a draft's pending values are not that. The id
+        // a caller reaches for is often a draftElementId a write just handed
+        // them, though, so the refusal names the entry to copy instead of
+        // reporting the draft as missing.
+        $entry = $this->canonical($id, SiteResolver::resolve($site), 'duplicate_entry');
         Authorization::assertCanDuplicate($entry);
 
         $attributes = array_filter(['title' => $title, 'slug' => $slug], static fn (?string $v): bool => $v !== null);
@@ -256,10 +261,16 @@ class EntryWorkflowTools {
         string $toSite,
         ?RequestContext $context = null,
     ): array {
-        SiteResolver::resolve($toSite);
+        $targetSite = SiteResolver::resolve($toSite);
 
-        $source = Lookup::canonical($id, SiteResolver::resolve($fromSite)) ?? throw new ToolCallException("Entry {$id} not found");
-        $targetEntry = Entry::find()->id($id)->site($toSite)->status(null)->one()
+        // Canonical entries only, unchanged: the copy lands as a draft OF the
+        // canonical on the target site, and a draft of a draft is not a thing
+        // Craft holds. Both ends resolve through the shared helpers now. The
+        // target was a second, hand-rolled lookup that agreed with the first
+        // only by coincidence, and its miss says "does not exist on site",
+        // which diagnoses nothing but a section that is not enabled there.
+        $source = $this->canonical($id, SiteResolver::resolve($fromSite), 'copy_entry_to_site');
+        $targetEntry = Lookup::canonical($id, $targetSite)
             ?? throw new ToolCallException("Entry {$id} does not exist on site '{$toSite}'; the section may not be enabled for it");
         Authorization::assertCanSave($targetEntry);
 
@@ -336,33 +347,57 @@ class EntryWorkflowTools {
     }
 
     /**
-     * Refuses an id that is not a canonical entry, saying what it is instead.
+     * The canonical entry an id names, for the tools that work on canonical
+     * entries only, or a refusal that says what the id IS and which id to call
+     * with instead.
      *
-     * History hangs off the canonical entry, so Craft answers a revisionOf()
-     * query for a draft or a revision with an empty list. Reporting that as
-     * "no history" is a confident wrong answer to a question asked in good
-     * faith, and the id it is most often asked with is a draftElementId
-     * list_drafts just handed the caller.
+     * WHY the lookup admits every state and refuses afterwards, rather than
+     * resolving with a query that already excludes drafts and revisions:
+     * excluding them turns "494 is a draft of 132" into "Entry 494 not found"
+     * for an element get_entry reads in full in the same session, and
+     * that sends an agent hunting for a missing id instead of at the canonical
+     * one. The refusal can only name that id while the derivative is still
+     * findable. It is EntryResolver::writable's shape for the narrower set of
+     * states these three tools accept; the states themselves differ per tool,
+     * which is why this is not the same guard.
+     *
+     * @param string $tool the tool to name in the refusal, which is the call
+     *                     the agent should make next with the canonical id
      */
-    private function assertCanonical(int $id, ?Site $site): void {
-        $entry = Lookup::inAnyState($id, $site)
-            ?? throw new ToolCallException("Entry {$id} not found. Use list_entries to find an entry id.");
+    private function canonical(int $id, ?Site $site, string $tool): Entry {
+        $entry = Lookup::inAnyState($id, $site) ?? throw EntryResolver::missing($id);
 
         if (!$entry->getIsDraft() && !$entry->getIsRevision()) {
-            return;
+            return $entry;
         }
 
-        $canonicalId = (int) $entry->getCanonicalId();
+        throw $this->notCanonical($entry, $tool);
+    }
 
-        // An unpublished draft is its own canonical, so it has no other id to
-        // send the caller to; it has no history because it has never been one.
-        if ($canonicalId === $id) {
-            throw new ToolCallException("Entry {$id} is an unpublished draft and has never been a live entry, so it has no history yet. publish_entry makes it one.");
+    /**
+     * What a draft or revision id is, in the words the caller needs to act on
+     * it. Kept apart from the lookup so the wording is testable without an
+     * install to look anything up in.
+     */
+    private function notCanonical(Entry $entry, string $tool): ToolCallException {
+        $id = (int) $entry->id;
+
+        // An unpublished draft is its own canonical, so there is no other id to
+        // send the caller to, and pointing back at this one would be a loop.
+        if ($entry->getIsUnpublishedDraft()) {
+            return new ToolCallException(
+                "Entry {$id} is an unpublished draft and has never been a live entry, so there is no canonical entry"
+                . " for {$tool} to work on. publish_entry makes it one, and {$tool} then takes this same id.",
+            );
         }
 
         $state = $entry->getIsRevision() ? 'revision' : 'draft';
+        $canonicalId = (int) $entry->getCanonicalId();
 
-        throw new ToolCallException("Entry {$id} is a {$state} of entry {$canonicalId}; history is kept on the canonical entry. Call list_revisions with id {$canonicalId}.");
+        return new ToolCallException(
+            "Entry {$id} is a {$state} of entry {$canonicalId}; {$tool} works on the canonical entry."
+            . " Call {$tool} with id {$canonicalId}.",
+        );
     }
 
     /**
