@@ -203,16 +203,11 @@ describe('the envelope every windowed tool answers with', function () use ($wind
         ));
         sort($bare);
 
-        // Named one by one rather than skipped, so a NEW list tool answering
-        // with a bare count fails here instead of joining a silent majority,
-        // and so fixing one of these fails until it comes off the list.
-        //
-        // What each still needs: get_queue_jobs already counts every status,
-        // so the count for the status asked for is the total to hand capped().
-        // read_logs and get_deprecations read a backward scan that stops as
-        // soon as it has enough matches, so neither can produce a total
-        // without redoing the whole read: they pass none and report the cap.
-        expect($bare)->toBe(['get_deprecations', 'get_queue_jobs', 'read_logs']);
+        // Empty, and it has to stay that way: a new list tool answering with a
+        // bare count fails here rather than joining a silent majority. The
+        // three that used to be listed are done, so there is nothing left to
+        // exempt and nothing to argue about when the next one is added.
+        expect($bare)->toBe([]);
     });
 
     // The envelope mirrors the signature: a tool that takes an offset echoes

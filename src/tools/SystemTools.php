@@ -23,6 +23,7 @@ use stimmt\craft\Mcp\logging\Formatter;
 use stimmt\craft\Mcp\logging\Parser;
 use stimmt\craft\Mcp\logging\Search;
 use stimmt\craft\Mcp\pipeline\Presenter;
+use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\Secrets;
 use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\text\Palette;
@@ -150,10 +151,13 @@ class SystemTools {
 
         return match ($output) {
             ResponseFormat::TEXT => (new Formatter(Palette::fromSettings()))->format($entries),
-            ResponseFormat::STRUCTURED => [
-                'count' => count($entries),
-                'entries' => array_map(static fn (Entry $e): array => $e->toArray(), $entries),
-            ],
+            // No total: the scan stops as soon as it has enough matches, so
+            // counting the rest would mean reading every file again.
+            ResponseFormat::STRUCTURED => Response::capped(
+                'entries',
+                array_map(static fn (Entry $e): array => $e->toArray(), $entries),
+                $limit,
+            ),
         };
     }
 

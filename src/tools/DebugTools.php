@@ -16,6 +16,7 @@ use stimmt\craft\Mcp\logging\Entry;
 use stimmt\craft\Mcp\logging\Parser;
 use stimmt\craft\Mcp\logging\Search;
 use stimmt\craft\Mcp\support\EventHandlers;
+use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SqlReadGuard;
 use stimmt\craft\Mcp\support\Window;
 use Throwable;
@@ -109,12 +110,12 @@ class DebugTools {
             )->queryScalar(),
         ];
 
-        return [
+        // The per-status counts were already computed, so this one tool can
+        // report a real total and an honest hasMore.
+        return Response::capped('jobs', $results, $limit, $counts[$status] ?? null, [
             'status' => $status,
-            'count' => count($results),
             'counts' => $counts,
-            'jobs' => $results,
-        ];
+        ]);
     }
 
     /**
@@ -194,15 +195,12 @@ class DebugTools {
         $fromLogs = $this->searchLogs($limit, $context);
         $fromDatabase = $this->readDeprecationTable($limit);
 
+        // Neither side reports a total. The log scan stops as soon as it has
+        // enough matches, and the table read would need a second query, which
+        // is the same "count by reading it twice" this envelope refuses to do.
         return [
-            'fromDatabase' => [
-                'count' => count($fromDatabase),
-                'deprecations' => $fromDatabase,
-            ],
-            'fromLogs' => [
-                'count' => count($fromLogs),
-                'deprecations' => $fromLogs,
-            ],
+            'fromDatabase' => Response::capped('deprecations', $fromDatabase, $limit),
+            'fromLogs' => Response::capped('deprecations', $fromLogs, $limit),
             'hint' => 'Database deprecations persist until fixed. Clear with `php craft clear-deprecations`.'
                 . ' Logs are searched back at most ' . Parser::scanDepth() . '.',
         ];
