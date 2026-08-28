@@ -128,7 +128,8 @@
                         ],
                         "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "describe_entry_schema": {
@@ -167,7 +168,8 @@
                 },
                 "required": [
                     "section"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "explain_query": {
@@ -186,7 +188,8 @@
                 },
                 "required": [
                     "sql"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "get_asset": {
@@ -204,7 +207,8 @@
                 },
                 "required": [
                     "id"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "get_config": {
@@ -223,7 +227,8 @@
                 },
                 "required": [
                     "key"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "get_database_info": {
@@ -234,7 +239,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_database_schema": {
@@ -254,7 +260,8 @@
                         "default": null,
                         "description": "Table name, with or without the install's table prefix. Omit to list every table instead of detailing one."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_deprecations": {
@@ -272,7 +279,8 @@
                         "description": "How many rows to return. 1 or greater.",
                         "minimum": 1
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_entry": {
@@ -314,7 +322,8 @@
                         ],
                         "default": null
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_environment": {
@@ -325,7 +334,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_graphql_schema": {
@@ -369,7 +379,8 @@
                         "default": null,
                         "description": "One field of that type, such as \"entries\" on \"Query\". Returns the SDL for that field alone, its arguments included. This is how to read a type whose own SDL is over the size limit."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_last_error": {
@@ -380,7 +391,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_mcp_info": {
@@ -397,7 +409,8 @@
                         "default": false,
                         "description": "Include the parts that cost something to produce or to read: the reason each unavailable tool is unavailable, the text of any registration errors, and install facts. Off by default because this tool is often the first call of a session."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_project_config_diff": {
@@ -408,7 +421,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_queue_jobs": {
@@ -431,7 +445,8 @@
                         "description": "How many rows to return. 1 or greater.",
                         "minimum": 1
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_site": {
@@ -458,7 +473,8 @@
                         "default": null,
                         "description": "Site handle, as an alternative to id; list_sites reports the handles."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_system_info": {
@@ -469,7 +485,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_table_counts": {
@@ -490,7 +507,8 @@
                         ],
                         "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_asset_folders": {
@@ -518,7 +536,8 @@
                         "default": null,
                         "description": "Folder id to list the children of; a folder id names its volume on its own, so volume is optional beside it. Omit for the children of the volume's root folder."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_assets": {
@@ -574,7 +593,8 @@
                         "description": "How many rows to skip before the first returned row. 0 or greater.",
                         "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_backups": {
@@ -585,7 +605,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_categories": {
@@ -617,7 +638,8 @@
                         "description": "How many rows to skip before the first returned row. 0 or greater.",
                         "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_console_commands": {
@@ -628,7 +650,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_drafts": {
@@ -676,7 +699,8 @@
                         "description": "How many rows to skip before the first returned row. 0 or greater.",
                         "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_entries": {
@@ -805,7 +829,8 @@
                         "description": "How many rows to skip before the first returned row. 0 or greater.",
                         "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_event_handlers": {
@@ -825,7 +850,8 @@
                         "default": null,
                         "description": "Case-insensitive substring matched against event names and the classes the events are registered on."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_fields": {
@@ -853,7 +879,8 @@
                         "default": null,
                         "description": "Case-insensitive substring matched against the field class short name, such as \"matrix\", \"assets\", or \"plaintext\". The rows report the full class name."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_globals": {
@@ -864,7 +891,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_graphql_schemas": {
@@ -875,7 +903,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_graphql_tokens": {
@@ -886,7 +915,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_mcp_tools": {
@@ -897,7 +927,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_plugins": {
@@ -908,7 +939,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_revisions": {
@@ -947,7 +979,8 @@
                 },
                 "required": [
                     "id"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "list_routes": {
@@ -958,7 +991,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_sections": {
@@ -978,7 +1012,8 @@
                         "default": null,
                         "description": "Case-insensitive substring matched against section handles and names."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_site_groups": {
@@ -989,7 +1024,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_sites": {
@@ -1000,7 +1036,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_users": {
@@ -1048,7 +1085,8 @@
                         "description": "How many rows to skip before the first returned row. 0 or greater.",
                         "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_volumes": {
@@ -1059,7 +1097,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "query_graphql": {
@@ -1102,7 +1141,8 @@
                 },
                 "required": [
                     "query"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "read_logs": {
@@ -1153,7 +1193,8 @@
                         ],
                         "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "reload_mcp": {
@@ -1165,7 +1206,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         }
     },
