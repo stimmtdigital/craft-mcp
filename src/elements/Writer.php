@@ -37,6 +37,10 @@ final readonly class Writer {
             ? $this->saveAsDraft($element)
             : Craft::$app->getElements()->saveElement($element);
 
+        if ($saved) {
+            NestedSlugs::clearPlaceholders($element);
+        }
+
         return $this->result(Result::ACTION_CREATED, $element, $saved, $context);
     }
 
@@ -53,6 +57,10 @@ final readonly class Writer {
         }
 
         $saved = Craft::$app->getElements()->saveElement($element);
+
+        if ($saved) {
+            NestedSlugs::clearPlaceholders($element);
+        }
 
         return $this->result(Result::ACTION_UPDATED, $element, $saved, $context);
     }

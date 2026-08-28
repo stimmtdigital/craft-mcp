@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\base\ElementInterface;
 use craft\behaviors\DraftBehavior;
 use craft\behaviors\RevisionBehavior;
 use craft\elements\Entry;
+use craft\models\Site;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
@@ -15,6 +17,7 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\elements\LayoutFields;
 use stimmt\craft\Mcp\elements\Lookup;
 use stimmt\craft\Mcp\elements\Reach;
 use stimmt\craft\Mcp\elements\Reader;
@@ -94,12 +97,12 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'list_revisions',
         title: 'Entry history',
-        description: 'List an entry\'s saved revisions, newest first: who saved each one, when, and with what notes. Answers "when did this change and by whom". Read a revision\'s full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.',
+        description: 'List a canonical entry\'s saved revisions, newest first: who saved each one, when, and with what notes. Answers "when did this change and by whom". Read a revision\'s full content with get_entry using its revisionElementId; the canonical entry id always holds the current content. History belongs to the canonical entry, so a draftElementId from list_drafts is refused, naming the canonicalId to ask for instead.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
     public function listRevisions(
-        #[Schema(description: 'Canonical entry id whose history to list.')]
+        #[Schema(description: 'Canonical entry id whose history to list. A draft or revision id is refused with the canonical id to ask for instead.')]
         int $id,
         #[Schema(description: 'Site handle whose revisions to list; list_sites reports the handles.')]
         ?string $site = null,
@@ -107,7 +110,7 @@ class EntryWorkflowTools {
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        SiteResolver::resolve($site);
+        $this->assertCanonical($id, SiteResolver::resolve($site));
 
         $query = Entry::find()
             ->revisionOf($id)
@@ -184,7 +187,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'duplicate_entry',
         title: 'Duplicate an entry',
-        description: 'Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for "like X but change these".',
+        description: 'Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format fields JSON for "like X but change these". In a structure section the copy keeps the original\'s place: same parent, immediately after it. The response reports that parent, null meaning top level or a section without a structure.',
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
@@ -223,6 +226,7 @@ class EntryWorkflowTools {
         // one. Every other write surfaces them; this one now agrees.
         return Response::success([
             'entry' => $this->reader->read($duplicate, $site),
+            'parent' => $this->structureParent($duplicate),
             'warnings' => $result === null ? [] : $result->toArray()['warnings'],
         ]);
     }
@@ -230,7 +234,7 @@ class EntryWorkflowTools {
     #[McpTool(
         name: 'copy_entry_to_site',
         title: 'Copy an entry to another site',
-        description: 'Copy an entry\'s field values from one site to another as a draft on the target site. Copies values; does not machine-translate.',
+        description: 'Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps nothing per site and the two sites already read the same. describe_entry_schema reports each field\'s translation method.',
         annotations: new ToolAnnotations(destructiveHint: false, openWorldHint: false),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT, dangerous: true)]
@@ -244,7 +248,6 @@ class EntryWorkflowTools {
         string $toSite,
         ?RequestContext $context = null,
     ): array {
-        SiteResolver::resolve($fromSite);
         SiteResolver::resolve($toSite);
 
         $source = Lookup::canonical($id, SiteResolver::resolve($fromSite)) ?? throw new ToolCallException("Entry {$id} not found");
@@ -253,11 +256,20 @@ class EntryWorkflowTools {
         Authorization::assertCanSave($targetEntry);
 
         $payload = $this->reader->read($source, $fromSite);
-        $result = $this->writer->update($targetEntry, [], $payload['fields'], WriteMode::Draft, $toSite);
+        $fields = $this->perSiteFields($targetEntry, $payload['fields']);
+
+        if ($fields === []) {
+            return Response::success([
+                'copiedFields' => [],
+                'message' => "Nothing to copy: entry {$id} has no field that holds a separate value per site, so '{$toSite}' already reads the same as '{$fromSite}'. describe_entry_schema reports each field's translation method.",
+            ]);
+        }
+
+        $result = $this->writer->update($targetEntry, [], $fields, WriteMode::Draft, $toSite);
 
         return $result->isFailure()
             ? Response::failure($result->toArray())
-            : Response::success($result->toArray());
+            : Response::success([...$result->toArray(), 'copiedFields' => array_keys($fields)]);
     }
 
     /**
@@ -307,6 +319,85 @@ class EntryWorkflowTools {
             'notes' => $notes,
             'dateCreated' => $revision->dateCreated?->format('Y-m-d H:i:s'),
         ];
+    }
+
+    /**
+     * Refuses an id that is not a canonical entry, saying what it is instead.
+     *
+     * History hangs off the canonical entry, so Craft answers a revisionOf()
+     * query for a draft or a revision with an empty list. Reporting that as
+     * "no history" is a confident wrong answer to a question asked in good
+     * faith, and the id it is most often asked with is a draftElementId
+     * list_drafts just handed the caller.
+     */
+    private function assertCanonical(int $id, ?Site $site): void {
+        $entry = Lookup::inAnyState($id, $site)
+            ?? throw new ToolCallException("Entry {$id} not found. Use list_entries to find an entry id.");
+
+        if (!$entry->getIsDraft() && !$entry->getIsRevision()) {
+            return;
+        }
+
+        $canonicalId = (int) $entry->getCanonicalId();
+
+        // An unpublished draft is its own canonical, so it has no other id to
+        // send the caller to; it has no history because it has never been one.
+        if ($canonicalId === $id) {
+            throw new ToolCallException("Entry {$id} is an unpublished draft and has never been a live entry, so it has no history yet. publish_entry makes it one.");
+        }
+
+        $state = $entry->getIsRevision() ? 'revision' : 'draft';
+
+        throw new ToolCallException("Entry {$id} is a {$state} of entry {$canonicalId}; history is kept on the canonical entry. Call list_revisions with id {$canonicalId}.");
+    }
+
+    /**
+     * Of the source's field values, the ones the target can actually hold
+     * separately.
+     *
+     * A field Craft does not treat as translatable holds ONE value shared by
+     * every site, so writing the source's copy of it onto the target states
+     * what was already true. It is not free: it costs a full re-save of the
+     * target's field value, which is how an untranslated Matrix field's blocks
+     * got dragged through Craft's nested-draft machinery on a copy that had
+     * nothing to copy. Filtering here is what makes the tool's name true.
+     *
+     * @param array<string, mixed> $fields
+     * @return array<string, mixed>
+     */
+    private function perSiteFields(Entry $target, array $fields): array {
+        $layout = LayoutFields::of($target->getFieldLayout());
+
+        return array_filter(
+            $fields,
+            static fn (string $handle): bool => ($layout[$handle] ?? null)?->getIsTranslatable($target) === true,
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
+     * The entry the copy sits under, or null for top level or a section with
+     * no structure.
+     *
+     * Craft places a duplicate immediately after its source, which in a
+     * structure section means under the same parent, and it does so for an
+     * unpublished draft too because such a draft is its own canonical. Nothing
+     * in the response said so, though, which is how a copy that DID keep its
+     * place reads as one that quietly lost it.
+     */
+    private function structureParent(ElementInterface $entry): ?int {
+        // Read back rather than ask the clone: Structures::moveAfter() writes
+        // the placement straight into structureelements, so the element Craft
+        // hands back still carries no lft/rgt and answers "no parent" for a
+        // copy that has one. Reporting that would say the thing this key
+        // exists to disprove.
+        $placed = Lookup::withDrafts((int) $entry->id, $entry->getSite());
+
+        if ($placed === null || $placed->structureId === null) {
+            return null;
+        }
+
+        return $placed->getParent()?->id;
     }
 
     /**
