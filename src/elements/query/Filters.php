@@ -24,6 +24,9 @@ use stimmt\craft\Mcp\elements\refs\Keys;
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Filters {
+    /** The leading Y-m-d of a date bound, the one shape a calendar can disprove. */
+    private const string ISO_DATE = '/^(\d{4})-(\d{1,2})-(\d{1,2})/';
+
     /**
      * relatedTo shape detection tries these in order; category before tag
      * because their key shapes are identical and categories are the common
@@ -83,7 +86,10 @@ final readonly class Filters {
 
     /**
      * Craft date-range param: ['and', '>= after', '< before'], or null when
-     * unbounded. Accepts anything Craft's DateTimeHelper parses (ISO dates).
+     * unbounded. Bounds are validated here rather than handed to Craft as-is:
+     * a value Craft cannot parse becomes an empty string on the way to the
+     * database, and the caller gets a raw SQL error carrying the whole
+     * statement instead of an answer about their typo.
      *
      * @return list<string>|null
      */
@@ -94,9 +100,46 @@ final readonly class Filters {
 
         return array_values(array_filter([
             'and',
-            $after !== null ? ">= {$after}" : null,
-            $before !== null ? "< {$before}" : null,
+            $after !== null ? '>= ' . self::bound($after) : null,
+            $before !== null ? '< ' . self::bound($before) : null,
         ]));
+    }
+
+    /**
+     * The bound, once it is known to name a real instant. Returns the caller's
+     * own string so Craft still does the parsing that matters; this only
+     * refuses what Craft would either choke on or quietly turn into a
+     * different date than the one that was asked for.
+     */
+    private static function bound(string $value): string {
+        if (self::isDate($value)) {
+            return $value;
+        }
+
+        throw new InvalidArgumentException(
+            "Invalid date '{$value}' in a date filter (createdAfter, createdBefore, updatedAfter, updatedBefore). "
+            . "Pass a date Craft parses, such as '2026-01-31', '2026-01-31 14:00', or 'now'.",
+        );
+    }
+
+    private static function isDate(string $value): bool {
+        // Craft reads a bare number as a unix timestamp; strtotime does not.
+        if (is_numeric($value)) {
+            return true;
+        }
+
+        if (strtotime($value) === false) {
+            return false;
+        }
+
+        if (preg_match(self::ISO_DATE, trim($value), $parts) !== 1) {
+            return true;
+        }
+
+        // An impossible day rolls over into the next month rather than being
+        // refused (2026-02-30 answers about March 2, 2026-13-45 about 2027),
+        // which is a confident answer to a question nobody asked.
+        return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
     }
 
     /**

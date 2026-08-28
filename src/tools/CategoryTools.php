@@ -12,6 +12,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
+use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
 
 /**
@@ -36,10 +37,13 @@ class CategoryTools {
         int $limit = 100,
         ?RequestContext $context = null,
     ): array {
+        $groupModel = HandleResolver::categoryGroup($group);
         $query = Category::find()->limit($limit);
 
-        if ($group !== null) {
-            $query->group($group);
+        // The model rather than the handle: it carries the group's structure
+        // id, which is what orders the results.
+        if ($groupModel !== null) {
+            $query->group($groupModel);
         }
 
         Authorization::scopeQuery($query);

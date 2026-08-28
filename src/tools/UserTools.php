@@ -12,6 +12,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
+use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
 
 /**
@@ -40,13 +41,18 @@ class UserTools {
         int $limit = 50,
         ?RequestContext $context = null,
     ): array {
+        $groupModel = HandleResolver::userGroup($group);
         $query = User::find()->limit($limit);
 
-        if ($group !== null) {
-            $query->group($group);
+        // By id, not by handle: Craft's own group() hands a string it could
+        // not resolve to a helper that only takes arrays, so the parameter
+        // died in a vendor TypeError that named a server path. Resolving the
+        // handle here settles it before the query ever sees it.
+        if ($groupModel !== null) {
+            $query->groupId($groupModel->id);
         }
         if ($status !== null) {
-            $query->status($status);
+            $query->status(HandleResolver::userStatus($status));
         }
         if ($email !== null) {
             $query->email($email);

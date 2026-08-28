@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\completions\FieldHandleProvider;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\ResourceCategory;
 use stimmt\craft\Mcp\services\SchemaHelper;
+use stimmt\craft\Mcp\support\HandleResolver;
 
 /**
  * MCP resources for Craft CMS schema information.
@@ -90,15 +91,7 @@ final class SchemaResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $handle,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
-
-        /** @var Section|null $section */
-        $section = $entriesService->getSectionByHandle($handle);
-
-        if ($section === null) {
-            throw new ResourceReadException("Section '{$handle}' not found");
-        }
+        $section = HandleResolver::section($handle);
 
         /** @var EntryType[] $entryTypes */
         $entryTypes = $section->getEntryTypes();

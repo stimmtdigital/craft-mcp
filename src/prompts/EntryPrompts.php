@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\prompts;
 
-use Craft;
 use craft\elements\Entry;
 use craft\models\EntryType;
 use craft\models\Section;
-use craft\services\Entries;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpPrompt;
-use Mcp\Exception\PromptGetException;
 use stimmt\craft\Mcp\attributes\McpPromptMeta;
 use stimmt\craft\Mcp\completions\EntryTypeHandleProvider;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\PromptCategory;
 use stimmt\craft\Mcp\services\SchemaHelper;
+use stimmt\craft\Mcp\support\HandleResolver;
 
 /**
  * MCP prompts for working with Craft CMS entries.
@@ -42,20 +40,11 @@ final class EntryPrompts {
         #[CompletionProvider(provider: EntryTypeHandleProvider::class)]
         ?string $entryType = null,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
+        $sectionObj = HandleResolver::section($section);
 
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
-
-        if ($sectionObj === null) {
-            throw new PromptGetException("The section '{$section}' was not found.");
-        }
-
-        $entryTypes = $this->filterEntryTypes($sectionObj, $entryType);
-        if ($entryTypes === null) {
-            throw new PromptGetException("The entry type '{$entryType}' was not found in section '{$section}'.");
-        }
+        $entryTypes = $entryType === null
+            ? array_values($sectionObj->getEntryTypes())
+            : [HandleResolver::entryType($entryType, $sectionObj)];
 
         $guideJson = $this->buildCreateGuideJson($sectionObj, $entryTypes);
 
@@ -97,17 +86,7 @@ PROMPT);
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
-
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
-
-        if ($sectionObj === null) {
-            throw new PromptGetException("The section '{$section}' was not found.");
-        }
-
-        $queryInfo = $this->buildQueryGuideJson($sectionObj);
+        $queryInfo = $this->buildQueryGuideJson(HandleResolver::section($section));
         $entryCount = $this->getSectionEntryCount($section);
 
         return $this->promptResponse(<<<PROMPT
@@ -142,16 +121,7 @@ PROMPT);
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
-
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
-
-        if ($sectionObj === null) {
-            throw new PromptGetException("The section '{$section}' was not found.");
-        }
-
+        $sectionObj = HandleResolver::section($section);
         $entryCount = $this->getSectionEntryCount($section);
         $entryTypes = $this->getEntryTypeHandles($sectionObj);
         $sectionName = $sectionObj->name ?? $section;
@@ -211,27 +181,6 @@ Please walk me through the review queue:
 
 Start by showing me the queue.
 PROMPT);
-    }
-
-    /**
-     * Filter entry types to a specific one if provided.
-     *
-     * @return list<EntryType>|null
-     */
-    private function filterEntryTypes(Section $section, ?string $entryTypeHandle): ?array {
-        /** @var EntryType[] $entryTypes */
-        $entryTypes = $section->getEntryTypes();
-
-        if ($entryTypeHandle === null) {
-            return array_values($entryTypes);
-        }
-
-        $filtered = array_filter(
-            $entryTypes,
-            fn (EntryType $type): bool => $type->handle === $entryTypeHandle,
-        );
-
-        return $filtered === [] ? null : array_values($filtered);
     }
 
     /**

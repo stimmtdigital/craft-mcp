@@ -45,22 +45,27 @@ final readonly class ErrorBoundary implements ReferenceHandlerInterface {
         try {
             return $this->handler->handle($reference, $arguments);
         } catch (ToolCallException|PromptGetException|ResourceReadException $expected) {
-            // Already the type its handler renders, and already carrying a
-            // message someone chose. Re-wrapping would only bury it.
-            throw $expected;
+            // Already carrying a message someone chose, so it keeps its words.
+            // Not necessarily in the type THIS surface renders, though: shared
+            // support code (HandleResolver, Authorization) speaks from all
+            // three, and each SDK handler keeps the message of its own type
+            // only, discarding the rest behind "Error while reading resource".
+            throw $this->retype($reference, $expected, $expected->getMessage());
         } catch (Throwable $unexpected) {
-            throw $this->convert($reference, $unexpected);
+            throw $this->retype($reference, $unexpected, $this->readable($unexpected));
         }
     }
 
-    private function convert(ElementReference $reference, Throwable $exception): Throwable {
-        $message = $this->readable($exception);
-
-        return match (true) {
+    private function retype(ElementReference $reference, Throwable $exception, string $message): Throwable {
+        $rendered = match (true) {
             $reference instanceof ToolReference => new ToolCallException($message, (int) $exception->getCode(), $exception),
             $reference instanceof PromptReference => new PromptGetException($message, (int) $exception->getCode(), $exception),
             default => new ResourceReadException($message, (int) $exception->getCode(), $exception),
         };
+
+        // Already the right type: hand back the original rather than an
+        // identical copy wrapping it, so the stack trace stays the throw site's.
+        return $exception instanceof $rendered ? $exception : $rendered;
     }
 
     /**
