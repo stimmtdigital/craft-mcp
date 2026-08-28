@@ -203,7 +203,7 @@
             }
         },
         "get_config": {
-            "description": "Get a Craft CMS configuration value by dot-notation key (e.g., \"general.devMode\", \"db.driver\")",
+            "description": "Get a Craft CMS configuration value by dot-notation key (e.g., \"general.devMode\", \"db.driver\"). Credentials such as the security key and the database password come back redacted, named but not revealed.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -213,7 +213,7 @@
                 "properties": {
                     "key": {
                         "type": "string",
-                        "description": "Dot-notation key, such as \"general.devMode\" or \"db.driver\". A bare category (\"general\", \"db\") returns every setting in it; \"custom.<file>\" reads a config file."
+                        "description": "Dot-notation key, such as \"general.devMode\" or \"db.driver\". A bare category (\"general\", \"db\") returns every setting in it; \"custom.<file>\" reads a config file. Credential settings report a redaction placeholder in place of their value."
                     }
                 },
                 "required": [
@@ -324,7 +324,7 @@
             }
         },
         "get_graphql_schema": {
-            "description": "Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)",
+            "description": "Read a GraphQL schema: the scope it grants, and the types it exposes. Returns an index of every type by default (name, kind, field count, SDL size); pass type for that one type's SDL, and type together with field for a single field and its arguments. A Craft schema prints hundreds of kilobytes of SDL, more than one response can carry, so it is never returned whole.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -347,6 +347,22 @@
                         ],
                         "default": null,
                         "description": "Schema uid, as an alternative to id."
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "A type name from the index this tool returns without it, such as \"Query\" or \"EntryInterface\". Returns that type's SDL in place of the index. The index gives every type's sdlBytes, so you can see beforehand which types are too large to come back whole."
+                    },
+                    "field": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "One field of that type, such as \"entries\" on \"Query\". Returns the SDL for that field alone, its arguments included. This is how to read a type whose own SDL is over the size limit."
                     }
                 }
             }
@@ -1365,8 +1381,15 @@
         "get_last_error": {
             "status": "ok",
             "shape": {
-                "found": false,
-                "message": "<string>"
+                "error": {
+                    "category": "<string>",
+                    "channel": "<string>",
+                    "file": "<string>",
+                    "level": "<string>",
+                    "message": "<string>",
+                    "timestamp": "<string>"
+                },
+                "found": true
             }
         },
         "get_deprecations": {
@@ -1977,6 +2000,12 @@
         "get_graphql_schema": {
             "status": "ok",
             "shape": {
+                "count": "<number>",
+                "roots": {
+                    "mutation": "<string>",
+                    "query": "<string>",
+                    "subscription": null
+                },
                 "schema": {
                     "id": "<number>",
                     "isPublic": true,
@@ -2075,11 +2104,18 @@
                     "scope": [
                         "<string>"
                     ],
-                    "sdl": null,
-                    "sdlLength": "<number>",
                     "uid": "<string>"
                 },
-                "success": true
+                "sdlBytes": "<number>",
+                "success": true,
+                "types": [
+                    {
+                        "fields?": "<number>",
+                        "kind": "<string>",
+                        "name": "<string>",
+                        "sdlBytes": "<number>"
+                    }
+                ]
             }
         },
         "explain_query": {
