@@ -20,7 +20,9 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\logging\Entry;
 use stimmt\craft\Mcp\logging\Formatter;
 use stimmt\craft\Mcp\logging\Parser;
+use stimmt\craft\Mcp\logging\Search;
 use stimmt\craft\Mcp\pipeline\Presenter;
+use stimmt\craft\Mcp\support\Secrets;
 use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\text\Palette;
 
@@ -36,12 +38,12 @@ class SystemTools {
     #[McpTool(
         name: 'get_config',
         title: 'Read a config value',
-        description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver")',
+        description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver"). Credentials such as the security key and the database password come back redacted, named but not revealed.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getConfig(
-        #[Schema(description: 'Dot-notation key, such as "general.devMode" or "db.driver". A bare category ("general", "db") returns every setting in it; "custom.<file>" reads a config file.')]
+        #[Schema(description: 'Dot-notation key, such as "general.devMode" or "db.driver". A bare category ("general", "db") returns every setting in it; "custom.<file>" reads a config file. Credential settings report a redaction placeholder in place of their value.')]
         string $key,
         ?RequestContext $context = null,
     ): array {
@@ -55,6 +57,10 @@ class SystemTools {
             'general' => $setting
                 ? $config->getGeneral()->$setting ?? null
                 : (array) $config->getGeneral(),
+            // The credential settings are listed rather than left out: leaving
+            // them out is what made the category disagree with the keyed read,
+            // and told a caller the install has no database password. Which of
+            // them are withheld is not decided here.
             'db' => $setting
                 ? $config->getDb()->$setting ?? null
                 : [
@@ -63,6 +69,10 @@ class SystemTools {
                     'port' => $config->getDb()->port,
                     'database' => $config->getDb()->database,
                     'tablePrefix' => $config->getDb()->tablePrefix,
+                    'dsn' => $config->getDb()->dsn,
+                    'url' => $config->getDb()->url,
+                    'user' => $config->getDb()->user,
+                    'password' => $config->getDb()->password,
                 ],
             'custom' => $config->getConfigFromFile($setting ?? 'custom'),
             default => "Unknown config category: {$category}",
@@ -70,7 +80,7 @@ class SystemTools {
 
         return [
             'key' => $key,
-            'value' => $value,
+            'value' => Secrets::conceal($key, $value),
         ];
     }
 
@@ -111,7 +121,12 @@ class SystemTools {
     }
 
     /**
-     * Fetch and sort log entries.
+     * Fetch the newest log entries matching the filter.
+     *
+     * WHY this is one call: limit bounds the entries returned, not the lines
+     * searched. The search walks each log backwards until it has enough
+     * matches, so asking for two errors no longer means looking at the last
+     * four lines and reporting that there are none.
      *
      * @return Entry[]
      */
@@ -123,24 +138,14 @@ class SystemTools {
         ?RequestContext $context,
     ): array {
         $parser = new Parser(Craft::$app->getPath()->getLogPath());
-
-        $files = $parser->discoverLogFiles($source);
-        $entries = [];
         $gateway = $context?->getClientGateway();
-        $totalFiles = count($files);
 
-        foreach ($files as $index => $file) {
-            $gateway?->progress($index + 1, $totalFiles, 'Parsing ' . basename($file));
-
-            $entries = array_merge(
-                $entries,
-                $parser->parseFile($file, $level, $pattern, $limit * 2),
-            );
-        }
-
-        usort($entries, static fn (Entry $a, Entry $b): int => $b->timestamp <=> $a->timestamp);
-
-        return array_slice($entries, 0, $limit);
+        return $parser->newest(
+            new Search($limit, $level, $pattern, $source),
+            static function (string $file, int $position, int $total) use ($gateway): void {
+                $gateway?->progress($position, $total, 'Scanning ' . basename($file));
+            },
+        );
     }
 
     /**
@@ -154,12 +159,15 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getLastError(?RequestContext $context = null): array {
-        $result = $this->readLogs(1, 'error');
+        $result = $this->readLogs(1, 'error', context: $context);
 
         if (empty($result['entries'])) {
+            // Say how deep the search went. This is the tool an agent reaches
+            // for during an incident, and "no errors" without a depth reads as
+            // a statement about the install rather than about the search.
             return [
                 'found' => false,
-                'message' => 'No errors found in recent logs',
+                'message' => 'No errors found. Each log file is searched back at most ' . Parser::scanDepth() . '.',
             ];
         }
 

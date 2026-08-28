@@ -131,3 +131,75 @@ describe('Tail::of()', function () {
             ->toContain('日本語');
     });
 });
+
+describe('Tail::blocks()', function () {
+    it('yields nothing for a non-existent file', function () {
+        expect(iterator_to_array(Tail::blocks('/non/existent/file.txt')))->toBe([]);
+    });
+
+    it('yields nothing for an empty file', function () {
+        $filepath = $this->tempDir . '/empty-blocks.txt';
+        file_put_contents($filepath, '');
+
+        expect(iterator_to_array(Tail::blocks($filepath)))->toBe([]);
+    });
+
+    it('yields a small file as one block in file order', function () {
+        $filepath = $this->tempDir . '/small-blocks.txt';
+        file_put_contents($filepath, "line1\nline2\nline3\n");
+
+        $blocks = iterator_to_array(Tail::blocks($filepath));
+
+        expect($blocks)->toHaveCount(1)
+            ->and($blocks[0])->toBe(['line1', 'line2', 'line3']);
+    });
+
+    it('walks a large file backwards, newest block first', function () {
+        $filepath = $this->tempDir . '/large-blocks.txt';
+        $lines = [];
+        for ($i = 1; $i <= 8000; $i++) {
+            $lines[] = str_pad("line{$i}", 40, '.');
+        }
+        file_put_contents($filepath, implode("\n", $lines) . "\n");
+
+        $blocks = iterator_to_array(Tail::blocks($filepath));
+        $flattened = array_merge(...array_reverse($blocks));
+
+        expect(count($blocks))->toBeGreaterThan(1)
+            ->and($blocks[0][array_key_last($blocks[0])])->toBe(str_pad('line8000', 40, '.'))
+            ->and($flattened)->toHaveCount(8000)
+            ->and($flattened[0])->toBe(str_pad('line1', 40, '.'));
+    });
+
+    it('stops once the line cap is reached', function () {
+        $filepath = $this->tempDir . '/line-capped.txt';
+        $lines = [];
+        for ($i = 1; $i <= 8000; $i++) {
+            $lines[] = str_pad("line{$i}", 40, '.');
+        }
+        file_put_contents($filepath, implode("\n", $lines) . "\n");
+
+        $uncapped = iterator_to_array(Tail::blocks($filepath));
+        $capped = iterator_to_array(Tail::blocks($filepath, maxLines: 1));
+
+        expect($capped)->toHaveCount(1)
+            ->and(count($uncapped))->toBeGreaterThan(1);
+    });
+
+    it('never reads further back than the byte cap', function () {
+        $filepath = $this->tempDir . '/byte-capped.txt';
+        $lines = [];
+        for ($i = 1; $i <= 8000; $i++) {
+            $lines[] = str_pad("line{$i}", 40, '.');
+        }
+        file_put_contents($filepath, implode("\n", $lines) . "\n");
+
+        $blocks = iterator_to_array(Tail::blocks($filepath, maxBytes: 100000));
+        $flattened = array_merge(...array_reverse($blocks));
+
+        // 100000 bytes of 41-byte lines is a little under 2440 of them, and the
+        // line the cap lands in the middle of is dropped rather than truncated.
+        expect(count($flattened))->toBeLessThan(2440)
+            ->and($flattened[count($flattened) - 1])->toBe(str_pad('line8000', 40, '.'));
+    });
+});

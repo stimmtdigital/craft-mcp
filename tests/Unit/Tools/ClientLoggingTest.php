@@ -107,11 +107,11 @@ describe('Tool client-logger calls interpolate their data into the message strin
             ->and($source)->toContain('"SQL query returned {$rowCount} rows"');
     });
 
-    it('interpolates the driver, SQL text, and log window into DebugTools messages', function () use ($toolFiles) {
+    it('interpolates the driver, SQL text, and searched log file into DebugTools messages', function () use ($toolFiles) {
         $source = (string) file_get_contents($toolFiles['DebugTools.php']);
 
         expect($source)->toContain('"SQL query text: {$trimmedSql}"')
             ->and($source)->toContain('"EXPLAIN issued for driver: {$driver}"')
-            ->and($source)->toContain('"Log window read: {$logFile}, last {$lineCount} lines"');
+            ->and($source)->toContain('" ({$position} of {$total})"');
     });
 });

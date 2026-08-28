@@ -12,9 +12,11 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\logging\Entry;
+use stimmt\craft\Mcp\logging\Parser;
+use stimmt\craft\Mcp\logging\Search;
 use stimmt\craft\Mcp\support\EventHandlers;
 use stimmt\craft\Mcp\support\SqlReadGuard;
-use stimmt\craft\Mcp\support\Tail;
 use stimmt\craft\Mcp\support\Window;
 use Throwable;
 
@@ -24,6 +26,11 @@ use Throwable;
  * @author Max van Essen <support@stimmt.digital>
  */
 class DebugTools {
+    /**
+     * Substring a log message must contain to count as a deprecation warning.
+     */
+    private const string DEPRECATION_PATTERN = 'deprecat';
+
     /**
      * List queue jobs (pending, failed, reserved).
      */
@@ -184,70 +191,89 @@ class DebugTools {
     ): array {
         Window::assert($limit);
 
-        $logPath = Craft::$app->getPath()->getLogPath();
-        $webLog = $logPath . '/web.log';
-
-        $deprecations = [];
-
-        if (file_exists($webLog)) {
-            $lines = Tail::of($webLog, $limit * 5);
-            $logFile = basename($webLog);
-            $lineCount = count($lines);
-            $context?->getClientLogger()?->info("Log window read: {$logFile}, last {$lineCount} lines");
-
-            foreach ($lines as $line) {
-                // Look for deprecation warnings
-                if (
-                    (stripos($line, 'deprecated') !== false || stripos($line, 'deprecation') !== false) && preg_match('/^\[([^\]]+)\]\[([^\]]+)\]\[([^\]]*)\]\s*(.*)$/s', $line, $matches)
-                ) {
-                    $deprecations[] = [
-                        'timestamp' => $matches[1],
-                        'level' => $matches[2],
-                        'category' => $matches[3],
-                        'message' => trim($matches[4]),
-                    ];
-                }
-            }
-        }
-
-        // Also check the deprecation errors table if it exists. Guard on
-        // table existence rather than catching everything, so a genuine
-        // query failure surfaces instead of silently reporting zero.
-        $dbDeprecations = [];
-        $db = Craft::$app->getDb();
-        $table = $db->tablePrefix . 'deprecationerrors';
-
-        if ($db->getTableSchema($table) !== null) {
-            $dbDeprecations = $db->createCommand(
-                "SELECT id, `key`, fingerprint, lastOccurrence, file, line, message
-                 FROM `{$table}`
-                 ORDER BY lastOccurrence DESC
-                 LIMIT {$limit}",
-            )->queryAll();
-
-            foreach ($dbDeprecations as &$dep) {
-                if ($dep['lastOccurrence']) {
-                    $dep['lastOccurrence'] = date('Y-m-d H:i:s', strtotime((string) $dep['lastOccurrence']));
-                }
-            }
-
-            unset($dep);
-        }
-
-        // Limit and dedupe log deprecations
-        $deprecations = array_slice($deprecations, 0, $limit);
+        $fromLogs = $this->searchLogs($limit, $context);
+        $fromDatabase = $this->readDeprecationTable($limit);
 
         return [
             'fromDatabase' => [
-                'count' => count($dbDeprecations),
-                'deprecations' => $dbDeprecations,
+                'count' => count($fromDatabase),
+                'deprecations' => $fromDatabase,
             ],
             'fromLogs' => [
-                'count' => count($deprecations),
-                'deprecations' => $deprecations,
+                'count' => count($fromLogs),
+                'deprecations' => $fromLogs,
             ],
-            'hint' => 'Database deprecations persist until fixed. Clear with `php craft clear-deprecations`.',
+            'hint' => 'Database deprecations persist until fixed. Clear with `php craft clear-deprecations`.'
+                . ' Logs are searched back at most ' . Parser::scanDepth() . '.',
         ];
+    }
+
+    /**
+     * Deprecation warnings found in the log files.
+     *
+     * WHY the parser rather than a regex here: Craft writes rotated files
+     * (web-2026-08-28.log, never web.log) in the format the parser already
+     * knows, and reads them back newest first until it has enough matches.
+     * The regex this replaced expected three bracket groups where a log line
+     * opens with a bare timestamp and two, so it could not have matched a real
+     * line even if the file it read had existed.
+     *
+     * WHY one substring instead of two: "deprecat" is the common prefix of
+     * "deprecated" and "deprecation", so a single pass catches both spellings.
+     *
+     * WHY only the logged line: a Craft log entry carries its continuation
+     * lines, and a request-context dump runs to hundreds of them. Searching
+     * those turned every request that happened to mention the word into a
+     * deprecation, this tool's own name in a logged request body included. An
+     * entry announces what it is on its first line or it is not one.
+     *
+     * @return array<array<string, mixed>>
+     */
+    private function searchLogs(int $limit, ?RequestContext $context): array {
+        $parser = new Parser(Craft::$app->getPath()->getLogPath());
+        $logger = $context?->getClientLogger();
+
+        $entries = $parser->newest(
+            new Search($limit, pattern: self::DEPRECATION_PATTERN, headlineOnly: true),
+            static function (string $file, int $position, int $total) use ($logger): void {
+                $logger?->info('Searching ' . basename($file) . " ({$position} of {$total})");
+            },
+        );
+
+        return array_map(static fn (Entry $entry): array => $entry->toArray(), $entries);
+    }
+
+    /**
+     * Deprecation warnings Craft has recorded in its own table.
+     *
+     * @return array<array<string, mixed>>
+     */
+    private function readDeprecationTable(int $limit): array {
+        // Guard on table existence rather than catching everything, so a
+        // genuine query failure surfaces instead of silently reporting zero.
+        $db = Craft::$app->getDb();
+        $table = $db->tablePrefix . 'deprecationerrors';
+
+        if ($db->getTableSchema($table) === null) {
+            return [];
+        }
+
+        $deprecations = $db->createCommand(
+            "SELECT id, `key`, fingerprint, lastOccurrence, file, line, message
+             FROM `{$table}`
+             ORDER BY lastOccurrence DESC
+             LIMIT {$limit}",
+        )->queryAll();
+
+        foreach ($deprecations as &$dep) {
+            if ($dep['lastOccurrence']) {
+                $dep['lastOccurrence'] = date('Y-m-d H:i:s', strtotime((string) $dep['lastOccurrence']));
+            }
+        }
+
+        unset($dep);
+
+        return $deprecations;
     }
 
     /**

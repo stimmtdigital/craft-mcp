@@ -12,11 +12,42 @@ use stimmt\craft\Mcp\support\Tail;
 /**
  * Parser for Craft CMS log files.
  *
- * Handles log discovery, parsing, and multi-line stack trace extraction.
+ * Handles log discovery, searching, parsing, and multi-line stack trace
+ * extraction.
+ *
+ * WHY searching lives here rather than in the tools: a caller asking for the
+ * newest N errors is asking about results, not about how many lines to read.
+ * Reading a window and filtering it afterwards answers a different question,
+ * and answers it wrong: on a busy install the newest error can be thousands of
+ * lines from the end of the file, so a small limit used to return "no errors"
+ * with total confidence. The search walks backwards until it has N matches or
+ * it hits a cap, and it does that in one place so both read_logs and
+ * get_deprecations get the same answer.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Parser {
+    /**
+     * How far back into a single file a search will look before giving up.
+     *
+     * WHY a cap at all: a filter that matches nothing would otherwise read
+     * every byte of a rotated log that can be tens of megabytes. WHY these two
+     * numbers together: fifty thousand lines is deep enough to cross a day of
+     * request logging on a busy install, while four megabytes keeps a log with
+     * very long lines (a JSON payload per line) from turning that same depth
+     * into a twenty megabyte read.
+     */
+    public const int MAX_SCAN_LINES = 50000;
+
+    public const int MAX_SCAN_BYTES = 4194304;
+
+    /**
+     * How many continuation lines are carried across a block boundary to be
+     * reunited with the header they belong to. Bounded because a file whose
+     * lines never parse as a header would otherwise accumulate all of them.
+     */
+    private const int MAX_CARRIED_LINES = 200;
+
     /**
      * Log line format: 2026-01-03 04:01:45 [web.INFO] [category] message
      */
@@ -58,30 +89,69 @@ final readonly class Parser {
     }
 
     /**
-     * Parse a log file into entries with multi-line support.
-     *
-     * @param string $filepath Path to the log file
-     * @param string|null $levelFilter Filter by log level
-     * @param string|null $pattern Filter by message content (case-insensitive)
-     * @param int $maxLines Maximum lines to read from file
-     * @return Entry[]
+     * How deep a search looks, in words, for the tools that have to explain a
+     * "nothing found" answer honestly.
      */
-    public function parseFile(
-        string $filepath,
-        ?string $levelFilter = null,
-        ?string $pattern = null,
-        int $maxLines = 100,
-    ): array {
-        if (!file_exists($filepath)) {
-            return [];
+    public static function scanDepth(): string {
+        return self::MAX_SCAN_LINES . ' lines or ' . intdiv(self::MAX_SCAN_BYTES, 1024 * 1024) . ' MB per file';
+    }
+
+    /**
+     * The newest entries matching a search, across every discovered log file.
+     *
+     * @param callable(string, int, int): void|null $onFile Called per file with its path, position and the total
+     * @return Entry[] Newest first
+     */
+    public function newest(Search $search, ?callable $onFile = null): array {
+        $files = $this->discoverLogFiles($search->source);
+        $total = count($files);
+        $entries = [];
+
+        foreach ($files as $index => $file) {
+            if ($onFile !== null) {
+                $onFile($file, $index + 1, $total);
+            }
+
+            $entries = array_merge($entries, $this->scanFile($file, $search));
         }
 
-        $lines = Tail::of($filepath, $maxLines);
+        usort($entries, static fn (Entry $a, Entry $b): int => $b->timestamp <=> $a->timestamp);
+
+        return array_slice($entries, 0, $search->limit);
+    }
+
+    /**
+     * The newest entries in one log file that match the search.
+     *
+     * Walks the file backwards a block at a time and stops as soon as the
+     * limit is met, so a match far from the end of the file is still found. A
+     * search that matches nothing walks back until one of the scan caps is
+     * reached, and no further.
+     *
+     * @return Entry[] Oldest first
+     */
+    public function scanFile(string $filepath, Search $search): array {
         $filename = $this->getRelativePath($filepath);
+        $found = [];
+        $carried = [];
 
-        $entries = $this->parseLines($lines, $filename);
+        foreach (Tail::blocks($filepath, self::MAX_SCAN_LINES, self::MAX_SCAN_BYTES) as $block) {
+            // Lines carried back from the newer block continue the last entry
+            // of this one, so they are parsed here, with the header they
+            // belong to, rather than dropped at the boundary.
+            $lines = [...$block, ...$carried];
+            $header = $this->firstHeaderIndex($lines);
+            $carried = array_slice($lines, 0, min($header, self::MAX_CARRIED_LINES));
 
-        return $this->filterEntries($entries, $levelFilter, $pattern);
+            $entries = $this->parseLines(array_slice($lines, $header), $filename);
+            $found = [...array_filter($entries, $search->matches(...)), ...$found];
+
+            if (count($found) >= $search->limit) {
+                break;
+            }
+        }
+
+        return array_slice($found, -$search->limit);
     }
 
     /**
@@ -234,6 +304,22 @@ final readonly class Parser {
     }
 
     /**
+     * Index of the first line that starts an entry, or the line count when a
+     * block holds nothing but the tail of an entry that began earlier.
+     *
+     * @param string[] $lines
+     */
+    private function firstHeaderIndex(array $lines): int {
+        foreach ($lines as $index => $line) {
+            if ($this->isLogEntryStart($line)) {
+                return $index;
+            }
+        }
+
+        return count($lines);
+    }
+
+    /**
      * Check if a line starts a new log entry.
      */
     private function isLogEntryStart(string $line): bool {
@@ -301,29 +387,6 @@ final readonly class Parser {
         }
 
         return $frames;
-    }
-
-    /**
-     * Filter entries by level and/or pattern.
-     *
-     * @param Entry[] $entries
-     * @return Entry[]
-     */
-    private function filterEntries(array $entries, ?string $levelFilter, ?string $pattern): array {
-        return array_values(array_filter(
-            $entries,
-            static function (Entry $entry) use ($levelFilter, $pattern): bool {
-                if ($levelFilter !== null && !$entry->matchesLevel($levelFilter)) {
-                    return false;
-                }
-
-                if ($pattern !== null && !$entry->matchesPattern($pattern)) {
-                    return false;
-                }
-
-                return true;
-            },
-        ));
     }
 
     /**
