@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\elements\GlobalSet;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\elements\LayoutFields;
+use stimmt\craft\Mcp\elements\Reader;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\ElementModule;
 use stimmt\craft\Mcp\support\Response;
-use stimmt\craft\Mcp\text\Serializer;
 
 /**
  * Global set MCP tools for Craft CMS.
@@ -19,6 +22,12 @@ use stimmt\craft\Mcp\text\Serializer;
  * @author Max van Essen <support@stimmt.digital>
  */
 class GlobalSetTools {
+    private readonly Reader $reader;
+
+    public function __construct(?Reader $reader = null) {
+        $this->reader = $reader ?? ElementModule::reader();
+    }
+
     /**
      * List all global sets.
      */
@@ -38,24 +47,21 @@ class GlobalSetTools {
 
     /**
      * Serialize a global set to array.
+     *
+     * Field values go through the same reader every other content tool uses,
+     * so they arrive in the documented payload format: natural keys for
+     * relations, and [] for an empty one. Serializing the live value straight
+     * off the element handed back the internal query object instead, class
+     * name and all, which is neither the format nor anything a caller can use.
      */
-    private function serializeGlobalSet(mixed $globalSet): array {
-        $fieldValues = [];
-        $fieldLayout = $globalSet->getFieldLayout();
-
-        if ($fieldLayout !== null) {
-            foreach ($fieldLayout->getCustomFields() as $field) {
-                $fieldValues[$field->handle] = Serializer::serialize(
-                    $globalSet->getFieldValue($field->handle),
-                );
-            }
-        }
+    private function serializeGlobalSet(GlobalSet $globalSet): array {
+        $handles = array_keys(LayoutFields::of($globalSet->getFieldLayout()));
 
         return [
             'id' => $globalSet->id,
             'handle' => $globalSet->handle,
             'name' => $globalSet->name,
-            'fields' => $fieldValues,
+            'fields' => $this->reader->readFields($globalSet, $handles),
         ];
     }
 }

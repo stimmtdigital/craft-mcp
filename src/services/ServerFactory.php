@@ -22,6 +22,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use stimmt\craft\Mcp\discovery\Loader;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\logging\FileLogger;
 use stimmt\craft\Mcp\Mcp;
@@ -260,9 +261,7 @@ class ServerFactory {
      * This is separate from Craft's logging system.
      */
     public static function createFileLogger(?string $logPath = null, string $logLevel = 'error'): LoggerInterface {
-        if ($logPath === null) {
-            $logPath = Craft::getAlias('@storage/logs/mcp-server.log');
-        }
+        $logPath ??= Craft::getAlias('@storage/logs/mcp-server.log');
 
         return new FileLogger($logPath, $logLevel);
     }
@@ -304,7 +303,29 @@ class ServerFactory {
         return $this->baseInstructions()
             . $this->scopeNote($scope)
             . $this->availabilityNote($disabledCited)
+            . $this->editionNoteFor(Mcp::currentEdition())
             . $this->installNote(Mcp::settings()->additionalInstructions);
+    }
+
+    /**
+     * Retracts the write guidance for an install that cannot write.
+     *
+     * The base instructions teach the draft-first flow and name the tools that
+     * perform it. On an edition where those tools are absent, that guidance
+     * describes something the agent cannot do, so it has to be withdrawn in
+     * the same breath rather than left to be discovered by a failed call.
+     */
+    private function editionNoteFor(Edition $edition): string {
+        if ($edition->atLeast(Edition::Pro)) {
+            return '';
+        }
+
+        return "\n\n## Edition\n\n"
+            . 'This install runs the Lite edition. The content-writing tools '
+            . '(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site, create_nested_entry, move_nested_entry) '
+            . 'are a Pro feature and are not available here, so any write instructions above do not apply. '
+            . 'Reading, browsing, and inspection are fully available. '
+            . Edition::UPGRADE_CTA;
     }
 
     /**

@@ -38,6 +38,10 @@ list_products limit=20 offset=40
 ```json
 {
   "count": 10,
+  "total": 84,
+  "limit": 10,
+  "offset": 0,
+  "hasMore": true,
   "products": [
     {
       "id": 123,
@@ -162,6 +166,10 @@ list_orders limit=20 offset=40
 ```json
 {
   "count": 10,
+  "total": 342,
+  "limit": 10,
+  "offset": 0,
+  "hasMore": true,
   "orders": [
     {
       "id": 789,

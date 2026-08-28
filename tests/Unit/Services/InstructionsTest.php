@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../Fixtures/RealCraft.php';
 
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\Settings;
@@ -19,6 +20,22 @@ it('teaches the tool-selection ladder in the base instructions', function () {
         ->toContain('get_database_schema')
         ->toContain('information_schema')
         ->toContain('last resort');
+});
+
+it('appends a Lite edition note that retracts the write promises', function () {
+    $note = (new ReflectionMethod(ServerFactory::class, 'editionNoteFor'))
+        ->invoke(new ServerFactory(), Edition::Lite);
+
+    expect($note)->toContain('Lite edition')
+        ->toContain('create_entry')
+        ->toContain('not available');
+});
+
+it('adds no edition note on Pro', function () {
+    $note = (new ReflectionMethod(ServerFactory::class, 'editionNoteFor'))
+        ->invoke(new ServerFactory(), Edition::Pro);
+
+    expect($note)->toBe('');
 });
 
 it('softens the Full scope note to admit only what this install exposes', function () {

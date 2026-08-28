@@ -2,6 +2,8 @@
 
 > **Since 1.4.0.** The payload format, draft-first writes, the workflow tools, and per-field input shapes all require Craft MCP 1.4.0 or later. Earlier versions accept numeric IDs and save writes live immediately.
 
+> **Pro edition.** The tools that write entry content require Pro. Reads, schema discovery and the payload format itself are available on Lite, so everything about the format below applies either way; the write calls are what Pro adds. See [Editions](editions.md).
+
 Entry reads and writes share one format, powered by an element-generic `elements` module. What `get_entry` returns is exactly what `create_entry` and `update_entry` accept, so an agent can read an entry, tweak it, and write it back without translation. This page explains the format and the workflow around it.
 
 ## The Payload Format

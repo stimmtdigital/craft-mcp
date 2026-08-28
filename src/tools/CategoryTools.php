@@ -12,7 +12,9 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
+use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\Window;
 
 /**
  * Category MCP tools for Craft CMS.
@@ -33,20 +35,29 @@ class CategoryTools {
     public function listCategories(
         #[Schema(description: 'Category group handle. Omit to list categories from every group.')]
         ?string $group = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 100,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
+        int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        $query = Category::find()->limit($limit);
+        Window::assert($limit, $offset);
+        $groupModel = HandleResolver::categoryGroup($group);
+        $query = Category::find()->limit($limit)->offset($offset);
 
-        if ($group !== null) {
-            $query->group($group);
+        // The model rather than the handle: it carries the group's structure
+        // id, which is what orders the results.
+        if ($groupModel !== null) {
+            $query->group($groupModel);
         }
 
         Authorization::scopeQuery($query);
         $categories = $query->all();
         $results = array_map($this->serializeCategory(...), $categories);
 
-        return Response::list('categories', $results);
+        // Counted after the scope is applied, so the total describes the rows
+        // this caller may see rather than the ones the install holds.
+        return Response::paginated('categories', $results, (int) $query->count(), $limit, $offset);
     }
 
     /**

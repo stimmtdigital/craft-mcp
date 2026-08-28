@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\models;
 
 use Mcp\Schema\Icon;
 use Mcp\Schema\ToolAnnotations;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 
 /**
@@ -34,6 +35,7 @@ final readonly class ToolDefinition {
         public string $category,
         public bool $dangerous,
         public bool $privileged,
+        public Edition $requiredEdition = Edition::Lite,
         public ?string $condition = null,
         public ?string $title = null,
         public ?ToolAnnotations $annotations = null,
@@ -87,6 +89,7 @@ final readonly class ToolDefinition {
             'category' => $this->category,
             'dangerous' => $this->dangerous,
             'privileged' => $this->privileged,
+            'requiredEdition' => $this->requiredEdition->value,
         ];
     }
 
@@ -94,7 +97,7 @@ final readonly class ToolDefinition {
      * Create a ToolDefinition from extracted metadata. Every key is optional,
      * including the ones added after the first release of this factory.
      *
-     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, dangerous?: bool, privileged?: bool, condition?: string|null, title?: string|null, annotations?: ToolAnnotations|null, icons?: Icon[]|null, meta?: array<string, mixed>|null, outputSchema?: array<string, mixed>|null} $data
+     * @param array{name?: string, description?: string, class?: string, method?: string, source?: string, category?: string, dangerous?: bool, privileged?: bool, requiredEdition?: Edition, condition?: string|null, title?: string|null, annotations?: ToolAnnotations|null, icons?: Icon[]|null, meta?: array<string, mixed>|null, outputSchema?: array<string, mixed>|null} $data
      */
     public static function fromArray(array $data): self {
         return new self(
@@ -106,6 +109,7 @@ final readonly class ToolDefinition {
             category: $data['category'] ?? ToolCategory::GENERAL->value,
             dangerous: $data['dangerous'] ?? false,
             privileged: $data['privileged'] ?? false,
+            requiredEdition: $data['requiredEdition'] ?? Edition::Lite,
             condition: $data['condition'] ?? null,
             title: $data['title'] ?? null,
             annotations: $data['annotations'] ?? null,

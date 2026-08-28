@@ -189,9 +189,7 @@ class RegisterResourcesEvent extends Event {
         }
 
         // Store class for backwards compatibility
-        if (!isset($this->resources[$source])) {
-            $this->resources[$source] = [];
-        }
+        $this->resources[$source] ??= [];
         $this->resources[$source][] = $class;
 
         foreach ($definitions as $definition) {

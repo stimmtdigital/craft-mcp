@@ -14,7 +14,7 @@
     "toolCount": 42,
     "tools": {
         "count_entries": {
-            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Same filters as list_entries. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers \"how many per X\" without listing anything.",
+            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Same filters as list_entries, and the same top-level scope: nested Matrix blocks are left out unless includeNested, so a total here matches the one list_entries reports. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers \"how many per X\" without listing anything.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -28,7 +28,12 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Section handle to count within; list_sections reports the handles. Omit to count across every section."
+                        "description": "Section handle to count within; list_sections reports the handles. Omit to count across every section, which is every top-level entry the install has."
+                    },
+                    "includeNested": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Count nested Matrix blocks alongside top-level entries, exactly as in list_entries. Left out by default, so the two tools answer about the same set of entries."
                     },
                     "type": {
                         "type": [
@@ -123,7 +128,8 @@
                         ],
                         "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "describe_entry_schema": {
@@ -162,7 +168,8 @@
                 },
                 "required": [
                     "section"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "explain_query": {
@@ -181,7 +188,8 @@
                 },
                 "required": [
                     "sql"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "get_asset": {
@@ -199,11 +207,12 @@
                 },
                 "required": [
                     "id"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "get_config": {
-            "description": "Get a Craft CMS configuration value by dot-notation key (e.g., \"general.devMode\", \"db.driver\")",
+            "description": "Get a Craft CMS configuration value by dot-notation key (e.g., \"general.devMode\", \"db.driver\"). Credentials such as the security key and the database password come back redacted, named but not revealed.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -213,12 +222,13 @@
                 "properties": {
                     "key": {
                         "type": "string",
-                        "description": "Dot-notation key, such as \"general.devMode\" or \"db.driver\". A bare category (\"general\", \"db\") returns every setting in it; \"custom.<file>\" reads a config file."
+                        "description": "Dot-notation key, such as \"general.devMode\" or \"db.driver\". A bare category (\"general\", \"db\") returns every setting in it; \"custom.<file>\" reads a config file. Credential settings report a redaction placeholder in place of their value."
                     }
                 },
                 "required": [
                     "key"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "get_database_info": {
@@ -229,7 +239,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_database_schema": {
@@ -249,7 +260,8 @@
                         "default": null,
                         "description": "Table name, with or without the install's table prefix. Omit to list every table instead of detailing one."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_deprecations": {
@@ -263,9 +275,12 @@
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_entry": {
@@ -307,7 +322,8 @@
                         ],
                         "default": null
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_environment": {
@@ -318,11 +334,12 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_graphql_schema": {
-            "description": "Get detailed information about a specific GraphQL schema including its SDL (Schema Definition Language)",
+            "description": "Read a GraphQL schema: the scope it grants, and the types it exposes. Returns an index of every type by default (name, kind, field count, SDL size); pass type for that one type's SDL, and type together with field for a single field and its arguments. A Craft schema prints hundreds of kilobytes of SDL, more than one response can carry, so it is never returned whole.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -345,8 +362,25 @@
                         ],
                         "default": null,
                         "description": "Schema uid, as an alternative to id."
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "A type name from the index this tool returns without it, such as \"Query\" or \"EntryInterface\". Returns that type's SDL in place of the index. The index gives every type's sdlBytes, so you can see beforehand which types are too large to come back whole."
+                    },
+                    "field": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "One field of that type, such as \"entries\" on \"Query\". Returns the SDL for that field alone, its arguments included. This is how to read a type whose own SDL is over the size limit."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_last_error": {
@@ -357,7 +391,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_mcp_info": {
@@ -374,7 +409,8 @@
                         "default": false,
                         "description": "Include the parts that cost something to produce or to read: the reason each unavailable tool is unavailable, the text of any registration errors, and install facts. Off by default because this tool is often the first call of a session."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_project_config_diff": {
@@ -385,7 +421,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_queue_jobs": {
@@ -404,9 +441,12 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_site": {
@@ -433,7 +473,8 @@
                         "default": null,
                         "description": "Site handle, as an alternative to id; list_sites reports the handles."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "get_system_info": {
@@ -444,7 +485,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "get_table_counts": {
@@ -465,7 +507,8 @@
                         ],
                         "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_asset_folders": {
@@ -491,9 +534,10 @@
                             "integer"
                         ],
                         "default": null,
-                        "description": "Folder id to list the children of. Omit for the children of the volume's root folder."
+                        "description": "Folder id to list the children of; a folder id names its volume on its own, so volume is optional beside it. Omit for the children of the volume's root folder."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_assets": {
@@ -539,13 +583,18 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_backups": {
@@ -556,7 +605,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_categories": {
@@ -578,9 +628,18 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 100
+                        "default": 100,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_console_commands": {
@@ -591,7 +650,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_drafts": {
@@ -629,17 +689,22 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 20
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_entries": {
-            "description": "List entries. Filter by section, type, status, site, full-text search, field values (with :empty:/:notempty: and natural keys for relations), relatedTo, author, and date ranges. Returns entries in the payload format (natural keys for relations).",
+            "description": "List entries. Filter by section, type, status, site, full-text search, field values (with :empty:/:notempty: and natural keys for relations), relatedTo, author, and date ranges. Returns entries in the payload format (natural keys for relations). Lists top-level entries: a Matrix block is an entry too, but it belongs to no section, so blocks are left out unless includeNested.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -653,7 +718,12 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Section handle to list from; list_sections reports the handles. Omit to list across every section."
+                        "description": "Section handle to list from; list_sections reports the handles. Omit to list across every section, which is every top-level entry the install has."
+                    },
+                    "includeNested": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "List nested Matrix blocks alongside top-level entries. A block is an entry in Craft, but it belongs to no section and carries no title or slug of its own, so blocks are left out by default; pass true to audit block content across owners. Has no effect when section is set, because no block is in a section. To read one block, call get_entry with the block's own id."
                     },
                     "type": {
                         "type": [
@@ -749,13 +819,18 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 20
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater. count_entries answers a total without listing rows.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_event_handlers": {
@@ -775,7 +850,8 @@
                         "default": null,
                         "description": "Case-insensitive substring matched against event names and the classes the events are registered on."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_fields": {
@@ -803,7 +879,8 @@
                         "default": null,
                         "description": "Case-insensitive substring matched against the field class short name, such as \"matrix\", \"assets\", or \"plaintext\". The rows report the full class name."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_globals": {
@@ -814,7 +891,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_graphql_schemas": {
@@ -825,7 +903,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_graphql_tokens": {
@@ -836,7 +915,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_mcp_tools": {
@@ -847,7 +927,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_plugins": {
@@ -858,11 +939,12 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_revisions": {
-            "description": "List an entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers \"when did this change and by whom\". Read a revision's full content with get_entry using its revisionElementId; the canonical entry id always holds the current content.",
+            "description": "List a canonical entry's saved revisions, newest first: who saved each one, when, and with what notes. Answers \"when did this change and by whom\". Read a revision's full content with get_entry using its revisionElementId; the canonical entry id always holds the current content. History belongs to the canonical entry, so a draftElementId from list_drafts is refused, naming the canonicalId to ask for instead.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -872,7 +954,7 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Canonical entry id whose history to list."
+                        "description": "Canonical entry id whose history to list. A draft or revision id is refused with the canonical id to ask for instead."
                     },
                     "site": {
                         "type": [
@@ -884,16 +966,21 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 20
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "offset": {
                         "type": "integer",
-                        "default": 0
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 },
                 "required": [
                     "id"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "list_routes": {
@@ -904,7 +991,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_sections": {
@@ -924,7 +1012,8 @@
                         "default": null,
                         "description": "Case-insensitive substring matched against section handles and names."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_site_groups": {
@@ -935,7 +1024,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_sites": {
@@ -946,7 +1036,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "list_users": {
@@ -972,7 +1063,7 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Account status: active, pending, suspended, locked, or inactive."
+                        "description": "Account status: active, pending, suspended, locked, inactive, or credentialed (active or pending, which is every account that can sign in)."
                     },
                     "email": {
                         "type": [
@@ -984,9 +1075,18 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "list_volumes": {
@@ -997,7 +1097,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         },
         "query_graphql": {
@@ -1040,7 +1141,8 @@
                 },
                 "required": [
                     "query"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
         "read_logs": {
@@ -1054,7 +1156,9 @@
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "default": 50
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
                     },
                     "level": {
                         "type": [
@@ -1089,7 +1193,8 @@
                         ],
                         "description": "Response format: \"structured\" (default) returns the JSON payload, \"text\" returns the same data laid out for a person to read."
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "reload_mcp": {
@@ -1101,7 +1206,8 @@
             },
             "inputSchema": {
                 "type": "object",
-                "properties": []
+                "properties": [],
+                "additionalProperties": false
             }
         }
     },
@@ -1245,8 +1351,10 @@
                         "category": "<string>",
                         "dangerous": "<bool|false|true>",
                         "description": "<string>",
+                        "locked": false,
                         "name": "<string>",
                         "privileged": "<bool|false|true>",
+                        "requiredEdition": "<string>",
                         "source": "<string>",
                         "unavailableBecause": "<null|string>"
                     }
@@ -1337,8 +1445,15 @@
         "get_last_error": {
             "status": "ok",
             "shape": {
-                "found": false,
-                "message": "<string>"
+                "error": {
+                    "category": "<string>",
+                    "channel": "<string>",
+                    "file": "<string>",
+                    "level": "<string>",
+                    "message": "<string>",
+                    "timestamp": "<string>"
+                },
+                "found": true
             }
         },
         "get_deprecations": {
@@ -1346,11 +1461,17 @@
             "shape": {
                 "fromDatabase": {
                     "count": "<number>",
-                    "deprecations": []
+                    "deprecations": [],
+                    "hasMore": null,
+                    "limit": "<number>",
+                    "total": null
                 },
                 "fromLogs": {
                     "count": "<number>",
-                    "deprecations": []
+                    "deprecations": [],
+                    "hasMore": null,
+                    "limit": "<number>",
+                    "total": null
                 },
                 "hint": "<string>"
             }
@@ -1364,6 +1485,7 @@
                     "pending": "<number>",
                     "reserved": "<number>"
                 },
+                "hasMore": true,
                 "jobs": [
                     {
                         "channel": "<string>",
@@ -1376,7 +1498,9 @@
                         "ttr": "<number>"
                     }
                 ],
-                "status": "<string>"
+                "limit": "<number>",
+                "status": "<string>",
+                "total": "<number>"
             }
         },
         "list_console_commands": {
@@ -1453,7 +1577,10 @@
                         "message": "<string>",
                         "timestamp": "<string>"
                     }
-                ]
+                ],
+                "hasMore": null,
+                "limit": "<number>",
+                "total": null
             }
         },
         "read_logs.text": {
@@ -1620,20 +1747,10 @@
                             "companyName": null,
                             "companyZipcode": null,
                             "facebook": null,
-                            "favicon": {
-                                "__class": "<string>",
-                                "__note": "<string>",
-                                "count": "<number>",
-                                "elements": []
-                            },
+                            "favicon": [],
                             "instagram": null,
                             "linkedin": null,
-                            "logo": {
-                                "__class": "<string>",
-                                "__note": "<string>",
-                                "count": "<number>",
-                                "elements": []
-                            }
+                            "logo": []
                         },
                         "handle": "<string>",
                         "id": "<number>",
@@ -1646,13 +1763,21 @@
             "status": "ok",
             "shape": {
                 "categories": [],
-                "count": "<number>"
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
             }
         },
         "list_users": {
             "status": "ok",
             "shape": {
                 "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>",
                 "users": [
                     {
                         "admin": true,
@@ -1672,7 +1797,7 @@
             "status": "ok",
             "shape": {
                 "key": "<string>",
-                "value": "<string>"
+                "value": true
             }
         },
         "get_project_config_diff": {
@@ -1959,6 +2084,12 @@
         "get_graphql_schema": {
             "status": "ok",
             "shape": {
+                "count": "<number>",
+                "roots": {
+                    "mutation": "<string>",
+                    "query": "<string>",
+                    "subscription": null
+                },
                 "schema": {
                     "id": "<number>",
                     "isPublic": true,
@@ -2057,11 +2188,18 @@
                     "scope": [
                         "<string>"
                     ],
-                    "sdl": null,
-                    "sdlLength": "<number>",
                     "uid": "<string>"
                 },
-                "success": true
+                "sdlBytes": "<number>",
+                "success": true,
+                "types": [
+                    {
+                        "fields?": "<number>",
+                        "kind": "<string>",
+                        "name": "<string>",
+                        "sdlBytes": "<number>"
+                    }
+                ]
             }
         },
         "explain_query": {
@@ -2152,6 +2290,7 @@
                         "warnings": []
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2169,6 +2308,7 @@
                         "title": "<string>"
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2220,6 +2360,7 @@
                         "warnings": []
                     }
                 ],
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2256,6 +2397,7 @@
                         "warnings": []
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2560,12 +2702,15 @@
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
-                                "<string>"
+                                {
+                                    "unresolved": "<string>"
+                                }
                             ]
                         },
                         "translation": {
                             "method": "<string>",
-                            "perSite": "<bool>"
+                            "perSite": false,
+                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }
@@ -2820,12 +2965,15 @@
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
-                                "<string>"
+                                {
+                                    "unresolved": "<string>"
+                                }
                             ]
                         },
                         "translation": {
                             "method": "<string>",
-                            "perSite": "<bool>"
+                            "perSite": false,
+                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }
@@ -2869,6 +3017,7 @@
                         "type": "<string>"
                     }
                 ],
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2878,6 +3027,7 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "revisions": [
@@ -2899,6 +3049,7 @@
             "shape": {
                 "assets": [],
                 "count": "<number>",
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"

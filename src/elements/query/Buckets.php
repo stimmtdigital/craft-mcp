@@ -6,12 +6,14 @@ namespace stimmt\craft\Mcp\elements\query;
 
 use Craft;
 use craft\base\EagerLoadingFieldInterface;
+use craft\base\ElementContainerFieldInterface;
 use craft\base\ElementInterface;
+use craft\base\FieldInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\db\EntryQuery;
 use craft\elements\Entry;
 use DateTimeInterface;
-use InvalidArgumentException;
+use stimmt\craft\Mcp\elements\InvalidInput;
 use Stringable;
 
 /**
@@ -43,7 +45,7 @@ final class Buckets {
         if (str_contains($groupBy, ':')) {
             [$granularity, $target] = explode(':', $groupBy, 2);
             if (!in_array($granularity, self::GRANULARITIES, true) || !in_array($target, self::DATE_ATTRIBUTES, true)) {
-                throw new InvalidArgumentException(
+                throw new InvalidInput(
                     "Invalid date groupBy '{$groupBy}'; use day|week|month|year : dateCreated|dateUpdated|postDate",
                 );
             }
@@ -64,13 +66,25 @@ final class Buckets {
             'week' => $date->format('o-\WW'),
             'month' => $date->format('Y-m'),
             'year' => $date->format('Y'),
-            default => throw new InvalidArgumentException("Unknown granularity '{$granularity}'"),
+            default => throw new InvalidInput("Unknown granularity '{$granularity}'"),
         };
     }
 
     /**
      * @return array{total: int, buckets?: list<array{key: string, count: int}>, truncated?: bool}
      */
+    /**
+     * Whether this grouping asks a question no single-site query can answer.
+     *
+     * Every row reports the site it was fetched from, so counting by site over
+     * a query pinned to one of them names that site and calls every other one
+     * empty. Asked before the query runs, because widening it afterwards is
+     * too late.
+     */
+    public static function spansSites(?string $groupBy): bool {
+        return $groupBy === 'site';
+    }
+
     public function collect(EntryQuery $query, ?string $groupBy): array {
         $total = (int) $query->count();
         if ($groupBy === null) {
@@ -79,7 +93,7 @@ final class Buckets {
 
         $parsed = self::parseGroupBy($groupBy);
         if ($parsed['kind'] === 'field') {
-            $this->assertFieldExists($parsed['target'], $query);
+            $this->eagerLoad($this->groupableField($parsed['target']), $query);
         }
 
         $counts = [];
@@ -126,7 +140,7 @@ final class Buckets {
             'attribute' => [$this->attributeKey($entry, $parsed['target'])],
             'date' => [self::dateKey($entry->{$parsed['target']}, (string) $parsed['granularity'])],
             'field' => $this->fieldKeys($entry, $parsed['target']),
-            default => throw new InvalidArgumentException("Unknown groupBy kind '{$parsed['kind']}'"),
+            default => throw new InvalidInput("Unknown groupBy kind '{$parsed['kind']}'"),
         };
     }
 
@@ -137,7 +151,7 @@ final class Buckets {
             'section' => $entry->getSection()?->handle,
             'site' => $entry->getSite()->handle,
             'author' => $entry->getAuthor()?->username,
-            default => throw new InvalidArgumentException("Unknown attribute target '{$target}'"),
+            default => throw new InvalidInput("Unknown attribute target '{$target}'"),
         };
 
         return $value !== null && $value !== '' ? $value : self::EMPTY_KEY;
@@ -207,15 +221,38 @@ final class Buckets {
         return ['buckets' => $buckets] + ($truncated ? ['truncated' => true] : []);
     }
 
-    private function assertFieldExists(string $handle, EntryQuery $query): void {
+    /**
+     * The field a field groupBy names, once it is known to bucket the result
+     * set into parts that add up to it.
+     *
+     * A container field (Matrix and friends) does not: its blocks are content
+     * the entry holds, not a property that describes it, so an entry with
+     * twenty blocks would be counted twenty times, under twenty synthetic
+     * labels, and the buckets would sum to more than the total they are
+     * reported beside. Refusing says so; answering could not.
+     */
+    private function groupableField(string $handle): FieldInterface {
         $field = Craft::$app->getFields()->getFieldByHandle($handle)
-            ?? throw new InvalidArgumentException("Unknown groupBy '{$handle}': not an attribute, date bucket, or field handle");
+            ?? throw new InvalidInput("Unknown groupBy '{$handle}': not an attribute, date bucket, or field handle");
 
+        if (!$field instanceof ElementContainerFieldInterface) {
+            return $field;
+        }
+
+        throw new InvalidInput(
+            "Cannot group by '{$handle}': it is a container field, and its blocks belong to the entry rather than "
+            . 'describing it, so the buckets would count one entry once per block and add up to more than the total. '
+            . 'Group by an attribute (status, type, section, site, author), a date bucket such as "month:dateUpdated", '
+            . 'or a relation or scalar field handle.',
+        );
+    }
+
+    private function eagerLoad(FieldInterface $field, EntryQuery $query): void {
         // Eager-load relation values across ALL statuses so bucketing does
         // not query per entry and non-live related elements keep their
         // titles instead of collapsing into the (empty) bucket.
         if ($field instanceof EagerLoadingFieldInterface) {
-            $query->with([[$handle, ['status' => null]]]);
+            $query->with([[(string) $field->handle, ['status' => null]]]);
         }
     }
 }

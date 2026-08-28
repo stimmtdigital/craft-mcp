@@ -48,7 +48,7 @@ describe('Filters structure', function () {
 
         expect($source)->toContain('resolve(')
             ->and($source)->toContain('getFieldByHandle(')
-            ->and($source)->toContain('InvalidArgumentException');
+            ->and($source)->toContain('InvalidInput');
     });
 
     it('refuses field handles that collide with query params', function () {

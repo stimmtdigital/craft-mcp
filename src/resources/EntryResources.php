@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\resources;
 
-use Craft;
 use craft\base\ElementInterface;
 use craft\base\FieldInterface;
 use craft\elements\db\ElementQuery;
 use craft\elements\Entry;
 use craft\models\EntryType;
 use craft\models\Section;
-use craft\services\Entries;
 use DateTime;
 use Mcp\Capability\Attribute\CompletionProvider;
 use Mcp\Capability\Attribute\McpResourceTemplate;
@@ -20,6 +18,7 @@ use stimmt\craft\Mcp\attributes\McpResourceMeta;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\ResourceCategory;
 use stimmt\craft\Mcp\support\Authorization;
+use stimmt\craft\Mcp\support\HandleResolver;
 
 /**
  * MCP resources for Craft CMS entry content.
@@ -45,9 +44,10 @@ final class EntryResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        if (!$this->sectionExists($section)) {
-            throw new ResourceReadException("Section '{$section}' not found");
-        }
+        // Refused rather than answered with an empty list: "that section holds
+        // no entries" and "there is no such section" are different facts, and
+        // the query below cannot tell them apart.
+        HandleResolver::section($section);
 
         $entries = $this->fetchEntries($section);
         $total = $this->countEntries($section);
@@ -81,19 +81,9 @@ final class EntryResources {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
-
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
-
-        if ($sectionObj === null) {
-            throw new ResourceReadException("Section '{$section}' not found");
-        }
-
         return [
             'section' => $section,
-            'stats' => $this->buildSectionStats($sectionObj),
+            'stats' => $this->buildSectionStats(HandleResolver::section($section)),
         ];
     }
 
@@ -114,9 +104,9 @@ final class EntryResources {
         string $section,
         string $slug,
     ): array {
-        if (!$this->sectionExists($section)) {
-            throw new ResourceReadException("Section '{$section}' not found");
-        }
+        // Ahead of the slug lookup, so a section handle nothing answers to is
+        // reported as itself instead of as a missing entry.
+        HandleResolver::section($section);
 
         $entry = $this->findEntryBySlug($section, $slug);
         if ($entry === null) {
@@ -127,16 +117,6 @@ final class EntryResources {
         return [
             'entry' => $this->buildEntryDetail($entry),
         ];
-    }
-
-    /**
-     * Check if a section exists.
-     */
-    private function sectionExists(string $section): bool {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
-
-        return $entriesService->getSectionByHandle($section) !== null;
     }
 
     /**

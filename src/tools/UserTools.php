@@ -12,7 +12,9 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
+use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\Window;
 
 /**
  * User MCP tools for Craft CMS.
@@ -33,20 +35,32 @@ class UserTools {
     public function listUsers(
         #[Schema(description: 'User group handle. Omit to list users from every group.')]
         ?string $group = null,
-        #[Schema(description: 'Account status: active, pending, suspended, locked, or inactive.')]
+        // credentialed is the sixth value the guard accepts and the error
+        // advertises, and it works; leaving it out of the description was the
+        // doc being wrong about the guard, not the guard being wrong.
+        #[Schema(description: 'Account status: active, pending, suspended, locked, inactive, or credentialed (active or pending, which is every account that can sign in).')]
         ?string $status = null,
         #[Schema(description: 'Exact email address to match.')]
         ?string $email = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
+        int $offset = 0,
         ?RequestContext $context = null,
     ): array {
-        $query = User::find()->limit($limit);
+        Window::assert($limit, $offset);
+        $groupModel = HandleResolver::userGroup($group);
+        $query = User::find()->limit($limit)->offset($offset);
 
-        if ($group !== null) {
-            $query->group($group);
+        // By id, not by handle: Craft's own group() hands a string it could
+        // not resolve to a helper that only takes arrays, so the parameter
+        // died in a vendor TypeError that named a server path. Resolving the
+        // handle here settles it before the query ever sees it.
+        if ($groupModel !== null) {
+            $query->groupId($groupModel->id);
         }
         if ($status !== null) {
-            $query->status($status);
+            $query->status(HandleResolver::userStatus($status));
         }
         if ($email !== null) {
             $query->email($email);
@@ -56,7 +70,9 @@ class UserTools {
         $users = $query->all();
         $results = array_map($this->serializeUser(...), $users);
 
-        return Response::list('users', $results);
+        // Counted after the scope is applied, so the total describes the rows
+        // this caller may see rather than the ones the install holds.
+        return Response::paginated('users', $results, (int) $query->count(), $limit, $offset);
     }
 
     /**

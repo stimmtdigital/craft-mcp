@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+The release that rebuilt how content is read and written. Relations, assets,
+categories and users are addressed by what they are rather than by numeric id,
+the read format and the write format became the same format, and every write
+lands as a reviewable draft by default. The thirteen beta sections below hold
+the detail; this section is the whole line read as one release.
+
+### Added
+- Two editions. Everything that reads, inspects or queries the install is Lite; the eight tools that write entry content (`create_entry`, `update_entry`, `publish_entry`, `delete_entry`, `duplicate_entry`, `copy_entry_to_site`, `create_nested_entry`, `move_nested_entry`) are Pro. On Lite those tools are not advertised at all, and the server instructions gain a section naming them and withdrawing the write guidance, so an agent is never taught a workflow the install cannot perform. See [Editions](docs/editions.md)
+- `showLockedProTools` config setting: keep the Pro tools listed on a Lite install, marked `[Pro]` and answering any call with an upgrade message, instead of hiding them. Off by default
+- `list_mcp_tools` reports `requiredEdition` and `locked` per tool, so a client can build an upgrade prompt without hard-coding which tools are paid
+- A plugin registering its own tools can require an edition with `#[RequiresEdition]`, on a method or a whole class, with the method-level attribute taking precedence
+- The payload format: one shape for reading and writing an entry, with relations as natural keys (`{"section","slug"}`, `{"volume","filename"}`, `{"group","slug"}`, `{"username"}`) and Matrix blocks as keyed objects. What `get_entry` returns is what `create_entry` and `update_entry` accept, so an agent can read an entry, change one value, and write it back without translating anything
+- Draft-first writing. Every write lands as a draft carrying a control panel link for review, and nothing reaches live content until `publish_entry` applies it. `list_drafts` is the review queue and `list_revisions` is the history
+- Single Matrix block editing: `create_nested_entry` adds one block without resending its siblings, `move_nested_entry` repositions one, and a block's own id works with `update_entry` and `delete_entry`. Rewriting a whole field value to change one block no longer deletes the blocks left out of the payload
+- `count_entries`: totals and per-value breakdowns by attribute, by date bucket, or by field value, answering "how many per X" in one call instead of listing everything
+- Multi-site content: `list_sites`, `get_site`, `list_site_groups`, and `copy_entry_to_site` for translation. Writes that reach further than the site named in the call report `affectedSites`, the sites they actually landed on
+- MCP token management in the control panel, with readonly, content and full scopes per user, plus `disabledScopes` to block minting a scope per environment. A team can share one install without sharing one key
+- `get_mcp_info` and `list_mcp_tools` report the connection they are answering on: transport, scope, user, and how many tools this connection can actually call rather than how many are registered
+- `maxResponseBytes` config setting: refuse a single tool result past this size instead of emitting one nothing downstream can read. Defaults to 1 MB, and `0` disables the check
+
+### Changed
+- `list_entries` and `count_entries` cover top-level entries. A section-less read no longer mixes in nested Matrix blocks, which belong to no section; pass `includeNested: true` for the previous result set. Both tools share one scope, so their totals agree
+- Every tool taking a `limit` returns the same envelope: `count`, `total`, `limit`, `offset` where the tool takes one, and `hasMore`. Where a tool cannot count without repeating the read, `total` and `hasMore` are `null` rather than inferred from the page size
+- `get_graphql_schema` returns a type index by default, with `type` and `field` parameters to widen it. A Craft schema prints to hundreds of kilobytes, so the index carries each type's printed size and the narrowed views stay inside one response
+- `get_config` reports a placeholder in place of a credential, matching the config resource, and refuses an unknown category or setting instead of answering
+- Arguments no tool declares are refused rather than dropped. A misspelled parameter name used to be ignored, and the tool answered as though it had never been passed
+- `list_categories` and `list_users` accept `offset`, so a caller told there is more can ask for it
+- `describe_entry_schema` reports the sources a relation accepts as natural key parts rather than uids, with an explicit `unresolved` entry for a source naming nothing on the install
+- Page bounds are published on the schema and enforced on every tool taking `limit` or `offset`, so a client can check before it calls
+- Requires `craftcms/cms` `^5.1` and `mcp/sdk` `^0.7`
+
+### Fixed
+- The stdio server no longer stalls against a client that sends several calls at once. A response larger than the socket buffer is delivered while the server keeps reading, and a request split across writes is reassembled before dispatch
+- `read_logs` and `get_last_error` search until they have enough matches instead of reading a fixed window from the end of each file, so a small `limit` no longer reports an install as error-free
+- `get_deprecations` reads Craft's rotated log files, and reports only deprecations
+- `run_query` applies its row cap however the statement is written, and judges a keyword by whether it is SQL rather than by whether the word appears, so a search for the word `update` is a read
+- `list_drafts` refuses an unknown section handle by name instead of returning an empty queue
+- `count_entries` grouped by site counts every site rather than naming the one the query already ran against
+- Date filters refuse a bound that names no instant instead of quietly filtering on the moment of the call
+- Ambiguous natural keys are refused with the ambiguity named, rather than resolved to whichever element matched first
+- A revision or draft id passed to a tool that works on canonical entries is refused with the canonical id to call instead
+- Placeholder slugs are cleared after a nested block is saved, so a block does not keep an internal temporary value as its slug
+
 ## [1.4.0-beta.13] - 2026-08-18
 
 ### Added

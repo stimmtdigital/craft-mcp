@@ -197,6 +197,9 @@ run_query sql="SELECT e.id, el.title, el.slug FROM craft_entries e JOIN craft_el
 {
   "success": true,
   "count": 5,
+  "total": null,
+  "limit": 100,
+  "hasMore": null,
   "columns": ["id", "title"],
   "rows": [
     { "id": 1, "title": "First Entry" },
@@ -205,6 +208,8 @@ run_query sql="SELECT e.id, el.title, el.slug FROM craft_entries e JOIN craft_el
 }
 ```
 
+`total` and `hasMore` are always `null` here: counting the rows a statement matches means running it a second time wrapped in a count, which for the aggregate SQL this tool exists for is the expensive half of the work. `limit` reports the cap that was applied, and is `null` when the statement carried its own `LIMIT`, since this parameter is then not the cap in force.
+
 **Text response:**
 
 ```
@@ -212,6 +217,9 @@ run_query sql="SELECT id, title FROM craft_entries LIMIT 2" output="text"
 
 success: true
 count:   2
+total:   null
+limit:   null
+hasMore: null
 columns: id, title
 rows:
   id  title

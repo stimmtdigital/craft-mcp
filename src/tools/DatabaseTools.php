@@ -16,6 +16,8 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\pipeline\Presenter;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\SqlReadGuard;
+use stimmt\craft\Mcp\support\SqlSkeleton;
+use stimmt\craft\Mcp\support\Window;
 use Throwable;
 
 /**
@@ -48,10 +50,8 @@ class DatabaseTools {
             $fullTableName = $tablePrefix . $table;
             $tableSchema = $schema->getTableSchema($fullTableName);
 
-            if ($tableSchema === null) {
-                // Try without prefix
-                $tableSchema = $schema->getTableSchema($table);
-            }
+            // Try without prefix
+            $tableSchema ??= $schema->getTableSchema($table);
 
             if ($tableSchema === null) {
                 throw new ToolCallException("Table '{$table}' not found");
@@ -142,36 +142,49 @@ class DatabaseTools {
     public function runQuery(
         #[Schema(description: 'The SELECT statement to run. Anything the read guard does not recognise as read-only is refused before execution.')]
         string $sql,
-        #[Schema(description: 'Row cap, appended as a LIMIT clause only when the statement does not already carry one.')]
+        #[Schema(description: 'Row cap, appended as a LIMIT clause only when the statement does not already carry one. ' . Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 100,
         #[Schema(description: Presenter::OUTPUT_DESCRIPTION)]
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array {
+        // Interpolated into the LIMIT clause below, so out of range this is a
+        // SQL syntax error carrying the whole statement, not an answer.
+        Window::assert($limit);
+
         $context?->getClientGateway()?->progress(0, 2, 'Executing SQL query...');
 
         $trimmedSql = SqlReadGuard::assertSelectOnly($sql);
         $context?->getClientLogger()?->info('SQL query validated by the read guard');
 
-        // Add LIMIT if not present
-        if (!preg_match('/\bLIMIT\b/i', $trimmedSql)) {
-            $sql = rtrim($trimmedSql, ';') . " LIMIT {$limit}";
-        }
+        // Bound the result set unless the caller already bounded it. The
+        // decision reads the statement's skeleton rather than its text, since
+        // the word inside `WHERE 'limit' = 'limit'` is data, and taking it for
+        // a clause meant a call asking for two rows returned the whole table.
+        $skeleton = SqlSkeleton::of($trimmedSql);
+        $statement = $skeleton->bounded($limit);
 
-        $context?->getClientLogger()?->debug("SQL query text: {$sql}");
+        $context?->getClientLogger()?->debug("SQL query text: {$statement}");
 
         $db = Craft::$app->getDb();
-        $results = $db->createCommand($sql)->queryAll();
+        $results = $db->createCommand($statement)->queryAll();
         $rowCount = count($results);
 
         $context?->getClientLogger()?->info("SQL query returned {$rowCount} rows");
         $context?->getClientGateway()?->progress(2, 2, 'Query complete');
 
-        return Response::success([
-            'count' => $rowCount,
-            'columns' => empty($results) ? [] : array_keys($results[0]),
-            'rows' => $results,
-        ]);
+        // No total: counting the matching rows means wrapping and running the
+        // caller's statement a second time, which for the aggregate SQL this
+        // tool exists for is the expensive half of the work. And the cap is
+        // only reported when it was the one in force: a statement carrying its
+        // own LIMIT is bounded by that instead, and echoing this parameter
+        // would name a cap that never applied.
+        return Response::success(Response::capped(
+            'rows',
+            $results,
+            limit: $skeleton->has('LIMIT') ? null : $limit,
+            meta: ['columns' => empty($results) ? [] : array_keys($results[0])],
+        ));
     }
 
     /**

@@ -95,9 +95,7 @@ final class ConfigWriter {
     private function merge(?array $existing, string $serverName, array $serverConfig): array {
         $config = $existing ?? [];
 
-        if (!isset($config['mcpServers'])) {
-            $config['mcpServers'] = [];
-        }
+        $config['mcpServers'] ??= [];
 
         $config['mcpServers'][$serverName] = $serverConfig;
 

@@ -39,4 +39,30 @@ describe('SqlReadGuard::assertSelectOnly()', function () {
         'into outfile' => 'SELECT * FROM entries INTO OUTFILE "/tmp/x"',
         'grant' => 'SELECT 1; GRANT ALL ON *.* TO x',
     ]);
+
+    // A search for the word is a read. Refusing it was the safe direction of
+    // error, but the message named a keyword the caller had not used as SQL.
+    it('allows a blocked word that appears only as data', function (string $sql) {
+        expect(SqlReadGuard::assertSelectOnly($sql))->toBe(trim($sql));
+    })->with([
+        'like' => "SELECT id, title FROM entries WHERE title LIKE '%update%'",
+        'equality' => "SELECT id FROM entries WHERE slug = 'product-update'",
+        'line comment' => 'SELECT id FROM entries -- DROP TABLE entries',
+        'block comment' => 'SELECT id FROM entries /* no DELETE here */',
+        'quoted identifier' => 'SELECT `create` FROM entries',
+    ]);
+
+    it('still blocks the same word used as SQL alongside one used as data', function () {
+        expect(fn () => SqlReadGuard::assertSelectOnly(
+            "SELECT id FROM entries WHERE title LIKE '%drop%'; DROP TABLE entries",
+        ))->toThrow(ToolCallException::class, 'DROP');
+    });
+
+    it('blocks a multi-word keyword however its whitespace is spelled', function (string $sql) {
+        expect(fn () => SqlReadGuard::assertSelectOnly($sql))
+            ->toThrow(ToolCallException::class, 'INTO OUTFILE');
+    })->with([
+        'several spaces' => 'SELECT * FROM entries INTO   OUTFILE "/tmp/x"',
+        'a newline' => "SELECT * FROM entries INTO\nOUTFILE \"/tmp/x\"",
+    ]);
 });

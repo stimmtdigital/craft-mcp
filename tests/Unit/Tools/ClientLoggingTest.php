@@ -103,15 +103,15 @@ describe('Tool client-logger calls interpolate their data into the message strin
     it('interpolates the row count and full SQL text into DatabaseTools::runQuery messages', function () use ($toolFiles) {
         $source = (string) file_get_contents($toolFiles['DatabaseTools.php']);
 
-        expect($source)->toContain('"SQL query text: {$sql}"')
+        expect($source)->toContain('"SQL query text: {$statement}"')
             ->and($source)->toContain('"SQL query returned {$rowCount} rows"');
     });
 
-    it('interpolates the driver, SQL text, and log window into DebugTools messages', function () use ($toolFiles) {
+    it('interpolates the driver, SQL text, and searched log file into DebugTools messages', function () use ($toolFiles) {
         $source = (string) file_get_contents($toolFiles['DebugTools.php']);
 
         expect($source)->toContain('"SQL query text: {$trimmedSql}"')
             ->and($source)->toContain('"EXPLAIN issued for driver: {$driver}"')
-            ->and($source)->toContain('"Log window read: {$logFile}, last {$lineCount} lines"');
+            ->and($source)->toContain('" ({$position} of {$total})"');
     });
 });

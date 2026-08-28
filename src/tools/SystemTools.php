@@ -11,6 +11,7 @@ use craft\models\CategoryGroup;
 use craft\models\Section;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
+use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
@@ -20,7 +21,11 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\logging\Entry;
 use stimmt\craft\Mcp\logging\Formatter;
 use stimmt\craft\Mcp\logging\Parser;
+use stimmt\craft\Mcp\logging\Search;
 use stimmt\craft\Mcp\pipeline\Presenter;
+use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\Secrets;
+use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\text\Palette;
 
 /**
@@ -35,12 +40,12 @@ class SystemTools {
     #[McpTool(
         name: 'get_config',
         title: 'Read a config value',
-        description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver")',
+        description: 'Get a Craft CMS configuration value by dot-notation key (e.g., "general.devMode", "db.driver"). Credentials such as the security key and the database password come back redacted, named but not revealed.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getConfig(
-        #[Schema(description: 'Dot-notation key, such as "general.devMode" or "db.driver". A bare category ("general", "db") returns every setting in it; "custom.<file>" reads a config file.')]
+        #[Schema(description: 'Dot-notation key, such as "general.devMode" or "db.driver". A bare category ("general", "db") returns every setting in it; "custom.<file>" reads a config file. Credential settings report a redaction placeholder in place of their value.')]
         string $key,
         ?RequestContext $context = null,
     ): array {
@@ -51,26 +56,70 @@ class SystemTools {
         $config = Craft::$app->getConfig();
 
         $value = match ($category) {
-            'general' => $setting
-                ? $config->getGeneral()->$setting ?? null
-                : (array) $config->getGeneral(),
-            'db' => $setting
-                ? $config->getDb()->$setting ?? null
+            'general' => $this->setting($config->getGeneral(), $setting, $key),
+            // The credential settings are listed rather than left out: leaving
+            // them out is what made the category disagree with the keyed read,
+            // and told a caller the install has no database password. Which of
+            // them are withheld is not decided here.
+            'db' => $setting !== null
+                ? $this->setting($config->getDb(), $setting, $key)
                 : [
                     'driver' => $config->getDb()->driver,
                     'server' => $config->getDb()->server,
                     'port' => $config->getDb()->port,
                     'database' => $config->getDb()->database,
                     'tablePrefix' => $config->getDb()->tablePrefix,
+                    'dsn' => $config->getDb()->dsn,
+                    'url' => $config->getDb()->url,
+                    'user' => $config->getDb()->user,
+                    'password' => $config->getDb()->password,
                 ],
             'custom' => $config->getConfigFromFile($setting ?? 'custom'),
-            default => "Unknown config category: {$category}",
+            default => throw new ToolCallException($this->unknownCategory($category)),
         };
 
         return [
             'key' => $key,
-            'value' => $value,
+            'value' => Secrets::conceal($key, $value),
         ];
+    }
+
+    /**
+     * One setting off a config object, or the whole object as an array.
+     *
+     * A name that does not exist is refused rather than answered with null.
+     * Craft has settings that are legitimately null, so null for a misspelled
+     * name told a caller their typo was an unset setting, and nothing on the
+     * outside could tell those two apart.
+     */
+    private function setting(object $config, ?string $setting, string $key): mixed {
+        if ($setting === null) {
+            return (array) $config;
+        }
+
+        if (!property_exists($config, $setting)) {
+            $category = explode('.', $key, 2)[0];
+
+            throw new ToolCallException(
+                "Unknown config setting '{$key}'. Read the whole category to see what it holds: "
+                . "call get_config with key '{$category}'.",
+            );
+        }
+
+        return $config->$setting;
+    }
+
+    /**
+     * The suggestion is the useful half. A bare setting name is the likely
+     * mistake, and `devMode` used to answer with this very sentence as the
+     * VALUE of a successful call, which an agent has no way to read as failure.
+     */
+    private function unknownCategory(string $category): string {
+        $message = "Unknown config category '{$category}'. Use 'general', 'db', or 'custom.<file>'.";
+
+        return property_exists(Craft::$app->getConfig()->getGeneral(), $category)
+            ? $message . " Did you mean 'general.{$category}'?"
+            : $message;
     }
 
     /**
@@ -84,6 +133,7 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function readLogs(
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
         #[Schema(description: 'Exact level to keep, case-insensitive, as the log line spells it (error, warning, info, trace). It is not a minimum, so "warning" excludes errors.')]
         ?string $level = null,
@@ -95,19 +145,29 @@ class SystemTools {
         ResponseFormat $output = ResponseFormat::STRUCTURED,
         ?RequestContext $context = null,
     ): array|TextContent {
+        Window::assert($limit);
+
         $entries = $this->fetchLogEntries($limit, $level, $pattern, $source, $context);
 
         return match ($output) {
             ResponseFormat::TEXT => (new Formatter(Palette::fromSettings()))->format($entries),
-            ResponseFormat::STRUCTURED => [
-                'count' => count($entries),
-                'entries' => array_map(static fn (Entry $e): array => $e->toArray(), $entries),
-            ],
+            // No total: the scan stops as soon as it has enough matches, so
+            // counting the rest would mean reading every file again.
+            ResponseFormat::STRUCTURED => Response::capped(
+                'entries',
+                array_map(static fn (Entry $e): array => $e->toArray(), $entries),
+                $limit,
+            ),
         };
     }
 
     /**
-     * Fetch and sort log entries.
+     * Fetch the newest log entries matching the filter.
+     *
+     * WHY this is one call: limit bounds the entries returned, not the lines
+     * searched. The search walks each log backwards until it has enough
+     * matches, so asking for two errors no longer means looking at the last
+     * four lines and reporting that there are none.
      *
      * @return Entry[]
      */
@@ -119,24 +179,14 @@ class SystemTools {
         ?RequestContext $context,
     ): array {
         $parser = new Parser(Craft::$app->getPath()->getLogPath());
-
-        $files = $parser->discoverLogFiles($source);
-        $entries = [];
         $gateway = $context?->getClientGateway();
-        $totalFiles = count($files);
 
-        foreach ($files as $index => $file) {
-            $gateway?->progress($index + 1, $totalFiles, 'Parsing ' . basename($file));
-
-            $entries = array_merge(
-                $entries,
-                $parser->parseFile($file, $level, $pattern, $limit * 2),
-            );
-        }
-
-        usort($entries, static fn (Entry $a, Entry $b): int => $b->timestamp <=> $a->timestamp);
-
-        return array_slice($entries, 0, $limit);
+        return $parser->newest(
+            new Search($limit, $level, $pattern, $source),
+            static function (string $file, int $position, int $total) use ($gateway): void {
+                $gateway?->progress($position, $total, 'Scanning ' . basename($file));
+            },
+        );
     }
 
     /**
@@ -150,12 +200,15 @@ class SystemTools {
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM, privileged: true)]
     public function getLastError(?RequestContext $context = null): array {
-        $result = $this->readLogs(1, 'error');
+        $result = $this->readLogs(1, 'error', context: $context);
 
         if (empty($result['entries'])) {
+            // Say how deep the search went. This is the tool an agent reaches
+            // for during an incident, and "no errors" without a depth reads as
+            // a statement about the install rather than about the search.
             return [
                 'found' => false,
-                'message' => 'No errors found in recent logs',
+                'message' => 'No errors found. Each log file is searched back at most ' . Parser::scanDepth() . '.',
             ];
         }
 

@@ -14,6 +14,7 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\policy\Gate;
 use stimmt\craft\Mcp\psr\Cache;
 use stimmt\craft\Mcp\support\Authorization;
@@ -39,6 +40,24 @@ class McpTools {
      */
     public function __construct(?Gate $gate = null) {
         $this->gate = $gate ?? new Gate();
+    }
+
+    /**
+     * The edition half of a listing row: what the tool needs, and whether this
+     * install is below it.
+     *
+     * Separate from `available` on purpose. That answers "can I call this",
+     * which a scope or a permission can also decide; this answers the narrower
+     * question an upgrade prompt actually needs, and stays true regardless of
+     * which connection is asking.
+     *
+     * @return array{requiredEdition: string, locked: bool}
+     */
+    public static function editionFields(ToolDefinition $definition): array {
+        return [
+            'requiredEdition' => $definition->requiredEdition->value,
+            'locked' => !Mcp::currentEdition()->atLeast($definition->requiredEdition),
+        ];
     }
 
     /**
@@ -225,6 +244,7 @@ class McpTools {
                 // and marked the 13 it could not call enabled.
                 'available' => $decision->allowed,
                 'unavailableBecause' => $decision->reason,
+                ...self::editionFields($definition),
             ];
         }
 

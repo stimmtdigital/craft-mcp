@@ -12,7 +12,9 @@ use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\contracts\ConditionalProvider;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\models\ToolDefinition;
 use yii\base\Event;
@@ -238,9 +240,7 @@ class RegisterToolsEvent extends Event {
         }
 
         // Store class for backwards compatibility
-        if (!isset($this->tools[$source])) {
-            $this->tools[$source] = [];
-        }
+        $this->tools[$source] ??= [];
         $this->tools[$source][] = $class;
 
         foreach ($definitions as $definition) {
@@ -266,13 +266,15 @@ class RegisterToolsEvent extends Event {
             return [];
         }
 
+        $classEdition = $this->declaredEdition($reflection);
+
         $invoke = $this->invokable($reflection);
         $classAttrs = $invoke === null
             ? []
             : $reflection->getAttributes(McpTool::class, ReflectionAttribute::IS_INSTANCEOF);
 
         if ($invoke !== null && $classAttrs !== []) {
-            return [$this->toolDefinition($classAttrs[0]->newInstance(), $invoke, $source, $reflection->getShortName())];
+            return [$this->toolDefinition($classAttrs[0]->newInstance(), $invoke, $source, $reflection->getShortName(), $classEdition)];
         }
 
         $definitions = [];
@@ -282,7 +284,7 @@ class RegisterToolsEvent extends Event {
                 continue;
             }
 
-            $definitions[] = $this->toolDefinition($attrs[0]->newInstance(), $method, $source, $method->getName());
+            $definitions[] = $this->toolDefinition($attrs[0]->newInstance(), $method, $source, $method->getName(), $classEdition);
         }
 
         return $definitions;
@@ -291,7 +293,13 @@ class RegisterToolsEvent extends Event {
     /**
      * Build one definition from the SDK attribute plus our own policy metadata.
      */
-    private function toolDefinition(McpTool $mcpTool, ReflectionMethod $method, string $source, string $defaultName): ToolDefinition {
+    private function toolDefinition(
+        McpTool $mcpTool,
+        ReflectionMethod $method,
+        string $source,
+        string $defaultName,
+        ?Edition $classEdition = null,
+    ): ToolDefinition {
         $metaAttrs = $method->getAttributes(McpToolMeta::class, ReflectionAttribute::IS_INSTANCEOF);
         $toolMeta = $metaAttrs === [] ? null : $metaAttrs[0]->newInstance();
 
@@ -304,6 +312,7 @@ class RegisterToolsEvent extends Event {
             category: $toolMeta?->category->value ?? ToolCategory::GENERAL->value,
             dangerous: $toolMeta !== null && $toolMeta->dangerous,
             privileged: $toolMeta !== null && $toolMeta->privileged,
+            requiredEdition: $this->declaredEdition($method) ?? $classEdition ?? Edition::Lite,
             condition: $toolMeta?->condition,
             title: $mcpTool->title,
             annotations: $mcpTool->annotations,
@@ -311,6 +320,19 @@ class RegisterToolsEvent extends Event {
             meta: $mcpTool->meta,
             outputSchema: $mcpTool->outputSchema,
         );
+    }
+
+    /**
+     * The edition a class or method declares with #[RequiresEdition], or null
+     * when it declares none. Read with IS_INSTANCEOF so a plugin may subclass
+     * the attribute, the same way McpTool and McpToolMeta are read.
+     *
+     * @param ReflectionClass<object>|ReflectionMethod $target
+     */
+    private function declaredEdition(ReflectionClass|ReflectionMethod $target): ?Edition {
+        $attrs = $target->getAttributes(RequiresEdition::class, ReflectionAttribute::IS_INSTANCEOF);
+
+        return $attrs === [] ? null : $attrs[0]->newInstance()->edition;
     }
 
     /**

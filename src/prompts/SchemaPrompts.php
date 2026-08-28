@@ -18,6 +18,7 @@ use stimmt\craft\Mcp\completions\FieldHandleProvider;
 use stimmt\craft\Mcp\completions\SectionHandleProvider;
 use stimmt\craft\Mcp\enums\PromptCategory;
 use stimmt\craft\Mcp\services\SchemaHelper;
+use stimmt\craft\Mcp\support\HandleResolver;
 
 /**
  * MCP prompts for exploring Craft CMS schema.
@@ -40,17 +41,7 @@ final class SchemaPrompts {
         #[CompletionProvider(provider: SectionHandleProvider::class)]
         string $section,
     ): array {
-        /** @var Entries $entriesService */
-        $entriesService = Craft::$app->getEntries();
-
-        /** @var Section|null $sectionObj */
-        $sectionObj = $entriesService->getSectionByHandle($section);
-
-        if ($sectionObj === null) {
-            throw new PromptGetException("The section '{$section}' was not found.");
-        }
-
-        $schemaJson = $this->buildSectionSchemaJson($sectionObj);
+        $schemaJson = $this->buildSectionSchemaJson(HandleResolver::section($section));
 
         return $this->promptResponse(<<<PROMPT
 Analyze the following Craft CMS section schema and provide insights:

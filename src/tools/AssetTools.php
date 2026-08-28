@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\tools;
 use Craft;
 use craft\elements\Asset;
 use craft\models\FieldLayout;
+use craft\models\Volume;
 use craft\models\VolumeFolder;
 use craft\services\Assets;
 use Mcp\Capability\Attribute\McpTool;
@@ -17,6 +18,9 @@ use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
+use stimmt\craft\Mcp\support\HandleResolver;
+use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\Window;
 use stimmt\craft\Mcp\text\Serializer;
 
 /**
@@ -44,20 +48,27 @@ class AssetTools {
         ?string $kind = null,
         #[Schema(description: 'Matched as a substring of the filename, not as an exact name.')]
         ?string $filename = null,
+        #[Schema(description: Window::LIMIT_DESCRIPTION, minimum: Window::MIN_LIMIT)]
         int $limit = 50,
+        #[Schema(description: Window::OFFSET_DESCRIPTION, minimum: Window::MIN_OFFSET)]
         int $offset = 0,
         ?RequestContext $context = null,
     ): array {
+        Window::assert($limit, $offset);
+
+        $volumeModel = HandleResolver::volume($volume);
+        $folder = HandleResolver::assetFolder($folderId);
+
         $query = Asset::find()
             ->limit($limit)
             ->offset($offset);
 
-        if ($volume !== null) {
-            $query->volume($volume);
+        if ($volumeModel !== null) {
+            $query->volumeId($volumeModel->id);
         }
 
-        if ($folderId !== null) {
-            $query->folderId($folderId);
+        if ($folder !== null) {
+            $query->folderId($folder->id);
         }
 
         if ($kind !== null) {
@@ -76,13 +87,7 @@ class AssetTools {
             $results[] = $this->serializeAsset($asset);
         }
 
-        return [
-            'count' => count($results),
-            'total' => $query->count(),
-            'limit' => $limit,
-            'offset' => $offset,
-            'assets' => $results,
-        ];
+        return Response::paginated('assets', $results, (int) $query->count(), $limit, $offset);
     }
 
     /**
@@ -154,16 +159,15 @@ class AssetTools {
     public function listAssetFolders(
         #[Schema(description: 'Volume handle; list_volumes reports the handles. Omit to list the root folder of every volume.')]
         ?string $volume = null,
-        #[Schema(description: 'Folder id to list the children of. Omit for the children of the volume\'s root folder.')]
+        #[Schema(description: 'Folder id to list the children of; a folder id names its volume on its own, so volume is optional beside it. Omit for the children of the volume\'s root folder.')]
         ?int $parentId = null,
         ?RequestContext $context = null,
     ): array {
-        $assetsService = Craft::$app->getAssets();
-
-        $folders = $this->getAssetFolders($assetsService, $volume, $parentId);
-        if ($folders === null) {
-            throw new ToolCallException("Volume '{$volume}' not found");
-        }
+        $folders = $this->childFolders(
+            Craft::$app->getAssets(),
+            HandleResolver::volume($volume),
+            HandleResolver::assetFolder($parentId),
+        );
 
         $results = [];
         foreach ($folders as $folder) {
@@ -183,34 +187,41 @@ class AssetTools {
     }
 
     /**
-     * Get asset folders based on volume and parent ID.
+     * The children of the folder the caller named, whichever way they named
+     * it. A parent stands on its own: it identifies exactly one folder in one
+     * volume, so it no longer needs a volume beside it to be honoured, and
+     * asking for the children of folder 1 no longer answers with folder 1.
      *
-     * @return VolumeFolder[]|null Null if volume not found
+     * @return VolumeFolder[]
      */
-    private function getAssetFolders(
-        Assets $assetsService,
-        ?string $volume,
-        ?int $parentId,
-    ): ?array {
+    private function childFolders(Assets $assets, ?Volume $volume, ?VolumeFolder $parent): array {
+        if ($parent === null) {
+            return $this->rootChildFolders($assets, $volume);
+        }
+
+        if ($volume !== null && $parent->volumeId !== $volume->id) {
+            throw new ToolCallException(
+                "Asset folder {$parent->id} is not in volume '{$volume->handle}'. Omit volume, or pass the parentId of a folder inside it.",
+            );
+        }
+
+        return $assets->findFolders(['parentId' => $parent->id]);
+    }
+
+    /**
+     * @return VolumeFolder[]
+     */
+    private function rootChildFolders(Assets $assets, ?Volume $volume): array {
         if ($volume === null) {
-            return $this->getAllRootFolders($assetsService);
+            return $this->getAllRootFolders($assets);
         }
 
-        $volumeModel = Craft::$app->getVolumes()->getVolumeByHandle($volume);
-        if ($volumeModel === null) {
-            return null;
-        }
-
-        if ($parentId !== null) {
-            return $assetsService->findFolders(['parentId' => $parentId]);
-        }
-
-        $rootFolder = $assetsService->getRootFolderByVolumeId($volumeModel->id);
+        $rootFolder = $assets->getRootFolderByVolumeId($volume->id);
         if ($rootFolder === null) {
             return [];
         }
 
-        return $assetsService->findFolders(['parentId' => $rootFolder->id]);
+        return $assets->findFolders(['parentId' => $rootFolder->id]);
     }
 
     /**

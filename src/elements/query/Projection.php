@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\elements\query;
 
+use Craft;
 use craft\elements\Entry;
-use InvalidArgumentException;
 use stimmt\craft\Mcp\elements\Attributes;
+use stimmt\craft\Mcp\elements\InvalidInput;
 use stimmt\craft\Mcp\elements\LayoutFields;
 use stimmt\craft\Mcp\elements\Reader;
 
@@ -15,6 +16,13 @@ use stimmt\craft\Mcp\elements\Reader;
  * attributes and field values. Keeps large-list analysis affordable where the
  * full payload would drown the client.
  *
+ * A projection is asked for once and applied to every row, and one query can
+ * return entries of several types (a Matrix block is an entry too), so a
+ * requested handle is validated against the install rather than against
+ * whichever entry happens to be in hand. A row whose own type has no such
+ * field simply does not carry it; only a name no field anywhere answers to is
+ * the caller's mistake.
+ *
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Projection {
@@ -22,6 +30,9 @@ final readonly class Projection {
         'slug', 'status', 'url', 'cpEditUrl', 'postDate', 'expiryDate',
         'dateCreated', 'dateUpdated', 'sectionHandle', 'typeHandle', 'siteHandle', 'authorId',
     ];
+
+    /** Every row carries these by construction, so naming one is redundant, not wrong. */
+    private const array ALWAYS = ['id', 'title'];
 
     public function __construct(
         private Reader $reader,
@@ -57,15 +68,26 @@ final readonly class Projection {
 
         foreach ($fields as $name) {
             match (true) {
+                in_array($name, self::ALWAYS, true) => null,
                 in_array($name, self::ATTRIBUTES, true) => $attributes[] = $name,
                 isset($layout[$name]) => $handles[] = $name,
-                default => throw new InvalidArgumentException(
+                $this->exists($name) => null,
+                default => throw new InvalidInput(
                     "Unknown projection field '{$name}'. Attributes: " . implode(', ', self::ATTRIBUTES)
-                    . '. Field handles: ' . implode(', ', array_keys($layout)),
+                    . '. For field handles use list_fields, or describe_entry_schema for the handles of one section.',
                 ),
             };
         }
 
         return [$attributes, $handles];
+    }
+
+    /**
+     * Whether the install has a field by this handle at all. Reached only for
+     * a handle this entry's own layout does not carry, which is the normal
+     * case for a mixed result set rather than an error.
+     */
+    private function exists(string $handle): bool {
+        return Craft::$app->getFields()->getFieldByHandle($handle) !== null;
     }
 }

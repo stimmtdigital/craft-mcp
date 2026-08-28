@@ -92,7 +92,7 @@
         "test:unit": "pest --testsuite=Unit",
         "test:coverage": "pest --coverage --min=80",
         "test:type": "pest --type-coverage --min=90",
-        "test:arch": "pest --filter=Arch",
+        "test:arch": "pest --testsuite=Arch",
         "analyse": "phpstan analyse --memory-limit=512M",
         "smoke": "php tests/Smoke/run.php",
         "smoke:baseline": "php tests/Smoke/run.php --baseline",

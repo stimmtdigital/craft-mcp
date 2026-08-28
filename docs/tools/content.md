@@ -4,7 +4,7 @@ Content tools let AI assistants query and manage the core content types in your 
 
 ## Entries
 
-Entries are the primary content type in Craft CMS. Reads and writes share one payload format: `get_entry` returns exactly what `create_entry` and `update_entry` accept as `fields`. Relations resolve to natural keys instead of numeric ids (`{"section": "pages", "slug": "about"}` for entries, `{"volume": "images", "filename": "hero.jpg"}` for assets), and Matrix blocks are objects keyed by block id with a `type` entry-type handle naming the block type. Writes are draft-first by default. See the [Content Writing guide](../content-writing.md) for the full format and workflow; this page covers each tool's parameters and response shape.
+Entries are the primary content type in Craft CMS. Reads and writes share one payload format: `get_entry` returns exactly what `create_entry` and `update_entry` accept as `fields`. Relations resolve to natural keys instead of numeric ids (`{"section": "pages", "slug": "about"}` for entries, `{"volume": "images", "filename": "hero.jpg"}` for assets), and Matrix blocks are objects keyed by block id with a `type` entry-type handle naming the block type. Writes are draft-first by default, and the eight tools that write entry content require the Pro edition; every read on this page is available on both. See the [Content Writing guide](../content-writing.md) for the full format and workflow; this page covers each tool's parameters and response shape.
 
 ### list_entries
 
@@ -66,6 +66,7 @@ list_entries section="news" fields=["slug", "status", "dateUpdated"] limit=200
   "total": 45,
   "limit": 10,
   "offset": 0,
+  "hasMore": true,
   "entries": [
     {
       "id": 123,
@@ -242,6 +243,8 @@ An `id` lookup also matches drafts and revisions, so an agent can read back the 
 
 ### create_entry
 
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
 Create an entry. `fields` is JSON in the payload format (natural keys: `{section, slug}` for entries, `{volume, filename}` for assets, Matrix blocks by entry-type handle). Saves as a draft unless `mode` or the `entryWriteMode` setting says `live`. Call `describe_entry_schema` first to learn the shape.
 
 > **Note:** This is a dangerous tool that can be disabled via configuration.
@@ -296,6 +299,8 @@ create_entry section="pages" type="page" title="Team" parent="about"
 ---
 
 ### update_entry
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
 
 Update an entry by id. In draft mode (the default) a live entry gets a draft on top rather than being changed directly; `publish_entry` applies it. `fields` is payload-format JSON; only the values you supply change.
 
@@ -360,6 +365,8 @@ Same shape as `create_entry`, with `action` set to `"updated"`:
 
 ### create_nested_entry
 
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
 Add a single block to a Matrix field on an owner entry, without resending the owner's other blocks. This is the direct "create a card" path: rewriting the owner's whole field value through `update_entry` replaces the field's entire contents and deletes any block left out of the payload, while this tool touches nothing but the new block. It also covers the first-ever block of a type that doesn't appear anywhere in the field yet, which no duplicate-based workaround can reach.
 
 In draft mode (the default) the block lands on a draft **of the owner**, exactly like adding a block in the control panel: siblings and the live page stay untouched until `publish_entry` applies the owner draft. Passing an `owner` that already is a draft's element id stacks the block onto that same draft instead of creating another one.
@@ -417,6 +424,8 @@ Failure responses carry `success: false` and per-field validation messages under
 ---
 
 ### move_nested_entry
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
 
 Move a Matrix block to a new 1-based position within its field, by the block's own entry id. In draft mode (the default) the reorder lands on a draft of the owner entry for review, and `publish_entry` applies it; live mode reorders the canonical entry directly.
 
@@ -537,7 +546,20 @@ describe_entry_schema section="pages" type="page" example="about"
 
 `meta` lists the entry's writable native attributes: everything Craft's own validation allows on save, minus internal bookkeeping attributes (`id`, `uid`, `siteId`, `siteSettingsId`, `fieldLayoutId`, `contentId`, `canonicalId`, `dateCreated`, `dateUpdated`, `dateDeleted`, `dateLastMerged`, `draftId`, `revisionId`, structure attributes, and similar) and custom field handles, which are covered separately under `fields`. The exact list is inferred per entry type and Craft version; call this tool for the section you're writing to rather than assuming.
 
-Relation fields carry both a top-level `target` (the related element type and its configured sources) and an `input.item` key shape. Matrix fields carry a top-level `blockTypes` list, the single depth-expanded representation of each type's sub-fields (same shape as this response's own `fields`, including per-field `instructions`), plus a flat `input.blockTypes` map (`{handle: {hasTitleField}}`) that only enumerates the valid block-type handles for the write payload. See [Content Writing: Discover the Shape First](../content-writing.md#discover-the-shape-first-describe_entry_schema) for the full table of `kind` values and what each `input` shape means.
+Relation fields carry both a top-level `target` (the related element type and its configured sources) and an `input.item` key shape. `target.sources` is either the string `"*"`, meaning the field accepts every source, or a list where each entry names the natural-key parts one configured source pins down, in the same vocabulary a write takes:
+
+```json
+"target": {
+  "elementType": "craft\\elements\\Entry",
+  "sources": [
+    { "section": "blog" },
+    { "set": "singles" },
+    { "unresolved": "section:70b2614b-639a-4de2-8c11-3851d36d6f8c" }
+  ]
+}
+```
+
+So a relation to the first source is written as `{"section": "blog", "slug": "..."}`. An asset folder pins down the path inside its volume too (`{"volume": "images", "path": "logos/"}`), dropped at the volume root. `set` is one of Craft's own named source sets (`singles`, `admins`, `credentialed`, `inactive`), which state a rule rather than name a container. `unresolved` is a source key that could not be turned into a handle, because the section or group it names has been deleted or belongs to an element type this server has no lookup for; the raw key is reported so the stale field setting can be found, and it is never a target a write can use. Matrix fields carry a top-level `blockTypes` list, the single depth-expanded representation of each type's sub-fields (same shape as this response's own `fields`, including per-field `instructions`), plus a flat `input.blockTypes` map (`{handle: {hasTitleField}}`) that only enumerates the valid block-type handles for the write payload. See [Content Writing: Discover the Shape First](../content-writing.md#discover-the-shape-first-describe_entry_schema) for the full table of `kind` values and what each `input` shape means.
 
 ---
 
@@ -594,6 +616,7 @@ list_revisions id=123
   "total": 2,
   "limit": 20,
   "offset": 0,
+  "hasMore": false,
   "revisions": [
     {
       "revisionElementId": 512,
@@ -622,6 +645,8 @@ list_revisions id=123
 ---
 
 ### publish_entry
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
 
 Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.
 
@@ -659,6 +684,8 @@ publish_entry id=123
 
 ### delete_entry
 
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
 Soft-delete an entry: moves it to the trash, restorable from the control panel.
 
 > **Note:** This is a dangerous tool that can be disabled via configuration.
@@ -691,6 +718,8 @@ delete_entry id=123
 ---
 
 ### duplicate_entry
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
 
 Duplicate an entry as an unpublished draft. Optional title/slug overrides and a payload-format `fields` JSON let you say "like this entry, but change these fields".
 
@@ -730,6 +759,8 @@ duplicate_entry id=123 title="About Us (Copy)" fields='{"summary": "A new summar
 ---
 
 ### copy_entry_to_site
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
 
 Copy an entry's field values from one site to another as a draft on the target site. Copies values; it does not machine-translate.
 
@@ -811,6 +842,7 @@ list_assets kind="pdf"
   "total": 234,
   "limit": 50,
   "offset": 0,
+  "hasMore": true,
   "assets": [
     {
       "id": 456,
@@ -966,6 +998,7 @@ List categories. Filter by group handle; when omitted, returns categories across
 |------|------|---------|-------------|
 | `group` | string | null | Category group handle |
 | `limit` | int | 100 | Maximum categories to return |
+| `offset` | int | 0 | Number of categories to skip (for pagination) |
 
 **Example:**
 
@@ -978,6 +1011,10 @@ list_categories group="topics"
 ```json
 {
   "count": 8,
+  "total": 8,
+  "limit": 100,
+  "offset": 0,
+  "hasMore": false,
   "categories": [
     {
       "id": 10,
@@ -1021,6 +1058,7 @@ List Craft users with optional filtering by group, status, or email.
 | `status` | string | null | Filter by status: "active", "pending", "suspended" |
 | `email` | string | null | Filter by email (partial match) |
 | `limit` | int | 50 | Maximum users to return |
+| `offset` | int | 0 | Number of users to skip (for pagination) |
 
 **Examples:**
 
@@ -1040,6 +1078,10 @@ list_users group="admins" status="active"
 ```json
 {
   "count": 5,
+  "total": 5,
+  "limit": 50,
+  "offset": 0,
+  "hasMore": false,
   "users": [
     {
       "id": 1,

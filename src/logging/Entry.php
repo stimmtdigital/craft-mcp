@@ -39,9 +39,26 @@ final readonly class Entry {
 
     /**
      * Check if this entry's message contains a pattern (case-insensitive).
+     *
+     * WHY the scope is a choice: a message carries any continuation lines the
+     * log wrote under it, so a request-context dump hundreds of lines long is
+     * part of it. Searching all of that is the point when an agent hunts for a
+     * class or a URL, and wrong when the question is what kind of entry this
+     * is, which only the logged line itself answers.
      */
-    public function matchesPattern(string $pattern): bool {
-        return str_contains(strtolower($this->message), strtolower($pattern));
+    public function matchesPattern(string $pattern, bool $headlineOnly = false): bool {
+        $haystack = $headlineOnly ? $this->headline() : $this->message;
+
+        return str_contains(strtolower($haystack), strtolower($pattern));
+    }
+
+    /**
+     * The line the log wrote, without the continuation lines appended to it.
+     */
+    public function headline(): string {
+        $break = strpos($this->message, "\n");
+
+        return $break === false ? $this->message : substr($this->message, 0, $break);
     }
 
     /**

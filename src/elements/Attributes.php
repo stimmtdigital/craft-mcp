@@ -7,7 +7,6 @@ namespace stimmt\craft\Mcp\elements;
 use craft\base\ElementInterface;
 use craft\elements\Entry;
 use DateTimeInterface;
-use InvalidArgumentException;
 
 /**
  * Single source for the payload attribute formulas shared by the full Reader
@@ -36,7 +35,7 @@ final class Attributes {
             'authorId' => $element instanceof Entry ? $element->getAuthorId() : null,
             'postDate' => $element instanceof Entry ? self::date($element->postDate) : null,
             'expiryDate' => $element instanceof Entry ? self::date($element->expiryDate) : null,
-            default => throw new InvalidArgumentException("Unknown attribute '{$attribute}'"),
+            default => throw new InvalidInput("Unknown attribute '{$attribute}'"),
         };
     }
 

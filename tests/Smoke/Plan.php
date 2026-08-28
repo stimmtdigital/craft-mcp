@@ -91,6 +91,11 @@ final class Plan {
                     'count' => '>=50',
                     'tools' => 'notEmpty',
                     'available' => '{{mcp.available}}',
+                    // Every row says which edition it needs, so a tool that
+                    // stopped carrying one is visible here rather than only in
+                    // whatever it silently allowed.
+                    'tools.0.requiredEdition' => 'notEmpty',
+                    'tools.0.locked' => false,
                 ],
             ],
             ['tool' => 'get_system_info', 'args' => []],
@@ -145,7 +150,15 @@ final class Plan {
             ['tool' => 'list_globals', 'args' => []],
             ['tool' => 'list_categories', 'args' => ['limit' => 5]],
             ['tool' => 'list_users', 'args' => ['limit' => 5]],
-            ['tool' => 'get_config', 'args' => ['key' => 'devMode']],
+            // A real key. This asked for 'devMode' with no category, which is
+            // not one, and the answer was the sentence "Unknown config
+            // category: devMode" delivered as the VALUE of a successful call.
+            // The step passed for as long as the tool kept doing that.
+            [
+                'tool' => 'get_config',
+                'args' => ['key' => 'general.devMode'],
+                'assert' => ['key' => 'general.devMode'],
+            ],
             ['tool' => 'get_project_config_diff', 'args' => []],
             ['tool' => 'get_database_info', 'args' => []],
             ['tool' => 'get_database_schema', 'args' => ['table' => 'entries']],
@@ -359,9 +372,13 @@ final class Plan {
                     'toSite' => '{{site.second}}',
                 ],
                 'capture' => ['crossSite.draftId' => 'draftElementId'],
-                // A copy lands as a draft like every other write, so nothing
-                // reaches the second site's live content without review.
-                'assert' => ['success' => true, 'state' => 'draft', 'draftElementId' => 'isInt'],
+                // What it copied, always reported, because the answer depends on
+                // the install: only fields the target site keeps separately are
+                // worth copying, and on an install where none are, the honest
+                // result is an empty list and no draft at all. The delete step
+                // below captures the draft id and skips itself when there is
+                // none, so both outcomes stay covered.
+                'assert' => ['success' => true, 'copiedFields' => 'present'],
             ],
             [
                 'tool' => 'delete_entry',

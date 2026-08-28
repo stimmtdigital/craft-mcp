@@ -12,6 +12,7 @@ use craft\services\Path;
 use craft\web\Request as WebRequest;
 use craft\web\UrlManager;
 use Override;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\models\Settings;
 use stimmt\craft\Mcp\services\PromptRegistry;
 use stimmt\craft\Mcp\services\ResourceRegistry;
@@ -87,6 +88,22 @@ class Mcp extends BasePlugin {
         ];
     }
 
+    /**
+     * @return string[]
+     */
+    #[Override]
+    public static function editions(): array {
+        return Edition::ordered();
+    }
+
+    /**
+     * The plugin's active edition, defaulting to Lite when the plugin is
+     * not yet loaded or the stored handle is unknown.
+     */
+    public static function currentEdition(): Edition {
+        return Edition::fromHandle(self::getInstance()?->edition);
+    }
+
     #[Override]
     public function init(): void {
         parent::init();
@@ -127,9 +144,7 @@ class Mcp extends BasePlugin {
      * Get the tool registry instance.
      */
     public static function getToolRegistry(): ToolRegistry {
-        if (self::$toolRegistry === null) {
-            self::$toolRegistry = new ToolRegistry();
-        }
+        self::$toolRegistry ??= new ToolRegistry();
 
         return self::$toolRegistry;
     }
@@ -138,9 +153,7 @@ class Mcp extends BasePlugin {
      * Get the prompt registry instance.
      */
     public static function getPromptRegistry(): PromptRegistry {
-        if (self::$promptRegistry === null) {
-            self::$promptRegistry = new PromptRegistry();
-        }
+        self::$promptRegistry ??= new PromptRegistry();
 
         return self::$promptRegistry;
     }
@@ -149,9 +162,7 @@ class Mcp extends BasePlugin {
      * Get the resource registry instance.
      */
     public static function getResourceRegistry(): ResourceRegistry {
-        if (self::$resourceRegistry === null) {
-            self::$resourceRegistry = new ResourceRegistry();
-        }
+        self::$resourceRegistry ??= new ResourceRegistry();
 
         return self::$resourceRegistry;
     }
