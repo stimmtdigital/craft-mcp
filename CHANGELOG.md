@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-28
+
 The release that rebuilt how content is read and written. Relations, assets,
 categories and users are addressed by what they are rather than by numeric id,
 the read format and the write format became the same format, and every write
