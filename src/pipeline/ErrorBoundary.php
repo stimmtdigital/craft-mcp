@@ -86,6 +86,15 @@ final readonly class ErrorBoundary implements ReferenceHandlerInterface {
      * the two halves of one guard answered differently, an unknown SECTION in
      * clean prose and an unknown FIELD as "InvalidArgumentException: ...
      * (Filters.php:119)", for mistakes of exactly the same kind.
+     *
+     * Vendor exceptions keep their detail, which can include a SQL statement, a
+     * DSN or an absolute path. That is decided rather than overlooked. Every
+     * caller is already authenticated, by a bearer token or by local stdio
+     * access, and get_database_schema hands the same structural facts to the
+     * readonly scope on request, so the message discloses nothing a caller
+     * could not simply ask for. Redacting it would cost the one thing these
+     * messages exist for, which is telling whoever reads the transcript what
+     * actually broke.
      */
     private function readable(Throwable $exception): string {
         return $exception instanceof RegistryException || $exception instanceof InvalidInput
