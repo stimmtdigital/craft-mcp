@@ -12,6 +12,7 @@ use Mcp\Exception\PromptGetException;
 use Mcp\Exception\RegistryException;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Exception\ToolCallException;
+use stimmt\craft\Mcp\elements\InvalidInput;
 use Throwable;
 
 /**
@@ -77,9 +78,17 @@ final readonly class ErrorBoundary implements ReferenceHandlerInterface {
      * and line number would bury the useful half under a vendor path, for a
      * mistake that is not ours. Everything else gets the location, because for
      * those it is the first thing anyone debugging will want.
+     *
+     * InvalidInput is the same kind of thing one layer in: the elements module
+     * cannot raise ToolCallException (it is kept free of the SDK), so it names
+     * a bad date or an unknown field handle with that type instead, and the
+     * sentence it carries is written for the agent word for word. Without this
+     * the two halves of one guard answered differently, an unknown SECTION in
+     * clean prose and an unknown FIELD as "InvalidArgumentException: ...
+     * (Filters.php:119)", for mistakes of exactly the same kind.
      */
     private function readable(Throwable $exception): string {
-        return $exception instanceof RegistryException
+        return $exception instanceof RegistryException || $exception instanceof InvalidInput
             ? $exception->getMessage()
             : $this->formatErrorMessage($exception);
     }

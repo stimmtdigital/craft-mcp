@@ -13,7 +13,7 @@ use craft\elements\db\ElementQueryInterface;
 use craft\elements\db\EntryQuery;
 use craft\elements\Entry;
 use DateTimeInterface;
-use InvalidArgumentException;
+use stimmt\craft\Mcp\elements\InvalidInput;
 use Stringable;
 
 /**
@@ -45,7 +45,7 @@ final class Buckets {
         if (str_contains($groupBy, ':')) {
             [$granularity, $target] = explode(':', $groupBy, 2);
             if (!in_array($granularity, self::GRANULARITIES, true) || !in_array($target, self::DATE_ATTRIBUTES, true)) {
-                throw new InvalidArgumentException(
+                throw new InvalidInput(
                     "Invalid date groupBy '{$groupBy}'; use day|week|month|year : dateCreated|dateUpdated|postDate",
                 );
             }
@@ -66,7 +66,7 @@ final class Buckets {
             'week' => $date->format('o-\WW'),
             'month' => $date->format('Y-m'),
             'year' => $date->format('Y'),
-            default => throw new InvalidArgumentException("Unknown granularity '{$granularity}'"),
+            default => throw new InvalidInput("Unknown granularity '{$granularity}'"),
         };
     }
 
@@ -128,7 +128,7 @@ final class Buckets {
             'attribute' => [$this->attributeKey($entry, $parsed['target'])],
             'date' => [self::dateKey($entry->{$parsed['target']}, (string) $parsed['granularity'])],
             'field' => $this->fieldKeys($entry, $parsed['target']),
-            default => throw new InvalidArgumentException("Unknown groupBy kind '{$parsed['kind']}'"),
+            default => throw new InvalidInput("Unknown groupBy kind '{$parsed['kind']}'"),
         };
     }
 
@@ -139,7 +139,7 @@ final class Buckets {
             'section' => $entry->getSection()?->handle,
             'site' => $entry->getSite()->handle,
             'author' => $entry->getAuthor()?->username,
-            default => throw new InvalidArgumentException("Unknown attribute target '{$target}'"),
+            default => throw new InvalidInput("Unknown attribute target '{$target}'"),
         };
 
         return $value !== null && $value !== '' ? $value : self::EMPTY_KEY;
@@ -221,13 +221,13 @@ final class Buckets {
      */
     private function groupableField(string $handle): FieldInterface {
         $field = Craft::$app->getFields()->getFieldByHandle($handle)
-            ?? throw new InvalidArgumentException("Unknown groupBy '{$handle}': not an attribute, date bucket, or field handle");
+            ?? throw new InvalidInput("Unknown groupBy '{$handle}': not an attribute, date bucket, or field handle");
 
         if (!$field instanceof ElementContainerFieldInterface) {
             return $field;
         }
 
-        throw new InvalidArgumentException(
+        throw new InvalidInput(
             "Cannot group by '{$handle}': it is a container field, and its blocks belong to the entry rather than "
             . 'describing it, so the buckets would count one entry once per block and add up to more than the total. '
             . 'Group by an attribute (status, type, section, site, author), a date bucket such as "month:dateUpdated", '

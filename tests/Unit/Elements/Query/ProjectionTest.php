@@ -26,7 +26,7 @@ describe('Projection structure', function () {
     it('rejects unknown names with the valid options listed', function () {
         $source = (string) file_get_contents((new ReflectionClass(Projection::class))->getFileName());
 
-        expect($source)->toContain('InvalidArgumentException');
+        expect($source)->toContain('InvalidInput');
     });
 
     it('sources attribute formulas from the shared Attributes class', function () {

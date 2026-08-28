@@ -6,8 +6,8 @@ namespace stimmt\craft\Mcp\elements\query;
 
 use Craft;
 use craft\elements\Entry;
-use InvalidArgumentException;
 use stimmt\craft\Mcp\elements\Attributes;
+use stimmt\craft\Mcp\elements\InvalidInput;
 use stimmt\craft\Mcp\elements\LayoutFields;
 use stimmt\craft\Mcp\elements\Reader;
 
@@ -72,7 +72,7 @@ final readonly class Projection {
                 in_array($name, self::ATTRIBUTES, true) => $attributes[] = $name,
                 isset($layout[$name]) => $handles[] = $name,
                 $this->exists($name) => null,
-                default => throw new InvalidArgumentException(
+                default => throw new InvalidInput(
                     "Unknown projection field '{$name}'. Attributes: " . implode(', ', self::ATTRIBUTES)
                     . '. For field handles use list_fields, or describe_entry_schema for the handles of one section.',
                 ),
