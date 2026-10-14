@@ -66,10 +66,8 @@ final class HttpClient extends Client {
             $this->transmit('DELETE', null);
         }
 
-        if ($this->curl instanceof CurlHandle) {
-            curl_close($this->curl);
-        }
-
+        // Dropping the handle closes it; curl_close() has done nothing since
+        // PHP 8.0 and is deprecated in 8.5.
         $this->curl = null;
         $this->sessionId = null;
     }

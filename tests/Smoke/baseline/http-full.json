@@ -978,7 +978,7 @@
             }
         },
         "list_console_commands": {
-            "description": "List all available Craft CMS console commands (like php craft <command>)",
+            "description": "List all available Craft CMS console commands (like php craft <command>). Over stdio only: over HTTP the web application has no console controllers loaded, so the answer says it is unavailable rather than listing none.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -1780,7 +1780,8 @@
     },
     "uncovered": [
         "copy_entry_to_site",
-        "create_backup"
+        "create_backup",
+        "get_asset"
     ],
     "steps": {
         "get_mcp_info": {
@@ -1956,7 +1957,7 @@
             "status": "ok",
             "shape": {
                 "environment": {
-                    "CRAFT_ALLOW_ADMIN_CHANGES": null,
+                    "CRAFT_ALLOW_ADMIN_CHANGES": "<string>",
                     "CRAFT_DEV_MODE": "<string>",
                     "CRAFT_ENVIRONMENT": "<string>",
                     "CRAFT_RUN_QUEUE_AUTOMATICALLY": null
@@ -2041,7 +2042,7 @@
                     "pending": "<number>",
                     "reserved": "<number>"
                 },
-                "hasMore": true,
+                "hasMore": "<string>",
                 "jobs": [
                     {
                         "channel": "<string>",
@@ -2062,8 +2063,10 @@
         "list_console_commands": {
             "status": "ok",
             "shape": {
-                "commands": [],
-                "count": "<number>"
+                "commands": null,
+                "count": null,
+                "skippedModules": [],
+                "unavailable": "<string>"
             }
         },
         "list_routes": {
@@ -2107,14 +2110,6 @@
                                 "<string>"
                             ]
                         },
-                        "craft\\services\\Entries::beforeSaveEntryType": {
-                            "class": "<string>",
-                            "count": "<number>",
-                            "event": "<string>",
-                            "handlers": [
-                                "<string>"
-                            ]
-                        },
                         "craft\\services\\Fields::registerNestedEntryFieldTypes": {
                             "class": "<string>",
                             "count": "<number>",
@@ -2132,16 +2127,7 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
-                "entries": [
-                    {
-                        "category": "<string>",
-                        "channel": "<string>",
-                        "file": "<string>",
-                        "level": "<string>",
-                        "message": "<string>",
-                        "timestamp": "<string>"
-                    }
-                ],
+                "entries": [],
                 "hasMore": null,
                 "limit": "<number>",
                 "total": null
@@ -2235,10 +2221,10 @@
                         "name": "<string>",
                         "siteSettings": {
                             "<keyed>": {
-                                "hasUrls": "<bool|false|true>",
+                                "hasUrls": true,
                                 "siteId": "<number>",
                                 "template": null,
-                                "uriFormat": "<null|string>"
+                                "uriFormat": "<string>"
                             }
                         },
                         "type": "<string>"
@@ -2254,7 +2240,7 @@
                     {
                         "handle": "<string>",
                         "id": "<number>",
-                        "instructions": "<null|string>",
+                        "instructions": null,
                         "name": "<string>",
                         "searchable": false,
                         "type": "<string>"
@@ -2272,7 +2258,7 @@
                         "hasUrls": true,
                         "id": "<number>",
                         "name": "<string>",
-                        "rootUrl": "<string>",
+                        "rootUrl": null,
                         "type": "<string>"
                     }
                 ]
@@ -2282,244 +2268,15 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
-                "globals": [
-                    {
-                        "fields": {
-                            "basicText": "<string>",
-                            "blockTitle": null,
-                            "buttonOne": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": true,
-                                    "fields": {
-                                        "pageLink": [
-                                            {
-                                                "handle": "<string>",
-                                                "linkText": "<string>",
-                                                "linkValue": "<string>",
-                                                "newWindow": false,
-                                                "type": "<string>"
-                                            }
-                                        ],
-                                        "styles": "<string>"
-                                    },
-                                    "position": "<number>",
-                                    "slug": "<string>",
-                                    "title": null,
-                                    "type": "<string>"
-                                }
-                            },
-                            "contactBtw": "<string>",
-                            "contactEMailHello": "<string>",
-                            "contactEMailsupport": "<string>",
-                            "contactKvk": "<string>",
-                            "documents": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": true,
-                                    "fields": {
-                                        "documentFile": [
-                                            {
-                                                "filename": "<string>",
-                                                "volume": "<string>"
-                                            }
-                                        ],
-                                        "documentText": "<string>"
-                                    },
-                                    "position": "<number>",
-                                    "slug": null,
-                                    "title": null,
-                                    "type": "<string>"
-                                }
-                            },
-                            "employee": [
-                                {
-                                    "section": "<string>",
-                                    "slug": "<string>"
-                                }
-                            ],
-                            "facebookUrl": "<string>",
-                            "footerLogos": [
-                                {
-                                    "filename": "<string>",
-                                    "volume": "<string>"
-                                }
-                            ],
-                            "heroTitle": "<string>",
-                            "instagramUrl": "<string>",
-                            "linkedinUrl": "<string>",
-                            "logo": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": true,
-                                    "fields": {
-                                        "logo": [
-                                            {
-                                                "filename": "<string>",
-                                                "path": "<string>",
-                                                "volume": "<string>"
-                                            }
-                                        ],
-                                        "logoLink": [
-                                            {
-                                                "handle": "<string>",
-                                                "linkSiteId?": "<number>",
-                                                "linkValue?": [
-                                                    "<null|number>"
-                                                ],
-                                                "newWindow": false,
-                                                "type": "<string>"
-                                            }
-                                        ],
-                                        "logoTitle": null,
-                                        "text": null
-                                    },
-                                    "position": "<number>",
-                                    "slug": "<string>",
-                                    "title": null,
-                                    "type": "<string>"
-                                }
-                            },
-                            "office": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": true,
-                                    "fields": {
-                                        "address": "<string>",
-                                        "buttonOne": [],
-                                        "country": "<string>",
-                                        "image": [
-                                            {
-                                                "filename": "<string>",
-                                                "volume": "<string>"
-                                            }
-                                        ],
-                                        "officeHours": "<string>",
-                                        "officeTitle": "<string>",
-                                        "pageLink": [
-                                            {
-                                                "handle": "<string>",
-                                                "linkSiteId": "<number>",
-                                                "linkValue": [
-                                                    "<number>"
-                                                ],
-                                                "newWindow": false,
-                                                "type": "<string>"
-                                            }
-                                        ],
-                                        "parkingInformation": "<string>",
-                                        "phone": "<string>",
-                                        "street": "<string>"
-                                    },
-                                    "position": "<number>",
-                                    "slug": null,
-                                    "title": null,
-                                    "type": "<string>"
-                                }
-                            },
-                            "platform": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": true,
-                                    "fields": {
-                                        "logo": [
-                                            {
-                                                "filename": "<string>",
-                                                "path?": "<string>",
-                                                "volume": "<string>"
-                                            }
-                                        ],
-                                        "logoLink": [
-                                            {
-                                                "handle": "<string>",
-                                                "linkSiteId": "<number>",
-                                                "linkValue": [
-                                                    "<number>"
-                                                ],
-                                                "newWindow": false,
-                                                "type": "<string>"
-                                            }
-                                        ],
-                                        "logoTitle": "<string>",
-                                        "text": "<string>"
-                                    },
-                                    "position": "<number>",
-                                    "slug": "<string>",
-                                    "title": null,
-                                    "type": "<string>"
-                                }
-                            },
-                            "services": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": true,
-                                    "fields": {
-                                        "description": "<string>",
-                                        "image": [
-                                            {
-                                                "filename": "<string>",
-                                                "path": "<string>",
-                                                "volume": "<string>"
-                                            }
-                                        ],
-                                        "pageLink": [
-                                            {
-                                                "handle": "<string>",
-                                                "linkSiteId": "<number>",
-                                                "linkValue": [
-                                                    "<number>"
-                                                ],
-                                                "newWindow": false,
-                                                "type": "<string>"
-                                            }
-                                        ],
-                                        "serviceTitle": "<string>"
-                                    },
-                                    "position": "<number>",
-                                    "slug": "<string>",
-                                    "title": null,
-                                    "type": "<string>"
-                                }
-                            },
-                            "steps": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": true,
-                                    "fields": {
-                                        "text": "<string>"
-                                    },
-                                    "position": "<number>",
-                                    "slug": "<string>",
-                                    "title": "<string>",
-                                    "type": "<string>"
-                                }
-                            },
-                            "supportPhoneNumber": "<string>",
-                            "widgetType": "<string>"
-                        },
-                        "handle": "<string>",
-                        "id": "<number>",
-                        "name": "<string>"
-                    }
-                ]
+                "globals": []
             }
         },
         "list_categories": {
             "status": "ok",
             "shape": {
-                "categories": [
-                    {
-                        "groupHandle": "<string>",
-                        "groupId": "<number>",
-                        "id": "<number>",
-                        "level": "<number>",
-                        "slug": "<string>",
-                        "title": "<string>",
-                        "url": null
-                    }
-                ],
+                "categories": [],
                 "count": "<number>",
-                "hasMore": true,
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2538,10 +2295,10 @@
                         "admin": true,
                         "dateCreated": "<string>",
                         "email": "<string>",
-                        "fullName": "<null|string>",
+                        "fullName": null,
                         "groups": [],
                         "id": "<number>",
-                        "lastLoginDate": "<null|string>",
+                        "lastLoginDate": null,
                         "status": "<string>",
                         "username": "<string>"
                     }
@@ -2591,29 +2348,29 @@
                     }
                 ],
                 "foreignKeys": {
-                    "fk_bxjmwcbljhbcurkpvwirdaqoxktyyoannjbv": {
-                        "0": "<string>",
-                        "id": "<string>"
-                    },
-                    "fk_gtwpzxxkaqsfwyaugwtuxprxgubhzegjzwtq": {
-                        "0": "<string>",
-                        "primaryOwnerId": "<string>"
-                    },
-                    "fk_ijozpcylpjxkkvszugkstsjugjrckhzjgxxj": {
-                        "0": "<string>",
-                        "fieldId": "<string>"
-                    },
-                    "fk_mpemsykokxaatgmrcjdlzqzjqtceehqbfmbm": {
-                        "0": "<string>",
-                        "typeId": "<string>"
-                    },
-                    "fk_uprhiapwpdomjvdvopeieqavmecjjovloezw": {
+                    "fk_bcfuguukkeitwbkowadxsinlfetqobtuhnin": {
                         "0": "<string>",
                         "sectionId": "<string>"
                     },
-                    "fk_vkosakqtiszfdvhzfkyvbcdnsvampucjotqz": {
+                    "fk_kcoamjvqsltujyipvwpaegupavpmhjofearu": {
+                        "0": "<string>",
+                        "id": "<string>"
+                    },
+                    "fk_npzptjshorcadpfuuvafiqhcajebbsadnqme": {
+                        "0": "<string>",
+                        "typeId": "<string>"
+                    },
+                    "fk_pxpxleeykjdkjlmnmzdtmfmmiekltzknvywq": {
                         "0": "<string>",
                         "parentId": "<string>"
+                    },
+                    "fk_vktcimldunzououktnvgkiciyoyraxohbsmu": {
+                        "0": "<string>",
+                        "fieldId": "<string>"
+                    },
+                    "fk_xradvuebgybakszfvtfkqylabyegumbnrphw": {
+                        "0": "<string>",
+                        "primaryOwnerId": "<string>"
                     }
                 },
                 "fullName": "<string>",
@@ -2690,7 +2447,15 @@
         "list_backups": {
             "status": "ok",
             "shape": {
-                "backups": [],
+                "backups": [
+                    {
+                        "created": "<string>",
+                        "filename": "<string>",
+                        "path": "<string>",
+                        "size": "<string>",
+                        "sizeBytes": "<number>"
+                    }
+                ],
                 "count": "<number>",
                 "path": "<string>"
             }
@@ -2702,7 +2467,7 @@
                 "schemas": [
                     {
                         "id": "<number>",
-                        "isPublic": "<bool|false>",
+                        "isPublic": "<bool>",
                         "name": "<string>",
                         "permissions": "<list|object>",
                         "scope": [
@@ -2717,20 +2482,7 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
-                "tokens": [
-                    {
-                        "dateCreated": "<string>",
-                        "enabled": true,
-                        "expiryDate": null,
-                        "id": "<number>",
-                        "name": "<string>",
-                        "schema": {
-                            "id": "<number>",
-                            "name": "<string>"
-                        },
-                        "uid": "<string>"
-                    }
-                ]
+                "tokens": []
             }
         },
         "get_graphql_schema": {
@@ -2754,7 +2506,7 @@
                 "success": true,
                 "types": [
                     {
-                        "fields": "<number>",
+                        "fields?": "<number>",
                         "kind": "<string>",
                         "name": "<string>",
                         "sdlBytes": "<number>"
@@ -2866,7 +2618,7 @@
                         "status": "<string>",
                         "title": "<string>",
                         "typeHandle": "<string>",
-                        "url": null,
+                        "url": "<string>",
                         "warnings": []
                     }
                 ],
@@ -2932,7 +2684,7 @@
                         "status": "<string>",
                         "title": "<string>",
                         "typeHandle": "<string>",
-                        "url": null,
+                        "url": "<string>",
                         "warnings": []
                     }
                 ],
@@ -2967,7 +2719,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": null,
+                    "url": "<string>",
                     "warnings": []
                 },
                 "found": true
@@ -2998,7 +2750,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": null,
+                    "url": "<string>",
                     "warnings": []
                 },
                 "found": true
@@ -3114,7 +2866,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": null,
+                    "url": "<string>",
                     "warnings": []
                 },
                 "fields": [
@@ -3181,22 +2933,8 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
-                "drafts": [
-                    {
-                        "canonicalId": "<number>",
-                        "cpEditUrl": "<string>",
-                        "creator": "<null|string>",
-                        "dateUpdated": "<string>",
-                        "draftElementId": "<number>",
-                        "isNewEntry": "<bool|true>",
-                        "notes": "<null|string>",
-                        "section": "<string>",
-                        "site": "<string>",
-                        "title": "<string>",
-                        "type": "<string>"
-                    }
-                ],
-                "hasMore": true,
+                "drafts": [],
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -3226,57 +2964,17 @@
         "list_assets": {
             "status": "ok",
             "shape": {
-                "assets": [
-                    {
-                        "dateCreated": "<string>",
-                        "dateModified": "<string>",
-                        "filename": "<string>",
-                        "folderId": "<number>",
-                        "height": "<number>",
-                        "id": "<number>",
-                        "kind": "<string>",
-                        "size": "<number>",
-                        "title": "<string>",
-                        "url": "<string>",
-                        "volumeId": "<number>",
-                        "width": "<number>"
-                    }
-                ],
+                "assets": [],
                 "count": "<number>",
-                "hasMore": true,
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
             }
         },
         "get_asset": {
-            "status": "ok",
-            "shape": {
-                "asset": {
-                    "alt": null,
-                    "dateCreated": "<string>",
-                    "dateModified": "<string>",
-                    "extension": "<string>",
-                    "fields": [],
-                    "filename": "<string>",
-                    "focalPoint": {
-                        "x": "<number>",
-                        "y": "<number>"
-                    },
-                    "folderId": "<number>",
-                    "folderPath": "<string>",
-                    "height": "<number>",
-                    "id": "<number>",
-                    "kind": "<string>",
-                    "mimeType": "<string>",
-                    "size": "<number>",
-                    "title": "<string>",
-                    "url": "<string>",
-                    "volumeId": "<number>",
-                    "width": "<number>"
-                },
-                "found": true
-            }
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
         },
         "list_asset_folders": {
             "status": "ok",
@@ -3302,6 +3000,7 @@
                 "draftId": "<number>",
                 "elementId": "<number>",
                 "errors": [],
+                "previewUrl": "<string>",
                 "state": "<string>",
                 "success": true,
                 "warnings": []
@@ -3332,7 +3031,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": null,
+                    "url": "<string>",
                     "warnings": []
                 },
                 "found": true
@@ -3347,6 +3046,7 @@
                 "draftId": "<number>",
                 "elementId": "<number>",
                 "errors": [],
+                "previewUrl": "<string>",
                 "state": "<string>",
                 "success": true,
                 "warnings": []
@@ -3382,7 +3082,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": null,
+                    "url": "<string>",
                     "warnings": []
                 },
                 "found": true
@@ -3397,6 +3097,7 @@
                 "draftId": "<number>",
                 "elementId": "<number>",
                 "errors": [],
+                "previewUrl": "<string>",
                 "state": "<string>",
                 "success": true,
                 "warnings": []
@@ -3416,6 +3117,7 @@
                 "errors": [],
                 "ownerId": "<number>",
                 "position": "<number>",
+                "previewUrl": "<string>",
                 "state": "<string>",
                 "success": true,
                 "warnings": []
@@ -3435,6 +3137,7 @@
                 "errors": [],
                 "ownerId": "<number>",
                 "position": "<number>",
+                "previewUrl": "<string>",
                 "state": "<string>",
                 "success": true,
                 "warnings": []
@@ -3454,6 +3157,7 @@
                 "errors": [],
                 "ownerId": "<number>",
                 "position": "<number>",
+                "previewUrl": "<string>",
                 "state": "<string>",
                 "success": true,
                 "warnings": []
@@ -3497,7 +3201,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": null,
+                    "url": "<string>",
                     "warnings": []
                 },
                 "success": true
@@ -3538,10 +3242,11 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": null,
+                    "url": "<string>",
                     "warnings": []
                 },
                 "parent": null,
+                "previewUrl": "<string>",
                 "success": true,
                 "warnings": []
             }

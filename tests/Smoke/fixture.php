@@ -7,7 +7,7 @@ declare(strict_types=1);
  *
  *   php tests/Smoke/fixture.php     from a plugin checkout inside a Craft project
  *
- * Creates one channel section (Plan::SECTION) with one entry type
+ * Creates one channel section (Plan::SECTION, with URLs) with one entry type
  * (Plan::ENTRY_TYPE) carrying a Matrix field (Plan::MATRIX_FIELD, one block
  * type, Plan::BLOCK_TYPE) and an Entries field (Plan::RELATION_FIELD) that
  * relates back to the same section, plus one published entry for the read
@@ -116,7 +116,9 @@ if ($section === null) {
         'handle' => Plan::SECTION,
         'type' => Section::TYPE_CHANNEL,
         'siteSettings' => array_map(
-            static fn ($site) => new Section_SiteSettings(['siteId' => $site->id, 'enabledByDefault' => true, 'hasUrls' => false]),
+            // URLs, so every write's previewUrl is minted for real and the
+            // baselines pin its shape; a URL-less section would record null.
+            static fn ($site) => new Section_SiteSettings(['siteId' => $site->id, 'enabledByDefault' => true, 'hasUrls' => true, 'uriFormat' => 'mcp-smoke/{slug}']),
             Craft::$app->getSites()->getAllSites(),
         ),
     ]);

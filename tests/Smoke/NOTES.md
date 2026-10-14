@@ -22,12 +22,15 @@ The harness runs from a plugin checkout placed inside a Craft project, because
 `bootstrap.php` and `craft`. Inside DDEV that means `ddev exec` from the
 checkout's directory in the container.
 
-The baselines are recorded on **stimmt-cms**, a single-site Craft 5 install,
-with the fixture below added to it. The server loads the plugin from that
-project's `vendor/`, so to test unreleased code put the checkout's `src/` over
-`vendor/stimmt/craft-mcp/src/` for the run, then reinstall it afterwards.
-Snapshot the database first (`ddev snapshot`): the write lifecycle publishes
-and trashes real entries, and restoring is the only way to leave no trace.
+The baselines are recorded on **craftcms-headless**, Stimmt's headless template
+(single site, Craft in `apps/backend`, DDEV project `template-project`), with the
+fixture below added and the edition set to Pro so the write tools are listed.
+The server loads the plugin from that project's `vendor/`, so to test
+unreleased code put the checkout's `src/` over `vendor/stimmt/craft-mcp/src/`
+for the run, then reinstall it afterwards. Snapshot the database first
+(`ddev snapshot`): the write lifecycle publishes and trashes real entries, and
+restoring is the only way to leave no trace. Its control panel is on the root
+of its domain, so `httpPath` there is `mcp-http`.
 
 ## The fixture
 
@@ -36,7 +39,7 @@ for the harness so it cannot collide with a site's own content:
 
 | Plan constant | Handle | What it is |
 |---|---|---|
-| `SECTION` | `mcpSmoke` | channel section, enabled on every site, no URLs |
+| `SECTION` | `mcpSmoke` | channel section, enabled on every site, URLs at `mcp-smoke/{slug}` so `previewUrl` is minted for real |
 | `ENTRY_TYPE` | `mcpSmokePage` | its only entry type |
 | `MATRIX_FIELD` | `mcpSmokeBlocks` | Matrix field on that type |
 | `BLOCK_TYPE` | `mcpSmokeBlock` | the Matrix field's one block type, no fields, no title field |
@@ -143,6 +146,11 @@ Two reductions keep the diff honest rather than noisy:
 
 Values are guarded by assertions instead, where they matter.
 
+A step can name booleans under `state` when their value describes the install
+rather than the server. `get_queue_jobs` does this for `hasMore`: with no queue
+worker running, every run leaves the next one a longer queue, so the value is
+recorded as `<bool>` and two runs on the same install agree.
+
 A scoped profile also records a `scope` block: the tools it advertises, the
 tools probed outside its scope, and how each of those calls was refused. stdio
 carries no scope at all, so it has no such block rather than a null one.
@@ -228,7 +236,8 @@ drift in the catalogue, so coverage cannot rot quietly.
 Currently uncovered and why:
 
 - `create_backup`: writes a database dump, so it is behind `--heavy`.
-- `copy_entry_to_site`: stimmt-cms has one site, so every step that needs a
+- `get_asset`: the template has no assets to address.
+- `copy_entry_to_site`: the baseline install has one site, so every step that needs a
   second site handle reports itself skipped. Recording on a multi-site install
   would cover it.
 

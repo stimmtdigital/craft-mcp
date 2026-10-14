@@ -196,10 +196,34 @@ final class Runner {
         }
 
         $failures = $resolved === [] ? [] : Assert::check($payload, $resolved);
+        $shape = Shape::of(self::withoutState($payload, is_array($step['state'] ?? null) ? $step['state'] : []));
 
         return $failures === []
-            ? ['status' => 'ok', 'shape' => Shape::of($payload)]
-            : ['status' => 'assert-failed', 'failures' => $failures, 'shape' => Shape::of($payload)];
+            ? ['status' => 'ok', 'shape' => $shape]
+            : ['status' => 'assert-failed', 'failures' => $failures, 'shape' => $shape];
+    }
+
+    /**
+     * Booleans a step names under `state` describe the install, not the
+     * server: whether the queue holds more than a page depends on how many
+     * jobs earlier runs left behind on an install with no worker running. They
+     * are recorded as their type, so the baseline still pins that the key is
+     * there and is a boolean, and a second run on the same install agrees.
+     *
+     * @param string[] $keys top-level keys of the payload
+     */
+    private static function withoutState(mixed $payload, array $keys): mixed {
+        if (!is_array($payload)) {
+            return $payload;
+        }
+
+        foreach ($keys as $key) {
+            if (is_bool($payload[$key] ?? null)) {
+                $payload[$key] = '<bool>';
+            }
+        }
+
+        return $payload;
     }
 
     /**

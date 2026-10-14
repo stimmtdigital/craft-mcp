@@ -105,7 +105,9 @@ final class Plan {
             ['tool' => 'list_plugins', 'args' => []],
             ['tool' => 'get_last_error', 'args' => []],
             ['tool' => 'get_deprecations', 'args' => ['limit' => 5]],
-            ['tool' => 'get_queue_jobs', 'args' => ['limit' => 5]],
+            // How many jobs are waiting is the install's business: without a
+            // queue worker, every run leaves the next one a longer queue.
+            ['tool' => 'get_queue_jobs', 'args' => ['limit' => 5], 'state' => ['hasMore']],
             ['tool' => 'list_console_commands', 'args' => []],
             ['tool' => 'list_routes', 'args' => []],
             ['tool' => 'list_event_handlers', 'args' => ['filter' => 'Entry']],
@@ -261,7 +263,9 @@ final class Plan {
                     'slug' => "smoke-{$runId}",
                 ],
                 'capture' => ['draft.id' => 'draftElementId'],
-                'assert' => ['success' => true, 'draftElementId' => 'isInt', 'errors' => 'present', 'warnings' => 'present'],
+                // The fixture section has URLs, so the draft must come back
+                // with a preview link that renders it without a login (#55).
+                'assert' => ['success' => true, 'draftElementId' => 'isInt', 'errors' => 'present', 'warnings' => 'present', 'previewUrl' => 'notEmpty'],
             ],
             ['tool' => 'get_entry', 'name' => 'get_entry.draft', 'args' => ['id' => '{{draft.id}}']],
             [
