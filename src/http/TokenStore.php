@@ -24,4 +24,7 @@ interface TokenStore {
     public function all(): array;
 
     public function touch(int $id, DateTimeImmutable $when): void;
+
+    /** Delete every token issued under an OAuth grant; returns how many. */
+    public function deleteByGrant(int $grantId): int;
 }

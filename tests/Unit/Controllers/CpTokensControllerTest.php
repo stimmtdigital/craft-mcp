@@ -5,6 +5,7 @@ declare(strict_types=1);
 use craft\controllers\EditUserTrait;
 use craft\web\Controller;
 use stimmt\craft\Mcp\controllers\CpTokensController;
+use stimmt\craft\Mcp\support\ScopePolicy;
 
 // CpTokensController extends craft\web\Controller, which requires a booted
 // yii\base\Module to construct. Craft and Twig are never booted in these
@@ -86,7 +87,7 @@ describe('CpTokensController', function () {
         $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
 
         expect($source)->toContain('Scope::Full')
-            ->and($source)->toContain('->admin')
+            ->and((string) file_get_contents((new ReflectionClass(ScopePolicy::class))->getFileName()))->toContain('->admin')
             ->and($source)->toContain('Only admins can mint full-scope');
     });
 
@@ -111,10 +112,13 @@ describe('CpTokensController', function () {
     it('gates Full via one shared admin predicate consumed by both the dropdown and creation', function () {
         $source = (string) file_get_contents((new ReflectionClass(CpTokensController::class))->getFileName());
 
-        expect($source)->toContain('function fullScopeAllowed')
-            ->and($source)->toContain('$this->fullScopeAllowed(self::currentUser())')
+        $policy = (string) file_get_contents((new ReflectionClass(ScopePolicy::class))->getFileName());
+
+        expect($source)->toContain('ScopePolicy::fullAllowed($user)')
+            ->and($source)->toContain('ScopePolicy::allowed(self::currentUser(), Mcp::settings()->disabledScopes)')
             ->and($source)->toContain('$this->fullScopeAllowed($currentUser)')
-            ->and($source)->not->toContain("checkPermission('manageAllMcpTokens')");
+            ->and($source)->not->toContain("checkPermission('manageAllMcpTokens')")
+            ->and($policy)->toContain('if (self::fullAllowed($user))');
     });
 
     // #48: disabledScopes is a per-environment guardrail that beats every
@@ -128,7 +132,8 @@ describe('CpTokensController', function () {
         expect($source)->toContain('function authorizeScopeEnabled')
             ->and($source)->toContain('->isDisabled(Mcp::settings()->disabledScopes)')
             ->and($source)->toContain('scope is disabled on this install')
-            ->and($source)->toContain('!$scope->isDisabled($disabled)');
+            ->and((string) file_get_contents((new ReflectionClass(ScopePolicy::class))->getFileName()))
+            ->toContain('!$scope->isDisabled($disabledScopes)');
     });
 
     // #48: existing tokens of a now-disabled scope must keep regenerating,
@@ -150,7 +155,7 @@ describe('CpTokensController', function () {
             ->and($body('actionRegenerate'))->not->toContain('authorizeScopeEnabled(');
     });
 
-    // #62: showClientConfigSnippet lets an install skip the Claude Desktop
+    // #62: showClientConfigSnippet lets an install skip the client
     // config block on the token-reveal screen entirely. The controller
     // consumes Snippet::jsonIfEnabled() rather than checking the setting
     // itself, so this and the console command can never disagree on

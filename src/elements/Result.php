@@ -28,6 +28,7 @@ final readonly class Result {
         public array $warnings = [],
         public array $errors = [],
         public ?string $cpEditUrl = null,
+        public ?string $previewUrl = null,
     ) {
     }
 
@@ -43,6 +44,7 @@ final readonly class Result {
             'draftElementId' => $this->draftElementId,
             'state' => $this->state?->value,
             'cpEditUrl' => $this->cpEditUrl,
+            'previewUrl' => $this->previewUrl,
             'warnings' => array_map(static fn (Warning $w): array => $w->toArray(), $this->warnings),
             'errors' => $this->errors,
         ];

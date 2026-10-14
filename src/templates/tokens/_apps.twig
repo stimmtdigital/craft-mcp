@@ -1,0 +1,52 @@
+{% set showUser = showUser ?? false %}
+{% set userLabels = userLabels ?? [] %}
+
+{% if apps is empty %}
+    <p class="zilch">{{ 'No apps are connected.'|t('mcp') }}</p>
+{% else %}
+    <div class="tableview">
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'App'|t('mcp') }}</th>
+                    {% if showUser %}
+                        <th scope="col">{{ 'User'|t('mcp') }}</th>
+                    {% endif %}
+                    <th scope="col">{{ 'Scope'|t('mcp') }}</th>
+                    <th scope="col">{{ 'Connected'|t('mcp') }}</th>
+                    <th scope="col">{{ 'Last Used'|t('mcp') }}</th>
+                    <th scope="col"><span class="visually-hidden">{{ 'Actions'|t('mcp') }}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in apps %}
+                    <tr>
+                        <th scope="row">{{ app.name }}</th>
+                        {% if showUser %}
+                            <td><a href="{{ url('users/' ~ app.userId ~ '/mcp-tokens') }}">{{ userLabels[app.userId] ?? app.userId }}</a></td>
+                        {% endif %}
+                        <td>{{ app.scope|capitalize }}</td>
+                        <td>{{ app.connected ? app.connected|timestamp : '' }}</td>
+                        <td>{{ app.lastUsed ? app.lastUsed|timestamp : 'Never'|t('mcp') }}</td>
+                        <td>
+                            <form method="post" accept-charset="UTF-8">
+                                {{ csrfInput() }}
+                                {{ redirectInput(redirect) }}
+                                {{ hiddenInput('id', app.id) }}
+                                {{ tag('button', {
+                                    type: 'button',
+                                    class: ['btn', 'small', 'formsubmit'],
+                                    text: 'Disconnect'|t('mcp'),
+                                    data: {
+                                        action: 'mcp/cp-tokens/disconnect',
+                                        confirm: 'Disconnect this app? It loses access immediately and has to be connected again.'|t('mcp'),
+                                    },
+                                }) }}
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}

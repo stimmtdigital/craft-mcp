@@ -105,3 +105,39 @@ describe('Settings colorOutput', function () {
         expect($settings->validate(['colorOutput']))->toBeTrue();
     });
 });
+
+describe('Settings preview links', function () {
+    it('hands out preview links by default, at Craft\'s own token duration', function () {
+        $settings = new Settings();
+
+        expect($settings->previewUrls)->toBeTrue()
+            ->and($settings->previewTokenDuration)->toBeNull();
+    });
+
+    it('refuses a preview token that would expire within a minute', function () {
+        $settings = new Settings();
+        $settings->previewTokenDuration = 30;
+
+        expect($settings->validate(['previewTokenDuration']))->toBeFalse();
+
+        $settings->previewTokenDuration = 3600;
+        expect($settings->validate(['previewTokenDuration']))->toBeTrue();
+    });
+});
+
+describe('Settings OAuth connector', function () {
+    it('is off by default, with the Claude callbacks allowed once it is on', function () {
+        $settings = new Settings();
+
+        expect($settings->oauth)->toBeFalse()
+            ->and($settings->oauthRedirectUris)->toContain('https://claude.ai/api/mcp/auth_callback', 'http://localhost/callback')
+            ->and($settings->validate())->toBeTrue();
+    });
+
+    it('refuses a redirect allowlist entry that is not an http(s) URL', function () {
+        $settings = new Settings();
+        $settings->oauthRedirectUris = ['javascript:alert(1)'];
+
+        expect($settings->validate(['oauthRedirectUris']))->toBeFalse();
+    });
+});

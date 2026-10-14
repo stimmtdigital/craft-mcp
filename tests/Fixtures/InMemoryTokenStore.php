@@ -24,7 +24,7 @@ final class InMemoryTokenStore implements TokenStore {
     }
 
     public function insert(Token $token, string $hash): Token {
-        $stored = new Token($token->name, $token->userId, $token->scope, $token->expiryDate, $token->lastUsedAt, $this->nextId++);
+        $stored = new Token($token->name, $token->userId, $token->scope, $token->expiryDate, $token->lastUsedAt, $this->nextId++, grantId: $token->grantId);
         $this->byHash[$hash] = $stored;
 
         return $stored;
@@ -50,9 +50,16 @@ final class InMemoryTokenStore implements TokenStore {
         $this->touches++;
         foreach ($this->byHash as $hash => $token) {
             if ($token->id === $id) {
-                $this->byHash[$hash] = new Token($token->name, $token->userId, $token->scope, $token->expiryDate, $when, $token->id);
+                $this->byHash[$hash] = new Token($token->name, $token->userId, $token->scope, $token->expiryDate, $when, $token->id, grantId: $token->grantId);
             }
         }
+    }
+
+    public function deleteByGrant(int $grantId): int {
+        $before = count($this->byHash);
+        $this->byHash = array_filter($this->byHash, static fn (Token $token): bool => $token->grantId !== $grantId);
+
+        return $before - count($this->byHash);
     }
 
     /** @return string[] */

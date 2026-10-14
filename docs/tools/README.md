@@ -72,7 +72,7 @@ These tools provide access to Craft's configuration and system status:
 | `read_logs` | Search and filter log entries by level, source, pattern, with text or JSON output |
 | `get_last_error` | Retrieve the most recent error from the application logs |
 | `clear_caches` | Clear specific Craft caches or all caches at once |
-| `list_console_commands` | List all available Craft CLI commands with descriptions |
+| `list_console_commands` | List all available Craft CLI commands (stdio only; says so over HTTP) |
 | `list_routes` | Inspect all registered routes including controller actions and patterns |
 
 ### Database Tools

@@ -48,18 +48,19 @@ describe('CP token templates', function () {
             ->and($source)->toContain('mcp-tokens');
     });
 
-    // #62: showClientConfigSnippet skips the Claude Desktop config block
+    // #62: showClientConfigSnippet skips the client config block
     // (heading, pre/code, copy button, download button) while leaving the
     // token field and warning intact; the controller only flashes
     // newTokenSnippet when the setting allows it, so the template just
     // needs to skip the block when that flash is empty.
-    it('gates the Claude Desktop config block on newTokenSnippet in the reveal partial', function () use ($base) {
+    it('gates the client config block on newTokenSnippet in the reveal partial', function () use ($base) {
         $source = (string) file_get_contents("{$base}/_reveal.twig");
 
         expect($source)->toContain('{% if newTokenSnippet %}')
-            ->and($source)->toContain('Claude Desktop config')
+            ->and($source)->toContain('Claude Code config (.mcp.json)')
             ->and($source)->toContain('data-copy-config')
-            ->and($source)->toContain('claude_desktop_config.json');
+            ->and($source)->toContain('download=".mcp.json"')
+            ->and($source)->not->toContain('claude_desktop_config.json');
     });
 });
 

@@ -7,11 +7,12 @@ namespace stimmt\craft\Mcp\installer;
 use craft\helpers\FileHelper;
 use craft\helpers\Json;
 use JsonException;
+use stimmt\craft\Mcp\installer\contracts\ConfigFormat;
 
 /**
  * Handles reading, merging, and writing MCP configuration files.
  */
-final class ConfigWriter {
+final class ConfigWriter implements ConfigFormat {
     private const JSON_FLAGS = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
     /**

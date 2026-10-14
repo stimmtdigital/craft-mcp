@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\models;
 
 use craft\base\Model;
 use Override;
+use stimmt\craft\Mcp\http\oauth\RedirectUris;
 use stimmt\craft\Mcp\http\Scope;
 
 /**
@@ -114,6 +115,29 @@ class Settings extends Model {
     public ?string $httpPublicUrl = null;
 
     /**
+     * Lets Claude (web, Desktop, mobile) and other OAuth clients connect by
+     * URL: the user pastes the MCP URL, logs in to the control panel, picks a
+     * scope and approves, and the app receives tokens tied to that user. Off
+     * by default, and only active while httpTransport is on.
+     */
+    public bool $oauth = false;
+
+    /**
+     * Callback URLs an app may register. Registration is open, so this list is
+     * what keeps a consent from being sent anywhere else. The default covers
+     * the Claude apps and Claude Code; a loopback entry matches any port.
+     *
+     * @var string[]
+     */
+    public array $oauthRedirectUris = RedirectUris::DEFAULTS;
+
+    /** Lifetime of an access token issued over OAuth, in seconds. */
+    public int $oauthAccessTokenTtl = 3600;
+
+    /** Lifetime of a refresh token, in seconds; each use replaces it. */
+    public int $oauthRefreshTokenTtl = 2592000;
+
+    /**
      * Install-owner text appended to the server instructions, on every
      * transport, absolutely last (after every other note the plugin
      * computes). Empty by default, so it costs nothing on installs that
@@ -123,7 +147,7 @@ class Settings extends Model {
 
     /**
      * Whether the token-reveal screen (My Account -> MCP Tokens) shows the
-     * ready-to-paste Claude Desktop config block alongside the new token.
+     * ready-to-paste Claude Code `.mcp.json` block alongside the new token.
      * True by default, matching existing behavior. Installs that provision
      * MCP clients their own way (a custom prompt and skill, a different
      * client entirely) can turn this off to leave just the token and its
@@ -140,12 +164,27 @@ class Settings extends Model {
     public bool $colorOutput = false;
 
     /**
+     * Whether entry writes return a `previewUrl`: a Craft preview-token link
+     * that renders the draft as saved, for anyone holding it, until it
+     * expires. True by default. Each write that returns one stores a row in
+     * Craft's own `tokens` table, which Craft removes once it expires.
+     */
+    public bool $previewUrls = true;
+
+    /**
+     * How long a `previewUrl` stays valid, in seconds. Null uses Craft's own
+     * `previewTokenDuration`, falling back to `defaultTokenDuration` (a day),
+     * so a preview link lasts exactly as long as one from the Share button.
+     */
+    public ?int $previewTokenDuration = null;
+
+    /**
      * @return array<int, array<int|string, mixed>>
      */
     #[Override]
     public function defineRules(): array {
         return [
-            [['enabled', 'enableDangerousTools', 'httpTransport', 'showLockedProTools', 'showClientConfigSnippet', 'colorOutput'], 'boolean'],
+            [['enabled', 'enableDangerousTools', 'httpTransport', 'showLockedProTools', 'showClientConfigSnippet', 'colorOutput', 'previewUrls', 'oauth'], 'boolean'],
             [['disabledTools', 'disabledPrompts', 'disabledResources', 'allowedIps', 'scopedTokenPrivilegedTools'], 'each', 'rule' => ['string']],
             [['disabledScopes'], 'each', 'rule' => ['in', 'range' => array_column(Scope::cases(), 'value')]],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
@@ -154,6 +193,12 @@ class Settings extends Model {
             [['httpPath'], 'required'],
             [['httpPath'], 'match', 'pattern' => '/^[a-z0-9\-\/]+$/i'],
             [['httpSessionTtl'], 'integer', 'min' => 60],
+            [['previewTokenDuration'], 'integer', 'min' => 60, 'skipOnEmpty' => true],
+            // Not Yii's url validator: it wants a dot in the host, and the
+            // loopback callbacks Claude Code uses are http://localhost/...
+            [['oauthRedirectUris'], 'each', 'rule' => ['match', 'pattern' => '#^https?://[^\s/?\#]+(/[^\s\#]*)?$#i']],
+            [['oauthAccessTokenTtl'], 'integer', 'min' => 60],
+            [['oauthRefreshTokenTtl'], 'integer', 'min' => 3600],
             [['httpPublicUrl'], 'url', 'skipOnEmpty' => true],
             [['additionalInstructions'], 'string'],
         ];

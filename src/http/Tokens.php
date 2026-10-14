@@ -41,6 +41,24 @@ final readonly class Tokens {
     }
 
     /**
+     * An access token for an OAuth grant: same format and same table as a
+     * hand-minted token, so the endpoint authenticates both the same way, but
+     * expiring at an exact moment and tied to the grant that revokes it.
+     *
+     * @return array{token: Token, plaintext: string}
+     */
+    public function issue(int $userId, Scope $scope, string $name, DateTimeImmutable $expiresAt, int $grantId): array {
+        $plaintext = self::PREFIX . $this->secret();
+        $token = new Token($name, $userId, $scope, $expiresAt, grantId: $grantId);
+
+        return ['token' => $this->store->insert($token, self::hash($plaintext)), 'plaintext' => $plaintext];
+    }
+
+    public function revokeGrant(int $grantId): int {
+        return $this->store->deleteByGrant($grantId);
+    }
+
+    /**
      * @param string[] $disabledScopes Scope values closed on this install
      *                                 (#56). A token of a disabled scope is
      *                                 rejected exactly like an unknown token,
@@ -114,11 +132,21 @@ final readonly class Tokens {
     }
 
     /**
+     * Tokens minted by hand, leaving out the short-lived ones OAuth issues and
+     * replaces every hour: those are managed as connected apps instead.
+     *
+     * @return Token[]
+     */
+    public function listManual(): array {
+        return array_values(array_filter($this->list(), static fn (Token $token): bool => !$token->isOAuth()));
+    }
+
+    /**
      * @return Token[]
      */
     public function listFor(int $userId): array {
         return array_values(array_filter(
-            $this->list(),
+            $this->listManual(),
             static fn (Token $token): bool => $token->userId === $userId,
         ));
     }

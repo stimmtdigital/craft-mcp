@@ -86,7 +86,7 @@ Once the plugin is installed and enabled, connect your AI assistant. The quickes
 php craft mcp/install
 ```
 
-The wizard detects your environment (DDEV or native PHP), lets you pick clients (Claude Code, Cursor, Claude Desktop), and writes the config files for you.
+The wizard detects your environment (DDEV or native PHP), lets you pick clients (Claude Code, Cursor, Claude Desktop, Codex), and writes the config files for you.
 
 Wizard options, manual configuration for every client, and the SSH variant live in the [Client Setup guide](client-setup.md). Remote users without a local checkout connect through the [HTTP transport](http-transport.md) instead.
 

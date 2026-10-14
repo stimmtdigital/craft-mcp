@@ -46,7 +46,7 @@ class TokensController extends Controller {
     }
 
     /**
-     * Create a token and print it once, with a Claude Desktop snippet when
+     * Create a token and print it once, with a Claude Code snippet when
      * the showClientConfigSnippet setting allows it (#62).
      */
     public function actionCreate(): int {
@@ -83,11 +83,15 @@ class TokensController extends Controller {
 
         $this->stdout("Token created (shown once, store it now):\n\n  {$plaintext}\n\n", Console::FG_GREEN);
         if ($snippet !== null) {
-            $this->stdout("Claude Desktop config (claude_desktop_config.json):\n");
+            $this->stdout("Claude Code config (.mcp.json):\n");
             $this->stdout($snippet);
             if ($settings->httpPublicUrl === null) {
                 $this->stdout("\nThe url host comes from the primary site. If Craft answers on a different domain (headless setups often serve the CMS on a separate host), set the httpPublicUrl setting to that domain, or edit the url by hand.\n", Console::FG_YELLOW);
             }
+        }
+
+        if ($settings->oauth) {
+            $this->stdout("\nFor the Claude apps (web, Desktop, mobile), add " . Snippet::url() . " as a custom connector instead; no token needed.\n");
         }
 
         return ExitCode::OK;

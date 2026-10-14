@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\http;
 
 use craft\helpers\Db;
 use DateTimeImmutable;
+use DateTimeZone;
 use RuntimeException;
 use stimmt\craft\Mcp\records\Token as Record;
 
@@ -28,6 +29,7 @@ final class RecordStore implements TokenStore {
         $record->userId = $token->userId;
         $record->scope = $token->scope->value;
         $record->expiryDate = Db::prepareDateForDb($token->expiryDate);
+        $record->grantId = $token->grantId;
 
         if (!$record->save(false)) {
             throw new RuntimeException('Failed to persist the token');
@@ -55,15 +57,30 @@ final class RecordStore implements TokenStore {
         Record::updateAll(['lastUsedAt' => Db::prepareDateForDb($when)], ['id' => $id]);
     }
 
+    public function deleteByGrant(int $grantId): int {
+        return Record::deleteAll(['grantId' => $grantId]);
+    }
+
     private function toToken(Record $record): Token {
         return new Token(
             $record->name,
             (int) $record->userId,
             Scope::from($record->scope),
-            $record->expiryDate === null ? null : new DateTimeImmutable($record->expiryDate),
-            $record->lastUsedAt === null ? null : new DateTimeImmutable($record->lastUsedAt),
+            $this->date($record->expiryDate),
+            $this->date($record->lastUsedAt),
             (int) $record->id,
-            $record->dateCreated === null ? null : new DateTimeImmutable($record->dateCreated),
+            $this->date($record->dateCreated),
+            $record->grantId === null ? null : (int) $record->grantId,
         );
+    }
+
+    /**
+     * Craft stores dates in UTC while PHP's default timezone is the site's,
+     * so a stored date has to be read as UTC or it shifts by the site's
+     * offset. That never showed at day granularity; it would make an
+     * hour-long OAuth access token look expired the moment it was issued.
+     */
+    private function date(?string $value): ?DateTimeImmutable {
+        return $value === null ? null : new DateTimeImmutable($value, new DateTimeZone('UTC'));
     }
 }

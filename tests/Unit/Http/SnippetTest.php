@@ -50,7 +50,9 @@ describe('Snippet', function () {
         it('builds the config snippet when showClientConfigSnippet is on (the default)', function () {
             expect(Snippet::jsonIfEnabled('plaintext-token', 'https://example.test/mcp'))
                 ->toContain('plaintext-token')
-                ->toContain('mcpServers');
+                ->toContain('mcpServers')
+                ->toContain('"type": "http"')
+                ->toContain('"url": "https://example.test/mcp"');
         });
 
         // #62: single gate for every caller (CP reveal screen, console

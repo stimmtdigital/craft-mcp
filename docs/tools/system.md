@@ -309,7 +309,9 @@ Each route includes a `type` field indicating its source:
 
 ### list_console_commands
 
-List all available CLI commands, including those added by plugins. This helps AI assistants understand what operations can be performed via the command line.
+List all available CLI commands, including those added by plugins and modules. This helps AI assistants understand what operations can be performed via the command line.
+
+**Over stdio only.** In a web request Craft loads web controllers in place of console ones, so over the HTTP transport the tool answers with `count` and `commands` set to `null` and an `unavailable` sentence explaining why, rather than an empty list that would read as "this install has no commands".
 
 **Parameters:** None
 
@@ -319,25 +321,27 @@ List all available CLI commands, including those added by plugins. This helps AI
 list_console_commands
 ```
 
-**Response:**
+**Response (stdio):**
 
 ```json
 {
-  "count": 25,
-  "commands": [
-    {
-      "id": "cache",
-      "description": "Clear and manage caches"
-    },
-    {
-      "id": "migrate",
-      "description": "Run database migrations"
-    },
-    {
-      "id": "project-config",
-      "description": "Manage project config"
-    }
-  ]
+  "count": 67,
+  "commands": ["cache/flush-all", "migrate/all", "project-config/apply", "..."],
+  "skippedModules": [],
+  "unavailable": null
+}
+```
+
+`skippedModules` names any module whose commands could not be read, for example one whose path alias only exists in some requests; its commands are missing from `commands`. Since 1.6.0 such a module no longer makes the whole call fail.
+
+**Response (HTTP):**
+
+```json
+{
+  "count": null,
+  "commands": null,
+  "skippedModules": [],
+  "unavailable": "Console commands can only be listed over stdio. ..."
 }
 ```
 

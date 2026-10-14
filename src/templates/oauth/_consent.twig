@@ -1,0 +1,68 @@
+{% import '_includes/forms' as forms %}
+
+{% set scopeHelp = {
+    readonly: 'Read content, settings and structure. Cannot change anything.'|t('mcp'),
+    content: 'Read, and write entries as drafts or live, within your own permissions.'|t('mcp'),
+    full: 'Everything, including code execution and database queries. Only grant this to an app you fully trust.'|t('mcp'),
+} %}
+
+<div class="readable">
+    <h2>{{ '{name} wants to connect to this site'|t('mcp', {name: request.client.name}) }}</h2>
+
+    <p>
+        {{ 'It will act as you, {user}, with the access you choose below. After you approve, your browser goes back to {host}.'|t('mcp', {
+            user: user.friendlyName,
+            host: request.redirectHost(),
+        }) }}
+    </p>
+
+    <p class="light">
+        {{ 'The app named itself "{name}"; that name is its own claim. What you can trust is where it sends you: {host}.'|t('mcp', {
+            name: request.client.name,
+            host: request.redirectHost(),
+        }) }}
+    </p>
+
+    {% if scopes is empty %}
+        <p class="error">{{ 'You do not have permission to connect apps. Ask an administrator for the "Manage their own MCP tokens" permission.'|t('mcp') }}</p>
+
+        <form method="post" accept-charset="UTF-8">
+            {{ csrfInput() }}
+            {{ actionInput('mcp/oauth-consent/deny') }}
+            {% for key, value in params %}
+                {{ hiddenInput('oauth[' ~ key ~ ']', value) }}
+            {% endfor %}
+            <button type="submit" class="btn">{{ 'Go back'|t('mcp') }}</button>
+        </form>
+    {% else %}
+        <form method="post" accept-charset="UTF-8">
+            {{ csrfInput() }}
+            {% for key, value in params %}
+                {{ hiddenInput('oauth[' ~ key ~ ']', value) }}
+            {% endfor %}
+
+            <fieldset>
+                <legend class="h3">{{ 'Access'|t('mcp') }}</legend>
+                {% for scope in scopes %}
+                    <div class="field">
+                        {{ forms.radio({
+                            name: 'scope',
+                            value: scope.value,
+                            label: scope.value|capitalize,
+                            checked: selected is not null and selected.value == scope.value,
+                            id: 'scope-' ~ scope.value,
+                        }) }}
+                        <p class="light smalltext">{{ scopeHelp[scope.value] }}</p>
+                    </div>
+                {% endfor %}
+            </fieldset>
+
+            <div class="buttons">
+                {{ tag('button', {type: 'submit', class: ['btn', 'submit'], text: 'Approve'|t('mcp'), formaction: actionUrl('mcp/oauth-consent/approve')}) }}
+                {{ tag('button', {type: 'submit', class: ['btn'], text: 'Deny'|t('mcp'), formaction: actionUrl('mcp/oauth-consent/deny')}) }}
+            </div>
+        </form>
+
+        <p class="light">{{ 'You can disconnect it at any time under My Account → MCP Tokens.'|t('mcp') }}</p>
+    {% endif %}
+</div>

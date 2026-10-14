@@ -8,11 +8,14 @@ use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterUrlRulesEvent;
+use craft\services\Gc;
 use craft\services\Path;
 use craft\web\Request as WebRequest;
 use craft\web\UrlManager;
+use DateTimeImmutable;
 use Override;
 use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\http\oauth\RecordOAuthStore;
 use stimmt\craft\Mcp\models\Settings;
 use stimmt\craft\Mcp\services\PromptRegistry;
 use stimmt\craft\Mcp\services\ResourceRegistry;
@@ -66,7 +69,7 @@ class Mcp extends BasePlugin {
         'execute_graphql',
     ];
 
-    public string $schemaVersion = '1.4.0';
+    public string $schemaVersion = '1.6.0';
 
     public bool $hasCpSettings = false;
 
@@ -110,6 +113,7 @@ class Mcp extends BasePlugin {
 
         $this->registerHttpEndpoint();
         $this->registerCp();
+        $this->registerOAuthGarbageCollection();
 
         Craft::info('Craft MCP plugin loaded', __METHOD__);
     }
@@ -230,11 +234,35 @@ class Mcp extends BasePlugin {
             UrlManager::class,
             UrlManager::EVENT_REGISTER_SITE_URL_RULES,
             static function (RegisterUrlRulesEvent $event) use ($settings): void {
-                $event->rules[$settings->httpPath] = 'mcp/http/handle';
+                $event->rules = array_merge($event->rules, self::httpRules($settings));
             },
         );
 
         $this->registerCpEndpointRule($settings);
+    }
+
+    /**
+     * The endpoint, plus the OAuth connector's machine-facing routes when it
+     * is on: both discovery documents at the root and in the path-inserted
+     * form clients derive from the MCP URL (RFC 9728 / RFC 8414), and the
+     * registration and token endpoints under the MCP path.
+     *
+     * @return array<string, string>
+     */
+    private static function httpRules(Settings $settings): array {
+        $rules = [$settings->httpPath => 'mcp/http/handle'];
+        if (!$settings->oauth) {
+            return $rules;
+        }
+
+        return $rules + [
+            '.well-known/oauth-protected-resource' => 'mcp/oauth/protected-resource',
+            '.well-known/oauth-protected-resource/' . $settings->httpPath => 'mcp/oauth/protected-resource',
+            '.well-known/oauth-authorization-server' => 'mcp/oauth/authorization-server',
+            '.well-known/oauth-authorization-server/' . $settings->httpPath => 'mcp/oauth/authorization-server',
+            $settings->httpPath . '/oauth/register' => 'mcp/oauth/register',
+            $settings->httpPath . '/oauth/token' => 'mcp/oauth/token',
+        ];
     }
 
     /**
@@ -262,9 +290,26 @@ class Mcp extends BasePlugin {
             UrlManager::class,
             UrlManager::EVENT_REGISTER_CP_URL_RULES,
             static function (RegisterUrlRulesEvent $event) use ($settings): void {
-                $event->rules[$settings->httpPath] = 'mcp/http/handle';
+                $event->rules = array_merge($event->rules, self::httpRules($settings));
             },
         );
+    }
+
+    /**
+     * Craft's garbage collection also clears what the OAuth connector leaves
+     * behind: expired codes and refresh tokens, expired app tokens, revoked
+     * grants, and registrations nobody used for 30 days. Runs whenever the
+     * tables exist, so turning OAuth off still lets the leftovers expire.
+     */
+    private function registerOAuthGarbageCollection(): void {
+        Event::on(Gc::class, Gc::EVENT_RUN, static function (): void {
+            if (Craft::$app->getDb()->getTableSchema('{{%mcp_oauth_codes}}') === null) {
+                return;
+            }
+
+            $now = new DateTimeImmutable();
+            (new RecordOAuthStore())->collectGarbage($now, $now->modify('-30 days'));
+        });
     }
 
     /**

@@ -15,11 +15,13 @@ use craft\db\Migration;
 class Install extends Migration {
     public function safeUp(): bool {
         return (new m260709_120000_add_tokens_table())->safeUp()
-            && (new m260717_120000_add_sessions_table())->safeUp();
+            && (new m260717_120000_add_sessions_table())->safeUp()
+            && (new m261014_120000_add_oauth_tables())->safeUp();
     }
 
     public function safeDown(): bool {
-        return (new m260717_120000_add_sessions_table())->safeDown()
+        return (new m261014_120000_add_oauth_tables())->safeDown()
+            && (new m260717_120000_add_sessions_table())->safeDown()
             && (new m260709_120000_add_tokens_table())->safeDown();
     }
 }

@@ -38,11 +38,11 @@ Then run the interactive wizard to configure your MCP clients:
 php craft mcp/install
 ```
 
-That is the whole happy path. For manual client configuration (Claude Code, Cursor, Claude Desktop, SSH), see the [Client Setup guide](docs/client-setup.md); for all options including tool disabling, IP allowlists, and environment defaults, see the [Configuration guide](docs/configuration.md).
+That is the whole happy path. For manual client configuration (Claude Code, Cursor, Claude Desktop, Codex, SSH), see the [Client Setup guide](docs/client-setup.md); for all options including tool disabling, IP allowlists, and environment defaults, see the [Configuration guide](docs/configuration.md).
 
 ## Remote Access over HTTP
 
-Content editors and office users can point Claude Desktop straight at a remote install: the plugin serves the MCP protocol from a Craft endpoint, authenticated with per-user bearer tokens scoped to `readonly`, `content`, or `full` access. Off by default; enabling it, minting tokens (`php craft mcp/tokens/create`), and troubleshooting are covered in the [HTTP Transport guide](docs/http-transport.md).
+Content editors and office users can connect Claude (web, Desktop or mobile) straight to a remote install: add the site as a custom connector by its URL, log in to Craft, and choose what Claude may do. The plugin serves the MCP protocol from a Craft endpoint, with access scoped per user to `readonly`, `content`, or `full`; clients that send headers can use per-user bearer tokens instead. Off by default; enabling it, connecting Claude, minting tokens (`php craft mcp/tokens/create`), and troubleshooting are covered in the [HTTP Transport guide](docs/http-transport.md).
 
 ## Content Writing for Agents
 
@@ -75,7 +75,7 @@ Other plugins and modules can register their own tools, prompts, resources, and 
 The [documentation index](docs/README.md) links everything; the direct routes:
 
 - **[Installation](docs/installation.md)** - Requirements, Composer setup, detailed installation steps
-- **[Client Setup](docs/client-setup.md)** - Wizard and manual configs for Claude Code, Cursor, Claude Desktop
+- **[Client Setup](docs/client-setup.md)** - Wizard and manual configs for Claude Code, Cursor, Claude Desktop, Codex
 - **[Configuration](docs/configuration.md)** - All configuration options and security settings
 - **[Editions](docs/editions.md)** - What Lite and Pro each include, and how a Lite install behaves
 - **[HTTP Transport](docs/http-transport.md)** - Remote access with per-user scoped bearer tokens

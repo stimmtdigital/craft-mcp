@@ -46,7 +46,7 @@ final class Runtime {
         $translator = self::translator();
         Craft::$container->setSingleton(Translator::class, fn (): Translator => $translator);
         Craft::$container->setSingleton(Reader::class, fn (): Reader => new Reader($translator));
-        Craft::$container->setSingleton(Writer::class, fn (): Writer => new Writer($translator));
+        Craft::$container->setSingleton(Writer::class, fn (): Writer => new Writer($translator, ElementModule::preview()));
 
         // Named so the SDK's container lookup finds them and injects, rather
         // than reaching its bare-instantiation fallback and silently skipping

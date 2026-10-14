@@ -12,8 +12,8 @@ use JsonException;
 use Override;
 use stimmt\craft\Mcp\installer\clients\ClaudeCode;
 use stimmt\craft\Mcp\installer\clients\ClaudeDesktop;
+use stimmt\craft\Mcp\installer\clients\Codex;
 use stimmt\craft\Mcp\installer\clients\Cursor;
-use stimmt\craft\Mcp\installer\ConfigWriter;
 use stimmt\craft\Mcp\installer\contracts\Client;
 use stimmt\craft\Mcp\installer\EnvironmentDetector;
 use stimmt\craft\Mcp\installer\ProjectRootResolver;
@@ -24,7 +24,7 @@ use yii\console\ExitCode;
  * MCP client configuration installer.
  *
  * Interactive wizard to generate configuration files for various MCP clients
- * (Claude Code, Cursor, Claude Desktop).
+ * (Claude Code, Cursor, Claude Desktop, Codex).
  *
  * @author stimmt.digital
  */
@@ -76,7 +76,6 @@ class InstallController extends Controller {
     public function actionIndex(): int {
         $craftRoot = Craft::getAlias('@root');
         $envDetector = new EnvironmentDetector($craftRoot);
-        $configWriter = new ConfigWriter();
 
         $this->printHeader();
 
@@ -99,13 +98,13 @@ class InstallController extends Controller {
         $projectPath = $this->resolveProjectPath($clients, $configRoot);
 
         // 5. Get server name
-        $serverName = $this->resolveServerName($configWriter, $clients);
+        $serverName = $this->resolveServerName($clients);
 
         // 6. Generate and write configurations
         $this->stdout(PHP_EOL . 'Generating configuration files...' . PHP_EOL . PHP_EOL);
 
         foreach ($clients as $client) {
-            $this->writeClientConfig($client, $environment, $projectPath, $craftSubdirectory, $serverName, $configWriter);
+            $this->writeClientConfig($client, $environment, $projectPath, $craftSubdirectory, $serverName);
         }
 
         $this->printSuccessMessage();
@@ -202,7 +201,11 @@ class InstallController extends Controller {
 
         foreach ($available as $client) {
             $label = sprintf('%s (%s)', $client->getName(), $client->getDescription());
-            $default = $client->getId() !== 'claude-desktop'; // Default yes for all except Claude Desktop
+            // Default yes for the project-local JSON clients. Claude Desktop
+            // writes a global file and Codex a file only trusted projects
+            // read, so both are opt-in, which also keeps a non-interactive
+            // run writing exactly the files it always has.
+            $default = !in_array($client->getId(), ['claude-desktop', 'codex'], true);
 
             if ($this->confirm("  Configure {$label}?", $default)) {
                 $selected[] = $client;
@@ -222,6 +225,7 @@ class InstallController extends Controller {
             new ClaudeCode($craftRoot, $configRoot, $envDetector),
             new Cursor($craftRoot, $configRoot, $envDetector),
             new ClaudeDesktop($craftRoot, $configRoot, $envDetector),
+            new Codex($craftRoot, $configRoot, $envDetector),
         ];
     }
 
@@ -248,7 +252,12 @@ class InstallController extends Controller {
 
         $this->stdout(PHP_EOL);
 
-        return $this->prompt('Project path for Claude Desktop', [
+        $names = array_map(
+            static fn (Client $client): string => $client->getName(),
+            array_filter($clients, static fn (Client $client): bool => $client->requiresAbsolutePaths()),
+        );
+
+        return $this->prompt('Project path for ' . implode(' and ', $names), [
             'default' => $defaultPath,
             'required' => true,
         ]);
@@ -259,7 +268,7 @@ class InstallController extends Controller {
      *
      * @param Client[] $clients
      */
-    private function resolveServerName(ConfigWriter $configWriter, array $clients): string {
+    private function resolveServerName(array $clients): string {
         $this->stdout(PHP_EOL);
 
         $serverName = $this->prompt('Server name', [
@@ -271,7 +280,7 @@ class InstallController extends Controller {
         $conflicts = [];
 
         foreach ($clients as $client) {
-            if ($configWriter->serverExists($client->getConfigPath(), $serverName)) {
+            if ($client->configWriter()->serverExists($client->getConfigPath(), $serverName)) {
                 $conflicts[] = $client->getName();
             }
         }
@@ -307,13 +316,16 @@ class InstallController extends Controller {
         ?string $projectPath,
         ?string $craftSubdirectory,
         string $serverName,
-        ConfigWriter $configWriter,
     ): void {
         $config = $client->generateServerConfig($environment, $projectPath, $craftSubdirectory);
 
         try {
-            $result = $configWriter->write($client->getConfigPath(), $serverName, $config);
+            $result = $client->configWriter()->write($client->getConfigPath(), $serverName, $config);
             $this->printWriteResult($result);
+
+            if ($client instanceof Codex) {
+                $this->printCodexNote($serverName, $config);
+            }
         } catch (JsonException $e) {
             $this->stderr(
                 sprintf(" ✗ %s: Failed to parse existing config - %s\n", $client->getName(), $e->getMessage()),
@@ -325,6 +337,20 @@ class InstallController extends Controller {
                 Console::FG_RED,
             );
         }
+    }
+
+    /**
+     * Codex ignores a project's .codex/config.toml until the project is
+     * trusted, which fails silently, so say so, and give the command that puts
+     * the same server in the user-level config instead.
+     *
+     * @param array{command: string, args: string[], cwd?: string} $config
+     */
+    private function printCodexNote(string $serverName, array $config): void {
+        $command = implode(' ', array_map(escapeshellarg(...), [$config['command'], ...$config['args']]));
+
+        $this->stdout('   Codex reads this file only in a trusted project. For your user-level config instead, run' . PHP_EOL, Console::FG_GREY);
+        $this->stdout(sprintf('   from the project root: codex mcp add %s -- %s', escapeshellarg($serverName), $command) . PHP_EOL, Console::FG_GREY);
     }
 
     /**

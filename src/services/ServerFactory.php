@@ -390,7 +390,7 @@ This MCP server provides access to a Craft CMS installation.
 2. The payload format is symmetric: what `get_entry` returns is exactly what `create_entry`/`update_entry` accept. Read one, tweak it, write it back.
 3. Use natural keys, never numeric ids: relations are `{"section": "...", "slug": "..."}`, assets `{"volume": "...", "filename": "..."}`, categories/tags `{"group": "...", "slug": "..."}`, users `{"username": "..."}`. Matrix blocks are keyed objects (`new1`, `new2`, ...) with the entry-type handle as `type`.
 4. Single Matrix-block work has dedicated tools: `create_nested_entry` adds one block to an owner's field without resending its siblings, `move_nested_entry` repositions one, and `update_entry`/`delete_entry` with the block's own id edit or remove one. Prefer these over rewriting the owner's whole field value, which deletes any block left out of the payload.
-5. Writes land as DRAFTS by default: the response carries `draftElementId` and a `cpEditUrl` deep link for human review; `publish_entry` makes them live. Nothing touches live content until published.
+5. Writes land as DRAFTS by default: the response carries `draftElementId`, a `cpEditUrl` deep link for human review, and a `previewUrl` that renders the draft as saved without a login (null when the section has no URLs); `publish_entry` makes them live. Nothing touches live content until published.
 6. Always read the `warnings` list on write responses: unresolvable natural keys become warnings, never guesses or silent drops. Validation failures return per-field errors.
 7. Multi-site installs: pass the `site` handle parameter; `copy_entry_to_site` moves content between sites.
 

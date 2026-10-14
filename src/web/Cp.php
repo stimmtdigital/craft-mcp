@@ -14,6 +14,8 @@ use craft\services\UserPermissions;
 use craft\services\Utilities;
 use craft\web\UrlManager;
 use craft\web\User as CpUser;
+use stimmt\craft\Mcp\http\oauth\OAuthConfig;
+use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\utilities\Tokens;
 use yii\base\Event;
 
@@ -67,6 +69,10 @@ final class Cp {
             static function (RegisterUrlRulesEvent $event): void {
                 $event->rules['myaccount/mcp-tokens'] = 'mcp/cp-tokens/index';
                 $event->rules['users/<userId:\d+>/mcp-tokens'] = 'mcp/cp-tokens/index';
+
+                if (Mcp::settings()->oauth) {
+                    $event->rules[OAuthConfig::CONSENT_PATH] = 'mcp/oauth-consent/index';
+                }
             },
         );
     }

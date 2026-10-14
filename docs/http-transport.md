@@ -4,7 +4,7 @@
 
 By default, Craft MCP speaks to AI assistants over stdio: the client launches a local PHP process and talks to it directly. That works well when the assistant runs on the same machine as your Craft install, but it does not help a content editor who wants to connect Claude Desktop to a remote or production site with no local PHP, DDEV, or SSH access.
 
-The HTTP transport solves this by serving the MCP server from an endpoint on your Craft site itself, authenticated with a per-user bearer token. Anyone with a valid token can point Claude Desktop (or any MCP client that supports Streamable HTTP) straight at your site's URL, with access scoped to exactly what their token allows.
+The HTTP transport solves this by serving the MCP server from an endpoint on your Craft site itself, authenticated per user. With the [OAuth connector](#connecting-claude-web-desktop-and-mobile) on, a Claude user adds your site by URL and signs in with their Craft account; any other MCP client that supports Streamable HTTP can use a per-user bearer token instead. Either way, access is scoped to exactly what that user chose and is allowed.
 
 ## Enabling
 
@@ -38,17 +38,18 @@ Users can mint tokens for themselves via the control panel's My Account screen. 
 - **Scope**: `readonly` or `content` (default: `content`). Self-service users cannot mint `full`-scope tokens; admins or token managers can.
 - **Expires in**: Optional number of days until the token expires; leave blank for a token that never expires.
 
-Click **Create** and the plaintext token appears once, along with a ready-to-paste Claude Desktop configuration snippet:
+Click **Create** and the plaintext token appears once, along with a ready-to-paste Claude Code `.mcp.json` snippet:
 
 ```
 Token created (shown once, store it now):
 
   mcp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0
 
-Claude Desktop config (claude_desktop_config.json):
+Claude Code config (.mcp.json):
   {
     "mcpServers": {
       "craft-cms": {
+        "type": "http",
         "url": "https://your-site.com/mcp",
         "headers": { "Authorization": "Bearer mcp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0" }
       }
@@ -132,34 +133,103 @@ This token's user 'editor' is not allowed to save this entry on site 'default' (
 
 Full-scope tokens are deliberately exempt from all permission checks: they carry code execution capability, so they trust the token holder completely and skip Craft permission lookups. Stdio connections have no token identity and are never permission-scoped.
 
-## Connecting Claude Desktop
+## Connecting Claude (web, Desktop and mobile)
 
-1. Open your Claude Desktop configuration file:
-   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-2. Add the server using the `url` and `headers` fields from the snippet printed by `mcp/tokens/create`:
+> **Since 1.6.0.**
+
+The Claude apps add a remote MCP server as a **custom connector**, by URL. Turn on the OAuth connector and that is all a user needs: they paste the URL, log in to your control panel, choose what Claude may do, and approve. No token is copied anywhere.
+
+### 1. Enable it on the site
+
+```php
+<?php
+
+return [
+    'httpTransport' => true,
+    'oauth' => true,
+    // On headless installs: the domain where Craft itself answers.
+    'httpPublicUrl' => 'https://cms.example.com',
+];
+```
+
+Two things have to be true for Claude to reach it:
+
+- **The site must be public HTTPS.** Anthropic's servers make the connection, not the user's computer, so a local DDEV site or an intranet host cannot be added as a connector.
+- **Nothing may block Anthropic.** Requests come from `160.79.104.0/21`. A WAF or firewall in front of Craft must let that range through, and `allowedIps` (exact addresses only) must be left empty for the connector to work.
+
+### 2. Add the connector in Claude
+
+- **Free, Pro and Max:** go to **Customize → Connectors**, choose **Add custom connector**, and enter the MCP URL, for example `https://cms.example.com/mcp`. Leave the OAuth client fields empty; Claude registers itself.
+- **Team and Enterprise:** an Owner adds it once under **Organization settings → Connectors → Add → Custom**. Every member then finds it under **Customize → Connectors** and clicks **Connect** to sign in with their own Craft account.
+
+### 3. Approve it in Craft
+
+Claude opens your control panel. After logging in, the user sees which app is asking, where their browser will be sent afterwards, and a choice of access:
+
+| Scope | Offered to | What Claude can do |
+|---|---|---|
+| `readonly` | users with **Manage their own MCP tokens** | Read content, settings and structure |
+| `content` | the same users (preselected) | Read, and write entries as drafts or live, within the user's own Craft permissions |
+| `full` | admins only | Everything, including code execution and database queries |
+
+Scopes listed in `disabledScopes` are never offered. A user without the permission sees an explanation instead of a choice.
+
+Once approved, the app appears under **My Account → MCP Tokens → Connected Apps**, where the user can **Disconnect** it; it loses access on its next request. Admins see every user's connected apps under **Utilities → MCP Tokens**.
+
+### How it is secured
+
+- **The callback is an allowlist.** Apps register themselves (that is what lets a user connect without asking you first), so the redirect URI is what keeps a consent from being sent anywhere else. Only callbacks in `oauthRedirectUris` can be registered: by default the Claude apps' callback and Claude Code's loopback callback. Anything else is refused.
+- **PKCE (S256) is required** on every authorization; there are no client secrets to leak.
+- **Access tokens last an hour** (`oauthAccessTokenTtl`) and are ordinary MCP tokens: same scopes, same user permission checks, same endpoint.
+- **Refresh tokens rotate.** Each is good for one use. If an old one is ever presented again, the connection is revoked entirely, because a copy exists somewhere it should not.
+- **The consent screen cannot be framed** by another site.
+
+### Claude Code and other OAuth clients
+
+With `oauth` on, Claude Code connects the same way:
+
+```bash
+claude mcp add --transport http craft-cms https://cms.example.com/mcp
+```
+
+Then run `/mcp` inside Claude Code and choose the server to sign in. Claude Code listens on a local port for the callback, which the default `oauthRedirectUris` allows on any port.
+
+Other clients that support MCP OAuth with Dynamic Client Registration work once their callback URL is on the allowlist. Codex signs in with `codex mcp login <name>`; its callback path can depend on the server and on its `mcp_oauth_callback_url` setting, so it is not in the default list. If the login is refused with "This site does not accept that redirect URI", add the exact `redirect_uri` Codex uses to `oauthRedirectUris` (a `http://localhost/...` or `http://127.0.0.1/...` entry matches any port), or connect Codex with a token as shown below.
+
+## Connecting with a token
+
+Clients that can send a header can skip OAuth and use a token minted under **My Account → MCP Tokens** or with `mcp/tokens/create`:
+
+```bash
+# Claude Code
+claude mcp add --transport http craft-cms https://cms.example.com/mcp \
+  --header "Authorization: Bearer mcp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0"
+```
 
 ```json
+// Cursor: .cursor/mcp.json
 {
   "mcpServers": {
     "craft-cms": {
-      "url": "https://your-site.com/mcp",
-      "headers": {
-        "Authorization": "Bearer mcp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0"
-      }
+      "url": "https://cms.example.com/mcp",
+      "headers": { "Authorization": "Bearer mcp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0" }
     }
   }
 }
 ```
 
-3. Restart Claude Desktop.
-4. Verify the connection: the `craft-cms` server should appear in Claude Desktop's connected servers list. Ask the assistant to run `list_sections`, a lightweight readonly tool available to every scope; a successful response confirms both the connection and the token's authentication.
-
-The printed `url` host comes from the primary site's base URL unless the `httpPublicUrl` setting is set. On headless deployments where the frontend and the CMS live on different domains, set `httpPublicUrl` to the domain where Craft itself answers (typically the control panel's domain) so every printed snippet is correct as-is:
-
-```php
-'httpPublicUrl' => 'https://cms.example.com',
+```toml
+# Codex: .codex/config.toml, with the token in the CRAFT_MCP_TOKEN environment variable
+[mcp_servers.craft-cms]
+url = "https://cms.example.com/mcp"
+bearer_token_env_var = "CRAFT_MCP_TOKEN"
 ```
+
+Organizations whose Claude plan includes connector **Request headers** (a beta, Owner only) can also add the connector with **No sign-in** and an `authorization` header of `Bearer <token>`; every member then shares that one token and its user.
+
+Claude Desktop's `claude_desktop_config.json` is for servers that run on your own computer (`command` and `args`, see [Client Setup](client-setup.md)). For a remote site, use the connector above.
+
+The printed URL comes from the primary site's base URL unless `httpPublicUrl` is set. On headless deployments where the frontend and the CMS live on different domains, set `httpPublicUrl` to the domain where Craft itself answers (typically the control panel's domain), so the URL to paste is right as printed.
 
 ## Managing Tokens
 
@@ -219,7 +289,15 @@ The token reveal and the console command build their endpoint URL from `httpPubl
 
 ### 401 Unauthorized
 
-Returned when the bearer token is missing, malformed, unknown, or expired, or when the Craft user it belongs to is disabled or suspended. The response includes a `WWW-Authenticate: Bearer` header. Check `mcp/tokens/list` to confirm the token still exists and hasn't expired, and confirm the user account is enabled.
+Returned when the bearer token is missing, malformed, unknown, or expired, or when the Craft user it belongs to is disabled or suspended. The response includes a `WWW-Authenticate: Bearer` header; with `oauth` on it also carries `resource_metadata`, which is how an OAuth client finds where to sign in. Check `mcp/tokens/list` to confirm the token still exists and hasn't expired, and confirm the user account is enabled.
+
+### "Couldn't reach the MCP server" in Claude
+
+Claude could not read the server's OAuth discovery documents, so it never got as far as your login page. Check, in order: the site is reachable over public HTTPS; `oauth` and `httpTransport` are both on; `https://<your-host>/.well-known/oauth-protected-resource/<httpPath>` answers with JSON; nothing in front of Craft blocks `160.79.104.0/21`; and `httpPublicUrl` is the domain Craft answers on, since every URL in those documents is built from it.
+
+### "This site does not accept that redirect URI"
+
+The app's callback is not in `oauthRedirectUris`. Add the exact URL it uses (a loopback `http://localhost/...` entry matches any port).
 
 ### 403 Forbidden
 

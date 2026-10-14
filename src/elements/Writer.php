@@ -20,7 +20,17 @@ use stimmt\craft\Mcp\elements\refs\Translator;
 final readonly class Writer {
     public function __construct(
         private Translator $translator,
+        private PreviewUrl $preview = new PreviewUrl(),
     ) {
+    }
+
+    /**
+     * A preview link for an element this writer saved, under the same
+     * settings as the one on every write result. For tools whose response is
+     * not a Result: a nested block's owner draft, a duplicate.
+     */
+    public function previewUrl(ElementInterface $element): ?string {
+        return $this->preview->for($element);
     }
 
     public function create(array $attributes, array $fieldsPayload, WriteMode $mode, ?string $site = null): Result {
@@ -113,6 +123,7 @@ final readonly class Writer {
             state: $element->getIsDraft() ? WriteMode::Draft : WriteMode::Live,
             warnings: $context->warnings(),
             cpEditUrl: $element->getCpEditUrl(),
+            previewUrl: $this->preview->for($element),
         );
     }
 }

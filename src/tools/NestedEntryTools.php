@@ -370,8 +370,8 @@ class NestedEntryTools {
      * The standard write-response shape as far as it fits a nested write:
      * the draft keys describe the OWNER draft (draftElementId is what
      * publish_entry accepts), blockId/ownerId/position locate the block
-     * itself, and cpEditUrl deep-links the human to the target owner where
-     * the block is visible in context.
+     * itself, cpEditUrl deep-links the human to the target owner where the
+     * block is visible in context, and previewUrl renders that owner as saved.
      *
      * @param Warning[] $warnings
      * @return array<string, mixed>
@@ -393,6 +393,7 @@ class NestedEntryTools {
             // values of site-translatable fields differ per site.
             'affectedSites' => Reach::of($target),
             'cpEditUrl' => $target->getCpEditUrl(),
+            'previewUrl' => $this->writer->previewUrl($target),
             'warnings' => array_map(static fn (Warning $warning): array => $warning->toArray(), $warnings),
             'errors' => [],
         ];

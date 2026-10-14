@@ -14,6 +14,17 @@
     redirect: redirect,
 } only %}
 
+{% if apps is not null %}
+    <hr>
+
+    <h2>{{ 'Connected Apps'|t('mcp') }}</h2>
+
+    {% include 'mcp/tokens/_apps' with {
+        apps: apps,
+        redirect: redirect,
+    } only %}
+{% endif %}
+
 <hr>
 
 <h2>{{ 'New Token'|t('mcp') }}</h2>

@@ -22,6 +22,7 @@ describe('Result', function () {
             state: WriteMode::Draft,
             warnings: [new Warning('f', 'f.0', ['slug' => 'x'], 'missing')],
             cpEditUrl: 'https://cms.test/edit/7',
+            previewUrl: 'https://www.test/news/x?token=abc',
         );
 
         $array = $result->toArray();
@@ -33,6 +34,7 @@ describe('Result', function () {
             ->and($array['warnings'])->toHaveCount(1)
             ->and($array['warnings'][0]['message'])->toBe('missing')
             ->and($array['cpEditUrl'])->toBe('https://cms.test/edit/7')
+            ->and($array['previewUrl'])->toBe('https://www.test/news/x?token=abc')
             ->and($array['errors'])->toBe([]);
     });
 

@@ -11,12 +11,16 @@ use craft\web\Controller;
 use craft\web\CpScreenResponseBehavior;
 use craft\web\User as CpUser;
 use Override;
+use stimmt\craft\Mcp\http\oauth\ConnectedApps;
+use stimmt\craft\Mcp\http\oauth\Grants;
+use stimmt\craft\Mcp\http\oauth\RecordOAuthStore;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\http\Snippet;
 use stimmt\craft\Mcp\http\Token;
 use stimmt\craft\Mcp\http\Tokens;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\support\ScopePolicy;
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
@@ -56,6 +60,7 @@ final class CpTokensController extends Controller {
 
         $variables = [
             'tokens' => $this->tokens()->listFor((int) $user->id),
+            'apps' => Mcp::settings()->oauth ? (new ConnectedApps(new RecordOAuthStore()))->rows((int) $user->id) : null,
             'allowedScopes' => $this->allowedScopes(),
             'user' => $user,
             'newToken' => Craft::$app->getSession()->getFlash('newToken'),
@@ -127,6 +132,26 @@ final class CpTokensController extends Controller {
     }
 
     /**
+     * Disconnect an app connected over OAuth: its grant is revoked and its
+     * access tokens deleted, so it loses access on its next request. The same
+     * ownership rule as revoking a token.
+     */
+    public function actionDisconnect(): Response {
+        $this->requirePostRequest();
+
+        $store = new RecordOAuthStore();
+        $grant = $store->findGrant((int) $this->request->getRequiredBodyParam('id'))
+            ?? throw new BadRequestHttpException(Craft::t('mcp', 'Connected app not found.'));
+
+        $this->authorizeDisconnect($grant->userId);
+
+        (new Grants($store, $this->tokens()))->revoke((int) $grant->id);
+        $this->setSuccessFlash(Craft::t('mcp', 'App disconnected.'));
+
+        return $this->redirectToPostedUrl();
+    }
+
+    /**
      * Flash a freshly minted plaintext token and its client snippet for the
      * show-once reveal, then a success message. Snippet::jsonIfEnabled()
      * is null when showClientConfigSnippet is off (#62); the reveal
@@ -186,6 +211,17 @@ final class CpTokensController extends Controller {
         $this->requirePermission('manageAllMcpTokens');
     }
 
+    private function authorizeDisconnect(int $userId): void {
+        $currentUser = self::currentUser();
+        if ($currentUser !== null && $userId === $currentUser->id) {
+            $this->requireAnyPermission('manageOwnMcpTokens', 'manageAllMcpTokens');
+
+            return;
+        }
+
+        $this->requirePermission('manageAllMcpTokens');
+    }
+
     private function authorizeRevoke(?Token $token): void {
         $currentUser = self::currentUser();
         $isOwn = $token !== null && $currentUser !== null && $token->userId === $currentUser->id;
@@ -230,41 +266,25 @@ final class CpTokensController extends Controller {
     }
 
     /**
-     * The scopes this user may mint right now: the self-service pair always
-     * offered, Full added only when fullScopeAllowed() agrees, then anything
-     * in the disabledScopes config setting dropped regardless. This dropdown
-     * and the create/regenerate gates share the same two predicates,
-     * fullScopeAllowed() and Scope::isDisabled(), so what is offered and
-     * what is accepted can never disagree (#48).
+     * The scopes this user may mint right now, by ScopePolicy: the same rule
+     * the create/regenerate gates and the OAuth consent screen use, so what is
+     * offered and what is accepted can never disagree (#48).
      *
      * @return Scope[]
      */
     private function allowedScopes(): array {
-        $scopes = [Scope::ReadOnly, Scope::Content];
-        if ($this->fullScopeAllowed(self::currentUser())) {
-            $scopes[] = Scope::Full;
-        }
-
-        $disabled = Mcp::settings()->disabledScopes;
-
-        return array_values(array_filter(
-            $scopes,
-            static fn (Scope $scope): bool => !$scope->isDisabled($disabled),
-        ));
+        return ScopePolicy::allowed(self::currentUser(), Mcp::settings()->disabledScopes);
     }
 
     /**
-     * Full scope bypasses all read and write authorization and includes code
-     * execution, so only Craft's real admin flag may grant it. Single source
-     * of truth for whether Full is offered here (allowedScopes(), the CP
-     * dropdown) and accepted in authorizeCreate() below, so the two can
-     * never disagree on who may mint it: previously the dropdown checked the
+     * Whether Full may be minted here, by ScopePolicy::fullAllowed(): only
+     * Craft's real admin flag. Previously the dropdown checked the
      * manageAllMcpTokens permission while creation checked the admin flag, so
      * a manager without that flag could see Full listed and still get a 403
      * on submit (#48).
      */
     private function fullScopeAllowed(?User $user): bool {
-        return $user->admin ?? false;
+        return ScopePolicy::fullAllowed($user);
     }
 
     private function expiresInDays(): ?int {

@@ -58,4 +58,9 @@ interface Client {
      * @return array{command: string, args: string[], cwd?: string}
      */
     public function generateServerConfig(string $environment, ?string $projectPath = null, ?string $craftSubdirectory = null): array;
+
+    /**
+     * The writer for this client's config file format.
+     */
+    public function configWriter(): ConfigFormat;
 }

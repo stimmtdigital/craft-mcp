@@ -18,6 +18,7 @@ use Override;
  * @property string|null $expiryDate
  * @property string|null $lastUsedAt
  * @property string|null $dateCreated
+ * @property int|null $grantId
  *
  * @author Max van Essen <support@stimmt.digital>
  */

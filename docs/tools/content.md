@@ -289,12 +289,13 @@ create_entry section="pages" type="page" title="Team" parent="about"
   "draftElementId": 790,
   "state": "draft",
   "cpEditUrl": "https://example.com/admin/entries/news/790-new-article",
+  "previewUrl": "https://example.com/news/new-article?token=…",
   "warnings": [],
   "errors": []
 }
 ```
 
-`elementId` is the canonical entry's id. When the write lands as a draft, `draftElementId` is the id to pass to `update_entry` or `publish_entry` next, and `cpEditUrl` is a ready-to-open control panel link for human review. On failure, `success` is `false`, `elementId` is `null`, and `errors` carries per-field validation messages keyed by attribute or field path.
+`elementId` is the canonical entry's id. When the write lands as a draft, `draftElementId` is the id to pass to `update_entry` or `publish_entry` next, `cpEditUrl` is a ready-to-open control panel link for human review, and `previewUrl` renders the draft as saved without a login (null for sections without URLs, or with `previewUrls` off). On failure, `success` is `false`, `elementId` is `null`, and `errors` carries per-field validation messages keyed by attribute or field path.
 
 ---
 
@@ -356,6 +357,7 @@ Same shape as `create_entry`, with `action` set to `"updated"`:
   "draftElementId": 456,
   "state": "draft",
   "cpEditUrl": "https://example.com/admin/entries/news/456-updated-title",
+  "previewUrl": "https://example.com/news/updated-title?token=…",
   "warnings": [],
   "errors": []
 }
@@ -412,6 +414,7 @@ create_nested_entry owner=890 field="contentBuilder" type="text"
   "state": "draft",
   "position": 3,
   "cpEditUrl": "https://example.com/admin/entries/pages/890-about",
+  "previewUrl": "https://example.com/about?token=…",
   "warnings": [],
   "errors": []
 }
@@ -750,7 +753,8 @@ duplicate_entry id=123 title="About Us (Copy)" fields='{"summary": "A new summar
 ```json
 {
   "success": true,
-  "entry": { "id": 891, "state": "draft", "cpEditUrl": "https://example.com/admin/entries/pages/891-about-us-copy" }
+  "entry": { "id": 891, "state": "draft", "cpEditUrl": "https://example.com/admin/entries/pages/891-about-us-copy" },
+  "previewUrl": "https://example.com/about-us-copy?token=…"
 }
 ```
 
@@ -793,6 +797,7 @@ Same shape as `create_entry`/`update_entry`:
   "draftElementId": 892,
   "state": "draft",
   "cpEditUrl": "https://example.com/admin/entries/pages/892-about",
+  "previewUrl": "https://example.com/about?token=…",
   "warnings": [],
   "errors": []
 }

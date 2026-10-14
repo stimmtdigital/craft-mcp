@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\installer\clients;
 
 use InvalidArgumentException;
+use stimmt\craft\Mcp\installer\ConfigWriter;
 use stimmt\craft\Mcp\installer\contracts\Client;
+use stimmt\craft\Mcp\installer\contracts\ConfigFormat;
 use stimmt\craft\Mcp\installer\EnvironmentDetector;
 
 /**
@@ -25,6 +27,13 @@ abstract class Base implements Client {
 
     public function requiresAbsolutePaths(): bool {
         return false;
+    }
+
+    /**
+     * JSON with an `mcpServers` map, which every client but Codex reads.
+     */
+    public function configWriter(): ConfigFormat {
+        return new ConfigWriter();
     }
 
     public function generateServerConfig(string $environment, ?string $projectPath = null, ?string $craftSubdirectory = null): array {

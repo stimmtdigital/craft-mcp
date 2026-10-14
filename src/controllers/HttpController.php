@@ -10,6 +10,7 @@ use craft\web\Response;
 use Mcp\Server\Session\SessionStoreInterface;
 use stimmt\craft\Mcp\http\Bridge;
 use stimmt\craft\Mcp\http\DbSessionStore;
+use stimmt\craft\Mcp\http\oauth\OAuthConfig;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\http\Token;
@@ -64,12 +65,25 @@ class HttpController extends Controller {
 
         $token = $this->authenticate();
         if ($token === null) {
-            $this->response->getHeaders()->set('WWW-Authenticate', 'Bearer');
+            $this->response->getHeaders()->set('WWW-Authenticate', $this->challenge($settings));
 
             return $this->error(401, -32001, 'Invalid or missing bearer token');
         }
 
         return $this->serve($token);
+    }
+
+    /**
+     * With OAuth on, the 401 tells a client where to find the authorization
+     * server (RFC 9728); that pointer is what starts Claude's sign-in. Without
+     * it, the challenge stays the bare `Bearer` it has always been.
+     */
+    private function challenge(Settings $settings): string {
+        if (!$settings->oauth) {
+            return 'Bearer';
+        }
+
+        return sprintf('Bearer resource_metadata="%s"', OAuthConfig::current()->protectedResourceMetadataUrl());
     }
 
     private function authenticate(): ?Token {

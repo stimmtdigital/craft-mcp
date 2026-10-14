@@ -71,6 +71,15 @@ return [
 
     'entryWriteMode' => 'draft',
 
+    // Whether entry writes return a previewUrl: a Craft preview-token link that
+    // renders the draft as saved, for anyone holding it, until it expires.
+    // Default: true
+    'previewUrls' => true,
+    // How long a previewUrl stays valid, in seconds. Null uses Craft's own
+    // previewTokenDuration (falling back to defaultTokenDuration, a day).
+    // Default: null
+    'previewTokenDuration' => null,
+
     // Serve the MCP server over HTTP with per-user bearer tokens, in addition to stdio.
     // Default: false
     'httpTransport' => false,
@@ -97,6 +106,28 @@ return [
     // Default: null
     'httpPublicUrl' => null,
 
+    // Let Claude (web, Desktop, mobile) and other OAuth clients connect by URL:
+    // the user logs in to the control panel and approves a scope. Needs
+    // httpTransport and a public HTTPS site.
+    // Default: false
+    'oauth' => false,
+    // Callback URLs an app may register. Registration is open, so this list is
+    // what keeps a consent from being sent anywhere else. A loopback entry
+    // matches any port.
+    // Default: the Claude apps' callback and Claude Code's loopback callback
+    'oauthRedirectUris' => [
+        'https://claude.ai/api/mcp/auth_callback',
+        'https://claude.com/api/mcp/auth_callback',
+        'http://localhost/callback',
+        'http://127.0.0.1/callback',
+    ],
+    // Lifetime of an OAuth access token, in seconds.
+    // Default: 3600
+    'oauthAccessTokenTtl' => 3600,
+    // Lifetime of a refresh token, in seconds; each use replaces it.
+    // Default: 2592000 (30 days)
+    'oauthRefreshTokenTtl' => 2592000,
+
     // Install-introspection tools to allow scoped (readonly/content) HTTP tokens.
     // Privileged tools are locked to admins by default; site owners can open
     // specific ones here for their scoped token users.
@@ -122,7 +153,7 @@ return [
     'additionalInstructions' => '',
 
     // Whether the token-reveal screen (My Account -> MCP Tokens) shows the
-    // ready-to-paste Claude Desktop config block alongside the new token.
+    // ready-to-paste Claude Code .mcp.json block alongside the new token.
     // Turn off on installs that provision MCP clients their own way.
     // Default: true
     'showClientConfigSnippet' => true,
@@ -149,16 +180,22 @@ return [
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
 | `paginationLimit` | `int` | `100` | Page size of MCP list endpoints (`tools/list`, `prompts/list`, `resources/list`); 100 covers every registered tool in one page. Useful when a client does not follow `nextCursor` pagination |
 | `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
+| `previewUrls` | `bool` | `true` | Since 1.6.0. Whether entry writes return a `previewUrl` that renders the draft as saved without a login. Each one stores a Craft token row that Craft removes once it expires |
+| `previewTokenDuration` | `int\|null` | `null` | Since 1.6.0. Lifetime of a `previewUrl` in seconds (minimum 60). Null uses Craft's own `previewTokenDuration` |
 | `httpTransport` | `bool` | `false` | Since 1.4.0. Whether the MCP server is also served over HTTP with per-user bearer tokens |
 | `httpPath` | `string` | `'mcp'` | Since 1.4.0. Endpoint path on the primary site (no leading slash), used only when `httpTransport` is `true` |
 | `httpSessionTtl` | `int` | `3600` | Since 1.4.0. HTTP session TTL in seconds; idle sessions are cleaned up after this long |
 | `httpSessionStore` | `mixed` | `null` | Session storage for the HTTP transport. Null uses the built-in database-backed store; set a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable returning one, for a custom store |
-| `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site |
+| `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site. Since 1.6.0 it is also the OAuth issuer and the base of every OAuth URL |
+| `oauth` | `bool` | `false` | Since 1.6.0. Lets Claude and other OAuth clients connect by URL, with the user approving a scope in the control panel. Requires `httpTransport`. See [Connecting Claude](http-transport.md#connecting-claude-web-desktop-and-mobile) |
+| `oauthRedirectUris` | `array` | Claude apps + Claude Code | Since 1.6.0. Callback URLs an app may register; anything else is refused. A loopback (`http://localhost/...`, `http://127.0.0.1/...`) entry matches any port |
+| `oauthAccessTokenTtl` | `int` | `3600` | Since 1.6.0. Lifetime of an access token issued over OAuth, in seconds (minimum 60) |
+| `oauthRefreshTokenTtl` | `int` | `2592000` | Since 1.6.0. Lifetime of a refresh token, in seconds (minimum 3600). Refresh tokens rotate on every use |
 | `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
 | `disabledScopes` | `array` | `[]` | Since 1.4.0. Scope names (`readonly`, `content`, `full`) closed on this install for everyone, admin included: they cannot be minted, and existing tokens of a disabled scope stop authenticating (rejected exactly like an unknown token) until the scope is re-enabled, which restores them without recreation. Regenerating an existing token stays possible so it survives the closure |
 | `showLockedProTools` | `bool` | `false` | Whether tools above the running edition stay listed (marked `[Pro]`, answering any call with an upgrade message) instead of being hidden. See [Editions](editions.md) |
 | `additionalInstructions` | `string` | `''` | Since 1.4.0. Text appended to the server instructions, on every transport (stdio and HTTP alike), after everything else the plugin adds |
-| `showClientConfigSnippet` | `bool` | `true` | Since 1.4.0. Whether the token-reveal screen (My Account -> MCP Tokens) shows the ready-to-paste Claude Desktop config block alongside the new token |
+| `showClientConfigSnippet` | `bool` | `true` | Since 1.4.0. Whether the token-reveal screen (My Account -> MCP Tokens) shows the ready-to-paste Claude Code `.mcp.json` block alongside the new token (a Claude Desktop config block before 1.6.0) |
 | `colorOutput` | `bool` | `false` | Whether human-readable output (`output="text"`, including `read_logs`) carries ANSI colour. Off by default because escape sequences are noise to an AI client; see [Text Output](tools/README.md#text-output) |
 
 See the [HTTP Transport guide](http-transport.md) for enabling remote access, minting tokens, and scopes.

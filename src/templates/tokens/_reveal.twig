@@ -13,15 +13,17 @@
         }) }}
 
         {% if newTokenSnippet %}
-            <h3>{{ 'Claude Desktop config'|t('mcp') }}</h3>
+            <h3>{{ 'Claude Code config (.mcp.json)'|t('mcp') }}</h3>
             <div class="mcp-code">
                 <button type="button" class="btn mcp-code-copy" data-icon="clipboard" data-copy-config aria-label="{{ 'Copy'|t('mcp') }}"></button>
                 <pre class="code"><code>{{ newTokenSnippet }}</code></pre>
             </div>
 
             <div class="buttons">
-                <a class="btn" data-icon="download" download="claude_desktop_config.json" href="data:application/json;charset=utf-8,{{ newTokenSnippet|url_encode }}">{{ 'Download'|t('mcp') }}</a>
+                <a class="btn" data-icon="download" download=".mcp.json" href="data:application/json;charset=utf-8,{{ newTokenSnippet|url_encode }}">{{ 'Download'|t('mcp') }}</a>
             </div>
+
+            <p class="light">{{ 'Using the Claude apps (web, Desktop or mobile)? Add this site as a custom connector by its URL instead; see the HTTP transport guide.'|t('mcp') }}</p>
         {% endif %}
 
         <p class="warning with-icon" data-token-warning style="margin: 0;">{{ 'Copy this token now. For your security, it will not be shown again.'|t('mcp') }}</p>

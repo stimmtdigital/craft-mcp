@@ -21,7 +21,16 @@ final readonly class Token {
         public ?DateTimeImmutable $lastUsedAt = null,
         public ?int $id = null,
         public ?DateTimeImmutable $dateCreated = null,
+        public ?int $grantId = null,
     ) {
+    }
+
+    /**
+     * Issued to an app through the OAuth connector rather than minted by hand:
+     * short-lived, replaced by refresh, and revoked with its grant.
+     */
+    public function isOAuth(): bool {
+        return $this->grantId !== null;
     }
 
     public function expired(DateTimeImmutable $now): bool {

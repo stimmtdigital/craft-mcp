@@ -62,7 +62,7 @@ Work with the payload format, not guesses:
 4. Once the entry exists, add a further block with create_nested_entry and reorder one with move_nested_entry; resending the whole Matrix field replaces its entire value and deletes any block left out of the payload
 5. postDate and expiryDate are named arguments on create_entry, not entries in the fields payload
 6. What get_entry returns is exactly what create_entry accepts, so an existing entry is a valid template
-7. Writes save as drafts by default: review via the returned cpEditUrl, then publish_entry makes them live
+7. Writes save as drafts by default: review via the returned cpEditUrl, or open the previewUrl to see the draft rendered, then publish_entry makes them live
 8. Check the 'warnings' list on every write response; unresolvable keys become warnings, and validation failures return per-field errors
 
 The full contract lives in the craft://guides/content-writing resource.

@@ -246,6 +246,7 @@ class EntryWorkflowTools {
         return Response::success([
             'entry' => $this->reader->read($duplicate, $site),
             'parent' => $this->structureParent($duplicate),
+            'previewUrl' => $this->writer->previewUrl($duplicate),
             'warnings' => $result === null ? [] : $result->toArray()['warnings'],
         ]);
     }

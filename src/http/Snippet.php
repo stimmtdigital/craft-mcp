@@ -8,22 +8,28 @@ use Craft;
 use stimmt\craft\Mcp\Mcp;
 
 /**
- * The Claude Desktop client-config snippet: single source for the console
- * command and the control panel, so both surfaces print the identical
+ * The client-config snippet shown with a new token: single source for the
+ * console command and the control panel, so both surfaces print the identical
  * `mcpServers` block and resolve the endpoint URL the same way.
+ *
+ * WHY Claude Code's `.mcp.json` rather than Claude Desktop's config file: the
+ * desktop file starts local servers only, so a remote `url` there was never a
+ * documented setup. `.mcp.json` takes `type: http` with a URL and headers, and
+ * the Claude apps connect through the OAuth connector instead of a token.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
 final readonly class Snippet {
     /**
-     * The Claude Desktop config block (claude_desktop_config.json), exactly
-     * as printed by the console command.
+     * The `.mcp.json` block for Claude Code, exactly as printed by the
+     * console command.
      */
     public static function json(string $plaintext, string $url): string {
         return <<<JSON
   {
     "mcpServers": {
       "craft-cms": {
+        "type": "http",
         "url": "{$url}",
         "headers": { "Authorization": "Bearer {$plaintext}" }
       }
@@ -38,10 +44,18 @@ JSON;
      * site's base URL.
      */
     public static function url(): string {
-        $settings = Mcp::settings();
-        $base = $settings->httpPublicUrl ?? Craft::$app->getSites()->getPrimarySite()->getBaseUrl() ?? '';
+        return self::baseUrl() . '/' . Mcp::settings()->httpPath;
+    }
 
-        return rtrim($base, '/') . '/' . $settings->httpPath;
+    /**
+     * Where Craft answers, without a trailing slash: the httpPublicUrl
+     * setting when set, else the primary site's base URL. The OAuth issuer
+     * and its well-known documents hang off this too.
+     */
+    public static function baseUrl(): string {
+        $base = Mcp::settings()->httpPublicUrl ?? Craft::$app->getSites()->getPrimarySite()->getBaseUrl() ?? '';
+
+        return rtrim($base, '/');
     }
 
     /**

@@ -1,6 +1,6 @@
 # Client Setup
 
-How to connect MCP clients to the stdio server. For connecting over HTTP with bearer tokens instead (no local PHP required), see the [HTTP Transport guide](http-transport.md).
+How to connect MCP clients to the stdio server, which runs Craft on your own machine. To use a remote or production site from the Claude apps (web, Desktop, mobile), add it as a custom connector instead: no local PHP, no config file, just the URL and a Craft login. See [Connecting Claude](http-transport.md#connecting-claude-web-desktop-and-mobile).
 
 ## Quick Setup (Recommended)
 
@@ -13,10 +13,10 @@ php craft mcp/install
 The wizard will:
 
 1. Detect your environment (DDEV or native PHP)
-2. Let you select which clients to configure (Claude Code, Cursor, Claude Desktop)
+2. Let you select which clients to configure (Claude Code, Cursor, Claude Desktop, Codex)
 3. Generate the appropriate configuration files automatically
 
-It handles all the details: creating directories, setting correct paths for your environment, and warning you if a server with the same name already exists.
+It handles all the details: creating directories, setting correct paths for your environment, and warning you if a server with the same name already exists. Claude Desktop and Codex are offered but not preselected, so a non-interactive run writes only the project files for Claude Code and Cursor.
 
 **Options:**
 
@@ -154,7 +154,43 @@ php craft mcp/install --interactive=0
 
 You can find your absolute paths by running `which ddev` or `which php` in your terminal.
 
-Tip: for Claude Desktop connecting to a remote install, the [HTTP transport](http-transport.md) is the intended path; it needs only a URL and a token, no local PHP or absolute paths.
+Tip: for Claude Desktop connecting to a remote install, add the site as a [custom connector](http-transport.md#connecting-claude-web-desktop-and-mobile) instead; it needs only the URL and a Craft login, no local PHP or absolute paths.
+
+### Codex
+
+> **Since 1.6.0** for the wizard.
+
+Codex (the CLI and the IDE extension) reads MCP servers from TOML: `.codex/config.toml` in the project, which it only reads for projects you have marked as trusted, or `~/.codex/config.toml` for your user. The wizard writes the project file; it keeps every other line in that file as it was and replaces only its own `[mcp_servers.<name>]` table.
+
+<details>
+<summary>With DDEV (recommended for Craft projects)</summary>
+
+```toml
+[mcp_servers.craft-cms]
+command = "ddev"
+args = ["exec", "php", "vendor/stimmt/craft-mcp/bin/mcp-server"]
+cwd = "/absolute/path/to/your/project"
+```
+</details>
+
+<details>
+<summary>Without DDEV (native PHP)</summary>
+
+```toml
+[mcp_servers.craft-cms]
+command = "php"
+args = ["vendor/stimmt/craft-mcp/bin/mcp-server"]
+cwd = "/absolute/path/to/your/project"
+```
+</details>
+
+`cwd` is required: Codex starts servers from wherever it was launched, and the binary path is relative to the project.
+
+To add it to your user-level config instead, run this from the project root:
+
+```bash
+codex mcp add craft-cms -- ddev exec php vendor/stimmt/craft-mcp/bin/mcp-server
+```
 
 ### Remote Server via SSH (Not Recommended)
 
@@ -181,7 +217,7 @@ For development environments on remote servers, you can tunnel through SSH. Note
 Requirements:
 
 - SSH key authentication must be configured (no password prompts)
-- The remote server must have PHP 8.2+ available
+- The remote server must have PHP 8.3+ available
 - The Craft MCP plugin must be installed on the remote installation
 
 </details>

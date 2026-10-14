@@ -11,9 +11,12 @@ use craft\web\User as CpUser;
 use craft\web\View;
 use Override;
 use RuntimeException;
+use stimmt\craft\Mcp\http\oauth\ConnectedApps;
+use stimmt\craft\Mcp\http\oauth\RecordOAuthStore;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Token;
 use stimmt\craft\Mcp\http\Tokens as TokenStore;
+use stimmt\craft\Mcp\Mcp;
 
 /**
  * Utilities panel audit of every MCP HTTP token across every user. Craft
@@ -48,12 +51,17 @@ final class Tokens extends Utility {
             return '';
         }
 
-        $tokens = (new TokenStore(new RecordStore()))->list();
+        $tokens = (new TokenStore(new RecordStore()))->listManual();
+        $apps = Mcp::settings()->oauth ? (new ConnectedApps(new RecordOAuthStore()))->rows() : null;
         $session = Craft::$app->getSession();
 
         return self::view()->renderTemplate('mcp/tokens/_utility', [
             'tokens' => $tokens,
-            'userLabels' => self::userLabels($tokens),
+            'apps' => $apps,
+            'userLabels' => self::userLabels([
+                ...array_map(static fn (Token $token): int => $token->userId, $tokens),
+                ...array_column($apps ?? [], 'userId'),
+            ]),
             'revokeAction' => 'mcp/cp-tokens/revoke',
             'redirect' => Craft::$app->getRequest()->getPathInfo(),
             // A token minted or regenerated from this panel redirects back
@@ -78,14 +86,11 @@ final class Tokens extends Utility {
     }
 
     /**
-     * @param Token[] $tokens
+     * @param int[] $userIds
      * @return array<int, string>
      */
-    private static function userLabels(array $tokens): array {
-        $userIds = array_values(array_unique(array_map(
-            static fn (Token $token): int => $token->userId,
-            $tokens,
-        )));
+    private static function userLabels(array $userIds): array {
+        $userIds = array_values(array_unique($userIds));
 
         if ($userIds === []) {
             return [];

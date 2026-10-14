@@ -105,6 +105,7 @@ By default every write lands as a draft:
 
 - `create_entry` saves a new entry as a draft; `update_entry` on a live entry creates a draft on top, leaving the live version untouched. Created drafts appear in the CP Entries list like a human-saved draft.
 - The response carries `draftId`, `draftElementId`, and a `cpEditUrl` deep link so a human can review in the control panel.
+- It also carries a `previewUrl` (since 1.6.0): a Craft preview link that renders the draft as saved, on the section's first preview target (so a headless frontend renders it) or its own URL, without a login. It works until it expires (Craft's `previewTokenDuration`, a day by default, or the plugin's `previewTokenDuration`), and is `null` for sections without URLs. `create_nested_entry` and `move_nested_entry` return one for the owner draft, and `duplicate_entry` for the copy. Turn it off with `previewUrls: false`.
 - `publish_entry` applies the draft (pass the canonical entry id when there is a single pending draft, or the specific `draftElementId` when there are several).
 - Set `entryWriteMode: 'live'` in `config/mcp.php`, or pass `mode: "live"` per call, for immediate saves.
 

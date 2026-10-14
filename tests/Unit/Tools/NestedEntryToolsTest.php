@@ -270,6 +270,13 @@ describe('owner-draft model', function () {
             ->and(substr_count($source, 'ResourceChangeNotifier::notifyEntry('))->toBe(1);
     });
 
+    // The block has no URL of its own; the owner draft is where it renders.
+    it('links a preview of the owner draft the block was written into', function () {
+        $source = (string) file_get_contents((new ReflectionClass(NestedEntryTools::class))->getFileName());
+
+        expect($source)->toContain("'previewUrl' => \$this->writer->previewUrl(\$target)");
+    });
+
     it('returns the owner draft identifiers publish_entry accepts, plus block, state, and position', function () {
         $source = (string) file_get_contents((new ReflectionClass(NestedEntryTools::class))->getFileName());
 

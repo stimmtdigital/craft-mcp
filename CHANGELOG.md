@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A one-click connector for the Claude apps (web, Desktop and mobile). With the new `oauth` setting on, a user adds the site under Customize → Connectors by its MCP URL, logs in to the control panel, picks a scope and approves; Claude then works with a token tied to that user and scope. The plugin acts as its own OAuth server: discovery metadata (RFC 9728 and RFC 8414), Dynamic Client Registration restricted to callbacks on the new `oauthRedirectUris` allowlist, PKCE (S256) on every authorization, hour-long access tokens (`oauthAccessTokenTtl`) and refresh tokens that rotate on every use, where presenting an old one revokes the connection (`oauthRefreshTokenTtl`). The consent screen offers only the scopes the user may hold (Full for admins, nothing in `disabledScopes`). Connected apps are listed under My Account → MCP Tokens and Utilities → MCP Tokens, with Disconnect. Claude Code can sign in the same way. Off by default; with it off the endpoint behaves exactly as before. See [Connecting Claude](docs/http-transport.md#connecting-claude-web-desktop-and-mobile)
+- Entry writes return a `previewUrl` (#55): a Craft preview-token link that renders the draft as saved, without a login, on the section's first preview target, so a headless frontend renders it, or on its own URL. `create_entry`, `update_entry`, `copy_entry_to_site`, `duplicate_entry`, `create_nested_entry` and `move_nested_entry` carry one; it is `null` for sections without URLs. It lasts as long as Craft's own preview links unless `previewTokenDuration` says otherwise, and `previewUrls: false` turns it off. A plugin whose preview-target listener fails (SEOmatic does over stdio) costs the link its frontend target, never the write
+- Codex in the setup wizard (#70). `php craft mcp/install` can write `.codex/config.toml`, replacing only its own `[mcp_servers.<name>]` table and keeping every other line of the file, and prints the `codex mcp add` command for the user-level config. Offered but not preselected, so a non-interactive run writes the same files as before. [Client Setup](docs/client-setup.md#codex) covers manual setup and connecting over HTTP
+
+### Fixed
+
+- `list_console_commands` no longer fails when one module's controller path cannot be resolved (the headless template's request-id module defines its alias only for console requests). That module is skipped and named in a new `skippedModules` field, and every other command is still listed
+- `list_console_commands` over HTTP answered `count: 0`, which read as an install with no commands: in a web request Craft loads web controllers, so there were never any console commands to find. It now says it is unavailable over HTTP (`count` and `commands` are `null`, `unavailable` explains why and points to `php craft help/list`)
+- Dates read back from the token table are read as UTC, the way Craft stores them. They were read in the site's timezone, which shifted a token's expiry by the site's UTC offset
+
+### Changed
+
+- The snippet shown with a new token (control panel and `mcp/tokens/create`) is now a Claude Code `.mcp.json` block with `"type": "http"`, replacing the Claude Desktop config block: Claude Desktop's config file starts local servers, so a remote `url` there was never a documented setup. With `oauth` on, the console also points Claude app users to the connector
+- The docs no longer suggest putting a remote `url` and `headers` in `claude_desktop_config.json`; that file starts local servers, and a remote site is added as a custom connector. The token docs now show Claude Code, Cursor and Codex, which do send headers
+
 ## [1.5.0] - 2026-10-14
 
 ### Changed

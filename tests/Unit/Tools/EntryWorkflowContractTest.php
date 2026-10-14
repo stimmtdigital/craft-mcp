@@ -240,6 +240,15 @@ describe('copy_entry_to_site copies only what a site can hold separately', funct
 // canonical, so the copy is placed the moment it is made. Nothing in the
 // response said so, which is exactly how a copy that DID keep its place reads
 // as one that quietly lost it.
+// A duplicate is an unpublished draft, so its `url` renders nothing yet; the
+// preview link is the only way to see the copy without publishing it (#55).
+describe('duplicate_entry links a preview of the copy', function () {
+    it('returns a previewUrl for the duplicate draft', function () {
+        expect(workflowMethodBody('duplicateEntry'))
+            ->toContain("'previewUrl' => \$this->writer->previewUrl(\$duplicate)");
+    });
+});
+
 describe('duplicate_entry reports where the copy landed', function () {
     it('returns the structure parent alongside the entry', function () {
         expect(workflowMethodBody('duplicateEntry'))
