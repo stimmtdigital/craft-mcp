@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `list_entries` lists every status when `status` is omitted, as `count_entries` already counted them and as the control panel's Entries index shows them. It returned live entries only, so a total from `count_entries` could name entries no page of `list_entries` would return, and an agent browsing for an editor's work missed anything still disabled. Pass `status: "live"` for the previous result set. Each row carries its own `status` (#73)
+- `mcp/sdk` is required at `^0.8`. A tool called outside the token's scope is still refused, now as JSON-RPC `-32602` rather than `-32601`, since `tools/call` exists and only the tool name in its params does not (#69)
+
 ## [1.4.0] - 2026-08-28
 
 The release that rebuilt how content is read and written. Relations, assets,

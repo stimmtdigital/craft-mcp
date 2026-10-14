@@ -148,7 +148,9 @@ Facts established by running it, recorded so they are not rediscovered:
 - The tool catalogue is **55 tools** on a full scope connection, on both
   transports: 50 under `content`, 42 under `readonly`.
 - **A tool outside the scope is refused, not merely hidden.** Every probe comes
-  back as JSON-RPC `-32601`, from the SDK registry rather than from a tool.
+  back as JSON-RPC `-32602`, from the SDK registry rather than from a tool.
+  Before `mcp/sdk` 0.8 it was `-32601`; the SDK moved to `-32602` because
+  `tools/call` exists and only the tool name in its params does not.
 - **Both GraphQL tools work over HTTP** and fail on stdio. The transport, not
   the tool, is the broken thing.
 - **`reload_mcp` destroys its own response over HTTP**, on every call. See the

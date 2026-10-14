@@ -98,7 +98,7 @@ I need to query entries from this Craft CMS section:
 
 Please provide guidance on:
 1. How to use the list_entries tool effectively for this section, including full-text `search`, the `site` parameter, field-value `filters` (with :empty:/:notempty: and natural keys), `relatedTo`, date ranges, and the `fields` projection for slim rows
-2. Which entries each tool sees by default: list_entries returns live entries only unless `status` is passed (`status: "any"` for every state), while count_entries counts every status unless narrowed
+2. Which entries each tool sees by default: list_entries and count_entries both cover every status (live, pending, expired, disabled) unless `status` narrows them; pass `status: "live"` for published content only
 3. When count_entries answers the question without listing anything (totals, per-value breakdowns, per-month trends via groupBy)
 4. Pagination strategies for the {$entryCount} entries
 5. Performance optimization tips

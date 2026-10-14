@@ -87,7 +87,7 @@ class EntryTools {
         bool $includeNested = false,
         #[Schema(description: 'Entry type handle within the section, as describe_entry_schema reports it.')]
         ?string $type = null,
-        #[Schema(description: 'Entry status: live, pending, expired, disabled, or "any" for every state. Omitted lists live entries only.')]
+        #[Schema(description: 'Entry status: live, pending, expired, disabled, or "any". Omitted lists EVERY status, as the control panel does; each row carries its own status. Pass live for published content only.')]
         ?string $status = null,
         #[Schema(description: 'Site handle to read from; list_sites reports the handles. Omitted uses Craft\'s current site.')]
         ?string $site = null,
@@ -122,10 +122,7 @@ class EntryTools {
 
         $query = Entry::find()->limit($limit)->offset($offset);
         $this->scopeToSections($query, $section, $includeNested);
-
-        if ($status !== null) {
-            $query->status($status === 'any' ? null : $status);
-        }
+        $this->scopeToStatus($query, $status);
 
         foreach (['type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
             if ($value !== null) {
@@ -145,7 +142,7 @@ class EntryTools {
 
     /**
      * Only the parameters that mean something different here carry a
-     * description: status, whose default is the opposite of list_entries', and
+     * description: status, whose default a caller would otherwise guess at, and
      * groupBy, which list_entries does not have. The rest are the same filter
      * set, spelled out on list_entries, which this tool's own description
      * points the caller at rather than restating word for word.
@@ -153,7 +150,7 @@ class EntryTools {
     #[McpTool(
         name: 'count_entries',
         title: 'Count and group entries',
-        description: 'Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket ("month:dateUpdated", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under "(empty)"). Same filters as list_entries, and the same top-level scope: nested Matrix blocks are left out unless includeNested, so a total here matches the one list_entries reports. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers "how many per X" without listing anything.',
+        description: 'Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket ("month:dateUpdated", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under "(empty)"). Same filters as list_entries, and the same top-level scope: nested Matrix blocks are left out unless includeNested, so a total here matches the one list_entries reports. Counts include EVERY status by default, as list_entries lists them; pass status to narrow. One call answers "how many per X" without listing anything.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::CONTENT)]
@@ -163,7 +160,7 @@ class EntryTools {
         #[Schema(description: 'Count nested Matrix blocks alongside top-level entries, exactly as in list_entries. Left out by default, so the two tools answer about the same set of entries.')]
         bool $includeNested = false,
         ?string $type = null,
-        #[Schema(description: 'Entry status: live, pending, expired, disabled, or "any". Omitted counts EVERY status, unlike list_entries.')]
+        #[Schema(description: 'Entry status: live, pending, expired, disabled, or "any". Omitted counts EVERY status, exactly as list_entries lists them.')]
         ?string $status = null,
         ?string $site = null,
         ?string $search = null,
@@ -186,8 +183,9 @@ class EntryTools {
         $this->assertScope($section, $type, $status);
         $this->assertTypeInScope($type, $section, $includeNested);
 
-        $query = Entry::find()->status($status === 'any' ? null : $status);
+        $query = Entry::find();
         $this->scopeToSections($query, $section, $includeNested);
+        $this->scopeToStatus($query, $status);
 
         foreach (['type' => $type, 'site' => $site, 'search' => $search] as $method => $value) {
             if ($value !== null) {
@@ -519,6 +517,21 @@ class EntryTools {
         }
 
         $query->section(self::ANY_SECTION);
+    }
+
+    /**
+     * Narrow a read to one status, or to none at all.
+     *
+     * Omitted means every status, as in the control panel's Entries index:
+     * disabled entries are where unpublished work lives, and an agent that
+     * cannot see them starts a duplicate of a page that already exists (#73).
+     * Each row carries its own status, so a caller can still tell them apart.
+     *
+     * Both read tools call this, so a total from count_entries is always a
+     * total list_entries can page through.
+     */
+    private function scopeToStatus(EntryQuery $query, ?string $status): void {
+        $query->status($status === null || $status === 'any' ? null : $status);
     }
 
     /**

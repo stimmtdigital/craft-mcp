@@ -231,6 +231,7 @@ describe('count_entries', function () {
     it('normalizes the any status instead of aborting the query', function () {
         $source = (string) file_get_contents((new ReflectionClass(EntryTools::class))->getFileName());
 
-        expect(substr_count($source, "=== 'any' ? null"))->toBe(2);
+        // Once, in scopeToStatus, which both read tools call.
+        expect(substr_count($source, "=== 'any' ? null"))->toBe(1);
     });
 });

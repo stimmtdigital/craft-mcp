@@ -49,6 +49,11 @@ $scope = static function (EntryQuery $query, ?string $section, bool $includeNest
         ->invokeArgs((new ReflectionClass(EntryTools::class))->newInstanceWithoutConstructor(), [$query, $section, $includeNested]);
 };
 
+$status = static function (EntryQuery $query, ?string $status): void {
+    (new ReflectionMethod(EntryTools::class, 'scopeToStatus'))
+        ->invokeArgs((new ReflectionClass(EntryTools::class))->newInstanceWithoutConstructor(), [$query, $status]);
+};
+
 $entryToolsSource = static fn (): string => (string) file_get_contents(
     (string) (new ReflectionClass(EntryTools::class))->getFileName(),
 );
@@ -182,9 +187,40 @@ describe('an entry type that only Matrix fields use', function () use ($sectionW
     });
 });
 
+// Disabled entries are where unpublished work lives, and the control panel's
+// Entries index shows them until a status filter is picked.
+describe('the status scope of a read', function () use ($recordingQuery, $status) {
+    it('reads every status when none is named', function () use ($recordingQuery, $status) {
+        $query = $recordingQuery();
+        $status($query, null);
+
+        expect($query->status)->toBeNull();
+    });
+
+    it('reads every status for "any"', function () use ($recordingQuery, $status) {
+        $query = $recordingQuery();
+        $status($query, 'any');
+
+        expect($query->status)->toBeNull();
+    });
+
+    it('narrows to a named status', function () use ($recordingQuery, $status) {
+        $query = $recordingQuery();
+        $status($query, 'disabled');
+
+        expect($query->status)->toBe('disabled');
+    });
+});
+
 describe('list_entries and count_entries agree about what they are about', function () use ($entryToolsSource, $parameter, $toolDescription) {
     it('scopes both reads through the one helper', function () use ($entryToolsSource) {
         expect(substr_count($entryToolsSource(), '$this->scopeToSections($query, $section, $includeNested);'))->toBe(2);
+    });
+
+    // list_entries once defaulted to live only while count_entries counted
+    // every status, so a total could name entries no page would return (#73).
+    it('scopes both reads to a status through the one helper', function () use ($entryToolsSource) {
+        expect(substr_count($entryToolsSource(), '$this->scopeToStatus($query, $status);'))->toBe(2);
     });
 
     it('guards both reads against a type the scope cannot reach', function () use ($entryToolsSource) {
