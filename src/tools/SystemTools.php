@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
-use craft\console\controllers\HelpController;
 use craft\helpers\FileHelper;
 use craft\models\CategoryGroup;
 use craft\models\Section;
@@ -23,6 +22,7 @@ use stimmt\craft\Mcp\logging\Formatter;
 use stimmt\craft\Mcp\logging\Parser;
 use stimmt\craft\Mcp\logging\Search;
 use stimmt\craft\Mcp\pipeline\Presenter;
+use stimmt\craft\Mcp\support\ConsoleCommands;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\Secrets;
 use stimmt\craft\Mcp\support\Window;
@@ -268,17 +268,33 @@ class SystemTools {
     #[McpTool(
         name: 'list_console_commands',
         title: 'Console commands',
-        description: 'List all available Craft CMS console commands (like php craft <command>)',
+        description: 'List all available Craft CMS console commands (like php craft <command>). Over stdio only: over HTTP the web application has no console controllers loaded, so the answer says it is unavailable rather than listing none.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[McpToolMeta(category: ToolCategory::SYSTEM)]
     public function listConsoleCommands(?RequestContext $context = null): array {
-        $helpController = new HelpController('help', Craft::$app);
+        // Over HTTP Craft is a web application: plugins and modules register
+        // their web controllers, so there are no console commands to find, and
+        // a count of 0 would read as an install that has none.
+        if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
+            return [
+                'count' => null,
+                'commands' => null,
+                'skippedModules' => [],
+                'unavailable' => 'Console commands can only be listed over stdio. In a web request Craft loads web controllers in place of console ones, so this transport cannot see them. Run `php craft help/list` on the server, or connect over stdio.',
+            ];
+        }
+
+        $helpController = new ConsoleCommands('help', Craft::$app);
         $commands = array_values($helpController->getCommands());
 
         return [
             'count' => count($commands),
             'commands' => $commands,
+            // Modules whose commands could not be read; their commands are
+            // missing from the list above. Empty when the list is complete.
+            'skippedModules' => $helpController->skipped(),
+            'unavailable' => null,
         ];
     }
 

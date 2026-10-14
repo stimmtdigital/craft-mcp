@@ -66,3 +66,27 @@ describe('SystemTools::getConfig() redaction', function () {
         expect($tool->description)->toContain('redacted');
     });
 });
+
+// Over HTTP Craft is a web application: modules and plugins register their web
+// controllers, Yii's walk finds no console command among them, and the tool
+// answered "count: 0", indistinguishable from an install with no commands.
+describe('SystemTools::listConsoleCommands() over HTTP', function () {
+    $body = static function (): string {
+        $source = (string) file_get_contents((new ReflectionClass(SystemTools::class))->getFileName());
+        $start = (int) strpos($source, 'public function listConsoleCommands');
+
+        return substr($source, $start, (int) strpos($source, 'public function listRoutes') - $start);
+    };
+
+    it('says it cannot see console commands instead of reporting none', function () use ($body) {
+        expect($body())->toContain('getIsConsoleRequest()')
+            ->and($body())->toContain("'count' => null")
+            ->and($body())->toContain("'commands' => null")
+            ->and($body())->toContain('php craft help/list');
+    });
+
+    it('carries the same keys on both paths, so a caller can test one field', function () use ($body) {
+        expect(substr_count($body(), "'unavailable' =>"))->toBe(2)
+            ->and(substr_count($body(), "'skippedModules' =>"))->toBe(2);
+    });
+});
