@@ -11,6 +11,7 @@ use Mcp\Server\Session\SessionStoreInterface;
 use stimmt\craft\Mcp\http\Bridge;
 use stimmt\craft\Mcp\http\DbSessionStore;
 use stimmt\craft\Mcp\http\oauth\OAuthConfig;
+use stimmt\craft\Mcp\http\oauth\RecordOAuthStore;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Scope;
 use stimmt\craft\Mcp\http\Token;
@@ -94,6 +95,12 @@ class HttpController extends Controller {
 
         $token = (new Tokens(new RecordStore()))->authenticate($bearer, Mcp::settings()->disabledScopes);
         if ($token === null) {
+            return null;
+        }
+
+        // An app's token lives only as long as its grant: checked per request,
+        // so a Disconnect takes effect on the very next call whatever raced it.
+        if ($token->isOAuth() && (new RecordOAuthStore())->findGrant((int) $token->grantId)?->isRevoked() !== false) {
             return null;
         }
 

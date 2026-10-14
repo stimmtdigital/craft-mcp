@@ -75,13 +75,18 @@ final class OauthConsentController extends Controller {
             return $this->redirect($authorizer->errorRedirect($client, $params, $error));
         }
 
-        $allowed = $this->allowedScopes();
+        // Only what the user may hold AND the app asked for: approve() refuses
+        // anything outside the request, so offering it would be a dead end.
+        $allowed = array_values(array_filter(
+            $this->allowedScopes(),
+            static fn (Scope $scope): bool => in_array($scope, $request->requestedScopes, true),
+        ));
 
         return $this->screen('mcp/oauth/_consent', [
             'request' => $request,
             'params' => $params,
             'scopes' => $allowed,
-            'selected' => $this->preselect($request, $allowed),
+            'selected' => $this->preselect($allowed),
             'user' => Craft::$app->getUser()->getIdentity(),
         ]);
     }
@@ -139,16 +144,14 @@ final class OauthConsentController extends Controller {
      * editing assistant needs; otherwise the narrowest scope on offer. Never
      * Full by default: that is a choice the user makes, not one made for them.
      *
-     * @param Scope[] $allowed
+     * @param Scope[] $offered
      */
-    private function preselect(AuthorizeRequest $request, array $allowed): ?Scope {
-        $offered = array_values(array_filter($allowed, static fn (Scope $scope): bool => in_array($scope, $request->requestedScopes, true)));
-
+    private function preselect(array $offered): ?Scope {
         if (in_array(Scope::Content, $offered, true)) {
             return Scope::Content;
         }
 
-        return $offered[0] ?? $allowed[0] ?? null;
+        return $offered[0] ?? null;
     }
 
     /**

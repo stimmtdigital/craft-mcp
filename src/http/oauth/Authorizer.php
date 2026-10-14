@@ -80,6 +80,12 @@ final readonly class Authorizer {
             throw OAuthError::invalidRequest('That scope is disabled on this install.');
         }
 
+        // The app's request is the ceiling: a consent form tampered with, or a
+        // caller that skipped it, cannot hand out more than was asked for.
+        if (!in_array($scope, $request->requestedScopes, true)) {
+            throw new OAuthError('invalid_scope', 'The app did not ask for the "' . $scope->value . '" scope.');
+        }
+
         $grant = $this->store->insertGrant(new Grant((int) $request->client->id, $userId, $scope));
         $code = Secret::generate();
         $this->store->insertCode(

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-14
+
+### Security
+
+Three gaps in the 1.6.0 OAuth connector, closed before it reached production use. Hand-minted tokens and installs with `oauth` off were never affected.
+
+- Every token exchange checks the user's standing again: an active account, the "Manage their own MCP tokens" permission, and a scope they may hold today (Full only while still an admin, nothing in `disabledScopes`). A user who lost any of these kept receiving tokens, since each refresh issued a new 30-day refresh token. The connection is now revoked instead
+- An app can no longer be granted a scope it did not ask for. The consent screen offers only scopes that are both requested and allowed, and the server refuses anything else, so a tampered consent form cannot widen a grant
+- Disconnecting an app can no longer lose a race with a refresh in progress. A token issued in that window survived the revoke for up to an hour; the exchange now checks the grant again after writing, and the endpoint checks an app token's grant on every request
+
 ## [1.6.0] - 2026-10-14
 
 ### Added

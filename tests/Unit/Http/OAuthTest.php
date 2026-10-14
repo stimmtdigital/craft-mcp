@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../Fixtures/InMemoryTokenStore.php';
 require_once __DIR__ . '/../../Fixtures/InMemoryOAuthStore.php';
+require_once __DIR__ . '/../../Fixtures/ForwardingOAuthStore.php';
 
 use stimmt\craft\Mcp\http\oauth\Authorizer;
 use stimmt\craft\Mcp\http\oauth\Grants;
@@ -145,6 +146,13 @@ describe('authorization request', function () {
             ->toContain('iss=' . rawurlencode('https://cms.example.com'));
     });
 
+    it('refuses to grant a scope the app did not ask for', function () {
+        $client = $this->authorizer->identify($this->params);
+        $request = $this->authorizer->validate($client, ['scope' => 'readonly'] + $this->params);
+
+        expect(fn () => $this->authorizer->approve($request, 5, Scope::Full))->toThrow(OAuthError::class, 'did not ask');
+    });
+
     it('keeps only the scopes this install issues', function () {
         $config = new OAuthConfig('https://cms.example.com', 'https://cms.example.com/mcp', 'x', new RedirectUris(RedirectUris::DEFAULTS), disabledScopes: ['full']);
         $authorizer = new Authorizer($this->store, $config);
@@ -245,6 +253,57 @@ describe('refresh', function () {
         $this->clock = $this->clock->modify('+31 days');
 
         expect(fn () => ($this->refresh)($this->first['refresh_token']))->toThrow(OAuthError::class, 'expired');
+    });
+});
+
+// What a user may hold can change after they approve: losing the token
+// permission, losing admin, or a scope being disabled. Every exchange asks again.
+describe('the user\'s standing is checked on every exchange', function () {
+    beforeEach(function () {
+        $this->allowed = true;
+        $policy = fn (int $userId, Scope $scope): bool => $this->allowed;
+        $this->exchange = new TokenExchange($this->store, $this->tokens, $this->grants, $this->config, fn (): DateTimeImmutable => $this->clock, $policy);
+        $this->first = ($this->redeem)(($this->authorize)(Scope::Full));
+    });
+
+    it('revokes the grant when the user may no longer hold its scope', function () {
+        $this->allowed = false;
+
+        expect(fn () => $this->exchange->exchange(['grant_type' => 'refresh_token', 'refresh_token' => $this->first['refresh_token'], 'client_id' => $this->clientId]))
+            ->toThrow(OAuthError::class, 'no longer')
+            ->and($this->tokens->authenticate($this->first['access_token']))->toBeNull()
+            ->and($this->store->liveGrants())->toBe([]);
+    });
+
+    it('refuses to redeem a code for a user who lost the scope after approving', function () {
+        $code = ($this->authorize)(Scope::Full);
+        $this->allowed = false;
+
+        expect(fn () => ($this->redeem)($code))->toThrow(OAuthError::class, 'no longer');
+    });
+});
+
+// A Disconnect that lands after an exchange passed its checks but before the
+// new token is written must still win: the token issued in between is removed.
+describe('a disconnect racing a refresh', function () {
+    it('leaves no working token behind', function () {
+        $first = ($this->redeem)(($this->authorize)());
+        $grantId = (int) $this->store->liveGrants()[0]->id;
+        $store = new class ($this->store, $this->grants, $grantId) extends stimmt\craft\Mcp\Tests\Fixtures\ForwardingOAuthStore {
+            public function __construct($inner, private $grants, private int $grantId) {
+                parent::__construct($inner);
+            }
+
+            public function insertRefreshToken(stimmt\craft\Mcp\http\oauth\RefreshToken $token, string $hash): void {
+                $this->grants->revoke($this->grantId);
+                parent::insertRefreshToken($token, $hash);
+            }
+        };
+        $exchange = new TokenExchange($store, $this->tokens, $this->grants, $this->config, fn (): DateTimeImmutable => $this->clock);
+
+        expect(fn () => $exchange->exchange(['grant_type' => 'refresh_token', 'refresh_token' => $first['refresh_token'], 'client_id' => $this->clientId]))
+            ->toThrow(OAuthError::class, 'disconnected')
+            ->and(array_filter($this->tokenStore->all(), static fn ($token): bool => $token->isOAuth()))->toBe([]);
     });
 });
 

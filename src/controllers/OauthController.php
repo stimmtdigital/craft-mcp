@@ -19,6 +19,7 @@ use stimmt\craft\Mcp\http\oauth\TokenExchange;
 use stimmt\craft\Mcp\http\RecordStore;
 use stimmt\craft\Mcp\http\Tokens;
 use stimmt\craft\Mcp\Mcp;
+use stimmt\craft\Mcp\support\OAuthPolicy;
 use yii\web\NotFoundHttpException;
 
 /**
@@ -95,7 +96,7 @@ final class OauthController extends Controller {
 
         $store = new RecordOAuthStore();
         $tokens = new Tokens(new RecordStore());
-        $exchange = new TokenExchange($store, $tokens, new Grants($store, $tokens), OAuthConfig::current());
+        $exchange = new TokenExchange($store, $tokens, new Grants($store, $tokens), OAuthConfig::current(), mayHold: OAuthPolicy::mayHold(...));
 
         try {
             return $this->json($exchange->exchange($this->request->getBodyParams()));

@@ -27,6 +27,7 @@ final readonly class TokenExchange {
         private Grants $grants,
         private OAuthConfig $config,
         private ?Closure $now = null,
+        private ?Closure $mayHold = null,
     ) {
     }
 
@@ -125,6 +126,16 @@ final readonly class TokenExchange {
             throw OAuthError::invalidGrant('The "' . $grant->scope->value . '" scope is disabled on this install.');
         }
 
+        // Standing changes after consent: a user can lose the token
+        // permission, lose admin while holding full, or be suspended. Asking
+        // on every exchange keeps a rotating refresh token from carrying a
+        // grant past the point the user could still approve it.
+        if ($this->mayHold !== null && !($this->mayHold)($grant->userId, $grant->scope)) {
+            $this->grants->revoke((int) $grant->id);
+
+            throw OAuthError::invalidGrant('This user may no longer hold the "' . $grant->scope->value . '" scope; the connection has been revoked.');
+        }
+
         $this->store->touchClient($grant->clientRecordId, $this->now());
 
         return $grant;
@@ -159,6 +170,15 @@ final readonly class TokenExchange {
             new RefreshToken((int) $grant->id, $now->modify('+' . $this->config->refreshTokenTtl . ' seconds')),
             Secret::hash($refresh),
         );
+
+        // A Disconnect that landed after liveGrant() passed deleted the
+        // grant's tokens before this one existed. Looking again after writing
+        // makes the revoke win: what was just issued is removed with it.
+        if ($this->store->findGrant((int) $grant->id)?->isRevoked() !== false) {
+            $this->grants->revoke((int) $grant->id);
+
+            throw OAuthError::invalidGrant('This connection was disconnected. Connect the app again.');
+        }
 
         return [
             'access_token' => $access,
