@@ -6,14 +6,15 @@ Welcome to the Craft MCP documentation. This guide covers everything you need to
 
 Craft MCP is an MCP (Model Context Protocol) server that gives AI assistants direct access to your Craft CMS installation. Rather than manually describing your content architecture, field layouts, or database schema, your AI assistant can query this information directly, write reviewable draft content in a natural-key payload format, and inspect the system it is working in.
 
-The plugin provides more than 50 specialized tools, 10 analysis prompts, and 13 data resources, served over stdio for local development and over HTTP with per-user scoped bearer tokens for remote users.
+The plugin provides more than 50 specialized tools, 10 analysis prompts, and 13 data resources, served over stdio for local development and over HTTP for remote users: the Claude apps connect by URL with a Craft login, and other clients use per-user scoped bearer tokens.
 
 ## Getting Started
 
 If you're new to Craft MCP, we recommend following these steps:
 
 1. **[Installation](installation.md)** - Install the plugin via Composer and enable the server
-2. **[Client Setup](client-setup.md)** - Connect Claude Code, Cursor, or Claude Desktop (wizard or manual)
+2. **[Client Setup](client-setup.md)** - Connect Claude Code, Cursor, Claude Desktop or Codex to a local install (wizard or manual)
+   - Using the Claude apps (web, Desktop, mobile) with a live site instead? **[Connect Claude by URL](http-transport.md#connecting-claude-web-desktop-and-mobile)**: no config file, just the URL and a Craft login. For editors: **[Using Claude with your Craft site](claude-for-editors.md)**
 3. **[Configuration](configuration.md)** - Review the available options and security settings
 4. **[Tools Reference](tools/README.md)** - Explore the available tools and their capabilities
 
@@ -22,12 +23,14 @@ If you're new to Craft MCP, we recommend following these steps:
 ### Setup & Configuration
 
 - **[Installation](installation.md)** - Requirements, Composer setup, and installation steps
-- **[Client Setup](client-setup.md)** - Wizard and manual MCP client configuration (Claude Code, Cursor, Claude Desktop, SSH)
+- **[Client Setup](client-setup.md)** - Wizard and manual MCP client configuration (Claude Code, Cursor, Claude Desktop, Codex, SSH)
 - **[Configuration](configuration.md)** - All configuration options, environment variables, and security settings
 - **[Editions](editions.md)** - What Lite and Pro each include, how a Lite install behaves, and requiring an edition from your own tools
-- **[HTTP Transport](http-transport.md)** - Remote access over HTTP with per-user scoped bearer tokens (`readonly`/`content`/`full`), token management, and troubleshooting
+- **[HTTP Transport](http-transport.md)** - Remote access over HTTP: [connecting the Claude apps by URL](http-transport.md#connecting-claude-web-desktop-and-mobile) (OAuth, a Craft login and a scope choice), per-user scoped bearer tokens (`readonly`/`content`/`full`) for other clients, connected apps and token management, and troubleshooting
 
 ### Working with Content
+
+- **[Using Claude with your Craft site](claude-for-editors.md)** - A short guide to send editors: connecting Claude, what to approve, drafts and preview links, disconnecting
 
 - **[Content Writing](content-writing.md)** - The natural-key payload format, draft-first workflow, schema discovery with per-field input shapes, and structured feedback
 

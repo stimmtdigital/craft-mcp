@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-10-14
+
+### Added
+
+- [Using Claude with your Craft site](docs/claude-for-editors.md), a short guide to send editors once the Claude connector is on: connecting, which access to approve, drafts and preview links, disconnecting, and what to do when it does not work. Linked from the setup guide, the docs index and the README
+
+### Changed
+
+- The docs index, installation guide and README point Claude app users at the connector instead of only at local client setup
+- The connector docs name the three settings a production install needs and the symptom each one causes when missing: `enabled` (off by default in production; the endpoint answers "MCP HTTP transport is not enabled"), `httpPublicUrl` (left empty on a headless install, every OAuth URL points at the frontend and Claude reports that registration failed), and a connector URL that matches the advertised resource exactly. A new troubleshooting entry shows how to check what Claude sees
+
 ## [1.6.2] - 2026-10-14
 
 ### Added

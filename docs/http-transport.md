@@ -139,18 +139,28 @@ Full-scope tokens are deliberately exempt from all permission checks: they carry
 
 The Claude apps add a remote MCP server as a **custom connector**, by URL. Turn on the OAuth connector and that is all a user needs: they paste the URL, log in to your control panel, choose what Claude may do, and approve. No token is copied anywhere.
 
+Once it is set up, send your editors **[Using Claude with your Craft site](claude-for-editors.md)**: the user's side of this, without the configuration.
+
 ### 1. Enable it on the site
 
 ```php
 <?php
 
 return [
+    // In production the whole MCP server starts out off; this turns it on.
+    'enabled' => true,
     'httpTransport' => true,
     'oauth' => true,
     // On headless installs: the domain where Craft itself answers.
     'httpPublicUrl' => 'https://cms.example.com',
 ];
 ```
+
+Most installs drive these from environment variables per environment, for example `'enabled' => App::parseBooleanEnv('$MCP_ENABLED') ?? false`. Whichever way you set them, check all three:
+
+- **`enabled` is on.** When `CRAFT_ENVIRONMENT` is `production`, the plugin starts with `enabled` off before it reads `config/mcp.php` (see [Configuration](configuration.md)), so production needs it set explicitly. Without it the endpoint answers `404` with `"MCP HTTP transport is not enabled"`, and Claude reports the server as not found.
+- **`httpPublicUrl` is the domain Craft answers on.** Every URL Claude is told about (the resource, the issuer, the registration and token endpoints) is built from it. Left empty, it falls back to the primary site's URL, which on a headless install is the frontend: Claude then registers with your frontend, gets its 404 page back, and reports that registration with the login service failed.
+- **The URL you give Claude is `httpPublicUrl` plus `httpPath`**, exactly, for example `https://cms.example.com/mcp`. Claude requires the `resource` the server advertises to match it character for character.
 
 Two things have to be true for Claude to reach it:
 
@@ -293,7 +303,17 @@ Returned when the bearer token is missing, malformed, unknown, or expired, or wh
 
 ### "Couldn't reach the MCP server" in Claude
 
-Claude could not read the server's OAuth discovery documents, so it never got as far as your login page. Check, in order: the site is reachable over public HTTPS; `oauth` and `httpTransport` are both on; `https://<your-host>/.well-known/oauth-protected-resource/<httpPath>` answers with JSON; nothing in front of Craft blocks `160.79.104.0/21`; and `httpPublicUrl` is the domain Craft answers on, since every URL in those documents is built from it.
+Claude could not read the server's OAuth discovery documents, so it never got as far as your login page. Check, in order: the site is reachable over public HTTPS; `enabled`, `httpTransport` and `oauth` are all on (a `404` with `"MCP HTTP transport is not enabled"` means `enabled` is off, which is the default in production); `https://<your-host>/.well-known/oauth-protected-resource/<httpPath>` answers with JSON; nothing in front of Craft blocks `160.79.104.0/21`; and `httpPublicUrl` is the domain Craft answers on, since every URL in those documents is built from it.
+
+### Registration with the login service failed
+
+Claude found the discovery documents but could not register itself. Almost always the documents point at the wrong domain: `httpPublicUrl` is not set on a headless install, so they name the frontend instead of Craft. Check what Claude sees:
+
+```bash
+curl -s https://cms.example.com/.well-known/oauth-authorization-server
+```
+
+`issuer`, `registration_endpoint` and `token_endpoint` must all be on the domain Craft answers on. If they show your frontend's domain, set `httpPublicUrl`, then remove the connector in Claude and add it again so it reads the corrected documents.
 
 ### "This site does not accept that redirect URI"
 

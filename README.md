@@ -78,7 +78,8 @@ The [documentation index](docs/README.md) links everything; the direct routes:
 - **[Client Setup](docs/client-setup.md)** - Wizard and manual configs for Claude Code, Cursor, Claude Desktop, Codex
 - **[Configuration](docs/configuration.md)** - All configuration options and security settings
 - **[Editions](docs/editions.md)** - What Lite and Pro each include, and how a Lite install behaves
-- **[HTTP Transport](docs/http-transport.md)** - Remote access with per-user scoped bearer tokens
+- **[HTTP Transport](docs/http-transport.md)** - Remote access: [connect the Claude apps by URL](docs/http-transport.md#connecting-claude-web-desktop-and-mobile) with a Craft login, or per-user scoped bearer tokens for other clients
+- **[Using Claude with your Craft site](docs/claude-for-editors.md)** - A short guide to send editors once the connector is on
 - **[Content Writing](docs/content-writing.md)** - The payload format, draft workflow, and schema discovery for agents
 - **[Tools Reference](docs/tools/README.md)** - Complete documentation for every tool
 - **[Prompts](docs/prompts.md)** - Pre-built analysis prompts

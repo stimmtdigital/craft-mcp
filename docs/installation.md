@@ -88,7 +88,9 @@ php craft mcp/install
 
 The wizard detects your environment (DDEV or native PHP), lets you pick clients (Claude Code, Cursor, Claude Desktop, Codex), and writes the config files for you.
 
-Wizard options, manual configuration for every client, and the SSH variant live in the [Client Setup guide](client-setup.md). Remote users without a local checkout connect through the [HTTP transport](http-transport.md) instead.
+Wizard options, manual configuration for every client, and the SSH variant live in the [Client Setup guide](client-setup.md).
+
+Remote users without a local checkout connect through the [HTTP transport](http-transport.md) instead. For the Claude apps (web, Desktop, mobile) that is a custom connector: the site owner turns on `oauth`, and each user adds the site in Claude by its URL and signs in with their Craft account. See [Connecting Claude](http-transport.md#connecting-claude-web-desktop-and-mobile).
 
 ## Troubleshooting
 
@@ -114,3 +116,4 @@ Now that Craft MCP is installed and connected, you may want to:
 
 1. **[Configure the plugin](configuration.md)** - Review security settings and customize which tools are available
 2. **[Explore available tools](tools/README.md)** - Learn what your AI assistant can now do with your Craft installation
+3. **[Connect the Claude apps](http-transport.md#connecting-claude-web-desktop-and-mobile)** - Let editors use the live site from Claude on the web, Desktop or mobile
