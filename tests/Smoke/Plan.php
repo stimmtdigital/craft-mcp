@@ -29,20 +29,22 @@ final class Plan {
     public const string TAG_PERTURBING = 'perturbing';
 
     /**
-     * The install this plan is written against. Kept in one place so a run on a
-     * different install fails loudly on the first content step instead of
-     * silently skipping half the plan.
+     * The fixture this plan is written against: a section of its own, named for
+     * the harness so it cannot collide with a real site's content, and set up
+     * the same way on any install that runs it (see NOTES.md). Kept in one
+     * place so a run on an install without it fails loudly on the first
+     * content step instead of silently skipping half the plan.
      */
-    public const string SECTION = 'pages';
+    public const string SECTION = 'mcpSmoke';
 
-    public const string ENTRY_TYPE = 'page';
+    public const string ENTRY_TYPE = 'mcpSmokePage';
 
-    public const string MATRIX_FIELD = 'contentBuilder';
+    public const string MATRIX_FIELD = 'mcpSmokeBlocks';
 
-    public const string BLOCK_TYPE = 'contentBlock';
+    public const string BLOCK_TYPE = 'mcpSmokeBlock';
 
     /** An Entries relation field on the section above, used to prove key resolution. */
-    public const string RELATION_FIELD = 'category';
+    public const string RELATION_FIELD = 'mcpSmokeRelated';
 
     /**
      * @return list<array<string, mixed>>
@@ -208,7 +210,7 @@ final class Plan {
             [
                 'tool' => 'list_entries',
                 'name' => 'list_entries.filters',
-                'args' => ['section' => self::SECTION, 'limit' => 3, 'filters' => ['category' => ':empty:']],
+                'args' => ['section' => self::SECTION, 'limit' => 3, 'filters' => [self::RELATION_FIELD => ':empty:']],
             ],
             [
                 'tool' => 'get_entry',

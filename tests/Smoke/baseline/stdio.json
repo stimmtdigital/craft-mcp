@@ -61,7 +61,7 @@
             }
         },
         "count_entries": {
-            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Same filters as list_entries, and the same top-level scope: nested Matrix blocks are left out unless includeNested, so a total here matches the one list_entries reports. Counts include EVERY status by default (list_entries defaults to live only); pass status to narrow. One call answers \"how many per X\" without listing anything.",
+            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Same filters as list_entries, and the same top-level scope: nested Matrix blocks are left out unless includeNested, so a total here matches the one list_entries reports. Counts include EVERY status by default, as list_entries lists them; pass status to narrow. One call answers \"how many per X\" without listing anything.",
             "annotations": {
                 "readOnlyHint": true,
                 "idempotentHint": true
@@ -95,7 +95,7 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Entry status: live, pending, expired, disabled, or \"any\". Omitted counts EVERY status, unlike list_entries."
+                        "description": "Entry status: live, pending, expired, disabled, or \"any\". Omitted counts EVERY status, exactly as list_entries lists them."
                     },
                     "site": {
                         "type": [
@@ -1074,7 +1074,7 @@
                             "string"
                         ],
                         "default": null,
-                        "description": "Entry status: live, pending, expired, disabled, or \"any\" for every state. Omitted lists live entries only."
+                        "description": "Entry status: live, pending, expired, disabled, or \"any\". Omitted lists EVERY status, as the control panel does; each row carries its own status. Pass live for published content only."
                     },
                     "site": {
                         "type": [
@@ -1779,14 +1779,14 @@
         }
     },
     "uncovered": [
-        "create_backup",
-        "get_asset"
+        "copy_entry_to_site",
+        "create_backup"
     ],
     "steps": {
         "get_mcp_info": {
             "status": "ok",
             "shape": {
-                "branch": "<string>",
+                "branch": null,
                 "build": "<string>",
                 "buildSource": "<string>",
                 "configuration": {
@@ -1837,7 +1837,7 @@
         "get_mcp_info.detail": {
             "status": "ok",
             "shape": {
-                "branch": "<string>",
+                "branch": null,
                 "build": "<string>",
                 "buildSource": "<string>",
                 "configuration": {
@@ -1947,7 +1947,7 @@
                         "handle": "<string>",
                         "id": "<number>",
                         "name": "<string>",
-                        "primary": "<bool>"
+                        "primary": true
                     }
                 ]
             }
@@ -1956,7 +1956,7 @@
             "status": "ok",
             "shape": {
                 "environment": {
-                    "CRAFT_ALLOW_ADMIN_CHANGES": "<string>",
+                    "CRAFT_ALLOW_ADMIN_CHANGES": null,
                     "CRAFT_DEV_MODE": "<string>",
                     "CRAFT_ENVIRONMENT": "<string>",
                     "CRAFT_RUN_QUEUE_AUTOMATICALLY": null
@@ -1996,8 +1996,8 @@
                         "description": "<string>",
                         "developer": "<string>",
                         "handle": "<string>",
-                        "isEnabled": "<bool|true>",
-                        "isInstalled": "<bool|true>",
+                        "isEnabled": true,
+                        "isInstalled": true,
                         "name": "<string>",
                         "schemaVersion": "<null|string>",
                         "version": "<string>"
@@ -2008,15 +2008,8 @@
         "get_last_error": {
             "status": "ok",
             "shape": {
-                "error": {
-                    "category": "<string>",
-                    "channel": "<string>",
-                    "file": "<string>",
-                    "level": "<string>",
-                    "message": "<string>",
-                    "timestamp": "<string>"
-                },
-                "found": true
+                "found": false,
+                "message": "<string>"
             }
         },
         "get_deprecations": {
@@ -2116,6 +2109,14 @@
                                 "<string>"
                             ]
                         },
+                        "craft\\services\\Entries::beforeSaveEntryType": {
+                            "class": "<string>",
+                            "count": "<number>",
+                            "event": "<string>",
+                            "handlers": [
+                                "<string>"
+                            ]
+                        },
                         "craft\\services\\Fields::registerNestedEntryFieldTypes": {
                             "class": "<string>",
                             "count": "<number>",
@@ -2167,7 +2168,7 @@
                         "id": "<number>",
                         "language": "<string>",
                         "name": "<string>",
-                        "primary": "<bool>",
+                        "primary": true,
                         "sortOrder": "<number>",
                         "uid": "<string>"
                     }
@@ -2215,27 +2216,8 @@
             }
         },
         "get_site.second": {
-            "status": "ok",
-            "shape": {
-                "site": {
-                    "baseUrl": "<string>",
-                    "dateCreated": "<string>",
-                    "dateUpdated": "<string>",
-                    "enabled": true,
-                    "group": {
-                        "id": "<number>",
-                        "name": "<string>"
-                    },
-                    "handle": "<string>",
-                    "id": "<number>",
-                    "language": "<string>",
-                    "name": "<string>",
-                    "primary": false,
-                    "sortOrder": "<number>",
-                    "uid": "<string>"
-                },
-                "success": true
-            }
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
         },
         "list_sections": {
             "status": "ok",
@@ -2255,10 +2237,10 @@
                         "name": "<string>",
                         "siteSettings": {
                             "<keyed>": {
-                                "hasUrls": true,
+                                "hasUrls": "<bool|false|true>",
                                 "siteId": "<number>",
                                 "template": null,
-                                "uriFormat": "<string>"
+                                "uriFormat": "<null|string>"
                             }
                         },
                         "type": "<string>"
@@ -2274,9 +2256,9 @@
                     {
                         "handle": "<string>",
                         "id": "<number>",
-                        "instructions": null,
+                        "instructions": "<null|string>",
                         "name": "<string>",
-                        "searchable": "<bool|false|true>",
+                        "searchable": false,
                         "type": "<string>"
                     }
                 ]
@@ -2305,17 +2287,217 @@
                 "globals": [
                     {
                         "fields": {
-                            "companyAddress": null,
-                            "companyBtw": null,
-                            "companyCity": null,
-                            "companyKvk": null,
-                            "companyName": null,
-                            "companyZipcode": null,
-                            "facebook": null,
-                            "favicon": [],
-                            "instagram": null,
-                            "linkedin": null,
-                            "logo": []
+                            "basicText": "<string>",
+                            "blockTitle": null,
+                            "buttonOne": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": true,
+                                    "fields": {
+                                        "pageLink": [
+                                            {
+                                                "handle": "<string>",
+                                                "linkText": "<string>",
+                                                "linkValue": "<string>",
+                                                "newWindow": false,
+                                                "type": "<string>"
+                                            }
+                                        ],
+                                        "styles": "<string>"
+                                    },
+                                    "position": "<number>",
+                                    "slug": "<string>",
+                                    "title": null,
+                                    "type": "<string>"
+                                }
+                            },
+                            "contactBtw": "<string>",
+                            "contactEMailHello": "<string>",
+                            "contactEMailsupport": "<string>",
+                            "contactKvk": "<string>",
+                            "documents": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": true,
+                                    "fields": {
+                                        "documentFile": [
+                                            {
+                                                "filename": "<string>",
+                                                "volume": "<string>"
+                                            }
+                                        ],
+                                        "documentText": "<string>"
+                                    },
+                                    "position": "<number>",
+                                    "slug": null,
+                                    "title": null,
+                                    "type": "<string>"
+                                }
+                            },
+                            "employee": [
+                                {
+                                    "section": "<string>",
+                                    "slug": "<string>"
+                                }
+                            ],
+                            "facebookUrl": "<string>",
+                            "footerLogos": [
+                                {
+                                    "filename": "<string>",
+                                    "volume": "<string>"
+                                }
+                            ],
+                            "heroTitle": "<string>",
+                            "instagramUrl": "<string>",
+                            "linkedinUrl": "<string>",
+                            "logo": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": true,
+                                    "fields": {
+                                        "logo": [
+                                            {
+                                                "filename": "<string>",
+                                                "path": "<string>",
+                                                "volume": "<string>"
+                                            }
+                                        ],
+                                        "logoLink": [
+                                            {
+                                                "handle": "<string>",
+                                                "linkSiteId?": "<number>",
+                                                "linkValue?": [
+                                                    "<null|number>"
+                                                ],
+                                                "newWindow": false,
+                                                "type": "<string>"
+                                            }
+                                        ],
+                                        "logoTitle": null,
+                                        "text": null
+                                    },
+                                    "position": "<number>",
+                                    "slug": "<string>",
+                                    "title": null,
+                                    "type": "<string>"
+                                }
+                            },
+                            "office": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": true,
+                                    "fields": {
+                                        "address": "<string>",
+                                        "buttonOne": [],
+                                        "country": "<string>",
+                                        "image": [
+                                            {
+                                                "filename": "<string>",
+                                                "volume": "<string>"
+                                            }
+                                        ],
+                                        "officeHours": "<string>",
+                                        "officeTitle": "<string>",
+                                        "pageLink": [
+                                            {
+                                                "handle": "<string>",
+                                                "linkSiteId": "<number>",
+                                                "linkValue": [
+                                                    "<number>"
+                                                ],
+                                                "newWindow": false,
+                                                "type": "<string>"
+                                            }
+                                        ],
+                                        "parkingInformation": "<string>",
+                                        "phone": "<string>",
+                                        "street": "<string>"
+                                    },
+                                    "position": "<number>",
+                                    "slug": null,
+                                    "title": null,
+                                    "type": "<string>"
+                                }
+                            },
+                            "platform": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": true,
+                                    "fields": {
+                                        "logo": [
+                                            {
+                                                "filename": "<string>",
+                                                "path?": "<string>",
+                                                "volume": "<string>"
+                                            }
+                                        ],
+                                        "logoLink": [
+                                            {
+                                                "handle": "<string>",
+                                                "linkSiteId": "<number>",
+                                                "linkValue": [
+                                                    "<number>"
+                                                ],
+                                                "newWindow": false,
+                                                "type": "<string>"
+                                            }
+                                        ],
+                                        "logoTitle": "<string>",
+                                        "text": "<string>"
+                                    },
+                                    "position": "<number>",
+                                    "slug": "<string>",
+                                    "title": null,
+                                    "type": "<string>"
+                                }
+                            },
+                            "services": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": true,
+                                    "fields": {
+                                        "description": "<string>",
+                                        "image": [
+                                            {
+                                                "filename": "<string>",
+                                                "path": "<string>",
+                                                "volume": "<string>"
+                                            }
+                                        ],
+                                        "pageLink": [
+                                            {
+                                                "handle": "<string>",
+                                                "linkSiteId": "<number>",
+                                                "linkValue": [
+                                                    "<number>"
+                                                ],
+                                                "newWindow": false,
+                                                "type": "<string>"
+                                            }
+                                        ],
+                                        "serviceTitle": "<string>"
+                                    },
+                                    "position": "<number>",
+                                    "slug": "<string>",
+                                    "title": null,
+                                    "type": "<string>"
+                                }
+                            },
+                            "steps": {
+                                "<keyed>": {
+                                    "collapsed": false,
+                                    "enabled": true,
+                                    "fields": {
+                                        "text": "<string>"
+                                    },
+                                    "position": "<number>",
+                                    "slug": "<string>",
+                                    "title": "<string>",
+                                    "type": "<string>"
+                                }
+                            },
+                            "supportPhoneNumber": "<string>",
+                            "widgetType": "<string>"
                         },
                         "handle": "<string>",
                         "id": "<number>",
@@ -2327,9 +2509,19 @@
         "list_categories": {
             "status": "ok",
             "shape": {
-                "categories": [],
+                "categories": [
+                    {
+                        "groupHandle": "<string>",
+                        "groupId": "<number>",
+                        "id": "<number>",
+                        "level": "<number>",
+                        "slug": "<string>",
+                        "title": "<string>",
+                        "url": null
+                    }
+                ],
                 "count": "<number>",
-                "hasMore": false,
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2348,10 +2540,10 @@
                         "admin": true,
                         "dateCreated": "<string>",
                         "email": "<string>",
-                        "fullName": null,
+                        "fullName": "<null|string>",
                         "groups": [],
                         "id": "<number>",
-                        "lastLoginDate": "<string>",
+                        "lastLoginDate": "<null|string>",
                         "status": "<string>",
                         "username": "<string>"
                     }
@@ -2401,29 +2593,29 @@
                     }
                 ],
                 "foreignKeys": {
-                    "fk_ajirjuktwjgiwoclckwjbjhdxrrkrbfokbto": {
-                        "0": "<string>",
-                        "parentId": "<string>"
-                    },
-                    "fk_ixckxqxttkoengysrqsjvlvifwbouufsgogu": {
-                        "0": "<string>",
-                        "primaryOwnerId": "<string>"
-                    },
-                    "fk_rpuugquhflfawqzacwcqtpjsarubpbdhxaes": {
-                        "0": "<string>",
-                        "sectionId": "<string>"
-                    },
-                    "fk_rsmejgcqdxqigjljvknwjdumzmqzapwnmajb": {
+                    "fk_bxjmwcbljhbcurkpvwirdaqoxktyyoannjbv": {
                         "0": "<string>",
                         "id": "<string>"
                     },
-                    "fk_sflidbledwxttatopzkntuxidudjxpqljtxi": {
+                    "fk_gtwpzxxkaqsfwyaugwtuxprxgubhzegjzwtq": {
+                        "0": "<string>",
+                        "primaryOwnerId": "<string>"
+                    },
+                    "fk_ijozpcylpjxkkvszugkstsjugjrckhzjgxxj": {
                         "0": "<string>",
                         "fieldId": "<string>"
                     },
-                    "fk_vurhywvyfuakygomtmxhumighyipxsrnnhqi": {
+                    "fk_mpemsykokxaatgmrcjdlzqzjqtceehqbfmbm": {
                         "0": "<string>",
                         "typeId": "<string>"
+                    },
+                    "fk_uprhiapwpdomjvdvopeieqavmecjjovloezw": {
+                        "0": "<string>",
+                        "sectionId": "<string>"
+                    },
+                    "fk_vkosakqtiszfdvhzfkyvbcdnsvampucjotqz": {
+                        "0": "<string>",
+                        "parentId": "<string>"
                     }
                 },
                 "fullName": "<string>",
@@ -2500,15 +2692,7 @@
         "list_backups": {
             "status": "ok",
             "shape": {
-                "backups": [
-                    {
-                        "created": "<string>",
-                        "filename": "<string>",
-                        "path": "<string>",
-                        "size": "<string>",
-                        "sizeBytes": "<number>"
-                    }
-                ],
+                "backups": [],
                 "count": "<number>",
                 "path": "<string>"
             }
@@ -2520,104 +2704,9 @@
                 "schemas": [
                     {
                         "id": "<number>",
-                        "isPublic": "<bool>",
+                        "isPublic": "<bool|false>",
                         "name": "<string>",
-                        "permissions": {
-                            "elements": {
-                                "drafts": [
-                                    "<string>"
-                                ],
-                                "inactive": [
-                                    "<string>"
-                                ],
-                                "revisions": [
-                                    "<string>"
-                                ]
-                            },
-                            "formieForms": {
-                                "all": [
-                                    "<string>"
-                                ]
-                            },
-                            "formieSubmissions?": {
-                                "all": [
-                                    "<string>"
-                                ]
-                            },
-                            "headless": {
-                                "devMeta": [
-                                    "<string>"
-                                ],
-                                "devToolsConfig": [
-                                    "<string>"
-                                ]
-                            },
-                            "navigationNavs": {
-                                "0533798e-1317-4833-bf48-a3f9189a8c80": [
-                                    "<string>"
-                                ],
-                                "all": [
-                                    "<string>"
-                                ]
-                            },
-                            "nestedentryfields": {
-                                "0a58e287-e038-4eb7-ab2a-cf4cbdbe013d": [
-                                    "<string>"
-                                ],
-                                "2bae9725-9546-4f55-a889-56102191aa89": [
-                                    "<string>"
-                                ],
-                                "8025fde3-00ea-4d54-9862-f1dca9b08ebf": [
-                                    "<string>"
-                                ]
-                            },
-                            "retour": {
-                                "all": [
-                                    "<string>"
-                                ]
-                            },
-                            "sections": {
-                                "3e2a1a6f-88ea-477b-936d-39393f2d594f": [
-                                    "<string>"
-                                ],
-                                "6ba54824-1c3f-454f-8830-f6cea379bee4": [
-                                    "<string>"
-                                ],
-                                "70b2614b-639a-4de2-8c11-3851d36d6f8c": [
-                                    "<string>"
-                                ],
-                                "998bf681-e007-4f7e-a525-863e01a38560": [
-                                    "<string>"
-                                ],
-                                "aef20f9c-5c84-4c50-8a18-acf0452db62f": [
-                                    "<string>"
-                                ],
-                                "bd99645a-4524-40e4-83dc-c6b12e023bab": [
-                                    "<string>"
-                                ],
-                                "c4b4f50d-7d62-4a4c-bbf8-7aae00fd82c7": [
-                                    "<string>"
-                                ],
-                                "cdad2202-5d55-49ba-995e-962503f5887f": [
-                                    "<string>"
-                                ]
-                            },
-                            "seomatic": {
-                                "all": [
-                                    "<string>"
-                                ]
-                            },
-                            "sites": {
-                                "58ccb571-6c72-449f-8e7b-6f43c5d416b3": [
-                                    "<string>"
-                                ]
-                            },
-                            "volumes": {
-                                "7b9364bd-2215-495a-8b0b-2280df887a8b": [
-                                    "<string>"
-                                ]
-                            }
-                        },
+                        "permissions": "<list|object>",
                         "scope": [
                             "<string>"
                         ],
@@ -2659,107 +2748,15 @@
                     "id": "<number>",
                     "isPublic": true,
                     "name": "<string>",
-                    "permissions": {
-                        "elements": {
-                            "drafts": [
-                                "<string>"
-                            ],
-                            "inactive": [
-                                "<string>"
-                            ],
-                            "revisions": [
-                                "<string>"
-                            ]
-                        },
-                        "formieForms": {
-                            "all": [
-                                "<string>"
-                            ]
-                        },
-                        "headless": {
-                            "devMeta": [
-                                "<string>"
-                            ],
-                            "devToolsConfig": [
-                                "<string>"
-                            ]
-                        },
-                        "navigationNavs": {
-                            "0533798e-1317-4833-bf48-a3f9189a8c80": [
-                                "<string>"
-                            ],
-                            "all": [
-                                "<string>"
-                            ]
-                        },
-                        "nestedentryfields": {
-                            "0a58e287-e038-4eb7-ab2a-cf4cbdbe013d": [
-                                "<string>"
-                            ],
-                            "2bae9725-9546-4f55-a889-56102191aa89": [
-                                "<string>"
-                            ],
-                            "8025fde3-00ea-4d54-9862-f1dca9b08ebf": [
-                                "<string>"
-                            ]
-                        },
-                        "retour": {
-                            "all": [
-                                "<string>"
-                            ]
-                        },
-                        "sections": {
-                            "3e2a1a6f-88ea-477b-936d-39393f2d594f": [
-                                "<string>"
-                            ],
-                            "6ba54824-1c3f-454f-8830-f6cea379bee4": [
-                                "<string>"
-                            ],
-                            "70b2614b-639a-4de2-8c11-3851d36d6f8c": [
-                                "<string>"
-                            ],
-                            "998bf681-e007-4f7e-a525-863e01a38560": [
-                                "<string>"
-                            ],
-                            "aef20f9c-5c84-4c50-8a18-acf0452db62f": [
-                                "<string>"
-                            ],
-                            "bd99645a-4524-40e4-83dc-c6b12e023bab": [
-                                "<string>"
-                            ],
-                            "c4b4f50d-7d62-4a4c-bbf8-7aae00fd82c7": [
-                                "<string>"
-                            ],
-                            "cdad2202-5d55-49ba-995e-962503f5887f": [
-                                "<string>"
-                            ]
-                        },
-                        "seomatic": {
-                            "all": [
-                                "<string>"
-                            ]
-                        },
-                        "sites": {
-                            "58ccb571-6c72-449f-8e7b-6f43c5d416b3": [
-                                "<string>"
-                            ]
-                        },
-                        "volumes": {
-                            "7b9364bd-2215-495a-8b0b-2280df887a8b": [
-                                "<string>"
-                            ]
-                        }
-                    },
-                    "scope": [
-                        "<string>"
-                    ],
+                    "permissions": [],
+                    "scope": [],
                     "uid": "<string>"
                 },
                 "sdlBytes": "<number>",
                 "success": true,
                 "types": [
                     {
-                        "fields?": "<number>",
+                        "fields": "<number>",
                         "kind": "<string>",
                         "name": "<string>",
                         "sdlBytes": "<number>"
@@ -2850,7 +2847,7 @@
                 "count": "<number>",
                 "entries": [
                     {
-                        "authorId": "<number>",
+                        "authorId": null,
                         "canonicalId": "<number>",
                         "cpEditUrl": "<string>",
                         "dateCreated": "<string>",
@@ -2858,8 +2855,8 @@
                         "draftId": null,
                         "expiryDate": null,
                         "fields": {
-                            "category": [],
-                            "contentBuilder": "<list|object>"
+                            "mcpSmokeBlocks": [],
+                            "mcpSmokeRelated": []
                         },
                         "id": "<number>",
                         "postDate": "<string>",
@@ -2871,11 +2868,11 @@
                         "status": "<string>",
                         "title": "<string>",
                         "typeHandle": "<string>",
-                        "url": "<string>",
+                        "url": null,
                         "warnings": []
                     }
                 ],
-                "hasMore": true,
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2893,7 +2890,7 @@
                         "title": "<string>"
                     }
                 ],
-                "hasMore": true,
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2903,48 +2900,7 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
-                "entries": [
-                    {
-                        "authorId": "<number>",
-                        "canonicalId": "<number>",
-                        "cpEditUrl": "<string>",
-                        "dateCreated": "<string>",
-                        "dateUpdated": "<string>",
-                        "draftId": null,
-                        "expiryDate": null,
-                        "fields": {
-                            "category": [],
-                            "contentBuilder": {
-                                "<keyed>": {
-                                    "collapsed": false,
-                                    "enabled": "<bool|true>",
-                                    "fields": {
-                                        "buttons": [],
-                                        "contentExtensive": "<string>",
-                                        "image?": [],
-                                        "reverseView?": true
-                                    },
-                                    "position": "<number>",
-                                    "slug": null,
-                                    "title": null,
-                                    "type": "<string>"
-                                }
-                            }
-                        },
-                        "id": "<number>",
-                        "postDate": "<string>",
-                        "sectionHandle": "<string>",
-                        "siteHandle": "<string>",
-                        "siteId": "<number>",
-                        "slug": "<string>",
-                        "state": "<string>",
-                        "status": "<string>",
-                        "title": "<string>",
-                        "typeHandle": "<string>",
-                        "url": "<string>",
-                        "warnings": []
-                    }
-                ],
+                "entries": [],
                 "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
@@ -2957,7 +2913,7 @@
                 "count": "<number>",
                 "entries": [
                     {
-                        "authorId": "<number>",
+                        "authorId": null,
                         "canonicalId": "<number>",
                         "cpEditUrl": "<string>",
                         "dateCreated": "<string>",
@@ -2965,8 +2921,8 @@
                         "draftId": null,
                         "expiryDate": null,
                         "fields": {
-                            "category": [],
-                            "contentBuilder": "<list|object>"
+                            "mcpSmokeBlocks": [],
+                            "mcpSmokeRelated": []
                         },
                         "id": "<number>",
                         "postDate": "<string>",
@@ -2978,11 +2934,11 @@
                         "status": "<string>",
                         "title": "<string>",
                         "typeHandle": "<string>",
-                        "url": "<string>",
+                        "url": null,
                         "warnings": []
                     }
                 ],
-                "hasMore": true,
+                "hasMore": false,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
@@ -2992,7 +2948,7 @@
             "status": "ok",
             "shape": {
                 "entry": {
-                    "authorId": "<number>",
+                    "authorId": null,
                     "canonicalId": "<number>",
                     "cpEditUrl": "<string>",
                     "dateCreated": "<string>",
@@ -3000,18 +2956,8 @@
                     "draftId": null,
                     "expiryDate": null,
                     "fields": {
-                        "category": [],
-                        "contentBuilder": {
-                            "<keyed>": {
-                                "collapsed": false,
-                                "enabled": true,
-                                "fields": [],
-                                "position": "<number>",
-                                "slug": "<string>",
-                                "title": "<string>",
-                                "type": "<string>"
-                            }
-                        }
+                        "mcpSmokeBlocks": [],
+                        "mcpSmokeRelated": []
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3023,7 +2969,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": "<string>",
+                    "url": null,
                     "warnings": []
                 },
                 "found": true
@@ -3033,7 +2979,7 @@
             "status": "ok",
             "shape": {
                 "entry": {
-                    "authorId": "<number>",
+                    "authorId": null,
                     "canonicalId": "<number>",
                     "cpEditUrl": "<string>",
                     "dateCreated": "<string>",
@@ -3041,18 +2987,8 @@
                     "draftId": null,
                     "expiryDate": null,
                     "fields": {
-                        "category": [],
-                        "contentBuilder": {
-                            "<keyed>": {
-                                "collapsed": false,
-                                "enabled": true,
-                                "fields": [],
-                                "position": "<number>",
-                                "slug": "<string>",
-                                "title": "<string>",
-                                "type": "<string>"
-                            }
-                        }
+                        "mcpSmokeBlocks": [],
+                        "mcpSmokeRelated": []
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3064,7 +3000,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": "<string>",
+                    "url": null,
                     "warnings": []
                 },
                 "found": true
@@ -3099,164 +3035,7 @@
                     {
                         "blockTypes?": [
                             {
-                                "fields": [
-                                    {
-                                        "handle": "<string>",
-                                        "input": {
-                                            "elementType?": "<string>",
-                                            "hint?": "<string>",
-                                            "item?": [
-                                                "<string>"
-                                            ],
-                                            "kind": "<string>",
-                                            "linkTypes?": {
-                                                "default-verbb-hyper-links-custom": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-email": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-entry": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-phone": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkIcon2": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-url": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "multiple?": true,
-                                            "note?": "<string>",
-                                            "payload?": "<string>",
-                                            "valueType?": "<string>"
-                                        },
-                                        "instructions": "<string>",
-                                        "kind": "<string>",
-                                        "name": "<string>",
-                                        "required": false,
-                                        "target?": {
-                                            "elementType": "<string>",
-                                            "sources": "<string>"
-                                        },
-                                        "translation": {
-                                            "method": "<string>",
-                                            "perSite": false
-                                        },
-                                        "type": "<string>"
-                                    }
-                                ],
+                                "fields": [],
                                 "handle": "<string>",
                                 "hasTitleField": false,
                                 "name": "<string>"
@@ -3265,10 +3044,7 @@
                         "handle": "<string>",
                         "input": {
                             "blockTypes?": {
-                                "contentBlock": {
-                                    "hasTitleField": false
-                                },
-                                "contentMedia": {
+                                "mcpSmokeBlock": {
                                     "hasTitleField": false
                                 }
                             },
@@ -3288,14 +3064,9 @@
                             "elementType": "<string>",
                             "sources": [
                                 {
-                                    "unresolved": "<string>"
+                                    "section": "<string>"
                                 }
                             ]
-                        },
-                        "translation": {
-                            "method": "<string>",
-                            "perSite": false,
-                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }
@@ -3324,7 +3095,7 @@
             "status": "ok",
             "shape": {
                 "example": {
-                    "authorId": "<number>",
+                    "authorId": null,
                     "canonicalId": "<number>",
                     "cpEditUrl": "<string>",
                     "dateCreated": "<string>",
@@ -3332,18 +3103,8 @@
                     "draftId": null,
                     "expiryDate": null,
                     "fields": {
-                        "category": [],
-                        "contentBuilder": {
-                            "<keyed>": {
-                                "collapsed": false,
-                                "enabled": true,
-                                "fields": [],
-                                "position": "<number>",
-                                "slug": "<string>",
-                                "title": "<string>",
-                                "type": "<string>"
-                            }
-                        }
+                        "mcpSmokeBlocks": [],
+                        "mcpSmokeRelated": []
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3355,171 +3116,14 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": "<string>",
+                    "url": null,
                     "warnings": []
                 },
                 "fields": [
                     {
                         "blockTypes?": [
                             {
-                                "fields": [
-                                    {
-                                        "handle": "<string>",
-                                        "input": {
-                                            "elementType?": "<string>",
-                                            "hint?": "<string>",
-                                            "item?": [
-                                                "<string>"
-                                            ],
-                                            "kind": "<string>",
-                                            "linkTypes?": {
-                                                "default-verbb-hyper-links-custom": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-email": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-entry": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-phone": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkIcon2": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                },
-                                                "default-verbb-hyper-links-url": {
-                                                    "fields": {
-                                                        "fields": {
-                                                            "linkIcon": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            },
-                                                            "linkStyle": {
-                                                                "input": {
-                                                                    "kind": "<string>",
-                                                                    "truncated": true
-                                                                }
-                                                            }
-                                                        },
-                                                        "natives": [
-                                                            {
-                                                                "attribute": "<string>",
-                                                                "required": false
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "multiple?": true,
-                                            "note?": "<string>",
-                                            "payload?": "<string>",
-                                            "valueType?": "<string>"
-                                        },
-                                        "instructions": "<string>",
-                                        "kind": "<string>",
-                                        "name": "<string>",
-                                        "required": false,
-                                        "target?": {
-                                            "elementType": "<string>",
-                                            "sources": "<string>"
-                                        },
-                                        "translation": {
-                                            "method": "<string>",
-                                            "perSite": false
-                                        },
-                                        "type": "<string>"
-                                    }
-                                ],
+                                "fields": [],
                                 "handle": "<string>",
                                 "hasTitleField": false,
                                 "name": "<string>"
@@ -3528,10 +3132,7 @@
                         "handle": "<string>",
                         "input": {
                             "blockTypes?": {
-                                "contentBlock": {
-                                    "hasTitleField": false
-                                },
-                                "contentMedia": {
+                                "mcpSmokeBlock": {
                                     "hasTitleField": false
                                 }
                             },
@@ -3551,14 +3152,9 @@
                             "elementType": "<string>",
                             "sources": [
                                 {
-                                    "unresolved": "<string>"
+                                    "section": "<string>"
                                 }
                             ]
-                        },
-                        "translation": {
-                            "method": "<string>",
-                            "perSite": false,
-                            "propagation?": "<string>"
                         },
                         "type": "<string>"
                     }
@@ -3591,11 +3187,11 @@
                     {
                         "canonicalId": "<number>",
                         "cpEditUrl": "<string>",
-                        "creator": null,
+                        "creator": "<null|string>",
                         "dateUpdated": "<string>",
                         "draftElementId": "<number>",
-                        "isNewEntry": true,
-                        "notes": null,
+                        "isNewEntry": "<bool|true>",
+                        "notes": "<null|string>",
                         "section": "<string>",
                         "site": "<string>",
                         "title": "<string>",
@@ -3618,9 +3214,9 @@
                 "revisions": [
                     {
                         "canonicalId": "<number>",
-                        "creator": "<string>",
+                        "creator": null,
                         "dateCreated": "<string>",
-                        "notes": "<string>",
+                        "notes": null,
                         "revisionElementId": "<number>",
                         "revisionNum": "<number>",
                         "title": "<string>"
@@ -3632,17 +3228,57 @@
         "list_assets": {
             "status": "ok",
             "shape": {
-                "assets": [],
+                "assets": [
+                    {
+                        "dateCreated": "<string>",
+                        "dateModified": "<string>",
+                        "filename": "<string>",
+                        "folderId": "<number>",
+                        "height": "<number>",
+                        "id": "<number>",
+                        "kind": "<string>",
+                        "size": "<number>",
+                        "title": "<string>",
+                        "url": "<string>",
+                        "volumeId": "<number>",
+                        "width": "<number>"
+                    }
+                ],
                 "count": "<number>",
-                "hasMore": false,
+                "hasMore": true,
                 "limit": "<number>",
                 "offset": "<number>",
                 "total": "<number>"
             }
         },
         "get_asset": {
-            "status": "skipped",
-            "reason": "an earlier step did not produce the value this one needs"
+            "status": "ok",
+            "shape": {
+                "asset": {
+                    "alt": null,
+                    "dateCreated": "<string>",
+                    "dateModified": "<string>",
+                    "extension": "<string>",
+                    "fields": [],
+                    "filename": "<string>",
+                    "focalPoint": {
+                        "x": "<number>",
+                        "y": "<number>"
+                    },
+                    "folderId": "<number>",
+                    "folderPath": "<string>",
+                    "height": "<number>",
+                    "id": "<number>",
+                    "kind": "<string>",
+                    "mimeType": "<string>",
+                    "size": "<number>",
+                    "title": "<string>",
+                    "url": "<string>",
+                    "volumeId": "<number>",
+                    "width": "<number>"
+                },
+                "found": true
+            }
         },
         "list_asset_folders": {
             "status": "ok",
@@ -3685,8 +3321,8 @@
                     "draftId": "<number>",
                     "expiryDate": null,
                     "fields": {
-                        "category": [],
-                        "contentBuilder": []
+                        "mcpSmokeBlocks": [],
+                        "mcpSmokeRelated": []
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3698,7 +3334,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": "<string>",
+                    "url": null,
                     "warnings": []
                 },
                 "found": true
@@ -3730,13 +3366,13 @@
                     "draftId": "<number>",
                     "expiryDate": null,
                     "fields": {
-                        "category": [
+                        "mcpSmokeBlocks": [],
+                        "mcpSmokeRelated": [
                             {
                                 "section": "<string>",
                                 "slug": "<string>"
                             }
-                        ],
-                        "contentBuilder": []
+                        ]
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3748,7 +3384,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": "<string>",
+                    "url": null,
                     "warnings": []
                 },
                 "found": true
@@ -3840,21 +3476,18 @@
                     "draftId": null,
                     "expiryDate": null,
                     "fields": {
-                        "category": [],
-                        "contentBuilder": {
+                        "mcpSmokeBlocks": {
                             "<keyed>": {
                                 "collapsed": false,
                                 "enabled": true,
-                                "fields": {
-                                    "buttons": [],
-                                    "contentExtensive": null
-                                },
+                                "fields": [],
                                 "position": "<number>",
-                                "slug": null,
-                                "title": null,
+                                "slug": "<string>",
+                                "title": "<string>",
                                 "type": "<string>"
                             }
-                        }
+                        },
+                        "mcpSmokeRelated": []
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3866,7 +3499,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": "<string>",
+                    "url": null,
                     "warnings": []
                 },
                 "success": true
@@ -3884,21 +3517,18 @@
                     "draftId": "<number>",
                     "expiryDate": null,
                     "fields": {
-                        "category": [],
-                        "contentBuilder": {
+                        "mcpSmokeBlocks": {
                             "<keyed>": {
                                 "collapsed": false,
                                 "enabled": true,
-                                "fields": {
-                                    "buttons": [],
-                                    "contentExtensive": null
-                                },
+                                "fields": [],
                                 "position": "<number>",
-                                "slug": null,
-                                "title": null,
+                                "slug": "<string>",
+                                "title": "<string>",
                                 "type": "<string>"
                             }
-                        }
+                        },
+                        "mcpSmokeRelated": []
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3910,7 +3540,7 @@
                     "status": "<string>",
                     "title": "<string>",
                     "typeHandle": "<string>",
-                    "url": "<string>",
+                    "url": null,
                     "warnings": []
                 },
                 "parent": null,
@@ -3919,56 +3549,12 @@
             }
         },
         "get_entry.second_site": {
-            "status": "ok",
-            "shape": {
-                "entry": {
-                    "authorId": "<number>",
-                    "canonicalId": "<number>",
-                    "cpEditUrl": "<string>",
-                    "dateCreated": "<string>",
-                    "dateUpdated": "<string>",
-                    "draftId": null,
-                    "expiryDate": null,
-                    "fields": {
-                        "category": [],
-                        "contentBuilder": {
-                            "<keyed>": {
-                                "collapsed": false,
-                                "enabled": true,
-                                "fields": {
-                                    "buttons": [],
-                                    "contentExtensive": null
-                                },
-                                "position": "<number>",
-                                "slug": null,
-                                "title": null,
-                                "type": "<string>"
-                            }
-                        }
-                    },
-                    "id": "<number>",
-                    "postDate": "<string>",
-                    "sectionHandle": "<string>",
-                    "siteHandle": "<string>",
-                    "siteId": "<number>",
-                    "slug": "<string>",
-                    "state": "<string>",
-                    "status": "<string>",
-                    "title": "<string>",
-                    "typeHandle": "<string>",
-                    "url": "<string>",
-                    "warnings": []
-                },
-                "found": true
-            }
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
         },
         "copy_entry_to_site": {
-            "status": "ok",
-            "shape": {
-                "copiedFields": [],
-                "message": "<string>",
-                "success": true
-            }
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
         },
         "delete_entry.cross_site_draft": {
             "status": "skipped",

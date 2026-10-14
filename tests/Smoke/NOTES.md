@@ -5,7 +5,8 @@ calls every tool, and compares the result against a recorded baseline. It does
 that once per **profile**: one identity on one transport.
 
 ```bash
-ddev exec bash -c "cd /var/www/html/backend/plugins/craft-mcp && composer smoke"
+php tests/Smoke/fixture.php             # once per install: the content model below
+composer smoke                          # every profile, against the baselines
 composer smoke -- --profile=http-full   # one profile
 composer smoke:baseline                 # re-record after an intended change
 composer smoke:heavy                    # include create_backup and anything else slow
@@ -13,6 +14,37 @@ composer smoke:heavy                    # include create_backup and anything els
 
 Exit code is 0 only when there is no drift, no unexpected failure and no scope
 violation, on every profile that ran.
+
+## Where it runs
+
+The harness runs from a plugin checkout placed inside a Craft project, because
+`bin/mcp-server` and the token minting both walk up to the nearest
+`bootstrap.php` and `craft`. Inside DDEV that means `ddev exec` from the
+checkout's directory in the container.
+
+The baselines are recorded on **stimmt-cms**, a single-site Craft 5 install,
+with the fixture below added to it. The server loads the plugin from that
+project's `vendor/`, so to test unreleased code put the checkout's `src/` over
+`vendor/stimmt/craft-mcp/src/` for the run, then reinstall it afterwards.
+Snapshot the database first (`ddev snapshot`): the write lifecycle publishes
+and trashes real entries, and restoring is the only way to leave no trace.
+
+## The fixture
+
+`fixture.php` installs the content model `Plan.php` is written against, named
+for the harness so it cannot collide with a site's own content:
+
+| Plan constant | Handle | What it is |
+|---|---|---|
+| `SECTION` | `mcpSmoke` | channel section, enabled on every site, no URLs |
+| `ENTRY_TYPE` | `mcpSmokePage` | its only entry type |
+| `MATRIX_FIELD` | `mcpSmokeBlocks` | Matrix field on that type |
+| `BLOCK_TYPE` | `mcpSmokeBlock` | the Matrix field's one block type, no fields, no title field |
+| `RELATION_FIELD` | `mcpSmokeRelated` | Entries field on that type, sourced from `mcpSmoke` itself |
+
+plus one live entry, `smoke-fixture`, for the read steps to find. The script is
+idempotent and writes project config, so on a client site keep the resulting
+`config/project` files out of that site's commits.
 
 ## Why it exists
 
@@ -88,8 +120,8 @@ with "no longer reproduces: delete it" instead of passing silently. That makes
 the register a todo list the machine maintains.
 
 An entry may name the profiles it applies to, and then it is required to be
-absent everywhere else. That is not a convenience: both GraphQL tools fail on
-stdio and answer normally over HTTP, and a register that could not say so would
+absent everywhere else. That is not a convenience: both GraphQL tools once
+failed on stdio while answering normally over HTTP, and a register that could not say so would
 have to either forgive a real failure over HTTP or demand a fictional one.
 
 Assertions exist because a shape diff is blind to emptiness: a `list_entries`
@@ -151,10 +183,9 @@ Facts established by running it, recorded so they are not rediscovered:
   back as JSON-RPC `-32602`, from the SDK registry rather than from a tool.
   Before `mcp/sdk` 0.8 it was `-32601`; the SDK moved to `-32602` because
   `tools/call` exists and only the tool name in its params does not.
-- **Both GraphQL tools work over HTTP** and fail on stdio. The transport, not
-  the tool, is the broken thing.
-- **`reload_mcp` destroys its own response over HTTP**, on every call. See the
-  register.
+- **Both GraphQL tools and `reload_mcp` answer on both transports.** GraphQL
+  once failed on stdio and `reload_mcp` once destroyed its own response over
+  HTTP; both are fixed, and a regression shows up as drift on that profile.
 - **An unknown site handle is refused**, not quietly swapped for the primary
   site: `Site 'nope' not found. Use list_sites for available handles.`
 - **Publishing is not per-site.** `publish_entry` applies the draft to every
@@ -197,10 +228,9 @@ drift in the catalogue, so coverage cannot rot quietly.
 Currently uncovered and why:
 
 - `create_backup`: writes a database dump, so it is behind `--heavy`.
-- `get_asset`: no assets exist on this install to address.
-- `query_graphql`, `execute_graphql`: uncovered on stdio only, where they are
-  broken; both are covered on the HTTP profiles.
-- `reload_mcp`: uncovered on the HTTP profiles only, where it is broken.
+- `copy_entry_to_site`: stimmt-cms has one site, so every step that needs a
+  second site handle reports itself skipped. Recording on a multi-site install
+  would cover it.
 
 ## Known gaps in the harness itself
 
@@ -225,22 +255,23 @@ Stated so nobody mistakes a pass for more than it is:
 5. **Transport settings are not swept.** `allowedIps`, `disabledScopes`,
    `disabledTools` and `paginationLimit` all change what a connection sees, and
    all are left at this install's values.
-6. **The plan is install-specific.** Section, entry type and Matrix field are
-   constants at the top of `Plan.php`. On another install the content steps fail
-   loudly rather than skipping quietly, which is the intended trade. The
-   multi-site steps are the exception: they hang off a second site handle
-   captured from `list_sites`, so on a single-site install they report
-   themselves skipped instead of failing.
+6. **The plan needs its fixture.** Section, entry type and fields are
+   constants at the top of `Plan.php`, installed by `fixture.php`. On an
+   install without it the content steps fail loudly rather than skipping
+   quietly, which is the intended trade. The multi-site steps are the
+   exception: they hang off a second site handle captured from `list_sites`,
+   so on a single-site install they report themselves skipped instead of
+   failing.
 7. **Values are only checked where an assertion says so.** Everything else is
    shape.
 8. **A boundary violation writes.** The readonly probe calls `create_entry` with
    arguments that would work. On a correct server it is refused and nothing
    happens; on a broken one the run leaves a draft behind, which is the cost of
    proving the boundary by crossing it rather than by reading a list.
-9. **Multi-site coverage is two sites in one group.** Both sites here serve the
-   same sections with the same URI formats, so nothing exercises a section
-   enabled for one site only, a section whose propagation method is not `all`,
-   or a second site group.
+9. **No multi-site coverage.** The baselines come from a single-site install,
+   so cross-site copying, publishing a draft that exists on several sites, and
+   per-site reads of a second site are all skipped. The plan still holds those
+   steps; they run on any install with a second site.
 
 ## Manual probes
 
