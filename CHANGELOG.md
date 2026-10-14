@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-14
+
 ### Changed
 
 - `list_entries` lists every status when `status` is omitted, as `count_entries` already counted them and as the control panel's Entries index shows them. It returned live entries only, so a total from `count_entries` could name entries no page of `list_entries` would return, and an agent browsing for an editor's work missed anything still disabled. Pass `status: "live"` for the previous result set. Each row carries its own `status` (#73)
