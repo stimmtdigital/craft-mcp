@@ -176,7 +176,7 @@ return [
 | `disabledTools` | `array` | `[]` | List of tool names to disable regardless of other settings |
 | `disabledPrompts` | `array` | `[]` | List of prompt names to disable |
 | `disabledResources` | `array` | `[]` | List of resource URIs to disable |
-| `allowedIps` | `array` | `[]` | IP addresses allowed to connect (empty = all allowed) |
+| `allowedIps` | `array` | `[]` | IP addresses or CIDR ranges (since 1.6.2) allowed to reach the HTTP endpoint; empty allows all |
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
 | `paginationLimit` | `int` | `100` | Page size of MCP list endpoints (`tools/list`, `prompts/list`, `resources/list`); 100 covers every registered tool in one page. Useful when a client does not follow `nextCursor` pagination |
 | `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
@@ -317,13 +317,14 @@ When `enableDangerousTools` is `false`, these tools are hidden from AI assistant
 
 ### IP Allowlist
 
-The `allowedIps` setting restricts which IP addresses can connect to the MCP server. When configured, connection attempts from other IPs are rejected:
+The `allowedIps` setting restricts which IP addresses can reach the HTTP endpoint. When configured, requests from other IPs are rejected with a 403. Entries are exact addresses or, since 1.6.2, CIDR ranges, IPv4 or IPv6; an entry that does not parse matches nothing:
 
 ```php
 'allowedIps' => [
-    '127.0.0.1',      // IPv4 localhost
-    '::1',            // IPv6 localhost
-    '192.168.1.100',  // A specific machine on your network
+    '127.0.0.1',        // IPv4 localhost
+    '::1',              // IPv6 localhost
+    '192.168.1.100',    // A specific machine on your network
+    '160.79.104.0/21',  // Anthropic, for the Claude connector
 ],
 ```
 

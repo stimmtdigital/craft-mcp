@@ -155,7 +155,7 @@ return [
 Two things have to be true for Claude to reach it:
 
 - **The site must be public HTTPS.** Anthropic's servers make the connection, not the user's computer, so a local DDEV site or an intranet host cannot be added as a connector.
-- **Nothing may block Anthropic.** Requests come from `160.79.104.0/21`. A WAF or firewall in front of Craft must let that range through, and `allowedIps` (exact addresses only) must be left empty for the connector to work.
+- **Nothing may block Anthropic.** Requests come from `160.79.104.0/21`. A WAF or firewall in front of Craft must let that range through, and if you keep `allowedIps` filled, add the range to it (CIDR ranges are accepted since 1.6.2): `'allowedIps' => ['203.0.113.7', '160.79.104.0/21']`.
 
 ### 2. Add the connector in Claude
 
@@ -264,7 +264,7 @@ Revocation and expiry both take effect immediately on the next request; there is
 - **Scope minimally.** Grant `readonly` or `content` by default and reserve `full` for developers who genuinely need code execution and direct database access.
 - **Disable a scope outright where "grant sparingly" isn't enough.** `disabledScopes` (in `config/mcp.php`) closes a scope on this install for everyone, admins included: it cannot be minted, and tokens of that scope minted earlier stop authenticating until the scope is re-enabled, so the guarantee holds even against a token that predates the setting or an admin account that is compromised. Pair it with the per-environment config pattern to keep `readonly`/`content` self-service open while locking `full` out of production entirely: `'production' => ['disabledScopes' => ['full']]`. Combine with a restrictive `scopedTokenPrivilegedTools` (empty by default) for defense in depth on the same install-introspection surface. See [Configuration](configuration.md) for details.
 - **Scope is the outer ceiling; Craft permissions are the inner boundary.** A tool must be in the token's scope to be callable, but a `content` token's entry writes are also gated by the linked user's real Craft permissions. Full-scope tokens skip Craft permission checks (they carry code execution, so they trust the token holder completely). See [User permissions](#user-permissions) for details.
-- **IP allowlisting applies.** When the plugin's `allowedIps` setting is non-empty, the endpoint rejects requests from any other IP with a 403 before authentication runs. An empty list (the default) allows all IPs.
+- **IP allowlisting applies.** When the plugin's `allowedIps` setting is non-empty, the endpoint rejects requests from any other IP with a 403 before authentication runs. Entries are exact addresses or CIDR ranges, IPv4 or IPv6; an entry that does not parse matches nothing. An empty list (the default) allows all IPs.
 - **Sessions are server-side.** Each connection's session state is stored in the `mcp_sessions` database table and expires after `httpSessionTtl` seconds of inactivity (default: 3600). No session data is kept client-side beyond the `Mcp-Session-Id` header.
 
 ## Load balancers and multiple instances

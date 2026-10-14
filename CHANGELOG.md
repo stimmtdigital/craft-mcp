@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-10-14
+
+### Added
+
+- `allowedIps` accepts CIDR ranges as well as exact addresses, IPv4 and IPv6. The Claude connector reaches a site from Anthropic's `160.79.104.0/21`, so an install that keeps its allowlist filled can now admit it by adding that one entry, instead of emptying the list. An entry, or a client address, that does not parse matches nothing
+
 ## [1.6.1] - 2026-10-14
 
 ### Security

@@ -10,6 +10,7 @@ use craft\web\Response;
 use Mcp\Server\Session\SessionStoreInterface;
 use stimmt\craft\Mcp\http\Bridge;
 use stimmt\craft\Mcp\http\DbSessionStore;
+use stimmt\craft\Mcp\http\IpAllowlist;
 use stimmt\craft\Mcp\http\oauth\OAuthConfig;
 use stimmt\craft\Mcp\http\oauth\RecordOAuthStore;
 use stimmt\craft\Mcp\http\RecordStore;
@@ -45,7 +46,7 @@ class HttpController extends Controller {
 
         // An empty allowlist admits every IP (the default); a non-empty one
         // rejects everything else before auth even runs.
-        if ($settings->allowedIps !== [] && !in_array($this->request->getUserIP(), $settings->allowedIps, true)) {
+        if (!(new IpAllowlist($settings->allowedIps))->allows($this->request->getUserIP())) {
             return $this->error(403, -32001, 'Client IP is not allowed');
         }
 

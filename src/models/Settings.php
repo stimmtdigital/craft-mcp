@@ -61,7 +61,12 @@ class Settings extends Model {
      */
     public array $disabledScopes = [];
 
-    /** @var string[] */
+    /**
+     * Who may reach the HTTP endpoint: exact addresses or CIDR ranges, IPv4
+     * or IPv6 (ranges since 1.6.2). Empty admits everyone.
+     *
+     * @var string[]
+     */
     public array $allowedIps = [];
 
     public string $logLevel = 'error';
