@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-14
+
 ### Added
 
 - A one-click connector for the Claude apps (web, Desktop and mobile). With the new `oauth` setting on, a user adds the site under Customize → Connectors by its MCP URL, logs in to the control panel, picks a scope and approves; Claude then works with a token tied to that user and scope. The plugin acts as its own OAuth server: discovery metadata (RFC 9728 and RFC 8414), Dynamic Client Registration restricted to callbacks on the new `oauthRedirectUris` allowlist, PKCE (S256) on every authorization, hour-long access tokens (`oauthAccessTokenTtl`) and refresh tokens that rotate on every use, where presenting an old one revokes the connection (`oauthRefreshTokenTtl`). The consent screen offers only the scopes the user may hold (Full for admins, nothing in `disabledScopes`). Connected apps are listed under My Account → MCP Tokens and Utilities → MCP Tokens, with Disconnect. Claude Code can sign in the same way. Off by default; with it off the endpoint behaves exactly as before. See [Connecting Claude](docs/http-transport.md#connecting-claude-web-desktop-and-mobile)
