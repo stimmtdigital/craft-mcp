@@ -84,8 +84,8 @@ class McpTools {
 
         return [
             'name' => $plugin !== null ? $plugin->name : 'Craft MCP',
-            'handle' => $plugin !== null ? $plugin->handle : 'mcp',
-            'version' => $plugin !== null ? $plugin->version : 'unknown',
+            'handle' => $plugin->handle ?? 'mcp',
+            'version' => $plugin->version ?? 'unknown',
             'build' => Build::reference(),
             // Which of the two answers above was observed from the code on disk
             // rather than taken from composer's record of what it installed.
@@ -96,7 +96,7 @@ class McpTools {
             // Only on a working copy, and only then because the version above
             // can name the branch composer installed rather than the one on disk.
             'branch' => Build::branch(),
-            'schemaVersion' => $plugin !== null ? $plugin->schemaVersion : 'unknown',
+            'schemaVersion' => $plugin->schemaVersion ?? 'unknown',
             'status' => [
                 'enabled' => $settings->enabled,
                 'dangerousToolsEnabled' => $settings->enableDangerousTools,

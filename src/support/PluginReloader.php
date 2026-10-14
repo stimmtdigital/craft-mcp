@@ -191,7 +191,7 @@ final class PluginReloader {
 
             // Build the new composer plugin info array (mirrors Craft's init logic)
             $normalized = array_map(
-                fn (string $packageName, array $plugin) => self::normalizePluginConfig($packageName, $plugin),
+                self::normalizePluginConfig(...),
                 array_keys($pluginConfigs),
                 $pluginConfigs,
             );

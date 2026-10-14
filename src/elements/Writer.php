@@ -28,7 +28,7 @@ final readonly class Writer {
         $element = Craft::$app->getElements()->createElement($attributes);
         if ($site !== null) {
             $targetSite = Craft::$app->getSites()->getSiteByHandle($site);
-            $element->siteId = $targetSite === null ? $element->siteId : $targetSite->id;
+            $element->siteId = $targetSite->id ?? $element->siteId;
         }
 
         $element->setFieldValues($this->prepare($element->getFieldLayout(), $fieldsPayload, $context));
