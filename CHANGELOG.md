@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-10-15
+
 ### Fixed
 
 - Static analysis passes on PHP 8.3 and 8.4 again. PHP 8.5 renumbered `FILTER_FLAG_GLOBAL_RANGE`, and PHPStan read the old value as 8.5's `FILTER_THROW_ON_FAILURE`, so it reported that `upload_asset`'s public-address check could never fail. It can, and does: no change in behaviour, and 1.7.0 refuses private addresses exactly as this release does
