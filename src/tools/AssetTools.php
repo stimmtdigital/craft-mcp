@@ -6,7 +6,6 @@ namespace stimmt\craft\Mcp\tools;
 
 use Craft;
 use craft\elements\Asset;
-use craft\models\FieldLayout;
 use craft\models\Volume;
 use craft\models\VolumeFolder;
 use craft\services\Assets;
@@ -17,11 +16,11 @@ use Mcp\Schema\ToolAnnotations;
 use Mcp\Server\RequestContext;
 use stimmt\craft\Mcp\attributes\McpToolMeta;
 use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\support\AssetSerializer;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
 use stimmt\craft\Mcp\support\Window;
-use stimmt\craft\Mcp\text\Serializer;
 
 /**
  * Asset-related MCP tools for Craft CMS.
@@ -84,7 +83,7 @@ class AssetTools {
         $results = [];
 
         foreach ($assets as $asset) {
-            $results[] = $this->serializeAsset($asset);
+            $results[] = AssetSerializer::serialize($asset);
         }
 
         return Response::paginated('assets', $results, (int) $query->count(), $limit, $offset);
@@ -111,7 +110,7 @@ class AssetTools {
 
         return [
             'found' => true,
-            'asset' => $this->serializeAsset($asset, true),
+            'asset' => AssetSerializer::serialize($asset, true),
         ];
     }
 
@@ -238,49 +237,5 @@ class AssetTools {
                 $volumes,
             ),
         );
-    }
-
-    /**
-     * Serialize an asset to array.
-     */
-    private function serializeAsset(Asset $asset, bool $detailed = false): array {
-        $data = [
-            'id' => $asset->id,
-            'title' => $asset->title,
-            'filename' => $asset->filename,
-            'kind' => $asset->kind,
-            'size' => $asset->size,
-            'width' => $asset->width,
-            'height' => $asset->height,
-            'url' => $asset->getUrl(),
-            'volumeId' => $asset->volumeId,
-            'folderId' => $asset->folderId,
-            'dateCreated' => $asset->dateCreated?->format('Y-m-d H:i:s'),
-            'dateModified' => $asset->dateModified?->format('Y-m-d H:i:s'),
-        ];
-
-        if ($detailed) {
-            $data['mimeType'] = $asset->mimeType;
-            $data['extension'] = $asset->extension;
-            $data['folderPath'] = $asset->folderPath;
-            $data['alt'] = $asset->alt;
-
-            // Custom fields
-            $fieldValues = [];
-            if ($asset->getFieldLayout() instanceof FieldLayout) {
-                foreach ($asset->getFieldLayout()->getCustomFields() as $field) {
-                    $value = $asset->getFieldValue($field->handle);
-                    $fieldValues[$field->handle] = Serializer::serialize($value);
-                }
-            }
-            $data['fields'] = $fieldValues;
-
-            // Image-specific
-            if ($asset->kind === 'image') {
-                $data['focalPoint'] = $asset->focalPoint;
-            }
-        }
-
-        return $data;
     }
 }

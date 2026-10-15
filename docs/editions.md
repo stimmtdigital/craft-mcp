@@ -1,6 +1,6 @@
 # Editions
 
-Craft MCP comes in two editions. The rule is a single line: **everything that reads, inspects or queries your install is Lite. Everything that writes entry content is Pro.**
+Craft MCP comes in two editions. The rule is a single line: **everything that reads, inspects or queries your install is Lite. Everything that writes content (entries, assets and user accounts) is Pro.**
 
 Switch editions in the Craft control panel under **Settings > Plugins**.
 
@@ -21,10 +21,12 @@ Switch editions in the Craft control panel under **Settings > Plugins**.
 | **Publish, duplicate, delete entries** | No | Yes |
 | **Create and reorder Matrix blocks** | No | Yes |
 | **Copy entry content between sites** | No | Yes |
+| **Upload, edit and trash assets** | No | Yes |
+| **Create and manage user accounts** | No | Yes |
 
 ## The tools Pro adds
 
-Pro adds exactly these eight, and nothing else:
+Pro adds exactly these fourteen, and nothing else:
 
 | Tool | What it does |
 |---|---|
@@ -36,12 +38,18 @@ Pro adds exactly these eight, and nothing else:
 | `copy_entry_to_site` | Copy field values to another site as a draft |
 | `create_nested_entry` | Add one Matrix block to a field |
 | `move_nested_entry` | Reposition one Matrix block |
+| `upload_asset` | Upload a file from a public URL or as base64 |
+| `update_asset` | Change an asset's metadata, filename or folder |
+| `delete_asset` | Move an asset to the trash |
+| `create_user` | Create a pending user account (full scope only) |
+| `update_user` | Change a user's name or groups (full scope only) |
+| `set_user_status` | Activate, suspend or deactivate a user (full scope only) |
 
 Every other tool is available on both editions. See the [Tools Reference](tools/README.md) for the full list.
 
 ## How Lite behaves
 
-The content-writing tools are not advertised at all: they are absent from `tools/list`, so an agent never sees a tool it cannot use.
+The writing tools are not advertised at all: they are absent from `tools/list`, so an agent never sees a tool it cannot use.
 
 The server instructions adapt too. On Lite they gain an Edition section naming the missing tools and withdrawing the write guidance, because the base instructions teach a draft-first workflow that does not apply. An agent is never told to do something the install cannot do.
 

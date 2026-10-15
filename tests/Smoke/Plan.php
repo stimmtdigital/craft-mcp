@@ -46,6 +46,15 @@ final class Plan {
     /** An Entries relation field on the section above, used to prove key resolution. */
     public const string RELATION_FIELD = 'mcpSmokeRelated';
 
+    /** A local volume under storage/, so uploads never land in a public folder. */
+    public const string VOLUME = 'mcpSmokeVolume';
+
+    /** A user group with no permissions, for the user lifecycle to assign. */
+    public const string USER_GROUP = 'mcpSmokeGroup';
+
+    /** A 1x1 transparent PNG: the smallest real image upload_asset can take as data. */
+    private const string PIXEL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -55,6 +64,8 @@ final class Plan {
             self::configuration(),
             self::contentReads(),
             self::writeLifecycle($runId),
+            self::assetLifecycle($runId),
+            self::userLifecycle($runId),
             self::perturbing(),
         );
     }
@@ -153,7 +164,10 @@ final class Plan {
             ['tool' => 'list_volumes', 'args' => []],
             ['tool' => 'list_globals', 'args' => []],
             ['tool' => 'list_categories', 'args' => ['limit' => 5]],
-            ['tool' => 'list_users', 'args' => ['limit' => 5]],
+            // Active accounts only: every run's user lifecycle leaves an
+            // inactive account behind (there is no delete_user), and an
+            // unfiltered list grew by one per run, so its shape never settled.
+            ['tool' => 'list_users', 'args' => ['status' => 'active', 'limit' => 5]],
             // A real key. This asked for 'devMode' with no category, which is
             // not one, and the answer was the sentence "Unknown config
             // category: devMode" delivered as the VALUE of a successful call.
@@ -409,6 +423,112 @@ final class Plan {
                 'name' => 'delete_entry.published',
                 'args' => ['id' => '{{published.id}}'],
                 'assert' => ['success' => true, 'deleted' => 'present', 'affectedSites' => 'notEmpty'],
+            ],
+        ];
+    }
+
+    /**
+     * Upload, read back, rename and trash one file (#71). By data rather than
+     * url, so the run never depends on the internet; the url path and its
+     * refusals are checked by hand (see NOTES.md).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function assetLifecycle(string $runId): array {
+        return [
+            [
+                'tool' => 'upload_asset',
+                'args' => [
+                    'volume' => self::VOLUME,
+                    'folder' => 'smoke',
+                    'filename' => "smoke-{$runId}.png",
+                    'data' => self::PIXEL_PNG,
+                    'alt' => 'Smoke pixel',
+                ],
+                'capture' => ['upload.id' => 'asset.id'],
+                // The key is what an assets field takes, so it has to name the
+                // volume and the folder the file actually landed in.
+                'assert' => [
+                    'success' => true,
+                    'asset.id' => 'isInt',
+                    'asset.kind' => 'image',
+                    'asset.alt' => 'Smoke pixel',
+                    'key.volume' => self::VOLUME,
+                    'key.path' => 'smoke/',
+                    'key.filename' => "smoke-{$runId}.png",
+                ],
+            ],
+            [
+                'tool' => 'get_asset',
+                'name' => 'get_asset.uploaded',
+                'args' => ['id' => '{{upload.id}}'],
+                'assert' => ['found' => true, 'asset.width' => 1, 'asset.height' => 1],
+            ],
+            [
+                'tool' => 'update_asset',
+                'args' => [
+                    'volume' => self::VOLUME,
+                    'folder' => 'smoke',
+                    'filename' => "smoke-{$runId}.png",
+                    'alt' => 'Smoke pixel, edited',
+                    'newFilename' => "smoke-{$runId}-renamed.png",
+                ],
+                'assert' => [
+                    'success' => true,
+                    'asset.id' => '{{upload.id}}',
+                    'asset.alt' => 'Smoke pixel, edited',
+                    'asset.filename' => "smoke-{$runId}-renamed.png",
+                    'key.filename' => "smoke-{$runId}-renamed.png",
+                ],
+            ],
+            [
+                'tool' => 'delete_asset',
+                'args' => ['id' => '{{upload.id}}'],
+                'assert' => ['success' => true, 'deleted' => '{{upload.id}}'],
+            ],
+        ];
+    }
+
+    /**
+     * Add a colleague, put them in a group, suspend and reactivate them (#72).
+     * Full scope only, so these skip themselves on content and readonly. There
+     * is no delete_user, so each run leaves one account behind, deactivated
+     * and under an address that cannot receive mail.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function userLifecycle(string $runId): array {
+        $email = "mcp-smoke-{$runId}@example.invalid";
+
+        return [
+            [
+                'tool' => 'create_user',
+                'args' => ['email' => $email, 'firstName' => 'Smoke', 'lastName' => $runId],
+                'assert' => ['success' => true, 'user.status' => 'pending', 'user.admin' => false, 'activationEmailSent' => false],
+            ],
+            [
+                'tool' => 'update_user',
+                'args' => ['user' => $email, 'groups' => [self::USER_GROUP]],
+                'assert' => ['success' => true, 'user.groups.0' => self::USER_GROUP],
+            ],
+            [
+                'tool' => 'set_user_status',
+                'args' => ['user' => $email, 'status' => 'suspended'],
+                'assert' => ['success' => true, 'user.status' => 'suspended'],
+            ],
+            [
+                'tool' => 'set_user_status',
+                'name' => 'set_user_status.active',
+                'args' => ['user' => $email, 'status' => 'active'],
+                'assert' => ['success' => true, 'user.status' => 'active'],
+            ],
+            [
+                // Last, so the account a run leaves behind cannot sign in and
+                // stays out of the active-only list_users read above.
+                'tool' => 'set_user_status',
+                'name' => 'set_user_status.inactive',
+                'args' => ['user' => $email, 'status' => 'inactive'],
+                'assert' => ['success' => true, 'user.status' => 'inactive'],
             ],
         ];
     }

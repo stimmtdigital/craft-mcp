@@ -23,6 +23,13 @@ describe('Scope', function () {
             ->and(Scope::Content->allows(ToolCategory::MULTISITE->value, true))->toBeFalse();
     });
 
+    // A token that can write users could add itself a colleague with any
+    // group's permissions, so user writes are full scope only (#72).
+    it('keeps user writes out of content scope', function () {
+        expect(Scope::Content->allows(ToolCategory::USERS->value, true))->toBeFalse()
+            ->and(Scope::Full->allows(ToolCategory::USERS->value, true))->toBeTrue();
+    });
+
     it('full allows everything', function () {
         expect(Scope::Full->allows(ToolCategory::DEBUGGING->value, true))->toBeTrue();
     });

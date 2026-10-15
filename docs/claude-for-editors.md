@@ -22,7 +22,7 @@ You also need a Claude account. Free, Pro and Max accounts can add the connector
 | Choice | What Claude can do |
 |---|---|
 | **Readonly** | Look things up: entries, sections, settings. It cannot change anything. |
-| **Content** | Look things up, and write entries. Anything it writes follows your own Craft permissions. Usually the right choice. |
+| **Content** | Look things up, write entries, and add images and files. Anything it writes follows your own Craft permissions. Usually the right choice. |
 | **Full** | Everything, including technical tools. Only offered to administrators; only pick it if you know you need it. |
 
 You are sent back to Claude, and the connector shows as connected.
@@ -36,6 +36,7 @@ Ask Claude in plain language, for example:
 - "Which blog posts did we publish this month?"
 - "Find the page about our pricing and summarise it."
 - "Write a draft news item about our new office, in the News section."
+- "Add this image to the Images volume and use it as the hero of that draft."
 
 What Claude writes is saved as a **draft** by default. Nothing goes live until someone publishes it. Each draft comes with two links:
 

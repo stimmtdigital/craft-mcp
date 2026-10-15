@@ -237,6 +237,7 @@ The `ToolCategory` enum provides these categories:
 | Category | Use Case |
 |----------|----------|
 | `CONTENT` | Tools that work with entries, assets, categories, users |
+| `USERS` | Tools that create or change user accounts. Dangerous tools here are refused on `content` tokens |
 | `SCHEMA` | Tools that inspect sections, fields, volumes |
 | `SYSTEM` | Tools for configuration, logs, caches |
 | `DATABASE` | Tools for database operations |

@@ -11,7 +11,7 @@
             "listChanged": true
         }
     },
-    "toolCount": 55,
+    "toolCount": 61,
     "tools": {
         "clear_caches": {
             "description": "Clear Craft CMS caches. Specify type: all, data, compiled-templates, temp-files. The response reports which caches were actually cleared.",
@@ -342,6 +342,102 @@
                     "field",
                     "type"
                 ],
+                "additionalProperties": false
+            }
+        },
+        "create_user": {
+            "description": "Create a user account. It is created pending: the person cannot sign in until they activate it, or until set_user_status makes it active. No activation email is sent unless sendActivationEmail is true. Never creates an admin.",
+            "annotations": {
+                "destructiveHint": false,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "Email address for the new account."
+                    },
+                    "username": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Username. Omit to use the email address, as Craft does when useEmailAsUsername is on."
+                    },
+                    "firstName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "lastName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "groups": {
+                        "type": "array",
+                        "default": null,
+                        "description": "User group handles to put the account in; list_users reports the groups users have.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sendActivationEmail": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Send Craft's activation email to the new user. Off by default: an email to a real person is a side effect to ask for."
+                    }
+                },
+                "required": [
+                    "email"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "delete_asset": {
+            "description": "Soft-delete an asset (moves to trash, restorable in the control panel). Address it by id, or by its natural key (volume, folder, filename).",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "Asset id. Or omit it and address the asset by volume, folder and filename."
+                    },
+                    "volume": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "folder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "filename": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
                 "additionalProperties": false
             }
         },
@@ -1650,6 +1746,36 @@
                 "additionalProperties": false
             }
         },
+        "set_user_status": {
+            "description": "Set a user's account status: \"active\" activates a pending account or lifts a suspension, \"suspended\" stops the person signing in while keeping the account, \"inactive\" deactivates it. Admin accounts and the account this connection acts as are refused.",
+            "annotations": {
+                "destructiveHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "user": {
+                        "type": "string",
+                        "description": "Username or email address of the account."
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "The status to set.",
+                        "enum": [
+                            "active",
+                            "suspended",
+                            "inactive"
+                        ]
+                    }
+                },
+                "required": [
+                    "user",
+                    "status"
+                ],
+                "additionalProperties": false
+            }
+        },
         "tinker": {
             "description": "Execute PHP code within Craft CMS context. Prefer a specific tool when one exists (content, schema, database tools); reach for tinker when none can express the job, such as cross-entry computation. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.",
             "annotations": {
@@ -1677,6 +1803,89 @@
                 "required": [
                     "code"
                 ],
+                "additionalProperties": false
+            }
+        },
+        "update_asset": {
+            "description": "Update an asset's title, alt text or custom fields, rename its file, or move it to another folder in the same volume. Address it by id, or by its natural key (volume, folder, filename). Only supplied values change. The file's contents cannot be replaced.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "Asset id. Or omit it and address the asset by volume, folder and filename."
+                    },
+                    "volume": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Volume handle, when addressing the asset by its natural key."
+                    },
+                    "folder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Folder path the asset is in, when addressing it by its natural key. Omit for the volume root."
+                    },
+                    "filename": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Current filename, when addressing the asset by its natural key."
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "alt": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Alternative text for the image."
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Custom field values as a JSON-encoded STRING (not a nested object), in the payload format. Only the handles present are written."
+                    },
+                    "newFilename": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Rename the file. Keep the extension; it must be one Craft allows."
+                    },
+                    "newFolder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Move the file to this folder path in the same volume (\"\" for the root). Missing folders are created when the token's user may create folders."
+                    }
+                },
                 "additionalProperties": false
             }
         },
@@ -1776,12 +1985,134 @@
                 ],
                 "additionalProperties": false
             }
+        },
+        "update_user": {
+            "description": "Change a user's first name, last name or groups. groups is the complete set and replaces the current one. Admin accounts and the account this connection acts as are refused, and so is any change of email or password: those are made in the control panel.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "user": {
+                        "type": "string",
+                        "description": "Username or email address of the account."
+                    },
+                    "firstName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "lastName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "groups": {
+                        "type": "array",
+                        "default": null,
+                        "description": "User group handles: the full set the account should be in, replacing the current one. Pass [] to remove it from every group.",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "user"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "upload_asset": {
+            "description": "Upload a file into a volume. Pass exactly one of url (a file on the public internet, fetched over https by the server: no redirects, no private or internal addresses) or data (base64, for small files such as an SVG). Both are capped by the assetUploadMaxBytes setting. Returns the asset as get_asset reads it, plus its natural key {volume, path, filename} for relation fields.",
+            "annotations": {
+                "destructiveHint": false,
+                "openWorldHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "volume": {
+                        "type": "string",
+                        "description": "Volume handle to upload into; list_volumes reports the handles."
+                    },
+                    "filename": {
+                        "type": "string",
+                        "description": "Filename including its extension. The extension must be one Craft's allowedFileExtensions permits."
+                    },
+                    "url": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "https URL of the file. The server fetches it once, does not follow redirects, and refuses hosts that resolve to private, loopback or link-local addresses."
+                    },
+                    "data": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "The file as base64, or as a data: URI. For small files; use url for anything large."
+                    },
+                    "folder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Folder path within the volume, such as \"blog/2026\". Omit for the volume root. Missing folders are created when the token's user may create folders."
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Asset title. Omit to let Craft derive one from the filename."
+                    },
+                    "alt": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Alternative text for the image."
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Custom field values as a JSON-encoded STRING (not a nested object), in the payload format, for the fields on the volume's field layout."
+                    },
+                    "onConflict": {
+                        "type": "string",
+                        "default": "rename",
+                        "description": "When a file with this name is already in the folder: \"rename\" (default) gives the new one a unique name, \"fail\" refuses the upload.",
+                        "enum": [
+                            "rename",
+                            "fail"
+                        ]
+                    }
+                },
+                "required": [
+                    "volume",
+                    "filename"
+                ],
+                "additionalProperties": false
+            }
         }
     },
     "uncovered": [
         "copy_entry_to_site",
-        "create_backup",
-        "get_asset"
+        "create_backup"
     ],
     "steps": {
         "get_mcp_info": {
@@ -1823,7 +2154,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "bySource": {
                         "core": "<number>"
@@ -1877,7 +2209,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "bySource": {
                         "core": "<number>"
@@ -1903,7 +2236,8 @@
                     "graphql": "<number>",
                     "multisite": "<number>",
                     "schema": "<number>",
-                    "system": "<number>"
+                    "system": "<number>",
+                    "users": "<number>"
                 },
                 "bySource": {
                     "core": "<number>"
@@ -2221,10 +2555,10 @@
                         "name": "<string>",
                         "siteSettings": {
                             "<keyed>": {
-                                "hasUrls": true,
+                                "hasUrls": "<bool|true>",
                                 "siteId": "<number>",
                                 "template": null,
-                                "uriFormat": "<string>"
+                                "uriFormat": "<null|string>"
                             }
                         },
                         "type": "<string>"
@@ -2240,9 +2574,9 @@
                     {
                         "handle": "<string>",
                         "id": "<number>",
-                        "instructions": null,
+                        "instructions": "<null|string>",
                         "name": "<string>",
-                        "searchable": false,
+                        "searchable": "<bool>",
                         "type": "<string>"
                     }
                 ]
@@ -2255,7 +2589,7 @@
                 "volumes": [
                     {
                         "handle": "<string>",
-                        "hasUrls": true,
+                        "hasUrls": "<bool>",
                         "id": "<number>",
                         "name": "<string>",
                         "rootUrl": null,
@@ -3296,6 +3630,216 @@
                 "success": true
             }
         },
+        "upload_asset": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "asset": {
+                    "alt": "<string>",
+                    "dateCreated": "<string>",
+                    "dateModified": "<string>",
+                    "extension": "<string>",
+                    "fields": [],
+                    "filename": "<string>",
+                    "focalPoint": {
+                        "x": "<number>",
+                        "y": "<number>"
+                    },
+                    "folderId": "<number>",
+                    "folderPath": "<string>",
+                    "height": "<number>",
+                    "id": "<number>",
+                    "kind": "<string>",
+                    "mimeType": "<string>",
+                    "size": "<number>",
+                    "title": "<string>",
+                    "url": null,
+                    "volumeId": "<number>",
+                    "width": "<number>"
+                },
+                "cpEditUrl": "<string>",
+                "key": {
+                    "filename": "<string>",
+                    "path": "<string>",
+                    "volume": "<string>"
+                },
+                "success": true,
+                "warnings": []
+            }
+        },
+        "get_asset.uploaded": {
+            "status": "ok",
+            "shape": {
+                "asset": {
+                    "alt": "<string>",
+                    "dateCreated": "<string>",
+                    "dateModified": "<string>",
+                    "extension": "<string>",
+                    "fields": [],
+                    "filename": "<string>",
+                    "focalPoint": {
+                        "x": "<number>",
+                        "y": "<number>"
+                    },
+                    "folderId": "<number>",
+                    "folderPath": "<string>",
+                    "height": "<number>",
+                    "id": "<number>",
+                    "kind": "<string>",
+                    "mimeType": "<string>",
+                    "size": "<number>",
+                    "title": "<string>",
+                    "url": null,
+                    "volumeId": "<number>",
+                    "width": "<number>"
+                },
+                "found": true
+            }
+        },
+        "update_asset": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "asset": {
+                    "alt": "<string>",
+                    "dateCreated": "<string>",
+                    "dateModified": "<string>",
+                    "extension": "<string>",
+                    "fields": [],
+                    "filename": "<string>",
+                    "focalPoint": {
+                        "x": "<number>",
+                        "y": "<number>"
+                    },
+                    "folderId": "<number>",
+                    "folderPath": "<string>",
+                    "height": "<number>",
+                    "id": "<number>",
+                    "kind": "<string>",
+                    "mimeType": "<string>",
+                    "size": "<number>",
+                    "title": "<string>",
+                    "url": null,
+                    "volumeId": "<number>",
+                    "width": "<number>"
+                },
+                "cpEditUrl": "<string>",
+                "key": {
+                    "filename": "<string>",
+                    "path": "<string>",
+                    "volume": "<string>"
+                },
+                "success": true,
+                "warnings": []
+            }
+        },
+        "delete_asset": {
+            "status": "ok",
+            "shape": {
+                "deleted": "<number>",
+                "restorable": true,
+                "success": true
+            }
+        },
+        "create_user": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "activationEmailSent": false,
+                "success": true,
+                "user": {
+                    "admin": false,
+                    "dateCreated": "<string>",
+                    "email": "<string>",
+                    "fullName": "<string>",
+                    "groups": [],
+                    "id": "<number>",
+                    "lastLoginDate": null,
+                    "status": "<string>",
+                    "username": "<string>"
+                }
+            }
+        },
+        "update_user": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "success": true,
+                "user": {
+                    "admin": false,
+                    "dateCreated": "<string>",
+                    "email": "<string>",
+                    "fullName": "<string>",
+                    "groups": [
+                        "<string>"
+                    ],
+                    "id": "<number>",
+                    "lastLoginDate": null,
+                    "status": "<string>",
+                    "username": "<string>"
+                }
+            }
+        },
+        "set_user_status": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "success": true,
+                "user": {
+                    "admin": false,
+                    "dateCreated": "<string>",
+                    "email": "<string>",
+                    "fullName": "<string>",
+                    "groups": [
+                        "<string>"
+                    ],
+                    "id": "<number>",
+                    "lastLoginDate": null,
+                    "status": "<string>",
+                    "username": "<string>"
+                }
+            }
+        },
+        "set_user_status.active": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "success": true,
+                "user": {
+                    "admin": false,
+                    "dateCreated": "<string>",
+                    "email": "<string>",
+                    "fullName": "<string>",
+                    "groups": [
+                        "<string>"
+                    ],
+                    "id": "<number>",
+                    "lastLoginDate": null,
+                    "status": "<string>",
+                    "username": "<string>"
+                }
+            }
+        },
+        "set_user_status.inactive": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "success": true,
+                "user": {
+                    "admin": false,
+                    "dateCreated": "<string>",
+                    "email": "<string>",
+                    "fullName": "<string>",
+                    "groups": [
+                        "<string>"
+                    ],
+                    "id": "<number>",
+                    "lastLoginDate": null,
+                    "status": "<string>",
+                    "username": "<string>"
+                }
+            }
+        },
         "create_backup": {
             "status": "skipped",
             "reason": "writes a database dump; run with --heavy"
@@ -3319,7 +3863,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "by_source": {
                         "core": "<number>"
@@ -3343,7 +3888,7 @@
     "stderr": null,
     "scope": {
         "granted": "full",
-        "advertised": 55,
+        "advertised": 61,
         "outside": [],
         "violations": []
     }

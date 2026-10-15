@@ -1254,7 +1254,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "bySource": {
                         "core": "<number>"
@@ -1308,7 +1309,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "bySource": {
                         "core": "<number>"
@@ -1339,7 +1341,8 @@
                     "graphql": "<number>",
                     "multisite": "<number>",
                     "schema": "<number>",
-                    "system": "<number>"
+                    "system": "<number>",
+                    "users": "<number>"
                 },
                 "bySource": {
                     "core": "<number>"
@@ -1657,10 +1660,10 @@
                         "name": "<string>",
                         "siteSettings": {
                             "<keyed>": {
-                                "hasUrls": true,
+                                "hasUrls": "<bool|true>",
                                 "siteId": "<number>",
                                 "template": null,
-                                "uriFormat": "<string>"
+                                "uriFormat": "<null|string>"
                             }
                         },
                         "type": "<string>"
@@ -1676,9 +1679,9 @@
                     {
                         "handle": "<string>",
                         "id": "<number>",
-                        "instructions": null,
+                        "instructions": "<null|string>",
                         "name": "<string>",
-                        "searchable": false,
+                        "searchable": "<bool>",
                         "type": "<string>"
                     }
                 ]
@@ -1691,7 +1694,7 @@
                 "volumes": [
                     {
                         "handle": "<string>",
-                        "hasUrls": true,
+                        "hasUrls": "<bool>",
                         "id": "<number>",
                         "name": "<string>",
                         "rootUrl": null,
@@ -2471,6 +2474,42 @@
             "status": "skipped",
             "reason": "not advertised by this connection"
         },
+        "upload_asset": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "get_asset.uploaded": {
+            "status": "skipped",
+            "reason": "an earlier step did not produce the value this one needs"
+        },
+        "update_asset": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "delete_asset": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "create_user": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "update_user": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "set_user_status": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "set_user_status.active": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "set_user_status.inactive": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
         "create_backup": {
             "status": "skipped",
             "reason": "writes a database dump; run with --heavy"
@@ -2494,7 +2533,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "by_source": {
                         "core": "<number>"

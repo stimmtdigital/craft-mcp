@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Asset writes (#71), on the Pro edition: `upload_asset` puts a file into a volume and returns the natural key an assets field takes; `update_asset` changes an asset's title, alt text or custom fields, renames it or moves it within its volume; `delete_asset` moves it to the trash. A file arrives by `url`, fetched over https by the server, or as base64 `data` for small files. On `content` tokens every write follows the token user's volume permissions, and Craft's `allowedFileExtensions` applies as it does in the control panel
+- User writes (#72), on the Pro edition: `create_user` adds a pending account (no activation email unless asked), `update_user` changes a user's name or groups, `set_user_status` activates, suspends or deactivates one. These are in a new `users` tool category, so `content` tokens never see them: they need a `full` token or stdio. They never touch an admin account or the account the connection acts as, never set the admin flag, and never set a password or change an existing account's email. Craft's edition limits are named up front: Solo allows one account and Team five, and user groups need Craft Pro
+- `assetUploadMaxBytes` setting (default 20 MB): the largest file `upload_asset` accepts
+
+### Security
+
+- A URL handed to `upload_asset` cannot reach the server's own network. Only https on port 443 is fetched; every address the host resolves to must be public (no loopback, private, link-local such as the cloud metadata address, carrier-grade NAT or reserved ranges); the connection is pinned to the checked address so a DNS rebind cannot swap it; no proxy is used; redirects are not followed; and the download stops at the size cap. See [Asset uploads](docs/configuration.md#asset-uploads)
+
 ## [1.6.3] - 2026-10-14
 
 ### Added

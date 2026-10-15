@@ -24,7 +24,9 @@ checkout's directory in the container.
 
 The baselines are recorded on **craftcms-headless**, Stimmt's headless template
 (single site, Craft in `apps/backend`, DDEV project `template-project`), with the
-fixture below added and the edition set to Pro so the write tools are listed.
+fixture below added, and both editions set to Pro: the plugin's, so the write
+tools are listed, and Craft's (`php craft project-config/set system.edition pro`,
+local installs only), because user groups are a Craft Pro feature.
 The server loads the plugin from that project's `vendor/`, so to test
 unreleased code put the checkout's `src/` over `vendor/stimmt/craft-mcp/src/`
 for the run, then reinstall it afterwards. Snapshot the database first
@@ -44,8 +46,11 @@ for the harness so it cannot collide with a site's own content:
 | `MATRIX_FIELD` | `mcpSmokeBlocks` | Matrix field on that type |
 | `BLOCK_TYPE` | `mcpSmokeBlock` | the Matrix field's one block type, no fields, no title field |
 | `RELATION_FIELD` | `mcpSmokeRelated` | Entries field on that type, sourced from `mcpSmoke` itself |
+| `VOLUME` | `mcpSmokeVolume` | local volume on `@storage/mcp-smoke`, no public URLs, so an upload is never published |
+| `USER_GROUP` | `mcpSmokeGroup` | user group with no permissions, for the user lifecycle to assign |
 
-plus one live entry, `smoke-fixture`, for the read steps to find. The script is
+plus one live entry, `smoke-fixture`, for the read steps to find. The script
+stops before creating anything when Craft is below Pro. It is
 idempotent and writes project config, so on a client site keep the resulting
 `config/project` files out of that site's commits.
 
@@ -73,9 +78,9 @@ tools work.
 
 | Profile | Transport | Scope | Baseline | Tools |
 |---|---|---|---|---|
-| `stdio-full` | `bin/mcp-server` over stdio | none (stdio carries no scope) | `baseline/stdio.json` | 55 |
-| `http-full` | the `httpPath` endpoint | `full` | `baseline/http-full.json` | 55 |
-| `http-content` | the `httpPath` endpoint | `content` | `baseline/http-content.json` | 50 |
+| `stdio-full` | `bin/mcp-server` over stdio | none (stdio carries no scope) | `baseline/stdio.json` | 61 |
+| `http-full` | the `httpPath` endpoint | `full` | `baseline/http-full.json` | 61 |
+| `http-content` | the `httpPath` endpoint | `content` | `baseline/http-content.json` | 53 |
 | `http-readonly` | the `httpPath` endpoint | `readonly` | `baseline/http-readonly.json` | 42 |
 
 Every profile runs the same plan through the same `Client` contract, so a
@@ -185,8 +190,9 @@ Facts established by running it, recorded so they are not rediscovered:
 - **`describe_entry_schema`'s `example` takes a string** and must name an entry
   in the section being described, or it answers "Entry not found".
 - **`list_entries.fields` is an array**, not a comma separated string.
-- The tool catalogue is **55 tools** on a full scope connection, on both
-  transports: 50 under `content`, 42 under `readonly`.
+- The tool catalogue is **61 tools** on a full scope connection, on both
+  transports: 53 under `content` (the asset writes, not the user writes), 42
+  under `readonly`.
 - **A tool outside the scope is refused, not merely hidden.** Every probe comes
   back as JSON-RPC `-32602`, from the SDK registry rather than from a tool.
   Before `mcp/sdk` 0.8 it was `-32601`; the SDK moved to `-32602` because
@@ -218,9 +224,22 @@ Facts established by running it, recorded so they are not rediscovered:
   wider than the `site` argument suggests, that list is the thing that says so
   at runtime rather than in a description nobody read.
 - **`get_mcp_info` and `list_mcp_tools` report `available` separately from the
-  total**, because on a scoped connection they differ: readonly registers 55 and
+  total**, because on a scoped connection they differ: readonly registers 61 and
   can call 42. Both ask the same Gate the server filtered the registry with, and
   the plan pins them to agree, which is the drift that existed before.
+- **The asset lifecycle uploads by `data`**, so a run never depends on the
+  internet. The `url` path is a manual check (below).
+- **Each run leaves one deactivated user behind.** There is no `delete_user`, so
+  the user lifecycle ends with `set_user_status inactive`, and `list_users` reads
+  active accounts only. Unfiltered, the list grew by one account per run and its
+  shape never settled.
+- **Craft's edition limits users.** Solo allows one account and Team five, and
+  Craft refuses a save over the cap without setting an error; `create_user`
+  checks first and names the cap. User groups need Craft Pro, and `groups` is
+  refused below it. Both found on this template, which runs Solo.
+- **Craft 5 keeps `fullName` as the source of a user's name** and re-derives
+  first and last name from it on save, so `update_user` clears it whenever a
+  name part changes. Before that, a new last name was silently dropped.
 - **`describe_entry_schema` reports translation per field** on a multi-site
   install: `translation.method` and `translation.perSite`. `perSite` is true
   only for the method that gives every site its own value, so false reads as
@@ -236,7 +255,8 @@ drift in the catalogue, so coverage cannot rot quietly.
 Currently uncovered and why:
 
 - `create_backup`: writes a database dump, so it is behind `--heavy`.
-- `get_asset`: the template has no assets to address.
+- `get_asset` on `readonly` only: the template has no assets of its own, and the
+  one the asset lifecycle uploads cannot be made under that scope.
 - `copy_entry_to_site`: the baseline install has one site, so every step that needs a
   second site handle reports itself skipped. Recording on a multi-site install
   would cover it.
@@ -293,3 +313,19 @@ either. They live in `manual/` with the expected output written down.
   a finally, which closes descriptors 0 and 1, and the restart then `pcntl_exec`s
   a fresh image that inherits them. Expected: `after restart: ANSWERED`.
   `SILENT (pipes dead)` means `transport\Stdio::close()` stopped guarding it.
+- **`upload_asset` by `url`**, called over stdio on craftcms-headless with the
+  fixture in place (2026-10-15). The harness has no notion of a step that must
+  be refused, so these are recorded here. Expected answers:
+
+  | `url` | Answer |
+  |---|---|
+  | a public PNG (`https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png`) | saved, 272x92 |
+  | `http://127.0.0.1/x.png` | `Only https URLs are fetched.` |
+  | `https://169.254.169.254/latest/meta-data/` | `... resolves to an address that is not public (169.254.169.254) ...` |
+  | `https://localtest.me/x.png` (public name, resolves to loopback) | `... not public (127.0.0.1) ...` |
+  | `https://php.net/favicon.ico` (301) | `The URL answered with a redirect (301), which is not followed ...` |
+  | a 404 | `The URL answered with HTTP 404, not a file.` |
+
+  Craft's own rules held too: `.ico` and `.php` are refused as not allowed
+  extensions, `onConflict: fail` refuses a taken name, and a `..` folder is
+  refused before Craft sees it.

@@ -28,15 +28,19 @@ namespace stimmt\craft\Mcp\Tests\Smoke;
 use Craft;
 use craft\base\FieldInterface;
 use craft\elements\Entry;
+use craft\enums\CmsEdition;
 use craft\fieldlayoutelements\CustomField;
 use craft\fieldlayoutelements\entries\EntryTitleField;
 use craft\fields\Entries as EntriesField;
 use craft\fields\Matrix;
+use craft\fs\Local;
 use craft\models\EntryType;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 use craft\models\Section;
 use craft\models\Section_SiteSettings;
+use craft\models\UserGroup;
+use craft\models\Volume;
 use RuntimeException;
 
 require_once __DIR__ . '/Plan.php';
@@ -54,6 +58,14 @@ if ($root === '/') {
 chdir($root);
 require_once $root . '/bootstrap.php';
 require $root . '/vendor/craftcms/cms/bootstrap/console.php';
+
+// User groups are a Craft Pro feature, and the user lifecycle assigns one.
+// Checked before anything is created: a failure halfway would leave rows
+// whose project config was never written, such as a volume with no filesystem.
+if (Craft::$app->edition->value < CmsEdition::Pro->value) { // @phpstan-ignore property.notFound
+    fwrite(STDERR, "The smoke fixture needs Craft Pro (user groups). On a local install: php craft project-config/set system.edition pro\n");
+    exit(1);
+}
 
 $saved = static function (bool $ok, object $model, string $what): void {
     if (!$ok) {
@@ -156,6 +168,37 @@ if ($existing === null) {
     ]);
     $saved(Craft::$app->getElements()->saveElement($entry), $entry, 'seed entry');
     $report[] = 'created entry smoke-fixture';
+}
+
+// The asset lifecycle uploads into a local volume under storage/, where no
+// web server serves it, so a run never publishes a file.
+$fsService = Craft::$app->getFs();
+$fsHandle = Plan::VOLUME . 'Fs';
+if ($fsService->getFilesystemByHandle($fsHandle) === null) {
+    $fs = $fsService->createFilesystem([
+        'type' => Local::class,
+        'name' => 'MCP smoke files',
+        'handle' => $fsHandle,
+        'hasUrls' => false,
+        'path' => '@storage/mcp-smoke',
+    ]);
+    $saved($fsService->saveFilesystem($fs), $fs, 'filesystem');
+    $report[] = 'created filesystem ' . $fsHandle;
+}
+
+$volumes = Craft::$app->getVolumes();
+if ($volumes->getVolumeByHandle(Plan::VOLUME) === null) {
+    $volume = new Volume(['name' => 'MCP smoke', 'handle' => Plan::VOLUME, 'fsHandle' => $fsHandle]);
+    $saved($volumes->saveVolume($volume), $volume, 'volume');
+    $report[] = 'created volume ' . Plan::VOLUME;
+}
+
+// No permissions: the user lifecycle only needs a group to assign.
+$groups = Craft::$app->getUserGroups();
+if ($groups->getGroupByHandle(Plan::USER_GROUP) === null) {
+    $group = new UserGroup(['name' => 'MCP smoke', 'handle' => Plan::USER_GROUP]);
+    $saved($groups->saveGroup($group), $group, 'user group');
+    $report[] = 'created user group ' . Plan::USER_GROUP;
 }
 
 // A standalone script never fires EVENT_AFTER_REQUEST, which is where Craft

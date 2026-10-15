@@ -287,6 +287,12 @@ class ServerFactory {
         'count_entries',
         'list_drafts',
         'list_revisions',
+        'upload_asset',
+        'update_asset',
+        'delete_asset',
+        'create_user',
+        'update_user',
+        'set_user_status',
         'query_graphql',
         'get_database_schema',
         'get_table_counts',
@@ -321,8 +327,9 @@ class ServerFactory {
         }
 
         return "\n\n## Edition\n\n"
-            . 'This install runs the Lite edition. The content-writing tools '
-            . '(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site, create_nested_entry, move_nested_entry) '
+            . 'This install runs the Lite edition. The writing tools '
+            . '(create_entry, update_entry, publish_entry, delete_entry, duplicate_entry, copy_entry_to_site, create_nested_entry, move_nested_entry, '
+            . 'upload_asset, update_asset, delete_asset, create_user, update_user, set_user_status) '
             . 'are a Pro feature and are not available here, so any write instructions above do not apply. '
             . 'Reading, browsing, and inspection are fully available. '
             . Edition::UPGRADE_CTA;
@@ -336,7 +343,7 @@ class ServerFactory {
         return match ($scope) {
             null => '',
             Scope::ReadOnly => "\n\n## This Connection\n\nThis connection is READ-ONLY: no write, publish, or destructive tools are available, and the Writing Content section above does not apply here. Focus on browsing and inspection (`list_*`, `get_*`, `describe_entry_schema`).",
-            Scope::Content => "\n\n## This Connection\n\nThis connection has CONTENT scope: read everything, and write entries through the draft-first flow above (create, update, publish, delete, duplicate, copy to site). Code execution, raw SQL, GraphQL mutation, cache, and backup tools are not available.",
+            Scope::Content => "\n\n## This Connection\n\nThis connection has CONTENT scope: read everything, and write entries through the draft-first flow above (create, update, publish, delete, duplicate, copy to site), and upload, edit, move or trash assets. User accounts cannot be created or changed. Code execution, raw SQL, GraphQL mutation, cache, and backup tools are not available.",
             Scope::Full => "\n\n## This Connection\n\nThis connection has FULL scope: every tool the server exposes on this install is available, including code execution and database tools. Prefer draft-mode writes and read-only queries unless the task requires more.",
         };
     }
@@ -402,11 +409,12 @@ Prefer the most specific tool and escalate only when none fits:
 
 1. Content questions: `list_entries` (field filters, `relatedTo`, `search`, date ranges, `fields` projection), `get_entry`, `count_entries` for totals and per-value breakdowns, `list_drafts` for the review queue, `list_revisions` for an entry's history, `describe_entry_schema` for payload shapes.
 2. Single Matrix-block changes: `create_nested_entry` to add a block, `move_nested_entry` to reposition one, `update_entry`/`delete_entry` with the block's own id to edit or remove one. Never rebuild an owner's whole field value to change one block.
-3. Other element types and nested shapes: `query_graphql` reads anything Craft's GraphQL schema exposes (assets, categories, users, plugin types) with exactly the response shape you ask for.
-4. Database structure: `get_database_schema` and `get_table_counts`, never hand-written information_schema queries.
-5. `run_query` covers what no structured tool does: custom plugin tables and aggregate SQL (SELECT only).
-6. `tinker` is the last resort, for logic no tool can express (cross-entry computation, service calls). Keep analysis code read-only; write content through the entry tools so drafts, validation, and warnings stay in play.
-7. Tools marked with a destructive annotation modify data or execute code; prefer draft-mode writes and review flows.
+3. Files and people: `upload_asset` puts a file in a volume (`url` for anything large, fetched by the server; `data` as base64 for small files) and returns the natural key to use in an assets field; `update_asset` and `delete_asset` change or trash one. Assets have no drafts, so these writes are live. `create_user`, `update_user` and `set_user_status` manage accounts, never an admin's or your own.
+4. Other element types and nested shapes: `query_graphql` reads anything Craft's GraphQL schema exposes (assets, categories, users, plugin types) with exactly the response shape you ask for.
+5. Database structure: `get_database_schema` and `get_table_counts`, never hand-written information_schema queries.
+6. `run_query` covers what no structured tool does: custom plugin tables and aggregate SQL (SELECT only).
+7. `tinker` is the last resort, for logic no tool can express (cross-entry computation, service calls). Keep analysis code read-only; write content through the entry tools so drafts, validation, and warnings stay in play.
+8. Tools marked with a destructive annotation modify data or execute code; prefer draft-mode writes and review flows.
 INSTRUCTIONS;
     }
 

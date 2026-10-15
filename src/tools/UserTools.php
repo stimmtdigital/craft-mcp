@@ -14,6 +14,7 @@ use stimmt\craft\Mcp\enums\ToolCategory;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\HandleResolver;
 use stimmt\craft\Mcp\support\Response;
+use stimmt\craft\Mcp\support\UserSerializer;
 use stimmt\craft\Mcp\support\Window;
 
 /**
@@ -68,27 +69,10 @@ class UserTools {
 
         Authorization::scopeQuery($query);
         $users = $query->all();
-        $results = array_map($this->serializeUser(...), $users);
+        $results = array_map(UserSerializer::serialize(...), $users);
 
         // Counted after the scope is applied, so the total describes the rows
         // this caller may see rather than the ones the install holds.
         return Response::paginated('users', $results, (int) $query->count(), $limit, $offset);
-    }
-
-    /**
-     * Serialize a user to array.
-     */
-    private function serializeUser(User $user): array {
-        return [
-            'id' => $user->id,
-            'username' => $user->username,
-            'email' => $user->email,
-            'fullName' => $user->fullName,
-            'admin' => $user->admin,
-            'status' => $user->getStatus(),
-            'groups' => array_map(fn ($g) => $g->handle, $user->getGroups()),
-            'lastLoginDate' => $user->lastLoginDate?->format('Y-m-d H:i:s'),
-            'dateCreated' => $user->dateCreated?->format('Y-m-d H:i:s'),
-        ];
     }
 }

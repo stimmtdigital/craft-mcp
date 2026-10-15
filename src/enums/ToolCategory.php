@@ -11,6 +11,7 @@ namespace stimmt\craft\Mcp\enums;
  */
 enum ToolCategory: string {
     case CONTENT = 'content';
+    case USERS = 'users';
     case SCHEMA = 'schema';
     case SYSTEM = 'system';
     case DATABASE = 'database';

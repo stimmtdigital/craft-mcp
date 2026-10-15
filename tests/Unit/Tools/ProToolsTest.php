@@ -5,9 +5,11 @@ declare(strict_types=1);
 use Mcp\Capability\Attribute\McpTool;
 use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\tools\AssetWriteTools;
 use stimmt\craft\Mcp\tools\EntryTools;
 use stimmt\craft\Mcp\tools\EntryWorkflowTools;
 use stimmt\craft\Mcp\tools\NestedEntryTools;
+use stimmt\craft\Mcp\tools\UserWriteTools;
 
 it('marks every content-writing tool as requiring Pro', function (string $class, string $method) {
     $attrs = (new ReflectionMethod($class, $method))->getAttributes(RequiresEdition::class);
@@ -22,6 +24,12 @@ it('marks every content-writing tool as requiring Pro', function (string $class,
     [EntryWorkflowTools::class, 'copyEntryToSite'],
     [NestedEntryTools::class, 'createNestedEntry'],
     [NestedEntryTools::class, 'moveNestedEntry'],
+    [AssetWriteTools::class, 'uploadAsset'],
+    [AssetWriteTools::class, 'updateAsset'],
+    [AssetWriteTools::class, 'deleteAsset'],
+    [UserWriteTools::class, 'createUser'],
+    [UserWriteTools::class, 'updateUser'],
+    [UserWriteTools::class, 'setUserStatus'],
 ]);
 
 it('leaves content reads and schema on Lite', function (string $class, string $method) {
@@ -39,7 +47,7 @@ it('leaves content reads and schema on Lite', function (string $class, string $m
 // (say clear_caches) would silently paywall it. Scan every tool class and assert
 // the Pro set is exactly the documented content-writing tools. Mirrors the
 // class-then-method precedence the extractor uses.
-it('marks exactly the six documented tools as Pro across every tool class', function () {
+it('marks exactly the documented content-writing tools as Pro across every tool class', function () {
     $proMethods = [];
 
     foreach (glob(dirname(__DIR__, 3) . '/src/tools/*.php') as $file) {
@@ -72,15 +80,22 @@ it('marks exactly the six documented tools as Pro across every tool class', func
 
     // Every tool that writes content, and nothing else. The nested-block pair
     // is here because creating and reordering blocks is writing content: a
-    // gate that let those through would sell the tier and then leak it.
+    // gate that let those through would sell the tier and then leak it. Asset
+    // and user writes are too (#71, #72).
     expect($proMethods)->toBe([
         'copyEntryToSite',
         'createEntry',
         'createNestedEntry',
+        'createUser',
+        'deleteAsset',
         'deleteEntry',
         'duplicateEntry',
         'moveNestedEntry',
         'publishEntry',
+        'setUserStatus',
+        'updateAsset',
         'updateEntry',
+        'updateUser',
+        'uploadAsset',
     ]);
 });

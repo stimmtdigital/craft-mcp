@@ -38,6 +38,9 @@ final class Boundary {
             'tinker' => ['code' => 'return 1 + 1;'],
             'run_query' => ['sql' => 'SELECT id FROM elements ORDER BY id LIMIT 1'],
             'clear_caches' => [],
+            // User writes are full scope only (#72), even though they are
+            // dangerous writes like the content ones content scope allows.
+            'create_user' => ['email' => 'mcp-boundary-probe@example.invalid'],
         ],
         Profile::SCOPE_FULL => [],
     ];

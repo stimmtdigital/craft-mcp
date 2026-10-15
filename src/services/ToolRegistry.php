@@ -9,6 +9,7 @@ use stimmt\craft\Mcp\events\RegisterToolsEvent;
 use stimmt\craft\Mcp\Mcp;
 use stimmt\craft\Mcp\models\ToolDefinition;
 use stimmt\craft\Mcp\tools\AssetTools;
+use stimmt\craft\Mcp\tools\AssetWriteTools;
 use stimmt\craft\Mcp\tools\BackupTools;
 use stimmt\craft\Mcp\tools\CategoryTools;
 use stimmt\craft\Mcp\tools\CommerceTools;
@@ -25,6 +26,7 @@ use stimmt\craft\Mcp\tools\SiteTools;
 use stimmt\craft\Mcp\tools\SystemTools;
 use stimmt\craft\Mcp\tools\TinkerTools;
 use stimmt\craft\Mcp\tools\UserTools;
+use stimmt\craft\Mcp\tools\UserWriteTools;
 
 /**
  * Registry for MCP tools with isolation and namespacing support.
@@ -40,6 +42,7 @@ final class ToolRegistry {
      */
     private const array CORE_TOOLS = [
         AssetTools::class,
+        AssetWriteTools::class,
         BackupTools::class,
         CategoryTools::class,
         CraftTools::class,
@@ -55,6 +58,7 @@ final class ToolRegistry {
         SystemTools::class,
         TinkerTools::class,
         UserTools::class,
+        UserWriteTools::class,
     ];
 
     /**

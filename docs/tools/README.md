@@ -44,8 +44,14 @@ These tools let AI assistants work with your Craft content:
 | `get_asset` | Get detailed asset information including dimensions, file size, and metadata |
 | `list_asset_folders` | List folder structure within a specific asset volume |
 | `list_volumes` | Inspect asset volume configurations and filesystem settings |
+| `upload_asset` | Upload a file into a volume from an `https` URL the server fetches (public addresses only, no redirects) or from base64 `data` |
+| `update_asset` | Change an asset's title, alt text or custom fields, rename its file, or move it within its volume |
+| `delete_asset` | Soft-delete an asset to the trash, restorable from the control panel |
 | `list_categories` | Query categories by group |
 | `list_users` | List Craft users with filtering by group, status, and email |
+| `create_user` | Create a pending user account, optionally in groups; full scope only |
+| `update_user` | Change a user's name or groups; full scope only |
+| `set_user_status` | Activate, suspend or deactivate a user; full scope only |
 | `list_globals` | List all global sets with their current field values |
 
 ### Schema Tools
@@ -169,6 +175,12 @@ Some tools can modify data or execute code, which may not be appropriate in all 
 | `delete_entry` | Medium | Moves an entry to the trash |
 | `duplicate_entry` | Medium | Creates a new draft entry from an existing one |
 | `copy_entry_to_site` | Medium | Writes a draft on another site from an entry's field values |
+| `upload_asset` | Medium | Writes a file into a volume, fetched from a public URL or passed as base64 |
+| `update_asset` | Medium | Changes an asset's metadata, filename or folder |
+| `delete_asset` | Medium | Moves an asset to the trash |
+| `create_user` | Medium | Creates a pending user account; full scope only |
+| `update_user` | Medium | Changes a user's name or groups; full scope only |
+| `set_user_status` | Medium | Activates, suspends or deactivates a user; full scope only |
 | `create_backup` | Medium | Creates files on the server filesystem |
 | `clear_caches` | Low | Clears caches, which can temporarily impact site performance |
 

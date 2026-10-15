@@ -95,6 +95,12 @@ class Settings extends Model {
      */
     public string $entryWriteMode = 'draft';
 
+    /**
+     * Largest file upload_asset accepts, in bytes, whether fetched from a URL
+     * or passed as base64. A URL download stops reading once it passes this.
+     */
+    public int $assetUploadMaxBytes = 20971520;
+
     /** Master switch for the HTTP transport. Off by default; enabling it registers the site URL rule. */
     public bool $httpTransport = false;
 
@@ -195,6 +201,7 @@ class Settings extends Model {
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']],
             [['paginationLimit'], 'integer', 'min' => 1],
             [['entryWriteMode'], 'in', 'range' => ['draft', 'live']],
+            [['assetUploadMaxBytes'], 'integer', 'min' => 1024],
             [['httpPath'], 'required'],
             [['httpPath'], 'match', 'pattern' => '/^[a-z0-9\-\/]+$/i'],
             [['httpSessionTtl'], 'integer', 'min' => 60],

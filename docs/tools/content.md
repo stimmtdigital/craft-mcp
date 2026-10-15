@@ -809,7 +809,7 @@ The entry must already exist on `toSite` (its section must be enabled for that s
 
 ## Assets
 
-Assets represent files managed by Craft: images, documents, videos, and other uploads. These tools let AI assistants browse and inspect your media library.
+Assets represent files managed by Craft: images, documents, videos, and other uploads. These tools let AI assistants browse and inspect your media library, and, on the Pro edition, upload, edit, move and trash files with `upload_asset`, `update_asset` and `delete_asset`.
 
 ### list_assets
 
@@ -989,6 +989,142 @@ list_volumes
 
 ---
 
+### upload_asset
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
+Upload a file into a volume. Assets have no drafts, so the asset is live as soon as it is saved. The response carries the asset's natural key, which is what an assets field takes in the payload format.
+
+> **Note:** This is a dangerous tool that can be disabled via configuration.
+
+Pass exactly one of `url` or `data`:
+
+- **`url`**: the server fetches the file. Only `https` on port 443, with no credentials in the URL. Every address the host resolves to must be public: loopback, private, link-local (such as the cloud metadata address `169.254.169.254`), carrier-grade NAT and reserved ranges are refused. The connection is pinned to the address that was checked, so a DNS answer that changes in between cannot redirect it. Redirects are not followed; pass the final URL. The download stops once it passes `assetUploadMaxBytes`, and times out after 30 seconds.
+- **`data`**: the file as base64, or as a `data:` URI. For small files such as an SVG or an icon.
+
+Both are capped by the [`assetUploadMaxBytes`](../configuration.md#asset-uploads) setting (20 MB by default). Craft's `allowedFileExtensions` applies as it does in the control panel.
+
+On a `content` token the write follows the token user's Craft permissions for the volume: **Upload files** (`saveAssets`), and **Create subfolders** (`createFolders`) when `folder` does not exist yet.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `volume` | string | Yes | Volume handle |
+| `filename` | string | Yes | Filename including its extension |
+| `url` | string | One of `url`/`data` | `https` URL the server fetches |
+| `data` | string | One of `url`/`data` | The file as base64 or a `data:` URI |
+| `folder` | string | No | Folder path in the volume, such as `"blog/2026"`; omit for the root. Missing folders are created |
+| `title` | string | No | Asset title (Craft derives one from the filename when omitted) |
+| `alt` | string | No | Alternative text |
+| `fields` | string | No | JSON string in the payload format, for the volume's custom fields |
+| `onConflict` | string | No | `"rename"` (default) gives the file a unique name when one with this name exists; `"fail"` refuses the upload |
+
+**Example:**
+
+```
+# Fetch a generated image into the blog folder
+upload_asset volume="images" folder="blog/2026" filename="hero.jpg" url="https://cdn.example.com/generated/hero.jpg" alt="A lighthouse at dusk"
+
+# A small SVG passed inline
+upload_asset volume="icons" filename="arrow.svg" data="PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4="
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "action": "created",
+  "asset": {
+    "id": 456,
+    "title": "Hero",
+    "filename": "hero.jpg",
+    "kind": "image",
+    "size": 245678,
+    "width": 1920,
+    "height": 1080,
+    "url": "https://example.com/uploads/blog/2026/hero.jpg",
+    "volumeId": 1,
+    "folderId": 12,
+    "folderPath": "blog/2026/",
+    "alt": "A lighthouse at dusk",
+    "fields": {}
+  },
+  "key": {"volume": "images", "path": "blog/2026/", "filename": "hero.jpg"},
+  "cpEditUrl": "https://example.com/admin/assets/edit/456",
+  "warnings": []
+}
+```
+
+Use `key` in an entry's assets field: `fields='{"heroImage": [{"volume": "images", "path": "blog/2026/", "filename": "hero.jpg"}]}'`. A failed save returns `"success": false` with per-field `errors`, such as a disallowed extension or, with `onConflict="fail"`, a filename that is taken.
+
+---
+
+### update_asset
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
+Change an asset's title, alt text or custom fields, rename its file, or move it to another folder in the same volume. Only the values you pass change. The file's contents cannot be replaced.
+
+> **Note:** This is a dangerous tool that can be disabled via configuration.
+
+Address the asset by `id`, or by its natural key: `volume`, `folder` and `filename`. On a `content` token, editing needs **Save assets** for the volume (or the peer variant for someone else's upload). Moving also needs **Delete assets**, as it does in the control panel, and **Create subfolders** when the target folder does not exist.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `id` | int | No | Asset id |
+| `volume` | string | No | Volume handle, when addressing by natural key |
+| `folder` | string | No | Folder path the asset is in, when addressing by natural key (omit for the root) |
+| `filename` | string | No | Current filename, when addressing by natural key |
+| `title` | string | No | New title |
+| `alt` | string | No | New alternative text |
+| `fields` | string | No | JSON string in the payload format; only the handles present are written |
+| `newFilename` | string | No | Rename the file (keep the extension) |
+| `newFolder` | string | No | Move the file to this folder path in the same volume (`""` for the root) |
+
+**Example:**
+
+```
+# Fix the alt text
+update_asset id=456 alt="A lighthouse at dusk, seen from the dunes"
+
+# Rename and move, addressed by natural key
+update_asset volume="images" folder="blog/2026" filename="hero.jpg" newFilename="lighthouse.jpg" newFolder="archive"
+```
+
+**Response:** the same shape as `upload_asset`, with `action` set to `"updated"` and the asset's new filename, folder and key.
+
+---
+
+### delete_asset
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
+Soft-delete an asset: moves it to the trash, restorable from the control panel. Address it by `id`, or by `volume`, `folder` and `filename`.
+
+> **Note:** This is a dangerous tool that can be disabled via configuration.
+
+**Example:**
+
+```
+delete_asset id=456
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "deleted": 456,
+  "restorable": true
+}
+```
+
+---
+
 ## Categories
 
 Categories in Craft are hierarchical taxonomies for organizing content. Each category belongs to a category group.
@@ -1049,7 +1185,7 @@ list_categories group="topics"
 
 ## Users
 
-These tools let AI assistants query Craft users, which is useful for understanding content authorship or building user-related features.
+These tools let AI assistants query Craft users, which is useful for understanding content authorship or building user-related features. On the Pro edition, `create_user`, `update_user` and `set_user_status` add and manage accounts, on `full` tokens and stdio only.
 
 ### list_users
 
@@ -1102,6 +1238,116 @@ list_users group="admins" status="active"
   ]
 }
 ```
+
+---
+
+### create_user
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
+Create a user account. It is created **pending**: the person cannot sign in until they activate it, or until `set_user_status` makes it active.
+
+> **Note:** This is a dangerous tool that can be disabled via configuration. User writes are available on `full` tokens and over stdio only; a `content` or `readonly` token never sees them. See [HTTP Transport](../http-transport.md).
+
+User writes never touch an admin account or the account the connection acts as, never set the admin flag, and never set a password or change an existing account's email. Those changes are made in the control panel.
+
+Craft's edition limits apply: Craft Solo allows one user account and Team five, so `create_user` is refused once the install has that many, naming the limit. User groups are a Craft Pro feature, so `groups` is refused below Pro.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `email` | string | Yes | Email address for the new account |
+| `username` | string | No | Username (defaults to the email address) |
+| `firstName` | string | No | First name |
+| `lastName` | string | No | Last name |
+| `groups` | array of string | No | User group handles to add the account to |
+| `sendActivationEmail` | bool | No | Send Craft's activation email. Off by default: an email to a real person is a side effect to ask for |
+
+**Example:**
+
+```
+create_user email="sam@example.com" firstName="Sam" lastName="Jansen" groups=["editors"]
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "action": "created",
+  "user": {
+    "id": 42,
+    "username": "sam@example.com",
+    "email": "sam@example.com",
+    "fullName": "Sam Jansen",
+    "admin": false,
+    "status": "pending",
+    "groups": ["editors"],
+    "lastLoginDate": null,
+    "dateCreated": "2026-10-14 21:30:00"
+  },
+  "activationEmailSent": false
+}
+```
+
+---
+
+### update_user
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
+Change a user's first name, last name or groups. `groups` is the complete set and replaces the current one; pass `[]` to remove the account from every group.
+
+> **Note:** This is a dangerous tool, on `full` tokens and stdio only. The rules under `create_user` apply.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `user` | string | Yes | Username or email address |
+| `firstName` | string | No | New first name |
+| `lastName` | string | No | New last name |
+| `groups` | array of string | No | The full set of group handles |
+
+**Example:**
+
+```
+update_user user="sam@example.com" groups=["editors", "reviewers"]
+```
+
+**Response:** `{"success": true, "action": "updated", "user": {...}}`, with the user in the `create_user` shape.
+
+---
+
+### set_user_status
+
+> Requires the **Pro** edition. See [Editions](../editions.md).
+
+Set a user's account status through Craft's own user service.
+
+> **Note:** This is a dangerous tool, on `full` tokens and stdio only. The rules under `create_user` apply.
+
+| `status` | Effect |
+|---|---|
+| `active` | Activates a pending or inactive account, or lifts a suspension |
+| `suspended` | The person can no longer sign in; the account and its content stay |
+| `inactive` | Deactivates the account |
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `user` | string | Yes | Username or email address |
+| `status` | string | Yes | `active`, `suspended` or `inactive` |
+
+**Example:**
+
+```
+set_user_status user="sam@example.com" status="active"
+```
+
+**Response:** `{"success": true, "action": "status", "user": {...}}`, with the user in the `create_user` shape.
 
 ---
 

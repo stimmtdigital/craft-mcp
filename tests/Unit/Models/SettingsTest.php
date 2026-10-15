@@ -141,3 +141,19 @@ describe('Settings OAuth connector', function () {
         expect($settings->validate(['oauthRedirectUris']))->toBeFalse();
     });
 });
+
+describe('Settings assetUploadMaxBytes', function () {
+    it('caps uploads at 20 MB by default', function () {
+        expect((new Settings())->assetUploadMaxBytes)->toBe(20971520);
+    });
+
+    it('refuses a cap below 1 KB', function () {
+        $settings = new Settings();
+        $settings->assetUploadMaxBytes = 100;
+
+        expect($settings->validate(['assetUploadMaxBytes']))->toBeFalse();
+
+        $settings->assetUploadMaxBytes = 1024;
+        expect($settings->validate(['assetUploadMaxBytes']))->toBeTrue();
+    });
+});

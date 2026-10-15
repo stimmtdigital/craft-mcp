@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use stimmt\craft\Mcp\tools\AssetWriteTools;
 use stimmt\craft\Mcp\tools\EntryTools;
 use stimmt\craft\Mcp\tools\EntryWorkflowTools;
 use stimmt\craft\Mcp\tools\NestedEntryTools;
@@ -31,4 +32,12 @@ it('guards every entry-write tool with the acting-user authorization', function 
     [EntryWorkflowTools::class, 'publishCanonical', 'assertCanPublish'],
     [NestedEntryTools::class, 'createNestedEntry', 'assertCanSave'],
     [NestedEntryTools::class, 'moveNestedEntry', 'assertCanSave'],
+    [AssetWriteTools::class, 'uploadAsset', 'assertCanSave'],
+    [AssetWriteTools::class, 'updateAsset', 'assertCanSave'],
+    // A move takes the file out of its folder: the control panel asks for
+    // delete permission on the source, and so does update_asset.
+    [AssetWriteTools::class, 'updateAsset', 'assertCanDelete'],
+    [AssetWriteTools::class, 'deleteAsset', 'assertCanDelete'],
+    // Creating a missing folder is its own Craft permission.
+    [AssetWriteTools::class, 'folder', 'assertCan'],
 ]);

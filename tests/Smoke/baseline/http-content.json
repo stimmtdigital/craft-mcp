@@ -11,7 +11,7 @@
             "listChanged": true
         }
     },
-    "toolCount": 50,
+    "toolCount": 53,
     "tools": {
         "copy_entry_to_site": {
             "description": "Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps no field per site, so its fields already match on both sites, though their titles and slugs still may not. describe_entry_schema reports each field's translation method.",
@@ -314,6 +314,47 @@
                     "field",
                     "type"
                 ],
+                "additionalProperties": false
+            }
+        },
+        "delete_asset": {
+            "description": "Soft-delete an asset (moves to trash, restorable in the control panel). Address it by id, or by its natural key (volume, folder, filename).",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "Asset id. Or omit it and address the asset by volume, folder and filename."
+                    },
+                    "volume": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "folder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "filename": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    }
+                },
                 "additionalProperties": false
             }
         },
@@ -1543,6 +1584,89 @@
                 "additionalProperties": false
             }
         },
+        "update_asset": {
+            "description": "Update an asset's title, alt text or custom fields, rename its file, or move it to another folder in the same volume. Address it by id, or by its natural key (volume, folder, filename). Only supplied values change. The file's contents cannot be replaced.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "Asset id. Or omit it and address the asset by volume, folder and filename."
+                    },
+                    "volume": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Volume handle, when addressing the asset by its natural key."
+                    },
+                    "folder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Folder path the asset is in, when addressing it by its natural key. Omit for the volume root."
+                    },
+                    "filename": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Current filename, when addressing the asset by its natural key."
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null
+                    },
+                    "alt": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Alternative text for the image."
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Custom field values as a JSON-encoded STRING (not a nested object), in the payload format. Only the handles present are written."
+                    },
+                    "newFilename": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Rename the file. Keep the extension; it must be one Craft allows."
+                    },
+                    "newFolder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Move the file to this folder path in the same volume (\"\" for the root). Missing folders are created when the token's user may create folders."
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
         "update_entry": {
             "description": "Update an entry by id. In draft mode (default) a live entry gets a draft on top; publish_entry applies it. fields is payload-format JSON; only supplied values change. Matrix-family blocks are entries too: pass a block's own id to edit just that block without touching its siblings. Pass expectedDateUpdated (the dateUpdated string get_entry returned) to fail instead of overwriting when the entry changed since your read.",
             "annotations": {
@@ -1639,11 +1763,92 @@
                 ],
                 "additionalProperties": false
             }
+        },
+        "upload_asset": {
+            "description": "Upload a file into a volume. Pass exactly one of url (a file on the public internet, fetched over https by the server: no redirects, no private or internal addresses) or data (base64, for small files such as an SVG). Both are capped by the assetUploadMaxBytes setting. Returns the asset as get_asset reads it, plus its natural key {volume, path, filename} for relation fields.",
+            "annotations": {
+                "destructiveHint": false,
+                "openWorldHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "volume": {
+                        "type": "string",
+                        "description": "Volume handle to upload into; list_volumes reports the handles."
+                    },
+                    "filename": {
+                        "type": "string",
+                        "description": "Filename including its extension. The extension must be one Craft's allowedFileExtensions permits."
+                    },
+                    "url": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "https URL of the file. The server fetches it once, does not follow redirects, and refuses hosts that resolve to private, loopback or link-local addresses."
+                    },
+                    "data": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "The file as base64, or as a data: URI. For small files; use url for anything large."
+                    },
+                    "folder": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Folder path within the volume, such as \"blog/2026\". Omit for the volume root. Missing folders are created when the token's user may create folders."
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Asset title. Omit to let Craft derive one from the filename."
+                    },
+                    "alt": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Alternative text for the image."
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Custom field values as a JSON-encoded STRING (not a nested object), in the payload format, for the fields on the volume's field layout."
+                    },
+                    "onConflict": {
+                        "type": "string",
+                        "default": "rename",
+                        "description": "When a file with this name is already in the folder: \"rename\" (default) gives the new one a unique name, \"fail\" refuses the upload.",
+                        "enum": [
+                            "rename",
+                            "fail"
+                        ]
+                    }
+                },
+                "required": [
+                    "volume",
+                    "filename"
+                ],
+                "additionalProperties": false
+            }
         }
     },
     "uncovered": [
-        "copy_entry_to_site",
-        "get_asset"
+        "copy_entry_to_site"
     ],
     "steps": {
         "get_mcp_info": {
@@ -1685,7 +1890,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "bySource": {
                         "core": "<number>"
@@ -1739,7 +1945,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "bySource": {
                         "core": "<number>"
@@ -1770,7 +1977,8 @@
                     "graphql": "<number>",
                     "multisite": "<number>",
                     "schema": "<number>",
-                    "system": "<number>"
+                    "system": "<number>",
+                    "users": "<number>"
                 },
                 "bySource": {
                     "core": "<number>"
@@ -2088,10 +2296,10 @@
                         "name": "<string>",
                         "siteSettings": {
                             "<keyed>": {
-                                "hasUrls": true,
+                                "hasUrls": "<bool|true>",
                                 "siteId": "<number>",
                                 "template": null,
-                                "uriFormat": "<string>"
+                                "uriFormat": "<null|string>"
                             }
                         },
                         "type": "<string>"
@@ -2107,9 +2315,9 @@
                     {
                         "handle": "<string>",
                         "id": "<number>",
-                        "instructions": null,
+                        "instructions": "<null|string>",
                         "name": "<string>",
-                        "searchable": false,
+                        "searchable": "<bool>",
                         "type": "<string>"
                     }
                 ]
@@ -2122,7 +2330,7 @@
                 "volumes": [
                     {
                         "handle": "<string>",
-                        "hasUrls": true,
+                        "hasUrls": "<bool>",
                         "id": "<number>",
                         "name": "<string>",
                         "rootUrl": null,
@@ -3143,6 +3351,137 @@
                 "success": true
             }
         },
+        "upload_asset": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "asset": {
+                    "alt": "<string>",
+                    "dateCreated": "<string>",
+                    "dateModified": "<string>",
+                    "extension": "<string>",
+                    "fields": [],
+                    "filename": "<string>",
+                    "focalPoint": {
+                        "x": "<number>",
+                        "y": "<number>"
+                    },
+                    "folderId": "<number>",
+                    "folderPath": "<string>",
+                    "height": "<number>",
+                    "id": "<number>",
+                    "kind": "<string>",
+                    "mimeType": "<string>",
+                    "size": "<number>",
+                    "title": "<string>",
+                    "url": null,
+                    "volumeId": "<number>",
+                    "width": "<number>"
+                },
+                "cpEditUrl": "<string>",
+                "key": {
+                    "filename": "<string>",
+                    "path": "<string>",
+                    "volume": "<string>"
+                },
+                "success": true,
+                "warnings": []
+            }
+        },
+        "get_asset.uploaded": {
+            "status": "ok",
+            "shape": {
+                "asset": {
+                    "alt": "<string>",
+                    "dateCreated": "<string>",
+                    "dateModified": "<string>",
+                    "extension": "<string>",
+                    "fields": [],
+                    "filename": "<string>",
+                    "focalPoint": {
+                        "x": "<number>",
+                        "y": "<number>"
+                    },
+                    "folderId": "<number>",
+                    "folderPath": "<string>",
+                    "height": "<number>",
+                    "id": "<number>",
+                    "kind": "<string>",
+                    "mimeType": "<string>",
+                    "size": "<number>",
+                    "title": "<string>",
+                    "url": null,
+                    "volumeId": "<number>",
+                    "width": "<number>"
+                },
+                "found": true
+            }
+        },
+        "update_asset": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "asset": {
+                    "alt": "<string>",
+                    "dateCreated": "<string>",
+                    "dateModified": "<string>",
+                    "extension": "<string>",
+                    "fields": [],
+                    "filename": "<string>",
+                    "focalPoint": {
+                        "x": "<number>",
+                        "y": "<number>"
+                    },
+                    "folderId": "<number>",
+                    "folderPath": "<string>",
+                    "height": "<number>",
+                    "id": "<number>",
+                    "kind": "<string>",
+                    "mimeType": "<string>",
+                    "size": "<number>",
+                    "title": "<string>",
+                    "url": null,
+                    "volumeId": "<number>",
+                    "width": "<number>"
+                },
+                "cpEditUrl": "<string>",
+                "key": {
+                    "filename": "<string>",
+                    "path": "<string>",
+                    "volume": "<string>"
+                },
+                "success": true,
+                "warnings": []
+            }
+        },
+        "delete_asset": {
+            "status": "ok",
+            "shape": {
+                "deleted": "<number>",
+                "restorable": true,
+                "success": true
+            }
+        },
+        "create_user": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "update_user": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "set_user_status": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "set_user_status.active": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "set_user_status.inactive": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
         "create_backup": {
             "status": "skipped",
             "reason": "writes a database dump; run with --heavy"
@@ -3166,7 +3505,8 @@
                         "graphql": "<number>",
                         "multisite": "<number>",
                         "schema": "<number>",
-                        "system": "<number>"
+                        "system": "<number>",
+                        "users": "<number>"
                     },
                     "by_source": {
                         "core": "<number>"
@@ -3185,7 +3525,7 @@
     "stderr": null,
     "scope": {
         "granted": "content",
-        "advertised": 50,
+        "advertised": 53,
         "outside": {
             "tinker": {
                 "advertised": false,
@@ -3198,6 +3538,11 @@
                 "how": "protocol-error -32602"
             },
             "clear_caches": {
+                "advertised": false,
+                "refused": true,
+                "how": "protocol-error -32602"
+            },
+            "create_user": {
                 "advertised": false,
                 "refused": true,
                 "how": "protocol-error -32602"

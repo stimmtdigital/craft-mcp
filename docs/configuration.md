@@ -71,6 +71,10 @@ return [
 
     'entryWriteMode' => 'draft',
 
+    // Largest file upload_asset accepts, in bytes, from a URL or as base64.
+    // Default: 20971520 (20 MB)
+    'assetUploadMaxBytes' => 20971520,
+
     // Whether entry writes return a previewUrl: a Craft preview-token link that
     // renders the draft as saved, for anyone holding it, until it expires.
     // Default: true
@@ -180,6 +184,7 @@ return [
 | `logLevel` | `string` | `'error'` | Minimum log level for `storage/logs/mcp-server.log` |
 | `paginationLimit` | `int` | `100` | Page size of MCP list endpoints (`tools/list`, `prompts/list`, `resources/list`); 100 covers every registered tool in one page. Useful when a client does not follow `nextCursor` pagination |
 | `entryWriteMode` | `string` | `'draft'` | Since 1.4.0. Default save mode for entry writes: `'draft'` saves reviewable drafts, `'live'` saves immediately. Overridable per call via the `mode` param |
+| `assetUploadMaxBytes` | `int` | `20971520` | Since 1.7.0. Largest file `upload_asset` accepts, in bytes (minimum 1024). See [Asset uploads](#asset-uploads) |
 | `previewUrls` | `bool` | `true` | Since 1.6.0. Whether entry writes return a `previewUrl` that renders the draft as saved without a login. Each one stores a Craft token row that Craft removes once it expires |
 | `previewTokenDuration` | `int\|null` | `null` | Since 1.6.0. Lifetime of a `previewUrl` in seconds (minimum 60). Null uses Craft's own `previewTokenDuration` |
 | `httpTransport` | `bool` | `false` | Since 1.4.0. Whether the MCP server is also served over HTTP with per-user bearer tokens |
@@ -310,10 +315,29 @@ The following tools are classified as "dangerous" because they can modify data o
 | `delete_entry` | Medium | Moves an entry to the trash |
 | `duplicate_entry` | Medium | Creates a new draft entry from an existing one |
 | `copy_entry_to_site` | Medium | Writes a draft on another site from an entry's field values |
+| `upload_asset` | Medium | Writes a file into a volume, fetched from a public URL or passed as base64 |
+| `update_asset` | Medium | Changes an asset's metadata, filename or folder |
+| `delete_asset` | Medium | Moves an asset to the trash |
+| `create_user` | Medium | Creates a pending user account; full scope only |
+| `update_user` | Medium | Changes a user's name or groups; full scope only |
+| `set_user_status` | Medium | Activates, suspends or deactivates a user; full scope only |
 | `create_backup` | Medium | Creates files on the server filesystem |
 | `clear_caches` | Low | Can temporarily impact site performance |
 
 When `enableDangerousTools` is `false`, these tools are hidden from AI assistants entirely. You can also disable them individually using the `disabledTools` array if you want finer control.
+
+### Asset uploads
+
+`upload_asset` can make the server fetch a URL it was handed. A server that fetches on request could otherwise be pointed at what only it can reach, such as a cloud metadata endpoint or an admin panel on localhost, so the fetch is held to these rules:
+
+- `https` on port 443 only, with no credentials in the URL
+- every address the host resolves to must be public: loopback, private, link-local, carrier-grade NAT and reserved ranges are refused
+- the connection is pinned to the address that was checked, so a DNS answer that changes in between cannot redirect it
+- no proxy is used for the fetch, since a proxy would resolve the name itself
+- redirects are not followed
+- the download stops once it passes `assetUploadMaxBytes`, and times out after 30 seconds
+
+A server that may only reach the internet through a proxy cannot fetch by URL; `data` (base64) still works there. Uploads follow Craft's `allowedFileExtensions`, and on `content` tokens the token user's volume permissions.
 
 ### IP Allowlist
 

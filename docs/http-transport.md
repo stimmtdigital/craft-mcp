@@ -85,8 +85,8 @@ Each token carries a scope that limits which tools the connected client can see 
 | Scope | Access | Tool groups included |
 |-------|--------|----------------------|
 | `readonly` | Browse and inspect | All non-destructive tools: list/get entries, assets, categories, users, and globals; schema and structure inspection; system info, logs, and multi-site tools; read-only database and GraphQL queries; queue and debugging inspection |
-| `content` | Everything in `readonly`, plus entry editing | Adds `create_entry`, `update_entry`, `publish_entry`, `delete_entry`, `duplicate_entry`, `copy_entry_to_site` |
-| `full` | Everything | Adds code execution (`tinker`), SQL (`run_query`), GraphQL mutations (`execute_graphql`), cache clearing (`clear_caches`), and backups (`create_backup`) |
+| `content` | Everything in `readonly`, plus entry and asset editing | Adds `create_entry`, `update_entry`, `publish_entry`, `delete_entry`, `duplicate_entry`, `copy_entry_to_site`, `upload_asset`, `update_asset`, `delete_asset` |
+| `full` | Everything | Adds code execution (`tinker`), SQL (`run_query`), GraphQL mutations (`execute_graphql`), cache clearing (`clear_caches`), backups (`create_backup`), and user accounts (`create_user`, `update_user`, `set_user_status`) |
 
 Scope is applied on top of the plugin's existing global settings (`enabled`, `enableDangerousTools`, `disabledTools`): a tool disabled globally stays disabled over HTTP regardless of scope.
 
@@ -121,6 +121,8 @@ MCP resources follow the same rules as their tool equivalents: `craft://entries/
 
 Content-scope tokens respect the linked Craft user's real permissions on entry writes. When a token with `content` scope creates, updates, publishes, deletes, duplicates, or copies an entry to another site, the write is checked against the token's user's actual permissions in the control panel through Craft's element authorization.
 
+Asset writes are checked the same way, against the user's permissions for the volume: uploading and editing need **Save assets** (or the peer variant for someone else's upload), trashing or moving needs **Delete assets**, and creating a missing folder needs **Create subfolders**.
+
 This means that multi-site access, peer/draft visibility, and publishing permissions all behave exactly as they do in the control panel. If the user doesn't have permission to edit entries in a section on a given site, a write targeting that section on that site is refused.
 
 If a write is refused, the error response carries a message like:
@@ -132,6 +134,8 @@ This token's user 'editor' is not allowed to save this entry on site 'default' (
 #### Full scope and stdio
 
 Full-scope tokens are deliberately exempt from all permission checks: they carry code execution capability, so they trust the token holder completely and skip Craft permission lookups. Stdio connections have no token identity and are never permission-scoped.
+
+User writes are `full` scope only for that reason: a token that could create accounts and set their groups could hand anyone any group's permissions. Even there they never touch an admin account or the token's own account, never set the admin flag, and never set a password or change an existing account's email.
 
 ## Connecting Claude (web, Desktop and mobile)
 
