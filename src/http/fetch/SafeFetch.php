@@ -86,7 +86,12 @@ final readonly class SafeFetch {
         }
 
         foreach ($addresses as $address) {
-            if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) === false) {
+            // The ignore is for PHPStan on PHP 8.3 and 8.4, where this flag is
+            // 0x10000000: PHP 8.5 moved it and gave that bit to
+            // FILTER_THROW_ON_FAILURE, and PHPStan reads the bit as the 8.5
+            // flag, so it concludes false cannot come back. It can, and the
+            // tests prove it on every version.
+            if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) === false) { // @phpstan-ignore identical.alwaysFalse
                 throw new FetchRefused("The host {$host} resolves to an address that is not public ({$address}); only files on the public internet are fetched.");
             }
         }
