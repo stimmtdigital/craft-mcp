@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-15
+
 ### Added
 
 - Asset writes (#71), on the Pro edition: `upload_asset` puts a file into a volume and returns the natural key an assets field takes; `update_asset` changes an asset's title, alt text or custom fields, renames it or moves it within its volume; `delete_asset` moves it to the trash. A file arrives by `url`, fetched over https by the server, or as base64 `data` for small files. On `content` tokens every write follows the token user's volume permissions, and Craft's `allowedFileExtensions` applies as it does in the control panel
