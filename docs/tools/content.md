@@ -683,6 +683,20 @@ publish_entry id=123
 
 `entry` is the full payload, in the same shape as `get_entry`'s response, reflecting the entry after publishing. If the canonical entry has more than one pending draft, the call fails with an error listing each draft's element id so you can pick one. If it has no pending draft and is already enabled, it fails with "nothing to publish".
 
+Since 1.8.0 the draft is validated as live content first, the way the control panel validates it before applying a draft: a draft may leave a required field empty, a live entry may not. When validation fails nothing is published, and the call fails with the errors per field:
+
+```json
+{
+  "success": false,
+  "action": "publish",
+  "draftElementId": 790,
+  "message": "Not published: the draft does not pass validation for live content. Fix the fields listed in errors with update_entry, then publish again.",
+  "errors": { "summary": ["Summary cannot be blank."] }
+}
+```
+
+Enabling a disabled entry is validated the same way.
+
 ---
 
 ### delete_entry
@@ -853,6 +867,7 @@ list_assets kind="pdf"
       "id": 456,
       "title": "Hero Image",
       "filename": "hero-image.jpg",
+      "key": { "volume": "images", "path": "heroes/", "filename": "hero-image.jpg" },
       "kind": "image",
       "size": 245678,
       "width": 1920,
@@ -866,6 +881,8 @@ list_assets kind="pdf"
   ]
 }
 ```
+
+Each asset carries `key`, its natural key since 1.8.0: pass it as is in an assets field to relate the asset. `path` is the folder path and is left out for the volume root.
 
 ---
 

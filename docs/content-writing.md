@@ -82,11 +82,21 @@ Call `describe_entry_schema` for a section and entry type before writing. It ret
 - an optional real entry as a golden-fixture example (pass `example` with an entry id or slug)
 - a per-field `input` shape: the exact payload that field accepts
 
+### Date fields that keep a time zone
+
+A Date field with **Show time zone** on stores a zone name next to its moment, and an ISO 8601 string can only carry an offset, which several zones share with different daylight saving rules. Since 1.8.0 such a field is read and written as:
+
+```json
+"startDate": { "date": "2026-11-12 10:00:00", "timezone": "Australia/Perth" }
+```
+
+`date` is the local time in that zone. Writing back exactly what `get_entry` returned changes nothing. A plain date-time string is still accepted, but it is stored in the system time zone and the write response carries a warning saying so; an unknown zone name is refused. Date fields without a zone keep the ISO 8601 string.
+
 The `input` shape is the key to third-party fields. Kinds and what their input looks like:
 
 | Kind | Input |
 |------|-------|
-| `scalar` | Plain value; `valueType` names the PHP type, with hints for dates (ISO 8601 string) and rich-text fields (HTML string) |
+| `scalar` | Plain value; `valueType` names the PHP type, with hints for dates (ISO 8601 string, or the zone-keeping shape below) and rich-text fields (HTML string) |
 | `relation` | List of natural-key maps; `item` gives the key shape, `elementType` the target |
 | `matrix` | Block objects as above; `blockTypes` lists the valid block-type handles (`{handle: {hasTitleField}}`); each type's sub-fields are expanded once in the field's top-level `blockTypes` list |
 | `link` | Single link object for the core Link field; `types` maps each configured type to its key shape |

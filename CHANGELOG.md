@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-30
+
+### Fixed
+
+- `publish_entry` validates a draft as live content before applying it, the way the control panel does, and refuses with the errors per field when it fails. A draft missing a required field was published with `success: true`, putting an invalid entry live. Enabling a disabled entry is validated the same way (#76)
+- Date fields with "Show time zone" keep their zone. They were read as an ISO string with an offset, which cannot name a zone, and Craft stored what was written in the system zone, so writing back exactly what `get_entry` returned moved the event. Such fields are now read and written as `{"date": "Y-m-d H:i:s", "timezone": "<zone>"}`, Craft's own form shape; a plain string is still accepted but warns that the zone is lost, and an unknown zone is refused. `describe_entry_schema` describes the shape (#75)
+
+### Added
+
+- Every asset the asset tools report carries `key`, its natural key `{volume, path, filename}`, so an asset found by `list_assets` can be related in an assets field without a `get_asset` per asset (#77)
+
+### Changed
+
+- Requires `mcp/sdk` `^0.9` (#74). 0.9 drops every `listChanged` flag from the initialize answer, reasoning that only its new listen streams carry list changes; this server negotiates 2025-06-18, where `reload_mcp`'s `notifications/tools/list_changed` is an ordinary notification, so it keeps advertising `tools.listChanged`
+- The output of `get_entry` and the other entry reads changes for Date fields with "Show time zone" (see Fixed): code that parsed the ISO string for those fields reads `date` and `timezone` instead
+- Rector is pinned to `~2.8.3`. PHPStan 2.3.4 and phpdoc-parser 2.4.0 crash Rector 2.7.0 on every file; the two new 2.8 style rules are skipped rather than rewriting dozens of unrelated files
+
 ## [1.7.1] - 2026-10-15
 
 ### Fixed
