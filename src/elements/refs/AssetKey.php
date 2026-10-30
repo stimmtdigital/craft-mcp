@@ -71,11 +71,19 @@ final readonly class AssetKey {
         }
 
         $asset = Asset::find()->id($id)->status(null)->one();
-        if (!$asset instanceof Asset) {
-            return null;
-        }
 
-        $key = ['volume' => $asset->getVolume()->handle, 'filename' => $asset->getFilename()];
+        return $asset instanceof Asset ? self::of($asset) : null;
+    }
+
+    /**
+     * The key of an asset already in hand: what an assets field write needs
+     * to address it, so any tool that reports an asset can hand it back (#77).
+     * The path is left out for the volume root, as idFor() reads it.
+     *
+     * @return array{volume: string, path?: string, filename: string}
+     */
+    public static function of(Asset $asset): array {
+        $key = ['volume' => (string) $asset->getVolume()->handle, 'filename' => $asset->getFilename()];
         $path = $asset->getFolder()->path ?? '';
         if ($path !== '') {
             $key['path'] = $path;

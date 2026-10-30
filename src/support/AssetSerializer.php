@@ -6,6 +6,7 @@ namespace stimmt\craft\Mcp\support;
 
 use craft\elements\Asset;
 use craft\models\FieldLayout;
+use stimmt\craft\Mcp\elements\refs\AssetKey;
 use stimmt\craft\Mcp\text\Serializer;
 
 /**
@@ -20,6 +21,9 @@ final class AssetSerializer {
             'id' => $asset->id,
             'title' => $asset->title,
             'filename' => $asset->filename,
+            // The natural key an assets field write takes, so an asset found
+            // by listing can be related without a get_asset per asset (#77).
+            'key' => AssetKey::of($asset),
             'kind' => $asset->kind,
             'size' => $asset->size,
             'width' => $asset->width,
