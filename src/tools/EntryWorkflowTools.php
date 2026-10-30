@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\tools;
 
 use Craft;
+use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\behaviors\DraftBehavior;
 use craft\behaviors\RevisionBehavior;
@@ -472,6 +473,16 @@ class EntryWorkflowTools {
             $draft->setSortOrder($sortOrder);
         }
 
+        $errors = $this->liveErrors($draft);
+        if ($errors !== []) {
+            return Response::failure([
+                'action' => 'publish',
+                'draftElementId' => (int) $draft->id,
+                'message' => 'Not published: the draft does not pass validation for live content. Fix the fields listed in errors with update_entry, then publish again.',
+                'errors' => $errors,
+            ]);
+        }
+
         $applied = Craft::$app->getDrafts()->applyDraft($draft);
         ResourceChangeNotifier::notifyEntry($context, (int) $applied->id);
 
@@ -501,7 +512,15 @@ class EntryWorkflowTools {
         }
 
         if (!$entry->enabled) {
-            $this->enable($entry);
+            $errors = $this->enable($entry);
+            if ($errors !== []) {
+                return Response::failure([
+                    'action' => 'publish',
+                    'message' => 'Not published: the entry does not pass validation for live content. Fix the fields listed in errors with update_entry, then publish again.',
+                    'errors' => $errors,
+                ]);
+            }
+
             ResourceChangeNotifier::notifyEntry($context, (int) $entry->id);
 
             return Response::success([
@@ -532,10 +551,50 @@ class EntryWorkflowTools {
         return $query->all();
     }
 
-    private function enable(Entry $entry): void {
+    /**
+     * Turn a disabled entry on, validating it as live content: a disabled
+     * entry was saved under the looser rules, so a required field can be
+     * empty, and enabling it must not skip the check publishing a draft gets.
+     *
+     * @return array<string, string[]> the validation errors; empty when enabled
+     */
+    private function enable(Entry $entry): array {
         $entry->enabled = true;
-        if (!Craft::$app->getElements()->saveElement($entry)) {
-            throw new ToolCallException('Failed to enable entry: ' . json_encode($entry->getErrors()));
+        $entry->setScenario(Element::SCENARIO_LIVE);
+
+        if (Craft::$app->getElements()->saveElement($entry)) {
+            return [];
         }
+
+        $entry->enabled = false;
+
+        return $entry->getErrors();
+    }
+
+    /**
+     * Validate a draft the way the control panel does before applying it
+     * (ElementsController::actionApplyDraft()): under the live scenario when
+     * it will be live, with required fields propagated for a new entry, and
+     * across sites on a multi-site install. Drafts::applyDraft() validates
+     * nothing itself, so without this a draft missing a required field went
+     * live (#76). Saving the draft first is what the control panel does too;
+     * it changes nothing about the draft but runs every validator.
+     *
+     * @return array<string, string[]> the validation errors; empty when the draft may be applied
+     */
+    private function liveErrors(Entry $draft): array {
+        if ($draft->enabled && $draft->getEnabledForSite()) {
+            $draft->setScenario(Element::SCENARIO_LIVE);
+        }
+
+        if ($draft->getIsUnpublishedDraft()) {
+            $draft->propagateRequired = true;
+        }
+
+        $draft->applyingDraft = true;
+        $valid = Craft::$app->getElements()->saveElement($draft, crossSiteValidate: Craft::$app->getIsMultiSite());
+        $draft->applyingDraft = false;
+
+        return $valid ? [] : $draft->getErrors();
     }
 }

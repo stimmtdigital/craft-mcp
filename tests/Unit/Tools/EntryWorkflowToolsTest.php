@@ -106,3 +106,49 @@ describe('list_revisions', function () {
             ->and($source)->toContain('revisionOf(');
     });
 });
+
+// #76: Drafts::applyDraft() does not validate, so a draft missing a required
+// field went live with success: true, where the control panel refuses with
+// "Couldn't apply draft". Both publish paths now validate under Craft's live
+// scenario first, as ElementsController::actionApplyDraft() does, and answer
+// a failure with the field errors instead of publishing.
+describe('publish_entry validates before it publishes (#76)', function () {
+    $body = static function (string $method): string {
+        $reflection = new ReflectionMethod(EntryWorkflowTools::class, $method);
+        $lines = explode("\n", (string) file_get_contents($reflection->getFileName()));
+
+        return implode("\n", array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+    };
+
+    it('validates a draft before applying it', function () use ($body) {
+        $source = $body('applyDraft');
+        $validate = strpos($source, '$this->liveErrors($draft)');
+        $apply = strpos($source, '->applyDraft($draft)');
+
+        expect($validate)->toBeInt()->and($apply)->toBeInt()->and($validate)->toBeLessThan($apply);
+    });
+
+    it('validates under the live scenario, as the control panel does', function () use ($body) {
+        $source = $body('liveErrors');
+        $live = strpos($source, 'Element::SCENARIO_LIVE');
+        $save = strpos($source, '->saveElement(');
+
+        expect($live)->toBeInt()->and($save)->toBeInt()->and($live)->toBeLessThan($save)
+            ->and($source)->toContain('propagateRequired = true')
+            ->and($source)->toContain('crossSiteValidate:');
+    });
+
+    it('answers an invalid draft with its field errors instead of applying it', function () use ($body) {
+        expect($body('applyDraft'))->toContain('Response::failure(')
+            ->and($body('applyDraft'))->toContain("'errors' =>");
+    });
+
+    it('validates a disabled entry under the live scenario before enabling it', function () use ($body) {
+        $source = $body('enable');
+        $live = strpos($source, 'Element::SCENARIO_LIVE');
+        $save = strpos($source, '->saveElement(');
+
+        expect($live)->toBeInt()->and($save)->toBeInt()->and($live)->toBeLessThan($save)
+            ->and($body('publishCanonical'))->toContain('Response::failure(');
+    });
+});
