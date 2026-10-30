@@ -9,7 +9,9 @@ use craft\base\FieldInterface;
 use craft\elements\db\EntryQuery;
 use craft\elements\Entry;
 use craft\fields\Matrix;
+use DateTimeInterface;
 use stimmt\craft\Mcp\elements\refs\Translator;
+use stimmt\craft\Mcp\elements\refs\ZonedDates;
 
 /**
  * Element to agent payload: native attributes plus serialized custom fields
@@ -86,7 +88,11 @@ final readonly class Reader {
                 $value = (clone $value)->status(null);
             }
 
-            $values[$handle] = $field->serializeValue($value, $element);
+            // A zone-aware date is read from the DateTime itself, which still
+            // carries its zone name; serializeValue() would leave an offset.
+            $values[$handle] = $value instanceof DateTimeInterface && (new ZonedDates())->handles($field)
+                ? ZonedDates::read($value)
+                : $field->serializeValue($value, $element);
         }
 
         return $values;

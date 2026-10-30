@@ -36,6 +36,7 @@ final readonly class Translator {
         ));
         $registry->register(new Link($keys));
         $registry->register(new Relations($keys));
+        $registry->register(new ZonedDates());
 
         return $translator;
     }

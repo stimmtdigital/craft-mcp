@@ -12,6 +12,7 @@ use craft\fields\BaseOptionsField;
 use craft\fields\BaseRelationField;
 use craft\fields\ContentBlock;
 use craft\fields\data\MultiOptionsFieldData;
+use craft\fields\Date;
 use craft\fields\Link as LinkField;
 use craft\fields\Matrix;
 use craft\fields\Table;
@@ -322,7 +323,9 @@ final readonly class Shape {
         // the like) serialises from a plain string, so tell the agent to send
         // one rather than leaving an opaque class name as the only signal.
         $class = ltrim(explode('|', $valueType)[0], '\\');
-        if (str_contains($valueType, 'DateTime')) {
+        if ($field instanceof Date && $field->showTimeZone) {
+            $shape['hint'] = '{"date": "YYYY-MM-DD HH:MM:SS", "timezone": "<IANA zone name>"}: this field keeps a time zone, and a date-time string would be stored in the system zone';
+        } elseif (str_contains($valueType, 'DateTime')) {
             $shape['hint'] = 'ISO 8601 date-time string';
         } elseif (str_contains($class, '\\') && is_a($class, Stringable::class, true)) {
             $shape['hint'] = 'pass a string value (rich-text fields expect HTML markup)';
