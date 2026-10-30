@@ -46,6 +46,8 @@ for the harness so it cannot collide with a site's own content:
 | `MATRIX_FIELD` | `mcpSmokeBlocks` | Matrix field on that type |
 | `BLOCK_TYPE` | `mcpSmokeBlock` | the Matrix field's one block type, no fields, no title field |
 | `RELATION_FIELD` | `mcpSmokeRelated` | Entries field on that type, sourced from `mcpSmoke` itself |
+| `REQUIRED_FIELD` | `mcpSmokeRequired` | plain text, required in the layout, so a draft without it is refused at publish (#76) |
+| `ZONED_FIELD` | `mcpSmokeStarts` | Date field with "Show time zone", read back to prove the zone survives (#75) |
 | `VOLUME` | `mcpSmokeVolume` | local volume on `@storage/mcp-smoke`, no public URLs, so an upload is never published |
 | `USER_GROUP` | `mcpSmokeGroup` | user group with no permissions, for the user lifecycle to assign |
 
@@ -150,6 +152,12 @@ Two reductions keep the diff honest rather than noisy:
   rather than nesting.
 
 Values are guarded by assertions instead, where they matter.
+
+A step can name `refusal` when the right outcome is being turned down, such as
+`publish_entry.invalid` publishing a draft that fails validation. It must come
+back as a tool error containing that text; it is then recorded as `refused`,
+without its message, which carries ids that change every run. Succeeding, or
+failing for another reason, is the failure.
 
 A step can name booleans under `state` when their value describes the install
 rather than the server. `get_queue_jobs` does this for `hasMore`: with no queue

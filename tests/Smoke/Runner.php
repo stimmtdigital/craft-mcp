@@ -45,7 +45,10 @@ final class Runner {
                 continue;
             }
 
-            $results[$name] = $this->judge($name, $tool, $this->call($step));
+            $refusal = is_string($step['refusal'] ?? null) ? $step['refusal'] : null;
+            $results[$name] = $refusal === null
+                ? $this->judge($name, $tool, $this->call($step))
+                : $this->holdToRefusal($this->call($step), $refusal);
         }
 
         return $results;
@@ -94,6 +97,37 @@ final class Runner {
         }
 
         return $this->holdToExpectation($result, $expectation);
+    }
+
+    /**
+     * A step whose correct outcome is a refusal: a write the server must turn
+     * down, such as publishing a draft that fails validation. It has to come
+     * back as a tool error saying so; succeeding is the failure here.
+     *
+     * @param array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function holdToRefusal(array $result, string $contains): array {
+        if ($result['status'] === 'skipped') {
+            return $result;
+        }
+
+        $result['refusal'] = $contains;
+        if ($result['status'] !== 'tool-error') {
+            $result['unexpected'] = "expected a refusal containing \"{$contains}\", got {$result['status']}";
+
+            return $result;
+        }
+
+        if (!str_contains((string) ($result['message'] ?? ''), $contains)) {
+            $result['unexpected'] = "refused, but without \"{$contains}\"";
+
+            return $result;
+        }
+
+        // Held: the fact recorded is the refusal, not its wording, which
+        // carries ids that change every run and would read as drift.
+        return ['status' => 'refused', 'refusal' => $contains];
     }
 
     /**

@@ -2816,7 +2816,20 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
-                "tokens": []
+                "tokens": [
+                    {
+                        "dateCreated": "<string>",
+                        "enabled": true,
+                        "expiryDate": null,
+                        "id": "<number>",
+                        "name": "<string>",
+                        "schema": {
+                            "id": "<number>",
+                            "name": "<string>"
+                        },
+                        "uid": "<string>"
+                    }
+                ]
             }
         },
         "get_graphql_schema": {
@@ -2940,7 +2953,9 @@
                         "expiryDate": null,
                         "fields": {
                             "mcpSmokeBlocks": [],
-                            "mcpSmokeRelated": []
+                            "mcpSmokeRelated": [],
+                            "mcpSmokeRequired": "<string>",
+                            "mcpSmokeStarts": null
                         },
                         "id": "<number>",
                         "postDate": "<string>",
@@ -3006,7 +3021,9 @@
                         "expiryDate": null,
                         "fields": {
                             "mcpSmokeBlocks": [],
-                            "mcpSmokeRelated": []
+                            "mcpSmokeRelated": [],
+                            "mcpSmokeRequired": "<string>",
+                            "mcpSmokeStarts": null
                         },
                         "id": "<number>",
                         "postDate": "<string>",
@@ -3041,7 +3058,9 @@
                     "expiryDate": null,
                     "fields": {
                         "mcpSmokeBlocks": [],
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": null
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3072,7 +3091,9 @@
                     "expiryDate": null,
                     "fields": {
                         "mcpSmokeBlocks": [],
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": null
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3133,17 +3154,19 @@
                                 }
                             },
                             "elementType?": "<string>",
+                            "hint?": "<string>",
                             "item?": [
                                 "<string>"
                             ],
                             "kind": "<string>",
                             "multiple?": true,
-                            "payload?": "<string>"
+                            "payload?": "<string>",
+                            "valueType?": "<string>"
                         },
                         "instructions": "<string>",
                         "kind": "<string>",
                         "name": "<string>",
-                        "required": false,
+                        "required": "<bool|false>",
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
@@ -3188,7 +3211,9 @@
                     "expiryDate": null,
                     "fields": {
                         "mcpSmokeBlocks": [],
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": null
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3221,17 +3246,19 @@
                                 }
                             },
                             "elementType?": "<string>",
+                            "hint?": "<string>",
                             "item?": [
                                 "<string>"
                             ],
                             "kind": "<string>",
                             "multiple?": true,
-                            "payload?": "<string>"
+                            "payload?": "<string>",
+                            "valueType?": "<string>"
                         },
                         "instructions": "<string>",
                         "kind": "<string>",
                         "name": "<string>",
-                        "required": false,
+                        "required": "<bool|false>",
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
@@ -3353,7 +3380,12 @@
                     "expiryDate": null,
                     "fields": {
                         "mcpSmokeBlocks": [],
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": {
+                            "date": "<string>",
+                            "timezone": "<string>"
+                        }
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3404,7 +3436,9 @@
                                 "section": "<string>",
                                 "slug": "<string>"
                             }
-                        ]
+                        ],
+                        "mcpSmokeRequired": null,
+                        "mcpSmokeStarts": null
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3523,7 +3557,12 @@
                                 "type": "<string>"
                             }
                         },
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": {
+                            "date": "<string>",
+                            "timezone": "<string>"
+                        }
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3564,7 +3603,12 @@
                                 "type": "<string>"
                             }
                         },
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": {
+                            "date": "<string>",
+                            "timezone": "<string>"
+                        }
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -3630,6 +3674,36 @@
                 "success": true
             }
         },
+        "create_entry.missing_required": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "elementId": "<number>",
+                "errors": [],
+                "previewUrl": "<string>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "publish_entry.invalid": {
+            "status": "refused",
+            "refusal": "does not pass validation"
+        },
+        "delete_entry.incomplete": {
+            "status": "ok",
+            "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
+                "deleted": "<number>",
+                "restorable": true,
+                "success": true
+            }
+        },
         "upload_asset": {
             "status": "ok",
             "shape": {
@@ -3649,6 +3723,11 @@
                     "folderPath": "<string>",
                     "height": "<number>",
                     "id": "<number>",
+                    "key": {
+                        "filename": "<string>",
+                        "path": "<string>",
+                        "volume": "<string>"
+                    },
                     "kind": "<string>",
                     "mimeType": "<string>",
                     "size": "<number>",
@@ -3685,6 +3764,11 @@
                     "folderPath": "<string>",
                     "height": "<number>",
                     "id": "<number>",
+                    "key": {
+                        "filename": "<string>",
+                        "path": "<string>",
+                        "volume": "<string>"
+                    },
                     "kind": "<string>",
                     "mimeType": "<string>",
                     "size": "<number>",
@@ -3715,6 +3799,11 @@
                     "folderPath": "<string>",
                     "height": "<number>",
                     "id": "<number>",
+                    "key": {
+                        "filename": "<string>",
+                        "path": "<string>",
+                        "volume": "<string>"
+                    },
                     "kind": "<string>",
                     "mimeType": "<string>",
                     "size": "<number>",

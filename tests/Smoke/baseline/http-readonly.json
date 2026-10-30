@@ -1921,7 +1921,20 @@
             "status": "ok",
             "shape": {
                 "count": "<number>",
-                "tokens": []
+                "tokens": [
+                    {
+                        "dateCreated": "<string>",
+                        "enabled": true,
+                        "expiryDate": null,
+                        "id": "<number>",
+                        "name": "<string>",
+                        "schema": {
+                            "id": "<number>",
+                            "name": "<string>"
+                        },
+                        "uid": "<string>"
+                    }
+                ]
             }
         },
         "get_graphql_schema": {
@@ -2025,7 +2038,9 @@
                         "expiryDate": null,
                         "fields": {
                             "mcpSmokeBlocks": [],
-                            "mcpSmokeRelated": []
+                            "mcpSmokeRelated": [],
+                            "mcpSmokeRequired": "<string>",
+                            "mcpSmokeStarts": null
                         },
                         "id": "<number>",
                         "postDate": "<string>",
@@ -2091,7 +2106,9 @@
                         "expiryDate": null,
                         "fields": {
                             "mcpSmokeBlocks": [],
-                            "mcpSmokeRelated": []
+                            "mcpSmokeRelated": [],
+                            "mcpSmokeRequired": "<string>",
+                            "mcpSmokeStarts": null
                         },
                         "id": "<number>",
                         "postDate": "<string>",
@@ -2126,7 +2143,9 @@
                     "expiryDate": null,
                     "fields": {
                         "mcpSmokeBlocks": [],
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": null
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -2157,7 +2176,9 @@
                     "expiryDate": null,
                     "fields": {
                         "mcpSmokeBlocks": [],
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": null
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -2218,17 +2239,19 @@
                                 }
                             },
                             "elementType?": "<string>",
+                            "hint?": "<string>",
                             "item?": [
                                 "<string>"
                             ],
                             "kind": "<string>",
                             "multiple?": true,
-                            "payload?": "<string>"
+                            "payload?": "<string>",
+                            "valueType?": "<string>"
                         },
                         "instructions": "<string>",
                         "kind": "<string>",
                         "name": "<string>",
-                        "required": false,
+                        "required": "<bool|false>",
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
@@ -2273,7 +2296,9 @@
                     "expiryDate": null,
                     "fields": {
                         "mcpSmokeBlocks": [],
-                        "mcpSmokeRelated": []
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>",
+                        "mcpSmokeStarts": null
                     },
                     "id": "<number>",
                     "postDate": "<string>",
@@ -2306,17 +2331,19 @@
                                 }
                             },
                             "elementType?": "<string>",
+                            "hint?": "<string>",
                             "item?": [
                                 "<string>"
                             ],
                             "kind": "<string>",
                             "multiple?": true,
-                            "payload?": "<string>"
+                            "payload?": "<string>",
+                            "valueType?": "<string>"
                         },
                         "instructions": "<string>",
                         "kind": "<string>",
                         "name": "<string>",
-                        "required": false,
+                        "required": "<bool|false>",
                         "target?": {
                             "elementType": "<string>",
                             "sources": [
@@ -2471,6 +2498,18 @@
             "reason": "not advertised by this connection"
         },
         "delete_entry.published": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "create_entry.missing_required": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "publish_entry.invalid": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "delete_entry.incomplete": {
             "status": "skipped",
             "reason": "not advertised by this connection"
         },

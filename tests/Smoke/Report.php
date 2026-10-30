@@ -73,7 +73,8 @@ final class Report {
             // that is a cleared expectation, and its whole value is being told
             // about it rather than having to read the diff.
             $unexpected = is_array($step) && array_key_exists('unexpected', $step);
-            if (!is_array($step) || (!$unexpected && in_array($step['status'] ?? '', ['ok', 'skipped'], true))) {
+            // A held refusal is a pass: the step was meant to be turned down.
+            if (!is_array($step) || (!$unexpected && in_array($step['status'] ?? '', ['ok', 'skipped', 'refused'], true))) {
                 continue;
             }
 

@@ -47,6 +47,12 @@ final class Plan {
     public const string RELATION_FIELD = 'mcpSmokeRelated';
 
     /** A local volume under storage/, so uploads never land in a public folder. */
+    /** Required in the page type's layout, so an incomplete draft can be refused at publish (#76). */
+    public const string REQUIRED_FIELD = 'mcpSmokeRequired';
+
+    /** A Date field with "Show time zone", to prove its zone survives a round trip (#75). */
+    public const string ZONED_FIELD = 'mcpSmokeStarts';
+
     public const string VOLUME = 'mcpSmokeVolume';
 
     /** A user group with no permissions, for the user lifecycle to assign. */
@@ -275,13 +281,25 @@ final class Plan {
                     'type' => self::ENTRY_TYPE,
                     'title' => "Smoke {$runId}",
                     'slug' => "smoke-{$runId}",
+                    'fields' => '{"' . self::REQUIRED_FIELD . '":"smoke","' . self::ZONED_FIELD . '":{"date":"2026-11-12 10:00:00","timezone":"Australia/Perth"}}',
                 ],
                 'capture' => ['draft.id' => 'draftElementId'],
                 // The fixture section has URLs, so the draft must come back
                 // with a preview link that renders it without a login (#55).
                 'assert' => ['success' => true, 'draftElementId' => 'isInt', 'errors' => 'present', 'warnings' => 'present', 'previewUrl' => 'notEmpty'],
             ],
-            ['tool' => 'get_entry', 'name' => 'get_entry.draft', 'args' => ['id' => '{{draft.id}}']],
+            [
+                // What was written comes back unchanged, zone included: an
+                // offset string here would be the bug #75 reported, a date
+                // moved into the system zone on the next write.
+                'tool' => 'get_entry',
+                'name' => 'get_entry.draft',
+                'args' => ['id' => '{{draft.id}}'],
+                'assert' => [
+                    'entry.fields.' . self::ZONED_FIELD . '.date' => '2026-11-12 10:00:00',
+                    'entry.fields.' . self::ZONED_FIELD . '.timezone' => 'Australia/Perth',
+                ],
+            ],
             [
                 // Writes land as drafts, so relating to an entry created moments
                 // earlier is the ordinary case, not an edge one. It silently
@@ -424,6 +442,34 @@ final class Plan {
                 'args' => ['id' => '{{published.id}}'],
                 'assert' => ['success' => true, 'deleted' => 'present', 'affectedSites' => 'notEmpty'],
             ],
+            [
+                // A draft may leave a required field empty; going live may not.
+                // Publishing this one must be refused with the field's error,
+                // as the control panel refuses it, rather than put an invalid
+                // entry live (#76).
+                'tool' => 'create_entry',
+                'name' => 'create_entry.missing_required',
+                'args' => [
+                    'section' => self::SECTION,
+                    'type' => self::ENTRY_TYPE,
+                    'title' => "Smoke {$runId} incomplete",
+                    'slug' => "smoke-{$runId}-incomplete",
+                ],
+                'capture' => ['incomplete.id' => 'draftElementId'],
+                'assert' => ['success' => true, 'draftElementId' => 'isInt'],
+            ],
+            [
+                'tool' => 'publish_entry',
+                'name' => 'publish_entry.invalid',
+                'args' => ['id' => '{{incomplete.id}}'],
+                'refusal' => 'does not pass validation',
+            ],
+            [
+                'tool' => 'delete_entry',
+                'name' => 'delete_entry.incomplete',
+                'args' => ['id' => '{{incomplete.id}}'],
+                'assert' => ['success' => true],
+            ],
         ];
     }
 
@@ -456,6 +502,10 @@ final class Plan {
                     'key.volume' => self::VOLUME,
                     'key.path' => 'smoke/',
                     'key.filename' => "smoke-{$runId}.png",
+                    // Every serialized asset carries the same key, so one
+                    // found by list_assets can be related straight away (#77).
+                    'asset.key.volume' => self::VOLUME,
+                    'asset.key.path' => 'smoke/',
                 ],
             ],
             [

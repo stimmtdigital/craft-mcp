@@ -9,8 +9,10 @@ declare(strict_types=1);
  *
  * Creates one channel section (Plan::SECTION, with URLs) with one entry type
  * (Plan::ENTRY_TYPE) carrying a Matrix field (Plan::MATRIX_FIELD, one block
- * type, Plan::BLOCK_TYPE) and an Entries field (Plan::RELATION_FIELD) that
- * relates back to the same section, plus one published entry for the read
+ * type, Plan::BLOCK_TYPE), an Entries field (Plan::RELATION_FIELD) that
+ * relates back to the same section, a required text field
+ * (Plan::REQUIRED_FIELD) and a Date field that keeps a time zone
+ * (Plan::ZONED_FIELD), plus one published entry for the read
  * steps to find. Everything is named for the harness, so it cannot collide
  * with a site's real content.
  *
@@ -31,8 +33,10 @@ use craft\elements\Entry;
 use craft\enums\CmsEdition;
 use craft\fieldlayoutelements\CustomField;
 use craft\fieldlayoutelements\entries\EntryTitleField;
+use craft\fields\Date;
 use craft\fields\Entries as EntriesField;
 use craft\fields\Matrix;
+use craft\fields\PlainText;
 use craft\fs\Local;
 use craft\models\EntryType;
 use craft\models\FieldLayout;
@@ -75,11 +79,11 @@ $saved = static function (bool $ok, object $model, string $what): void {
     }
 };
 
-$layout = static function (array $fields, bool $withTitle): FieldLayout {
+$layout = static function (array $fields, bool $withTitle, array $required = []): FieldLayout {
     $layout = new FieldLayout(['type' => Entry::class]);
     $elements = $withTitle ? [new EntryTitleField()] : [];
     foreach ($fields as $field) {
-        $elements[] = new CustomField($field);
+        $elements[] = new CustomField($field, ['required' => in_array($field->handle, $required, true)]);
     }
     $layout->setTabs([new FieldLayoutTab(['name' => 'Content', 'layout' => $layout, 'elements' => $elements])]);
 
@@ -152,10 +156,33 @@ if (!$relation instanceof FieldInterface) {
     $report[] = 'created field ' . Plan::RELATION_FIELD;
 }
 
-if ($pageType->getFieldLayout()->getFieldByHandle(Plan::RELATION_FIELD) === null) {
-    $pageType->setFieldLayout($layout([$matrix, $relation], true));
+// Required, so an incomplete draft can be refused at publish (#76).
+$requiredField = $fields->getFieldByHandle(Plan::REQUIRED_FIELD);
+if (!$requiredField instanceof FieldInterface) {
+    $requiredField = new PlainText(['name' => 'MCP smoke required', 'handle' => Plan::REQUIRED_FIELD]);
+    $saved($fields->saveField($requiredField), $requiredField, 'required field');
+    $report[] = 'created field ' . Plan::REQUIRED_FIELD;
+}
+
+// Keeps a time zone, so a round trip can prove the zone survives (#75).
+$zonedField = $fields->getFieldByHandle(Plan::ZONED_FIELD);
+if (!$zonedField instanceof FieldInterface) {
+    $zonedField = new Date(['name' => 'MCP smoke starts', 'handle' => Plan::ZONED_FIELD, 'showDate' => true, 'showTime' => true, 'showTimeZone' => true]);
+    $saved($fields->saveField($zonedField), $zonedField, 'zoned date field');
+    $report[] = 'created field ' . Plan::ZONED_FIELD;
+}
+
+// Rebuilt whenever a field is missing, so an install set up by an older
+// fixture gains the newer fields too.
+$pageLayout = $pageType->getFieldLayout();
+$missing = array_filter(
+    [Plan::RELATION_FIELD, Plan::REQUIRED_FIELD, Plan::ZONED_FIELD],
+    static fn (string $handle): bool => $pageLayout->getFieldByHandle($handle) === null,
+);
+if ($missing !== []) {
+    $pageType->setFieldLayout($layout([$matrix, $relation, $requiredField, $zonedField], true, [Plan::REQUIRED_FIELD]));
     $saved($entries->saveEntryType($pageType), $pageType, 'page entry type layout');
-    $report[] = 'added ' . Plan::RELATION_FIELD . ' to ' . Plan::ENTRY_TYPE;
+    $report[] = 'added ' . implode(', ', $missing) . ' to ' . Plan::ENTRY_TYPE;
 }
 
 $existing = Entry::find()->section(Plan::SECTION)->slug('smoke-fixture')->status(null)->one();
@@ -166,6 +193,8 @@ if ($existing === null) {
         'title' => 'Smoke fixture',
         'slug' => 'smoke-fixture',
     ]);
+    // Saved live, so the required field needs a value.
+    $entry->setFieldValue(Plan::REQUIRED_FIELD, 'fixture');
     $saved(Craft::$app->getElements()->saveElement($entry), $entry, 'seed entry');
     $report[] = 'created entry smoke-fixture';
 }
