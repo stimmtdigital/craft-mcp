@@ -54,13 +54,18 @@ describe('Dispatcher wired into the SDK Registry', function () {
 });
 
 describe('Builder::setEventDispatcher() truthfulness', function () {
-    it('advertises toolsListChanged true once a real dispatcher is set, matching ServerFactory::create()', function () {
+    // Since mcp/sdk 0.9 a dispatcher alone no longer turns listChanged on: the
+    // builder ties it to a notification bus for its subscriptions/listen
+    // streams. ServerFactory::create() therefore sets its capabilities itself,
+    // and ListChangedInitialize keeps them in the initialize answer
+    // (ListChangedInitializeTest).
+    it('no longer advertises toolsListChanged from a dispatcher alone', function () {
         $server = Server::builder()
             ->setServerInfo(name: 'Test Server', version: '1.0.0')
             ->setEventDispatcher(new Dispatcher())
             ->build();
 
-        expect(initializeCapabilities($server)->toolsListChanged)->toBeTrue();
+        expect(initializeCapabilities($server)->toolsListChanged)->toBeFalse();
     });
 
     it('advertises toolsListChanged false without a dispatcher, reproducing the pre-fix bug', function () {

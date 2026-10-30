@@ -9,6 +9,7 @@ use Mcp\Server\ClientGateway;
 use Mcp\Server\Protocol;
 use Mcp\Server\Session\InMemorySessionStore;
 use Mcp\Server\Session\Session;
+use Mcp\Server\Suspension\NotificationSuspension;
 
 /**
  * ClientGateway::notify() suspends a Fiber with the notification payload
@@ -18,7 +19,7 @@ use Mcp\Server\Session\Session;
  *
  * @return array{type: string, notification: LoggingMessageNotification, session_id: string}|null
  */
-function captureClientLogNotification(ClientLogger $logger, string $level, string $message): ?array {
+function captureClientLogNotification(ClientLogger $logger, string $level, string $message): ?NotificationSuspension {
     $fiber = new Fiber(function () use ($logger, $level, $message): void {
         $logger->{$level}($message);
     });
@@ -42,9 +43,9 @@ describe('ClientLogger wire path (RequestContext::getClientLogger)', function ()
 
         $suspended = captureClientLogNotification($logger, 'info', 'SQL query returned 7 rows');
 
-        expect($suspended['notification'])->toBeInstanceOf(LoggingMessageNotification::class)
-            ->and($suspended['notification']->level)->toBe(LoggingLevel::Info)
-            ->and($suspended['notification']->data)->toBe('SQL query returned 7 rows');
+        expect($suspended->notification)->toBeInstanceOf(LoggingMessageNotification::class)
+            ->and($suspended->notification->level)->toBe(LoggingLevel::Info)
+            ->and($suspended->notification->data)->toBe('SQL query returned 7 rows');
     });
 
     it('drops messages below the negotiated severity, so nothing is sent at all', function () {
@@ -70,8 +71,8 @@ describe('ClientLogger wire path (RequestContext::getClientLogger)', function ()
         });
         $suspended = $fiber->start();
 
-        expect($suspended['notification']->data)->toBe('Tinker code')
-            ->and($suspended['notification']->data)->not->toContain('echo 1;');
+        expect($suspended->notification->data)->toBe('Tinker code')
+            ->and($suspended->notification->data)->not->toContain('echo 1;');
     });
 });
 

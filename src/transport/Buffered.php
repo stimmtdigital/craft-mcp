@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\transport;
 
+use Fiber;
 use JsonException;
 use Mcp\Schema\JsonRpc\Error;
 use Mcp\Server\Transport\StreamableHttpTransport;
@@ -84,7 +85,7 @@ final class Buffered extends StreamableHttpTransport {
         $resumes = 0;
         while ($fiber->isSuspended() && $resumes < self::MAX_RESUMES) {
             $resumes++;
-            $this->handleFiberYield($fiber->resume($this->answerTo()), $this->sessionId);
+            $this->handleFiberYield($fiber->resume($this->answerTo($fiber)), $this->sessionId, $fiber);
         }
 
         if ($fiber->isSuspended()) {
@@ -108,17 +109,19 @@ final class Buffered extends StreamableHttpTransport {
      * two minutes to end up nowhere. Failing immediately, with a reason, is the
      * honest answer for a transport that cannot carry a round trip.
      */
-    private function answerTo(): ?Error {
-        $pending = $this->getPendingRequests($this->sessionId);
-        $first = $pending[0] ?? null;
-        if (!is_array($first) || !is_int($first['request_id'] ?? null)) {
+    private function answerTo(Fiber $fiber): ?Error {
+        // Since SDK 0.9 the pending requests of a fiber are keyed by request
+        // id, and that id is a UUID string rather than an int.
+        $first = array_values($this->getPendingRequests($this->sessionId, $fiber))[0] ?? null;
+        $requestId = $first['request_id'] ?? null;
+        if (!is_string($requestId) && !is_int($requestId)) {
             return null;
         }
 
         return Error::forInternalError(
             'This server cannot ask the client anything over HTTP: the request is answered in one response, '
             . 'so there is nowhere for a reply to arrive. Use the stdio transport for tools that need one.',
-            $first['request_id'],
+            $requestId,
         );
     }
 

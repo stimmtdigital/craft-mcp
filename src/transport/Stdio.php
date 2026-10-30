@@ -146,7 +146,7 @@ final class Stdio extends StdioTransport {
 
         return $fiber !== null
             && $fiber->isSuspended()
-            && $this->getPendingRequests($this->sessionId) === [];
+            && $this->getPendingRequests($this->sessionId, $fiber) === [];
     }
 
     /**

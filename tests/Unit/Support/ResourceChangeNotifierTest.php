@@ -7,6 +7,7 @@ use Mcp\Schema\Request\PingRequest;
 use Mcp\Server\RequestContext;
 use Mcp\Server\Session\InMemorySessionStore;
 use Mcp\Server\Session\Session;
+use Mcp\Server\Suspension\NotificationSuspension;
 use stimmt\craft\Mcp\support\ResourceChangeNotifier;
 use stimmt\craft\Mcp\support\Subscription;
 
@@ -39,10 +40,11 @@ describe('ResourceChangeNotifier', function () {
         $result = runNotifyInFiber($context, 'craft://entries/news/hello-world');
 
         expect($result['terminated'])->toBeFalse()
-            ->and($result['suspended'])->toBeArray()
-            ->and($result['suspended']['type'])->toBe('notification')
-            ->and($result['suspended']['notification'])->toBeInstanceOf(ResourceUpdatedNotification::class)
-            ->and($result['suspended']['notification']->uri)->toBe('craft://entries/news/hello-world');
+            // Since mcp/sdk 0.9 a fiber suspends with a NotificationSuspension
+            // object rather than a ['type' => 'notification', ...] array.
+            ->and($result['suspended'])->toBeInstanceOf(NotificationSuspension::class)
+            ->and($result['suspended']->notification)->toBeInstanceOf(ResourceUpdatedNotification::class)
+            ->and($result['suspended']->notification->uri)->toBe('craft://entries/news/hello-world');
     });
 
     it('does not notify a session that never subscribed', function () {

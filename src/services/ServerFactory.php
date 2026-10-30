@@ -9,9 +9,12 @@ use Mcp\Capability\Registry;
 use Mcp\Capability\Registry\ReferenceHandler;
 use Mcp\Capability\Registry\ReferenceHandlerInterface;
 use Mcp\Schema\Enum\ProtocolVersion;
+use Mcp\Schema\Implementation;
 use Mcp\Schema\ServerCapabilities;
 use Mcp\Server;
 use Mcp\Server\Builder;
+use Mcp\Server\Configuration;
+use Mcp\Server\Handler\Request\InitializeHandler;
 use Mcp\Server\Session\SessionStoreInterface;
 use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
 use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
@@ -93,18 +96,26 @@ class ServerFactory {
         $registry = new Registry($eventDispatcher, $logger);
 
         $basePath = dirname(__DIR__);
+        $instructions = $this->getInstructions($scope);
+        $capabilities = $this->capabilities();
+        // Description and website URL are part of the identity the SDK
+        // serializes on every initialize, and clients show them in their
+        // server pickers. Passing name and version only left both blank.
+        $serverInfo = new Implementation(
+            name: 'Craft CMS MCP Server',
+            version: $this->version(),
+            description: 'Read and write Craft CMS content, inspect the schema, and query the install.',
+            websiteUrl: self::WEBSITE_URL,
+        );
 
         $builder = Server::builder()
-            // Description and website URL are part of the identity the SDK
-            // serializes on every initialize, and clients show them in their
-            // server pickers. Passing name and version only left both blank.
             ->setServerInfo(
-                name: 'Craft CMS MCP Server',
-                version: $this->version(),
-                description: 'Read and write Craft CMS content, inspect the schema, and query the install.',
-                websiteUrl: self::WEBSITE_URL,
+                name: $serverInfo->name,
+                version: $serverInfo->version,
+                description: $serverInfo->description,
+                websiteUrl: $serverInfo->websiteUrl,
             )
-            ->setInstructions($this->getInstructions($scope))
+            ->setInstructions($instructions)
             // Answered on every initialize. Without it the SDK replies with
             // whatever it was compiled against, which is not necessarily what
             // this server implements.
@@ -122,7 +133,20 @@ class ServerFactory {
             // only ever produces concrete URIs and the default matches by
             // exact key.
             ->setResourceSubscriptionManager(new Subscription())
-            ->setCapabilities($this->capabilities())
+            ->setCapabilities($capabilities)
+            // SDK 0.9 drops listChanged from the initialize answer; this puts
+            // back what capabilities() says, so reload_mcp's notification is
+            // one the client was told to expect.
+            ->addRequestHandler(new ListChangedInitialize(
+                new InitializeHandler(new Configuration(
+                    $serverInfo,
+                    $capabilities,
+                    Mcp::settings()->paginationLimit,
+                    $instructions,
+                    ProtocolVersion::V2025_06_18,
+                )),
+                $capabilities,
+            ))
             ->setContainer($this->container)
             ->setRegistry($registry)
             ->setEventDispatcher($eventDispatcher)
