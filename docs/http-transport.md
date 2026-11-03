@@ -192,7 +192,7 @@ Once approved, the app appears under **My Account → MCP Tokens → Connected A
 
 ### How it is secured
 
-- **The callback is an allowlist.** Apps register themselves (that is what lets a user connect without asking you first), so the redirect URI is what keeps a consent from being sent anywhere else. Only callbacks in `oauthRedirectUris` can be registered: by default the Claude apps' callback and Claude Code's loopback callback. Anything else is refused.
+- **The callback is an allowlist.** Apps register themselves (that is what lets a user connect without asking you first), so the redirect URI is what keeps a consent from being sent anywhere else. Only callbacks in `oauthRedirectUris` can be registered: by default the Claude apps' and ChatGPT's callbacks and Claude Code's loopback callback. Anything else is refused.
 - **PKCE (S256) is required** on every authorization; there are no client secrets to leak.
 - **Access tokens last an hour** (`oauthAccessTokenTtl`) and are ordinary MCP tokens: same scopes, same user permission checks, same endpoint.
 - **Refresh tokens rotate.** Each is good for one use. If an old one is ever presented again, the connection is revoked entirely, because a copy exists somewhere it should not.
@@ -207,6 +207,8 @@ claude mcp add --transport http craft-cms https://cms.example.com/mcp
 ```
 
 Then run `/mcp` inside Claude Code and choose the server to sign in. Claude Code listens on a local port for the callback, which the default `oauthRedirectUris` allows on any port.
+
+**ChatGPT** registers with its stable callback, `https://chatgpt.com/connector_platform_oauth_redirect`, because this server returns the issuer on every authorization response. That callback is on the default list since 1.8.1; before, ChatGPT reported "Some app settings were rejected" when the connector was created. If your `config/mcp.php` sets `oauthRedirectUris` itself, add it there. Add the site in ChatGPT as a custom connector with OAuth, using the same MCP URL as for Claude.
 
 Other clients that support MCP OAuth with Dynamic Client Registration work once their callback URL is on the allowlist. Codex signs in with `codex mcp login <name>`; its callback path can depend on the server and on its `mcp_oauth_callback_url` setting, so it is not in the default list. If the login is refused with "This site does not accept that redirect URI", add the exact `redirect_uri` Codex uses to `oauthRedirectUris` (a `http://localhost/...` or `http://127.0.0.1/...` entry matches any port), or connect Codex with a token as shown below.
 

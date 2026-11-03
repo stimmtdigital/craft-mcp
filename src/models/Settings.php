@@ -136,7 +136,7 @@ class Settings extends Model {
     /**
      * Callback URLs an app may register. Registration is open, so this list is
      * what keeps a consent from being sent anywhere else. The default covers
-     * the Claude apps and Claude Code; a loopback entry matches any port.
+     * the Claude apps, ChatGPT and Claude Code; a loopback entry matches any port.
      *
      * @var string[]
      */

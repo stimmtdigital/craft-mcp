@@ -23,6 +23,9 @@ final readonly class RedirectUris {
     public const array DEFAULTS = [
         'https://claude.ai/api/mcp/auth_callback',
         'https://claude.com/api/mcp/auth_callback',
+        // ChatGPT's stable callback, which it uses because this server
+        // supports issuer identification (authorization_response_iss_parameter_supported).
+        'https://chatgpt.com/connector_platform_oauth_redirect',
         'http://localhost/callback',
         'http://127.0.0.1/callback',
     ];

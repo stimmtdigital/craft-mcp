@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-11-03
+
+### Fixed
+
+- ChatGPT can register as a connector. It registers with its stable callback, `https://chatgpt.com/connector_platform_oauth_redirect`, because this server supports issuer identification, and that callback was not on the default `oauthRedirectUris` list, so registration was refused and ChatGPT reported "Some app settings were rejected" before the user reached a login. A site that sets `oauthRedirectUris` itself needs to add it there
+
 ## [1.8.0] - 2026-10-30
 
 ### Fixed

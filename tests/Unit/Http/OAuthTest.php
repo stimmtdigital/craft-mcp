@@ -93,6 +93,19 @@ describe('registration', function () {
             ->toThrow(OAuthError::class, 'redirect URI');
     });
 
+    // ChatGPT registers with its stable callback whenever the server supports
+    // issuer identification, which this one advertises. Without it on the
+    // default list ChatGPT reports "some app settings were rejected" before
+    // the user ever reaches a login.
+    it('registers ChatGPT by its stable callback, and nothing that only resembles it', function () {
+        $uris = new RedirectUris(RedirectUris::DEFAULTS);
+
+        expect($this->registration->register(['client_name' => 'ChatGPT', 'redirect_uris' => ['https://chatgpt.com/connector_platform_oauth_redirect']])['client_id'])->toStartWith('mcpc_')
+            ->and($uris->allows('https://chatgpt.com/connector_platform_oauth_redirect/evil'))->toBeFalse()
+            ->and($uris->allows('http://chatgpt.com/connector_platform_oauth_redirect'))->toBeFalse()
+            ->and($uris->allows('https://chatgpt.com.evil.example/connector_platform_oauth_redirect'))->toBeFalse();
+    });
+
     it('accepts Claude Code\'s loopback callback on any port, and nothing else on loopback', function () {
         $uris = new RedirectUris(RedirectUris::DEFAULTS);
 

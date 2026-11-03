@@ -118,10 +118,13 @@ return [
     // Callback URLs an app may register. Registration is open, so this list is
     // what keeps a consent from being sent anywhere else. A loopback entry
     // matches any port.
-    // Default: the Claude apps' callback and Claude Code's loopback callback
+    // Default: the Claude apps' and ChatGPT's callbacks, and Claude Code's
+    // loopback callback. Setting this replaces the default list, so repeat the
+    // entries you still want.
     'oauthRedirectUris' => [
         'https://claude.ai/api/mcp/auth_callback',
         'https://claude.com/api/mcp/auth_callback',
+        'https://chatgpt.com/connector_platform_oauth_redirect',
         'http://localhost/callback',
         'http://127.0.0.1/callback',
     ],
@@ -193,7 +196,7 @@ return [
 | `httpSessionStore` | `mixed` | `null` | Session storage for the HTTP transport. Null uses the built-in database-backed store; set a class name implementing `Mcp\Server\Session\SessionStoreInterface`, or a callable returning one, for a custom store |
 | `httpPublicUrl` | `string\|null` | `null` | Since 1.4.0. Base URL for the endpoint in printed client snippets; set it on headless deployments where Craft answers on a different domain than the primary site. Since 1.6.0 it is also the OAuth issuer and the base of every OAuth URL |
 | `oauth` | `bool` | `false` | Since 1.6.0. Lets Claude and other OAuth clients connect by URL, with the user approving a scope in the control panel. Requires `httpTransport`. See [Connecting Claude](http-transport.md#connecting-claude-web-desktop-and-mobile) |
-| `oauthRedirectUris` | `array` | Claude apps + Claude Code | Since 1.6.0. Callback URLs an app may register; anything else is refused. A loopback (`http://localhost/...`, `http://127.0.0.1/...`) entry matches any port |
+| `oauthRedirectUris` | `array` | Claude apps, ChatGPT (since 1.8.1), Claude Code | Since 1.6.0. Callback URLs an app may register; anything else is refused. A loopback (`http://localhost/...`, `http://127.0.0.1/...`) entry matches any port. Setting it replaces the default list |
 | `oauthAccessTokenTtl` | `int` | `3600` | Since 1.6.0. Lifetime of an access token issued over OAuth, in seconds (minimum 60) |
 | `oauthRefreshTokenTtl` | `int` | `2592000` | Since 1.6.0. Lifetime of a refresh token, in seconds (minimum 3600). Refresh tokens rotate on every use |
 | `scopedTokenPrivilegedTools` | `array` | `[]` | Since 1.4.0. Install-introspection tool names to allow scoped (readonly/content) HTTP tokens; privileged tools are locked to admins by default |
