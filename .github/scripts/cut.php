@@ -81,6 +81,10 @@ if (run("git tag --list {$tag}") !== '') {
     fail("tag {$tag} already exists");
 }
 
+// A release the newest Craft cannot install is offered as an update in every
+// control panel and fails in every one of them (#78).
+echo run('php ' . escapeshellarg(__DIR__ . '/latest-craft.php')) . "\n";
+
 $today = date('Y-m-d');
 $updated = str_replace(
     "## [Unreleased]\n",
