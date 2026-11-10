@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-beta.1] - 2026-11-10
+
 Craft CMS 5.12 ships its own MCP server. 2.0 stops being a second one: the plugin now adds its tools to Craft's server, which brings the HTTP endpoint, OAuth logins with read, write and admin scopes, and `craft mcp/serve` for stdio. Read [UPGRADE.md](UPGRADE.md) before updating a 1.x install.
 
 ### Added
