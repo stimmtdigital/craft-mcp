@@ -16,7 +16,7 @@ declare(strict_types=1);
  *      section not empty.
  *   2. Retitles `## [Unreleased]` to `## [<version>] - <today>` and opens a
  *      fresh empty `## [Unreleased]` above it.
- *   3. Commits (`docs: changelog for <tag>`), tags, pushes commit and tag.
+ *   3. Commits (`Release <tag>`), tags, pushes commit and tag.
  *      The Release workflow does the rest (pre-release tags publish
  *      immediately; stable tags create a draft for a title pass).
  *
@@ -94,7 +94,7 @@ $updated = str_replace(
 
 if ($dryRun) {
     echo "dry run: would retitle Unreleased to [{$version}] - {$today}, then:\n";
-    echo "  git commit -m \"docs: changelog for {$tag}\" CHANGELOG.md\n";
+    echo "  git commit -m \"Release {$tag}\" CHANGELOG.md\n";
     echo "  git tag {$tag} && git push origin master {$tag}\n\n";
     echo "CHANGELOG head after the edit:\n";
     echo implode("\n", array_slice(explode("\n", $updated), 0, 16)) . "\n";
@@ -103,7 +103,7 @@ if ($dryRun) {
 
 file_put_contents($changelogPath, $updated);
 run('git add CHANGELOG.md');
-run("git commit -m \"docs: changelog for {$tag}\"");
+run("git commit -m \"Release {$tag}\"");
 run("git tag {$tag}");
 run("git push origin master {$tag}");
 
