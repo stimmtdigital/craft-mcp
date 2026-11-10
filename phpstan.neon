@@ -32,10 +32,8 @@ parameters:
         - '#Call to an undefined method yii\\db\\Schema.*::findIndexes#'
         # PsySH optional dependency
         - '#Psy\\#'
-        # Commerce is optional - tools check availability at runtime
+        # Commerce is optional: CommerceTools is only registered when it is installed
         - '#craft\\commerce\\#'
-        # Missing class reference (if class doesn't exist)
-        - '#Class stimmt\\craft\\Mcp\\tools\\SchemaTools not found#'
         # CustomFieldBehavior only exists as an uncompiled template in vendor;
         # Craft::autoload() compiles the real class into memory at runtime
         - '#Access to static property \$fieldHandles on an unknown class craft\\behaviors\\CustomFieldBehavior\.#'

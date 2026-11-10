@@ -5,19 +5,26 @@ declare(strict_types=1);
 namespace stimmt\craft\Mcp\Tests\Smoke;
 
 /**
- * The ordered script the harness runs: every tool called at least once, with
- * arguments chosen so the call exercises its success path rather than its
- * validation path.
+ * The ordered script the harness runs: every `stimmt_` tool called at least
+ * once, with arguments chosen so the call exercises its success path rather
+ * than its validation path.
  *
  * WHY an explicit script rather than "call everything with no arguments": a
  * tool that answers with a validation error proves nothing except that it can
- * reject input. The write tools in particular are only meaningful as a
- * lifecycle, so the plan creates a draft, edits it, gives it a block, reorders
- * that block, publishes it, duplicates it and deletes both, threading the ids
- * from each response into the next call.
+ * reject input. The write tools in particular are only meaningful against a
+ * real draft, so the plan makes one with Craft's own `drafts_create`, threads
+ * the ids from each response into the next call, and deletes every draft it
+ * made with Craft's `drafts_delete`.
  *
- * A step that cannot run says so in the snapshot with its reason, so a coverage
- * gap is visible in the file rather than absent from it.
+ * A step runs on every profile whose connection advertises its tool, and
+ * reports itself skipped on the others, so one plan serves all four profiles
+ * and the scope a profile carries shows up as which steps it could run.
+ *
+ * Step keys: `tool`, `name` (defaults to the tool), `args`, `capture`
+ * (variable => payload path), `assert` (see Assert), `refusal` (the call must
+ * be turned down, naming this text), `uri` (read a resource instead of calling
+ * a tool), `asText` (the answer is text, not JSON), `secret` (assertion
+ * failures withhold the value), `skip`, `tag`, `profiles`.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -25,15 +32,12 @@ final class Plan {
     /** Tools that write files or take real time. Excluded unless asked for. */
     public const string TAG_HEAVY = 'heavy';
 
-    /** Tools that disturb state the rest of the run depends on. Always last. */
-    public const string TAG_PERTURBING = 'perturbing';
-
     /**
      * The fixture this plan is written against: a section of its own, named for
-     * the harness so it cannot collide with a real site's content, and set up
-     * the same way on any install that runs it (see NOTES.md). Kept in one
-     * place so a run on an install without it fails loudly on the first
-     * content step instead of silently skipping half the plan.
+     * the harness so it cannot collide with a real site's content, installed by
+     * fixture.php (see NOTES.md). Kept in one place so a run on an install
+     * without it fails loudly on the first content step instead of silently
+     * skipping half the plan.
      */
     public const string SECTION = 'mcpSmoke';
 
@@ -43,564 +47,342 @@ final class Plan {
 
     public const string BLOCK_TYPE = 'mcpSmokeBlock';
 
-    /** An Entries relation field on the section above, used to prove key resolution. */
+    /** An Entries relation field on the section above, for the field filter. */
     public const string RELATION_FIELD = 'mcpSmokeRelated';
 
-    /** A local volume under storage/, so uploads never land in a public folder. */
-    /** Required in the page type's layout, so an incomplete draft can be refused at publish (#76). */
+    /** Required in the page type's layout, so a draft that empties it is refused at publish (#76). */
     public const string REQUIRED_FIELD = 'mcpSmokeRequired';
 
-    /** A Date field with "Show time zone", to prove its zone survives a round trip (#75). */
-    public const string ZONED_FIELD = 'mcpSmokeStarts';
+    /** The one live entry the fixture creates, for every step that needs an entry. */
+    public const string FIXTURE_SLUG = 'smoke-fixture';
 
-    public const string VOLUME = 'mcpSmokeVolume';
+    /** What stimmt_config_get answers in place of a credential (support/Secrets::PLACEHOLDER). */
+    private const string REDACTED = '[redacted: this setting holds a credential]';
 
-    /** A user group with no permissions, for the user lifecycle to assign. */
-    public const string USER_GROUP = 'mcpSmokeGroup';
+    /** A preview link: an absolute url carrying a token parameter. Its value is never recorded. */
+    private const string PREVIEW_URL = 'matches:/^https?:\/\/[^\s?]+\?(?:[^\s]*&)?token=[^&\s]+/';
 
-    /** A 1x1 transparent PNG: the smallest real image upload_asset can take as data. */
-    private const string PIXEL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    private const string SELECT = 'SELECT id FROM elements ORDER BY id LIMIT 1';
+
+    /**
+     * The handles fixture.php installs, passed to the Craft side as one JSON
+     * argument so this class stays the one place they are named.
+     *
+     * @return array<string, string>
+     */
+    public static function fixture(): array {
+        return [
+            'SECTION' => self::SECTION,
+            'ENTRY_TYPE' => self::ENTRY_TYPE,
+            'MATRIX_FIELD' => self::MATRIX_FIELD,
+            'BLOCK_TYPE' => self::BLOCK_TYPE,
+            'RELATION_FIELD' => self::RELATION_FIELD,
+            'REQUIRED_FIELD' => self::REQUIRED_FIELD,
+            'FIXTURE_SLUG' => self::FIXTURE_SLUG,
+        ];
+    }
 
     /**
      * @return list<array<string, mixed>>
      */
     public static function steps(string $runId): array {
         return array_merge(
-            self::introspection(),
-            self::configuration(),
             self::contentReads(),
-            self::writeLifecycle($runId),
-            self::assetLifecycle($runId),
-            self::userLifecycle($runId),
-            self::perturbing(),
+            self::developerReads(),
+            self::database(),
+            self::graphql(),
+            self::publishing($runId),
+            self::nestedEntries(),
+            self::refusedPublish($runId),
+            self::copyToSite(),
         );
     }
 
     /**
-     * @return list<array<string, mixed>>
-     */
-    private static function introspection(): array {
-        return [
-            [
-                'tool' => 'get_mcp_info',
-                'args' => [],
-                'capture' => ['mcp.available' => 'tools.available'],
-                'assert' => [
-                    'tools.total' => '>=50',
-                    'status.enabled' => true,
-                    'tools.available' => '>=1',
-                    'connection.transport' => 'notEmpty',
-                    'buildSource' => 'notEmpty',
-                ],
-            ],
-            [
-                'tool' => 'get_mcp_info',
-                'name' => 'get_mcp_info.detail',
-                'args' => ['detail' => true],
-                'assert' => ['tools.total' => '>=50', 'health.registrationErrors' => 0],
-            ],
-            [
-                'tool' => 'list_mcp_tools',
-                'args' => [],
-                // The two tools that answer "what may I call" have to answer it
-                // the same. They did not: on a readonly connection this one
-                // counted every registered tool and called 42 callable ones 55,
-                // because it asked the settings instead of the Gate.
-                'assert' => [
-                    'count' => '>=50',
-                    'tools' => 'notEmpty',
-                    'available' => '{{mcp.available}}',
-                    // Every row says which edition it needs, so a tool that
-                    // stopped carrying one is visible here rather than only in
-                    // whatever it silently allowed.
-                    'tools.0.requiredEdition' => 'notEmpty',
-                    'tools.0.locked' => false,
-                ],
-            ],
-            ['tool' => 'get_system_info', 'args' => []],
-            ['tool' => 'get_environment', 'args' => []],
-            ['tool' => 'list_plugins', 'args' => []],
-            ['tool' => 'get_last_error', 'args' => []],
-            ['tool' => 'get_deprecations', 'args' => ['limit' => 5]],
-            // How many jobs are waiting is the install's business: without a
-            // queue worker, every run leaves the next one a longer queue.
-            ['tool' => 'get_queue_jobs', 'args' => ['limit' => 5], 'state' => ['hasMore']],
-            ['tool' => 'list_console_commands', 'args' => []],
-            ['tool' => 'list_routes', 'args' => []],
-            ['tool' => 'list_event_handlers', 'args' => ['filter' => 'Entry']],
-            ['tool' => 'read_logs', 'args' => ['limit' => 5]],
-            ['tool' => 'read_logs', 'name' => 'read_logs.text', 'args' => ['limit' => 5, 'output' => 'text']],
-        ];
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private static function configuration(): array {
-        return [
-            [
-                'tool' => 'list_sites',
-                'args' => [],
-                // The second handle is what makes the multi-site steps run at
-                // all. On a single-site install it captures nothing, every step
-                // that names it reports itself skipped, and the snapshot says
-                // which coverage this install could not provide.
-                'capture' => [
-                    'site.handle' => 'sites.0.handle',
-                    'site.second' => 'sites.1.handle',
-                ],
-            ],
-            ['tool' => 'list_site_groups', 'args' => []],
-            ['tool' => 'get_site', 'args' => ['handle' => '{{site.handle}}']],
-            [
-                'tool' => 'get_site',
-                'name' => 'get_site.second',
-                'args' => ['handle' => '{{site.second}}'],
-                // Two sites must not read as one. If this ever came back as the
-                // primary, every per-site read below would be reading the same
-                // content twice and passing while proving nothing.
-                'assert' => ['success' => true, 'site.primary' => false, 'site.handle' => '{{site.second}}'],
-            ],
-            [
-                'tool' => 'list_sections',
-                'args' => [],
-                'assert' => ['count' => '>=1', 'sections' => 'notEmpty'],
-            ],
-            ['tool' => 'list_fields', 'args' => []],
-            ['tool' => 'list_volumes', 'args' => []],
-            ['tool' => 'list_globals', 'args' => []],
-            ['tool' => 'list_categories', 'args' => ['limit' => 5]],
-            // Active accounts only: every run's user lifecycle leaves an
-            // inactive account behind (there is no delete_user), and an
-            // unfiltered list grew by one per run, so its shape never settled.
-            ['tool' => 'list_users', 'args' => ['status' => 'active', 'limit' => 5]],
-            // A real key. This asked for 'devMode' with no category, which is
-            // not one, and the answer was the sentence "Unknown config
-            // category: devMode" delivered as the VALUE of a successful call.
-            // The step passed for as long as the tool kept doing that.
-            [
-                'tool' => 'get_config',
-                'args' => ['key' => 'general.devMode'],
-                'assert' => ['key' => 'general.devMode'],
-            ],
-            ['tool' => 'get_project_config_diff', 'args' => []],
-            ['tool' => 'get_database_info', 'args' => []],
-            ['tool' => 'get_database_schema', 'args' => ['table' => 'entries']],
-            ['tool' => 'get_table_counts', 'args' => []],
-            ['tool' => 'list_backups', 'args' => []],
-            [
-                'tool' => 'list_graphql_schemas',
-                'args' => [],
-                'capture' => ['graphqlSchema.id' => 'schemas.0.id'],
-            ],
-            ['tool' => 'list_graphql_tokens', 'args' => []],
-            ['tool' => 'get_graphql_schema', 'args' => ['id' => '{{graphqlSchema.id}}']],
-            ['tool' => 'explain_query', 'args' => ['sql' => 'SELECT id FROM elements LIMIT 1']],
-            [
-                'tool' => 'run_query',
-                'args' => ['sql' => 'SELECT id FROM elements ORDER BY id LIMIT 1'],
-                'assert' => ['success' => true, 'rows' => 'notEmpty'],
-            ],
-            ['tool' => 'run_query', 'name' => 'run_query.text', 'args' => ['sql' => 'SELECT id FROM elements ORDER BY id LIMIT 1', 'output' => 'text']],
-            ['tool' => 'tinker', 'args' => ['code' => 'return 1 + 1;']],
-            ['tool' => 'query_graphql', 'args' => ['query' => '{ ping }']],
-            ['tool' => 'execute_graphql', 'args' => ['query' => '{ ping }']],
-        ];
-    }
-
-    /**
+     * The read-scope tools, which every profile reaches. The fixture's id is
+     * captured here for everything after.
+     *
      * @return list<array<string, mixed>>
      */
     private static function contentReads(): array {
         return [
             [
-                'tool' => 'list_entries',
-                'args' => ['section' => self::SECTION, 'limit' => 3],
-                'capture' => ['existing.id' => 'entries.0.id', 'existing.slug' => 'entries.0.slug'],
-                'assert' => ['total' => '>=1', 'entries' => 'notEmpty', 'entries.0.id' => 'isInt'],
+                'tool' => 'stimmt_refs_resolve',
+                'args' => ['type' => 'entry', 'key' => ['section' => self::SECTION, 'slug' => self::FIXTURE_SLUG]],
+                'capture' => ['fixture.id' => 'id'],
+                'assert' => ['type' => 'entry', 'id' => 'isInt', 'key.slug' => self::FIXTURE_SLUG],
+            ],
+            ['tool' => 'stimmt_entries_count', 'args' => [], 'assert' => ['total' => '>=1', 'groupBy' => null]],
+            [
+                'tool' => 'stimmt_entries_count',
+                'name' => 'stimmt_entries_count.grouped',
+                'args' => ['groupBy' => 'section'],
+                'assert' => ['groupBy' => 'section', 'buckets' => 'notEmpty', 'buckets.0.count' => 'isInt'],
             ],
             [
-                'tool' => 'list_entries',
-                'name' => 'list_entries.projection',
-                'args' => ['section' => self::SECTION, 'limit' => 3, 'fields' => ['slug', 'status']],
+                // The primary site's handle, for the copy step: on a single-site
+                // install the only bucket, on any other the first.
+                'tool' => 'stimmt_entries_count',
+                'name' => 'stimmt_entries_count.by_site',
+                'args' => ['section' => self::SECTION, 'groupBy' => 'site'],
+                'capture' => ['site.primary' => 'buckets.0.key'],
+                'assert' => ['buckets.0.key' => 'isString', 'buckets.0.count' => '>=1'],
             ],
             [
-                'tool' => 'list_entries',
-                'name' => 'list_entries.search',
-                'args' => ['section' => self::SECTION, 'limit' => 3, 'search' => 'a'],
+                // A field filter, so the stimmt Filters path is crossed and not
+                // only the bare query: the fixture relates to nothing.
+                'tool' => 'stimmt_entries_count',
+                'name' => 'stimmt_entries_count.filtered',
+                'args' => ['section' => self::SECTION, 'filters' => [self::RELATION_FIELD => ':empty:']],
+                'assert' => ['total' => '>=1'],
+            ],
+            ['tool' => 'stimmt_categories_list', 'args' => ['limit' => 5]],
+            [
+                // The link carries a live preview token. Its shape is asserted
+                // and recorded; its value never leaves Shape and Redact.
+                'tool' => 'stimmt_entries_preview_url',
+                'args' => ['id' => '{{fixture.id}}'],
+                'assert' => ['id' => '{{fixture.id}}', 'previewUrl' => self::PREVIEW_URL],
+                'secret' => true,
             ],
             [
-                'tool' => 'list_entries',
-                'name' => 'list_entries.filters',
-                'args' => ['section' => self::SECTION, 'limit' => 3, 'filters' => [self::RELATION_FIELD => ':empty:']],
+                'tool' => 'stimmt_tools_guide',
+                'name' => 'resource.stimmt_tools_guide',
+                'uri' => 'stimmt://guides/tools',
+                'assert' => ['contents' => 1, 'mimeType' => 'text/markdown', 'text' => 'matches:/^# /'],
             ],
-            [
-                'tool' => 'get_entry',
-                'args' => ['id' => '{{existing.id}}'],
-                'assert' => ['found' => true, 'entry' => 'notEmpty', 'entry.id' => 'isInt'],
-            ],
-            [
-                'tool' => 'get_entry',
-                'name' => 'get_entry.by_slug',
-                'args' => ['slug' => '{{existing.slug}}', 'section' => self::SECTION],
-                'assert' => ['found' => true, 'entry' => 'notEmpty'],
-            ],
-            ['tool' => 'count_entries', 'args' => [], 'assert' => ['success' => true, 'total' => '>=1']],
-            ['tool' => 'count_entries', 'name' => 'count_entries.grouped', 'args' => ['groupBy' => 'section']],
-            [
-                'tool' => 'describe_entry_schema',
-                'args' => ['section' => self::SECTION],
-                'assert' => ['section' => self::SECTION, 'fields' => 'notEmpty', 'natives' => 'present'],
-            ],
-            ['tool' => 'describe_entry_schema', 'name' => 'describe_entry_schema.example', 'args' => ['section' => self::SECTION, 'example' => '{{existing.id|string}}']],
-            ['tool' => 'list_drafts', 'args' => ['limit' => 3]],
-            ['tool' => 'list_revisions', 'args' => ['id' => '{{existing.id}}', 'limit' => 3]],
-            [
-                'tool' => 'list_assets',
-                'args' => ['limit' => 3],
-                'capture' => ['asset.id' => 'assets.0.id'],
-            ],
-            ['tool' => 'get_asset', 'args' => ['id' => '{{asset.id}}']],
-            ['tool' => 'list_asset_folders', 'args' => []],
         ];
     }
 
     /**
-     * The lifecycle. Each step depends on the one before it, which is the point:
-     * this is the only part of the harness that proves the write path end to
-     * end rather than one call at a time.
+     * The admin-only introspection tools. Values depend on the install, so
+     * these are shape, with assertions only where a value must hold anywhere.
      *
      * @return list<array<string, mixed>>
      */
-    private static function writeLifecycle(string $runId): array {
+    private static function developerReads(): array {
         return [
+            ['tool' => 'stimmt_globals_list', 'args' => []],
+            ['tool' => 'stimmt_environment_get', 'args' => []],
+            ['tool' => 'stimmt_errors_last', 'args' => []],
+            ['tool' => 'stimmt_deprecations_list', 'args' => ['limit' => 5]],
+            ['tool' => 'stimmt_console_commands_list', 'args' => []],
+            ['tool' => 'stimmt_routes_list', 'args' => []],
+            ['tool' => 'stimmt_event_handlers_list', 'args' => ['filter' => 'Entry']],
+            ['tool' => 'stimmt_logs_read', 'args' => ['limit' => 5, 'level' => 'error']],
             [
-                'tool' => 'create_entry',
-                'args' => [
-                    'section' => self::SECTION,
-                    'type' => self::ENTRY_TYPE,
-                    'title' => "Smoke {$runId}",
-                    'slug' => "smoke-{$runId}",
-                    'fields' => '{"' . self::REQUIRED_FIELD . '":"smoke","' . self::ZONED_FIELD . '":{"date":"2026-11-12 10:00:00","timezone":"Australia/Perth"}}',
-                ],
-                'capture' => ['draft.id' => 'draftElementId'],
-                // The fixture section has URLs, so the draft must come back
-                // with a preview link that renders it without a login (#55).
-                'assert' => ['success' => true, 'draftElementId' => 'isInt', 'errors' => 'present', 'warnings' => 'present', 'previewUrl' => 'notEmpty'],
+                'tool' => 'stimmt_config_get',
+                'args' => ['key' => 'general.devMode'],
+                'assert' => ['key' => 'general.devMode', 'value' => 'present'],
             ],
             [
-                // What was written comes back unchanged, zone included: an
-                // offset string here would be the bug #75 reported, a date
-                // moved into the system zone on the next write.
-                'tool' => 'get_entry',
-                'name' => 'get_entry.draft',
-                'args' => ['id' => '{{draft.id}}'],
-                'assert' => [
-                    'entry.fields.' . self::ZONED_FIELD . '.date' => '2026-11-12 10:00:00',
-                    'entry.fields.' . self::ZONED_FIELD . '.timezone' => 'Australia/Perth',
-                ],
+                // A credential comes back named and withheld. Marked secret so
+                // that the day redaction breaks, the failure does not print the
+                // password it failed to redact.
+                'tool' => 'stimmt_config_get',
+                'name' => 'stimmt_config_get.credential',
+                'args' => ['key' => 'db.password'],
+                'assert' => ['key' => 'db.password', 'value' => self::REDACTED],
+                'secret' => true,
             ],
             [
-                // Writes land as drafts, so relating to an entry created moments
-                // earlier is the ordinary case, not an edge one. It silently
-                // dropped the relation with a warning until Keys learned to see
-                // unpublished drafts, so both halves are pinned here: the write
-                // resolves the key, and the read gives a key back rather than a
-                // bare id.
-                'tool' => 'create_entry',
-                'name' => 'create_entry.relating_to_draft',
-                'args' => [
-                    'section' => self::SECTION,
-                    'type' => self::ENTRY_TYPE,
-                    'title' => "Smoke {$runId} relation",
-                    'slug' => "smoke-{$runId}-relation",
-                    'fields' => '{"' . self::RELATION_FIELD . '":[{"section":"' . self::SECTION . '","slug":"smoke-' . $runId . '"}]}',
-                ],
-                'capture' => ['relating.id' => 'draftElementId'],
-                'assert' => ['success' => true, 'warnings' => [], 'errors' => []],
+                'tool' => 'stimmt_tinker',
+                'args' => ['code' => 'return 1 + 1;'],
+                'asText' => true,
+                'assert' => ['text' => 'matches:/^= 2$/m'],
             ],
+            ['tool' => 'stimmt_backups_list', 'args' => []],
             [
-                'tool' => 'get_entry',
-                'name' => 'get_entry.relation_reads_back_as_a_key',
-                'args' => ['id' => '{{relating.id}}'],
-                'assert' => [
-                    'found' => true,
-                    'entry.fields.' . self::RELATION_FIELD . '.0.section' => self::SECTION,
-                    'entry.fields.' . self::RELATION_FIELD . '.0.slug' => 'smoke-' . $runId,
-                ],
-            ],
-            [
-                'tool' => 'update_entry',
-                'args' => ['id' => '{{draft.id}}', 'title' => "Smoke {$runId} edited"],
-                'assert' => ['success' => true, 'draftElementId' => 'isInt'],
-            ],
-            [
-                'tool' => 'create_nested_entry',
-                'args' => [
-                    'owner' => '{{draft.id}}',
-                    'field' => self::MATRIX_FIELD,
-                    'type' => self::BLOCK_TYPE,
-                ],
-                'capture' => ['block.id' => 'blockId'],
-                'assert' => ['success' => true, 'blockId' => 'isInt', 'position' => 'isInt'],
-            ],
-            [
-                'tool' => 'create_nested_entry',
-                'name' => 'create_nested_entry.second',
-                'args' => [
-                    'owner' => '{{draft.id}}',
-                    'field' => self::MATRIX_FIELD,
-                    'type' => self::BLOCK_TYPE,
-                ],
-                'capture' => ['block.second' => 'blockId'],
-                'assert' => ['success' => true, 'blockId' => 'isInt'],
-            ],
-            [
-                'tool' => 'move_nested_entry',
-                'args' => ['id' => '{{block.second}}', 'position' => 1],
-                // A block's position is shared across sites, so the response
-                // has to say which sites the new order landed on. An empty or
-                // missing list means the reach went unreported, which is the
-                // state this whole field exists to prevent.
-                'assert' => ['success' => true, 'position' => 1, 'affectedSites' => 'notEmpty'],
-            ],
-            [
-                'tool' => 'publish_entry',
-                'args' => ['id' => '{{draft.id}}'],
-                'capture' => ['published.id' => 'entry.id'],
-                'assert' => [
-                    'success' => true,
-                    'entry.id' => 'isInt',
-                    'entry.draftId' => null,
-                    'affectedSites' => 'notEmpty',
-                ],
-            ],
-            [
-                'tool' => 'duplicate_entry',
-                'args' => ['id' => '{{published.id}}', 'title' => "Smoke {$runId} copy"],
-                // Note the asymmetry: duplicate_entry answers with a whole
-                // entry, where create_entry and update_entry answer with
-                // draftElementId. Pinned here so the difference is deliberate
-                // rather than discovered again. See NOTES.md.
-                'capture' => ['copy.id' => 'entry.id'],
-                'assert' => ['success' => true, 'entry.id' => 'isInt', 'entry.draftId' => 'isInt'],
-            ],
-            // The published entry propagated to every site its section serves,
-            // so it can be read there. Reading it on the second site proves the
-            // site argument reaches the query rather than being accepted and
-            // dropped, which a single-site run cannot tell apart.
-            [
-                'tool' => 'get_entry',
-                'name' => 'get_entry.second_site',
-                'args' => ['id' => '{{published.id}}', 'site' => '{{site.second}}'],
-                // Naming the handle is the point: a server that accepted the
-                // site argument and read the primary anyway would satisfy
-                // "notEmpty" and fail this.
-                'assert' => [
-                    'found' => true,
-                    'entry.id' => 'isInt',
-                    'entry.siteHandle' => '{{site.second}}',
-                ],
-            ],
-            [
-                'tool' => 'copy_entry_to_site',
-                'args' => [
-                    'id' => '{{published.id}}',
-                    'fromSite' => '{{site.handle}}',
-                    'toSite' => '{{site.second}}',
-                ],
-                'capture' => ['crossSite.draftId' => 'draftElementId'],
-                // What it copied, always reported, because the answer depends on
-                // the install: only fields the target site keeps separately are
-                // worth copying, and on an install where none are, the honest
-                // result is an empty list and no draft at all. The delete step
-                // below captures the draft id and skips itself when there is
-                // none, so both outcomes stay covered.
-                'assert' => ['success' => true, 'copiedFields' => 'present'],
-            ],
-            [
-                'tool' => 'delete_entry',
-                'name' => 'delete_entry.cross_site_draft',
-                'args' => ['id' => '{{crossSite.draftId}}'],
-                'assert' => ['success' => true],
-            ],
-            [
-                'tool' => 'delete_entry',
-                'name' => 'delete_entry.relating',
-                'args' => ['id' => '{{relating.id}}'],
-                'assert' => ['success' => true],
-            ],
-            [
-                'tool' => 'delete_entry',
-                'name' => 'delete_entry.copy',
-                'args' => ['id' => '{{copy.id}}'],
-                'assert' => ['success' => true, 'deleted' => 'present'],
-            ],
-            [
-                'tool' => 'delete_entry',
-                'name' => 'delete_entry.published',
-                'args' => ['id' => '{{published.id}}'],
-                'assert' => ['success' => true, 'deleted' => 'present', 'affectedSites' => 'notEmpty'],
-            ],
-            [
-                // A draft may leave a required field empty; going live may not.
-                // Publishing this one must be refused with the field's error,
-                // as the control panel refuses it, rather than put an invalid
-                // entry live (#76).
-                'tool' => 'create_entry',
-                'name' => 'create_entry.missing_required',
-                'args' => [
-                    'section' => self::SECTION,
-                    'type' => self::ENTRY_TYPE,
-                    'title' => "Smoke {$runId} incomplete",
-                    'slug' => "smoke-{$runId}-incomplete",
-                ],
-                'capture' => ['incomplete.id' => 'draftElementId'],
-                'assert' => ['success' => true, 'draftElementId' => 'isInt'],
-            ],
-            [
-                'tool' => 'publish_entry',
-                'name' => 'publish_entry.invalid',
-                'args' => ['id' => '{{incomplete.id}}'],
-                'refusal' => 'does not pass validation',
-            ],
-            [
-                'tool' => 'delete_entry',
-                'name' => 'delete_entry.incomplete',
-                'args' => ['id' => '{{incomplete.id}}'],
-                'assert' => ['success' => true],
-            ],
-        ];
-    }
-
-    /**
-     * Upload, read back, rename and trash one file (#71). By data rather than
-     * url, so the run never depends on the internet; the url path and its
-     * refusals are checked by hand (see NOTES.md).
-     *
-     * @return list<array<string, mixed>>
-     */
-    private static function assetLifecycle(string $runId): array {
-        return [
-            [
-                'tool' => 'upload_asset',
-                'args' => [
-                    'volume' => self::VOLUME,
-                    'folder' => 'smoke',
-                    'filename' => "smoke-{$runId}.png",
-                    'data' => self::PIXEL_PNG,
-                    'alt' => 'Smoke pixel',
-                ],
-                'capture' => ['upload.id' => 'asset.id'],
-                // The key is what an assets field takes, so it has to name the
-                // volume and the folder the file actually landed in.
-                'assert' => [
-                    'success' => true,
-                    'asset.id' => 'isInt',
-                    'asset.kind' => 'image',
-                    'asset.alt' => 'Smoke pixel',
-                    'key.volume' => self::VOLUME,
-                    'key.path' => 'smoke/',
-                    'key.filename' => "smoke-{$runId}.png",
-                    // Every serialized asset carries the same key, so one
-                    // found by list_assets can be related straight away (#77).
-                    'asset.key.volume' => self::VOLUME,
-                    'asset.key.path' => 'smoke/',
-                ],
-            ],
-            [
-                'tool' => 'get_asset',
-                'name' => 'get_asset.uploaded',
-                'args' => ['id' => '{{upload.id}}'],
-                'assert' => ['found' => true, 'asset.width' => 1, 'asset.height' => 1],
-            ],
-            [
-                'tool' => 'update_asset',
-                'args' => [
-                    'volume' => self::VOLUME,
-                    'folder' => 'smoke',
-                    'filename' => "smoke-{$runId}.png",
-                    'alt' => 'Smoke pixel, edited',
-                    'newFilename' => "smoke-{$runId}-renamed.png",
-                ],
-                'assert' => [
-                    'success' => true,
-                    'asset.id' => '{{upload.id}}',
-                    'asset.alt' => 'Smoke pixel, edited',
-                    'asset.filename' => "smoke-{$runId}-renamed.png",
-                    'key.filename' => "smoke-{$runId}-renamed.png",
-                ],
-            ],
-            [
-                'tool' => 'delete_asset',
-                'args' => ['id' => '{{upload.id}}'],
-                'assert' => ['success' => true, 'deleted' => '{{upload.id}}'],
-            ],
-        ];
-    }
-
-    /**
-     * Add a colleague, put them in a group, suspend and reactivate them (#72).
-     * Full scope only, so these skip themselves on content and readonly. There
-     * is no delete_user, so each run leaves one account behind, deactivated
-     * and under an address that cannot receive mail.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private static function userLifecycle(string $runId): array {
-        $email = "mcp-smoke-{$runId}@example.invalid";
-
-        return [
-            [
-                'tool' => 'create_user',
-                'args' => ['email' => $email, 'firstName' => 'Smoke', 'lastName' => $runId],
-                'assert' => ['success' => true, 'user.status' => 'pending', 'user.admin' => false, 'activationEmailSent' => false],
-            ],
-            [
-                'tool' => 'update_user',
-                'args' => ['user' => $email, 'groups' => [self::USER_GROUP]],
-                'assert' => ['success' => true, 'user.groups.0' => self::USER_GROUP],
-            ],
-            [
-                'tool' => 'set_user_status',
-                'args' => ['user' => $email, 'status' => 'suspended'],
-                'assert' => ['success' => true, 'user.status' => 'suspended'],
-            ],
-            [
-                'tool' => 'set_user_status',
-                'name' => 'set_user_status.active',
-                'args' => ['user' => $email, 'status' => 'active'],
-                'assert' => ['success' => true, 'user.status' => 'active'],
-            ],
-            [
-                // Last, so the account a run leaves behind cannot sign in and
-                // stays out of the active-only list_users read above.
-                'tool' => 'set_user_status',
-                'name' => 'set_user_status.inactive',
-                'args' => ['user' => $email, 'status' => 'inactive'],
-                'assert' => ['success' => true, 'user.status' => 'inactive'],
-            ],
-        ];
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private static function perturbing(): array {
-        return [
-            [
-                'tool' => 'create_backup',
+                'tool' => 'stimmt_backups_create',
                 'args' => [],
                 'tag' => self::TAG_HEAVY,
                 'skip' => 'writes a database dump; run with --heavy',
             ],
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function database(): array {
+        return [
+            ['tool' => 'stimmt_db_info', 'args' => []],
+            ['tool' => 'stimmt_db_schema', 'args' => ['table' => 'entries']],
+            ['tool' => 'stimmt_db_table_counts', 'args' => []],
+            ['tool' => 'stimmt_db_explain', 'args' => ['sql' => self::SELECT]],
             [
-                'tool' => 'reload_mcp',
-                'args' => [],
-                'tag' => self::TAG_PERTURBING,
-                'assert' => ['success' => true, 'tools.total' => '>=50'],
+                'tool' => 'stimmt_db_query',
+                'args' => ['sql' => self::SELECT],
+                'assert' => ['success' => true, 'rows' => 'notEmpty'],
             ],
-            ['tool' => 'clear_caches', 'args' => [], 'tag' => self::TAG_PERTURBING],
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function graphql(): array {
+        return [
+            [
+                'tool' => 'stimmt_graphql_schemas_list',
+                'args' => [],
+                'capture' => ['graphqlSchema.id' => 'schemas.0.id'],
+            ],
+            ['tool' => 'stimmt_graphql_schema_get', 'args' => ['id' => '{{graphqlSchema.id}}']],
+            ['tool' => 'stimmt_graphql_tokens_list', 'args' => []],
+            [
+                'tool' => 'stimmt_graphql_query',
+                'args' => ['query' => '{ ping }'],
+                'assert' => ['success' => true, 'data.ping' => 'pong'],
+            ],
+            [
+                'tool' => 'stimmt_graphql_execute',
+                'args' => ['query' => '{ ping }'],
+                'assert' => ['data.ping' => 'pong'],
+            ],
+        ];
+    }
+
+    /**
+     * A draft made with Craft's own tool and published with the plugin's,
+     * which is the pairing the plugin's tool exists for: Craft's drafts_apply
+     * does not refuse a draft that fails validation for live content.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function publishing(string $runId): array {
+        return [
+            [
+                'tool' => 'drafts_create',
+                'args' => ['type' => 'entries', 'id' => '{{fixture.id}}', 'name' => "Smoke {$runId}"],
+                'capture' => ['draft.id' => 'draft.id'],
+                'assert' => ['draft.id' => 'isInt', 'draft.canonicalId' => '{{fixture.id}}'],
+            ],
+            [
+                'tool' => 'stimmt_drafts_publish',
+                'args' => ['id' => '{{draft.id}}'],
+                'assert' => [
+                    'success' => true,
+                    'entry.id' => '{{fixture.id}}',
+                    'entry.draftId' => null,
+                    'entry.fields.' . self::REQUIRED_FIELD => 'fixture',
+                    'affectedSites' => 'notEmpty',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Two blocks onto one draft of the fixture, the second moved ahead of the
+     * first, and the draft thrown away, so the fixture's live Matrix field
+     * stays empty run after run and the positions asserted here hold.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function nestedEntries(): array {
+        return [
+            [
+                'tool' => 'stimmt_nested_entries_create',
+                'args' => ['owner' => '{{fixture.id}}', 'field' => self::MATRIX_FIELD, 'type' => self::BLOCK_TYPE],
+                'capture' => ['blocks.draft' => 'draftElementId', 'block.first' => 'blockId'],
+                'assert' => [
+                    'success' => true,
+                    'state' => 'draft',
+                    'ownerId' => '{{fixture.id}}',
+                    'blockId' => 'isInt',
+                    'draftElementId' => 'isInt',
+                    'position' => 1,
+                    'affectedSites' => 'notEmpty',
+                    'previewUrl' => self::PREVIEW_URL,
+                ],
+                'secret' => true,
+            ],
+            [
+                // Stacked onto the same draft by passing the draft as owner.
+                'tool' => 'stimmt_nested_entries_create',
+                'name' => 'stimmt_nested_entries_create.second',
+                'args' => ['owner' => '{{blocks.draft}}', 'field' => self::MATRIX_FIELD, 'type' => self::BLOCK_TYPE],
+                'capture' => ['block.second' => 'blockId'],
+                'assert' => ['success' => true, 'draftElementId' => '{{blocks.draft}}', 'position' => 2],
+            ],
+            [
+                'tool' => 'stimmt_nested_entries_move',
+                'args' => ['id' => '{{block.second}}', 'position' => 1],
+                // A block's position is shared across sites, so the response
+                // has to say which sites the new order landed on.
+                'assert' => [
+                    'success' => true,
+                    'blockId' => '{{block.second}}',
+                    'draftElementId' => '{{blocks.draft}}',
+                    'position' => 1,
+                    'affectedSites' => 'notEmpty',
+                ],
+            ],
+            [
+                'tool' => 'drafts_delete',
+                'name' => 'drafts_delete.blocks',
+                'args' => ['type' => 'entries', 'id' => '{{blocks.draft}}'],
+                'assert' => ['deleted' => true],
+            ],
+        ];
+    }
+
+    /**
+     * #76: a draft may leave a required field empty; going live may not. The
+     * draft is emptied with Craft's own elements_update, which saves a draft
+     * without validating it for live content, exactly as the control panel
+     * does. Publishing it must be refused naming the field, rather than put an
+     * invalid entry live.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function refusedPublish(string $runId): array {
+        return [
+            [
+                'tool' => 'drafts_create',
+                'name' => 'drafts_create.incomplete',
+                'args' => ['type' => 'entries', 'id' => '{{fixture.id}}', 'name' => "Smoke {$runId} incomplete"],
+                'capture' => ['incomplete.id' => 'draft.id'],
+                'assert' => ['draft.id' => 'isInt'],
+            ],
+            [
+                'tool' => 'elements_update',
+                'name' => 'elements_update.incomplete',
+                'args' => ['type' => 'entries', 'id' => '{{incomplete.id}}', 'fields' => [self::REQUIRED_FIELD => '']],
+                'assert' => ['savedAsDraft' => true, 'element.id' => '{{incomplete.id}}'],
+            ],
+            [
+                'tool' => 'stimmt_drafts_publish',
+                'name' => 'stimmt_drafts_publish.incomplete',
+                'args' => ['id' => '{{incomplete.id}}'],
+                'refusal' => self::REQUIRED_FIELD,
+            ],
+            [
+                'tool' => 'drafts_delete',
+                'name' => 'drafts_delete.incomplete',
+                'args' => ['type' => 'entries', 'id' => '{{incomplete.id}}'],
+                'assert' => ['deleted' => true],
+            ],
+        ];
+    }
+
+    /**
+     * The baseline install has one site, so the only copy there is a site onto
+     * itself, which the tool refuses. On a multi-site install the step asks
+     * for the same copy, so the baselines stay comparable; a real cross-site
+     * copy would need a second handle and its own baseline.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function copyToSite(): array {
+        return [
+            [
+                'tool' => 'stimmt_entries_copy_to_site',
+                'args' => ['id' => '{{fixture.id}}', 'fromSite' => '{{site.primary}}', 'toSite' => '{{site.primary}}'],
+                // A single-site install has nowhere to copy to, so the call
+                // exercises the refusal of a copy onto the same site.
+                'refusal' => 'copying a site onto itself',
+            ],
         ];
     }
 }

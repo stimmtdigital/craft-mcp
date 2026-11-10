@@ -11,9 +11,9 @@ use stimmt\craft\Mcp\support\Window;
 /**
  * The page window, swept across every tool that takes one.
  *
- * list_entries learned the rule and the eleven other tools taking the same two
- * parameters did not, so list_drafts answered `limit: -5` with all fifty-eight
- * rows while echoing "limit": -5 back. A guard that has to be remembered per
+ * One listing tool learned the rule and the eleven others taking the same two
+ * parameters did not, so a draft listing answered `limit: -5` with all
+ * fifty-eight rows while echoing "limit": -5 back. A guard that has to be remembered per
  * tool is forgotten at the next one, so this test does the remembering: it
  * finds every McpTool method with a limit or offset parameter by reflection
  * and holds each of them to both halves of the rule, the schema minimum a
@@ -31,9 +31,9 @@ use stimmt\craft\Mcp\support\Window;
 $windowedTools = static function (): array {
     $found = [];
 
-    foreach ((array) glob(__DIR__ . '/../../../src/tools/*.php') as $file) {
+    foreach ((array) glob(__DIR__ . '/../../../src/capabilities/*.php') as $file) {
         /** @var class-string $class */
-        $class = 'stimmt\\craft\\Mcp\\tools\\' . basename((string) $file, '.php');
+        $class = 'stimmt\\craft\\Mcp\\capabilities\\' . basename((string) $file, '.php');
 
         foreach ((new ReflectionClass($class))->getMethods() as $method) {
             $tool = $method->getAttributes(McpTool::class)[0] ?? null;
@@ -106,18 +106,12 @@ describe('every tool taking a page window', function () use ($windowedTools, $me
         // Spelled out rather than counted: a tool dropping its limit parameter
         // would keep any count honest while quietly leaving this sweep.
         expect($names)->toBe([
-            'get_deprecations',
-            'get_queue_jobs',
-            'list_assets',
-            'list_categories',
-            'list_drafts',
-            'list_entries',
-            'list_orders',
-            'list_products',
-            'list_revisions',
-            'list_users',
-            'read_logs',
-            'run_query',
+            'stimmt_categories_list',
+            'stimmt_commerce_orders_list',
+            'stimmt_commerce_products_list',
+            'stimmt_db_query',
+            'stimmt_deprecations_list',
+            'stimmt_logs_read',
         ]);
     });
 

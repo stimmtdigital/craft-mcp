@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-use stimmt\craft\Mcp\tools\AssetWriteTools;
-use stimmt\craft\Mcp\tools\EntryTools;
-use stimmt\craft\Mcp\tools\EntryWorkflowTools;
-use stimmt\craft\Mcp\tools\NestedEntryTools;
+use stimmt\craft\Mcp\capabilities\EntryTools;
+use stimmt\craft\Mcp\capabilities\EntryWorkflowTools;
+use stimmt\craft\Mcp\capabilities\NestedEntryTools;
 
-// Every entry-write tool must consult the acting-user guard before writing,
-// so content-scope HTTP tokens inherit the linked user's real CP permissions
-// (issue #34). Method => the assertion its body must contain.
-it('guards every entry-write tool with the acting-user authorization', function (string $class, string $method, string $assertion) {
+// Every tool that writes or reveals a single element must consult the
+// acting-user guard first, so a connection inherits the linked user's real
+// control panel permissions (issue #34). Craft's own scopes only say whether
+// a client may write at all, not which entries. Method => the assertion its
+// body must contain.
+it('guards every element tool with the acting-user authorization', function (string $class, string $method, string $assertion) {
     $reflection = new ReflectionMethod($class, $method);
-    $file = (string) file_get_contents($reflection->getFileName());
+    $file = (string) file_get_contents((string) $reflection->getFileName());
     $lines = array_slice(
         explode("\n", $file),
         $reflection->getStartLine() - 1,
@@ -21,23 +22,14 @@ it('guards every entry-write tool with the acting-user authorization', function 
 
     expect(implode("\n", $lines))->toContain("Authorization::{$assertion}(");
 })->with([
-    [EntryTools::class, 'createEntry', 'assertCanSave'],
-    [EntryTools::class, 'updateEntry', 'assertCanSave'],
+    [EntryTools::class, 'countEntries', 'scopeQuery'],
+    [EntryTools::class, 'resolveRef', 'assertCanView'],
+    [EntryTools::class, 'previewUrl', 'assertCanView'],
     [EntryWorkflowTools::class, 'publishEntry', 'assertCanPublish'],
-    [EntryWorkflowTools::class, 'deleteEntry', 'assertCanDelete'],
-    [EntryWorkflowTools::class, 'duplicateEntry', 'assertCanDuplicate'],
     [EntryWorkflowTools::class, 'copyEntryToSite', 'assertCanSave'],
     // The canonical-id publish path applies drafts[0]; the guard must check
     // that draft object itself (peer-draft permissions), not only the canonical.
     [EntryWorkflowTools::class, 'publishCanonical', 'assertCanPublish'],
     [NestedEntryTools::class, 'createNestedEntry', 'assertCanSave'],
     [NestedEntryTools::class, 'moveNestedEntry', 'assertCanSave'],
-    [AssetWriteTools::class, 'uploadAsset', 'assertCanSave'],
-    [AssetWriteTools::class, 'updateAsset', 'assertCanSave'],
-    // A move takes the file out of its folder: the control panel asks for
-    // delete permission on the source, and so does update_asset.
-    [AssetWriteTools::class, 'updateAsset', 'assertCanDelete'],
-    [AssetWriteTools::class, 'deleteAsset', 'assertCanDelete'],
-    // Creating a missing folder is its own Craft permission.
-    [AssetWriteTools::class, 'folder', 'assertCan'],
 ]);

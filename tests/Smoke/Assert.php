@@ -20,6 +20,13 @@ namespace stimmt\craft\Mcp\Tests\Smoke;
  *   'entries'   => 'notEmpty'    a list or string with something in it
  *   'id'        => 'isInt'       type
  *   'warnings'  => 'present'     the key exists, whatever it holds
+ *   'url'       => 'matches:/x/' a string matching the regex
+ *
+ * A step marked `secret` is checked the same way, but its failures name the
+ * path only and never the value: config_get is asked for a credential to prove
+ * it comes back redacted, and the one time redaction breaks is the one time
+ * the failure message would otherwise print the credential. Every other value
+ * a failure renders is masked through Redact first.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -30,12 +37,12 @@ final class Assert {
      * @param array<string, mixed> $rules
      * @return list<string> one line per broken rule, empty when all hold
      */
-    public static function check(mixed $payload, array $rules): array {
+    public static function check(mixed $payload, array $rules, bool $secret = false): array {
         $failures = [];
         foreach ($rules as $path => $expectation) {
             $failure = self::rule($payload, (string) $path, $expectation);
             if ($failure !== null) {
-                $failures[] = $failure;
+                $failures[] = $secret ? "{$path} does not hold (value withheld)" : $failure;
             }
         }
 
@@ -66,6 +73,12 @@ final class Assert {
             return is_numeric($actual) && $actual >= $floor
                 ? null
                 : "{$path} expected at least {$floor}, got " . self::render($value);
+        }
+
+        if (str_starts_with($expectation, 'matches:')) {
+            return is_string($value) && preg_match(substr($expectation, 8), $value) === 1
+                ? null
+                : "{$path} does not match " . substr($expectation, 8) . ', got ' . self::render($value);
         }
 
         return match ($expectation) {
@@ -116,6 +129,6 @@ final class Assert {
 
         $encoded = json_encode($value, JSON_UNESCAPED_SLASHES);
 
-        return is_string($encoded) ? $encoded : 'unknown';
+        return is_string($encoded) ? Redact::text($encoded) : 'unknown';
     }
 }

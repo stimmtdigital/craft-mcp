@@ -3,18 +3,20 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
-use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\Dangerous;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 
-// Every tool declares its blast radius: dangerous tools are marked
-// destructive, everything else is marked read-only and idempotent, so MCP
-// clients can gate and cache accordingly. reload_mcp mutates server state
-// without being dangerous, hence the single exemption.
-it('annotates every non-dangerous tool read-only and idempotent', function () {
-    $exempt = ['reload_mcp'];
+// Every tool declares its blast radius: Craft derives the OAuth scope from
+// readOnlyHint (mcp:read versus mcp:write), and clients gate and cache on the
+// hints. Everything that is neither #[Dangerous] nor a Pro write is a read,
+// so it must say read-only and idempotent. stimmt_entries_preview_url is the
+// one exemption: it is read-only but mints a fresh preview token per call.
+it('annotates every tool that is neither dangerous nor Pro read-only and idempotent', function () {
+    $exempt = ['stimmt_entries_preview_url'];
     $missing = [];
 
-    foreach (glob(__DIR__ . '/../../../src/tools/*.php') as $file) {
-        $class = 'stimmt\\craft\\Mcp\\tools\\' . basename($file, '.php');
+    foreach ((array) glob(__DIR__ . '/../../../src/capabilities/*.php') as $file) {
+        $class = 'stimmt\\craft\\Mcp\\capabilities\\' . basename((string) $file, '.php');
         foreach ((new ReflectionClass($class))->getMethods() as $method) {
             $tools = $method->getAttributes(McpTool::class);
             if ($tools === []) {
@@ -22,10 +24,9 @@ it('annotates every non-dangerous tool read-only and idempotent', function () {
             }
 
             $tool = $tools[0]->newInstance();
-            $metas = $method->getAttributes(McpToolMeta::class);
-            $dangerous = $metas !== [] && $metas[0]->newInstance()->dangerous;
+            $special = $method->getAttributes(Dangerous::class) !== [] || $method->getAttributes(RequiresEdition::class) !== [];
 
-            if ($dangerous || in_array($tool->name, $exempt, true)) {
+            if ($special || in_array($tool->name, $exempt, true)) {
                 continue;
             }
 

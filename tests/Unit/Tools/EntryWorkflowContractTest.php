@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../Fixtures/CustomFieldBehaviorStub.php';
 use craft\elements\Entry;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
-use stimmt\craft\Mcp\tools\EntryWorkflowTools;
+use stimmt\craft\Mcp\capabilities\EntryWorkflowTools;
 
 /**
  * Body of one method of the tool class, for the assertions that are about
@@ -43,17 +43,13 @@ function workflowRefusal(Entry $entry, string $tool): ToolCallException {
         ->invoke((new ReflectionClass(EntryWorkflowTools::class))->newInstanceWithoutConstructor(), $entry, $tool);
 }
 
-// list_revisions used to answer total: 0 for an id that has history, because
-// revisionOf() on a draft or a revision simply matches nothing. The id it was
-// most often asked with is a draftElementId that list_drafts had just handed
-// the caller, so "no history" was a confident wrong answer to the most
-// realistic workflow there is.
-//
-// duplicate_entry and copy_entry_to_site had the same shape with a different
-// symptom: they resolved with a lookup that excludes drafts and revisions, so
-// the same id answered "Entry 3059 not found" while get_entry read it in full
-// in the same session. All three now share one guard, which is the point: the
-// second copy is where the diagnosis went missing.
+// copy_entry_to_site resolved with a lookup that excludes drafts and
+// revisions, so a draft id answered "Entry 3059 not found" while the same id
+// read in full elsewhere in the session. The canonical-only tools now share
+// one guard that admits every state and refuses afterwards, naming the
+// canonical id to call with instead. The name it puts in the refusal is the
+// tool the agent must call next, so it has to be the v2 name: a refusal that
+// says "Call copy_entry_to_site" points at a tool that no longer exists.
 describe('the canonical-entry guard', function () {
     // Drafts and revisions have to be admitted by the lookup, or the guard
     // cannot tell "this id is a draft" from "this id does not exist", and it
@@ -78,12 +74,12 @@ describe('the canonical-entry guard', function () {
         expect($message)->toContain('Entry 3059 is a draft of entry 3029')
             ->toContain("{$tool} works on the canonical entry")
             ->toContain("Call {$tool} with id 3029");
-    })->with([['list_revisions'], ['duplicate_entry'], ['copy_entry_to_site']]);
+    })->with([['stimmt_entries_copy_to_site']]);
 
     it('tells a revision apart from a draft', function () {
         $message = workflowRefusal(
             new Entry(['id' => 3549, 'siteId' => 1, 'revisionId' => 1092, 'canonicalId' => 3545]),
-            'duplicate_entry',
+            'stimmt_entries_copy_to_site',
         )->getMessage();
 
         expect($message)->toContain('Entry 3549 is a revision of entry 3545');
@@ -91,48 +87,36 @@ describe('the canonical-entry guard', function () {
 
     // An unpublished draft is its own canonical, so there is no second id to
     // send the caller to. Saying "ask for {$id}" there would be a loop, and
-    // that id is what create_entry hands back in the default draft-first flow.
+    // that id is what Craft's entries_create hands back for a new draft.
     it('tells an unpublished draft apart from a draft of something', function () {
-        $message = workflowRefusal(new Entry(['id' => 588, 'siteId' => 1, 'draftId' => 225]), 'duplicate_entry')
+        $message = workflowRefusal(new Entry(['id' => 588, 'siteId' => 1, 'draftId' => 225]), 'stimmt_entries_copy_to_site')
             ->getMessage();
 
         expect($message)->toContain('Entry 588 is an unpublished draft')
             ->toContain('has never been a live entry')
-            ->toContain('publish_entry makes it one')
+            ->toContain('stimmt_drafts_publish makes it one')
             ->toContain('takes this same id')
             ->and($message)->not->toContain('id 588 instead');
     });
 
-    it('is what all three canonical-only tools resolve through', function (string $method, string $tool) {
-        expect(workflowMethodBody($method))->toContain("'{$tool}')")
+    it('is what the canonical-only tool resolves through, under its own v2 name', function () {
+        expect(workflowMethodBody('copyEntryToSite'))->toContain("'stimmt_entries_copy_to_site')")
             ->toContain('$this->canonical(')
-            ->and(workflowMethodBody($method))->not->toContain('Lookup::canonical($id, SiteResolver::resolve(');
-    })->with([
-        'revisions' => ['listRevisions', 'list_revisions'],
-        'duplicate' => ['duplicateEntry', 'duplicate_entry'],
-        'copy' => ['copyEntryToSite', 'copy_entry_to_site'],
-    ]);
+            ->and(workflowMethodBody('copyEntryToSite'))->not->toContain('Lookup::canonical($id, SiteResolver::resolve(');
+    });
 
-    it('refuses before the tool acts', function (string $method, string $acts) {
-        $body = workflowMethodBody($method);
+    it('refuses before the tool acts', function () {
+        $body = workflowMethodBody('copyEntryToSite');
 
         expect(strpos($body, '$this->canonical('))->toBeInt()
-            ->and(strpos($body, '$this->canonical('))->toBeLessThan((int) strpos($body, $acts));
-    })->with([
-        'revisions' => ['listRevisions', 'Entry::find()'],
-        'duplicate' => ['duplicateEntry', 'duplicateElement('],
-        'copy' => ['copyEntryToSite', '$this->writer->update('],
-    ]);
-
-    it('says in the list_revisions description that a draft id is refused', function () {
-        expect(workflowToolDescription('listRevisions'))->toContain('draftElementId');
+            ->and(strpos($body, '$this->canonical('))->toBeLessThan((int) strpos($body, '$this->writer->update('));
     });
 });
 
 // The target side of the copy was a second, hand-rolled lookup: it agreed with
 // the source lookup only by coincidence, and its miss ("does not exist on
 // site") diagnoses a section that is not enabled there and nothing else.
-describe('copy_entry_to_site resolves both ends the same way', function () {
+describe('stimmt_entries_copy_to_site resolves both ends the same way', function () {
     it('reads the target through the shared lookup rather than its own query', function () {
         expect(workflowMethodBody('copyEntryToSite'))
             ->toContain('Lookup::canonical($id, $targetSite)')
@@ -146,41 +130,34 @@ describe('copy_entry_to_site resolves both ends the same way', function () {
     });
 });
 
-// publish_entry and delete_entry resolved their id with Lookup::withDrafts,
-// which excludes revisions, so a revisionElementId came back as "Entry 3306
-// not found" in the same session where get_entry 3306 returned the full
-// payload and update_entry 3306 named the canonical. The element plainly
-// exists; only the lookup refused to see it, which sends an agent hunting for
-// a missing id instead of at the canonical one.
-describe('publish_entry and delete_entry on a revision id', function () {
-    it('resolves the id through the shared write guard', function (string $method, string $tool) {
-        expect(workflowMethodBody($method))
-            ->toContain("EntryResolver::writable(\$id, SiteResolver::resolve(\$site), '{$tool}')")
-            ->and(workflowMethodBody($method))->not->toContain('Lookup::withDrafts($id');
-    })->with([
-        'publish' => ['publishEntry', 'publish_entry'],
-        'delete' => ['deleteEntry', 'delete_entry'],
-    ]);
+// publish_entry resolved its id with Lookup::withDrafts, which excludes
+// revisions, so a revisionElementId came back as "Entry 3306 not found" in
+// the same session where the id read in full. The element plainly exists;
+// only the lookup refused to see it, which sends an agent hunting for a
+// missing id instead of at the canonical one.
+describe('stimmt_drafts_publish on a revision id', function () {
+    it('resolves the id through the shared write guard, under its own v2 name', function () {
+        expect(workflowMethodBody('publishEntry'))
+            ->toContain("EntryResolver::writable(\$id, SiteResolver::resolve(\$site), 'stimmt_drafts_publish')")
+            ->and(workflowMethodBody('publishEntry'))->not->toContain('Lookup::withDrafts($id');
+    });
 
     // Naming the canonical is only possible while the revision is still
     // findable, which is why the shared guard resolves in every state and
     // refuses afterwards; EntryResolverTest owns the diagnosis it produces.
-    it('refuses before it acts', function (string $method, string $acts) {
-        $body = workflowMethodBody($method);
+    it('refuses before it acts', function () {
+        $body = workflowMethodBody('publishEntry');
 
         expect(strpos($body, 'EntryResolver::writable('))->toBeInt()
-            ->and(strpos($body, 'EntryResolver::writable('))->toBeLessThan((int) strpos($body, $acts));
-    })->with([
-        'publish' => ['publishEntry', '$this->applyDraft('],
-        'delete' => ['deleteEntry', 'deleteElement('],
-    ]);
+            ->and(strpos($body, 'EntryResolver::writable('))->toBeLessThan((int) strpos($body, '$this->applyDraft('));
+    });
 });
 
 // copy_entry_to_site claimed to "copy field values" while copying every field,
 // translatable or not. A field Craft does not treat as translatable already
 // holds one value shared by every site, so copying it states what was already
 // true and costs a full re-save of the target's field value for nothing.
-describe('copy_entry_to_site copies only what a site can hold separately', function () {
+describe('stimmt_entries_copy_to_site copies only what a site can hold separately', function () {
     beforeEach(function () {
         $this->body = workflowMethodBody('copyEntryToSite');
         $this->filter = workflowMethodBody('perSiteFields');
@@ -232,40 +209,5 @@ describe('copy_entry_to_site copies only what a site can hold separately', funct
         expect(workflowToolDescription('copyEntryToSite'))
             ->toContain('SEPARATELY PER SITE')
             ->toContain('translatable');
-    });
-});
-
-// Craft places a duplicate immediately after its source, which in a structure
-// section means under the same parent; an unpublished draft is its own
-// canonical, so the copy is placed the moment it is made. Nothing in the
-// response said so, which is exactly how a copy that DID keep its place reads
-// as one that quietly lost it.
-// A duplicate is an unpublished draft, so its `url` renders nothing yet; the
-// preview link is the only way to see the copy without publishing it (#55).
-describe('duplicate_entry links a preview of the copy', function () {
-    it('returns a previewUrl for the duplicate draft', function () {
-        expect(workflowMethodBody('duplicateEntry'))
-            ->toContain("'previewUrl' => \$this->writer->previewUrl(\$duplicate)");
-    });
-});
-
-describe('duplicate_entry reports where the copy landed', function () {
-    it('returns the structure parent alongside the entry', function () {
-        expect(workflowMethodBody('duplicateEntry'))
-            ->toContain("'parent' => \$this->structureParent(\$duplicate)");
-    });
-
-    // Structures::moveAfter() writes the placement straight into
-    // structureelements, so the element duplicateElement() returns carries no
-    // lft/rgt and reports no parent for a copy that has one. Asking the clone
-    // would have this key state the very thing it exists to disprove.
-    it('reads the placement back instead of asking the returned clone', function () {
-        expect(workflowMethodBody('structureParent'))
-            ->toContain('Lookup::withDrafts((int) $entry->id, $entry->getSite())')
-            ->toContain('$placed->structureId === null');
-    });
-
-    it('says in its description that the copy keeps its place', function () {
-        expect(workflowToolDescription('duplicateEntry'))->toContain('same parent');
     });
 });

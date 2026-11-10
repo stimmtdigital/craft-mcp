@@ -13,10 +13,12 @@ use stimmt\craft\Mcp\installer\EnvironmentDetector;
 /**
  * Base class for MCP client implementations.
  *
- * Provides shared configuration generation logic for DDEV and native PHP environments.
+ * Every client starts Craft's own stdio server, `craft mcp/serve`, acting as
+ * one Craft user: since 2.0 the plugin adds its tools to that server rather
+ * than running one of its own.
  */
 abstract class Base implements Client {
-    protected const BIN_PATH = 'vendor/stimmt/craft-mcp/bin/mcp-server';
+    protected const string CRAFT = 'craft';
 
     public function __construct(
         protected readonly string $projectRoot,
@@ -36,10 +38,10 @@ abstract class Base implements Client {
         return new ConfigWriter();
     }
 
-    public function generateServerConfig(string $environment, ?string $projectPath = null, ?string $craftSubdirectory = null): array {
+    public function generateServerConfig(string $environment, string $user, ?string $projectPath = null, ?string $craftSubdirectory = null): array {
         return match ($environment) {
-            EnvironmentDetector::DDEV => $this->buildDdevConfig($projectPath, $craftSubdirectory),
-            EnvironmentDetector::NATIVE => $this->buildNativeConfig($projectPath, $craftSubdirectory),
+            EnvironmentDetector::DDEV => $this->buildDdevConfig($user, $projectPath, $craftSubdirectory),
+            EnvironmentDetector::NATIVE => $this->buildNativeConfig($user, $projectPath, $craftSubdirectory),
             default => throw new InvalidArgumentException("Unknown environment: {$environment}"),
         };
     }
@@ -47,14 +49,15 @@ abstract class Base implements Client {
     /**
      * Build configuration for DDEV environment.
      *
+     * @param string $user The Craft user the server acts as
      * @param string|null $projectPath Absolute project path (for clients that need it)
      * @param string|null $craftSubdirectory Relative path from project root to Craft root
      * @return array{command: string, args: string[], cwd?: string}
      */
-    protected function buildDdevConfig(?string $projectPath, ?string $craftSubdirectory): array {
+    protected function buildDdevConfig(string $user, ?string $projectPath, ?string $craftSubdirectory): array {
         $config = [
             'command' => $this->getDdevCommand($projectPath),
-            'args' => ['exec', 'php', $this->getBinPath($craftSubdirectory)],
+            'args' => ['exec', 'php', ...$this->serveArgs($user, $craftSubdirectory)],
         ];
 
         if ($projectPath !== null && $this->requiresAbsolutePaths()) {
@@ -67,14 +70,15 @@ abstract class Base implements Client {
     /**
      * Build configuration for native PHP environment.
      *
+     * @param string $user The Craft user the server acts as
      * @param string|null $projectPath Absolute project path (for clients that need it)
      * @param string|null $craftSubdirectory Relative path from project root to Craft root
      * @return array{command: string, args: string[], cwd?: string}
      */
-    protected function buildNativeConfig(?string $projectPath, ?string $craftSubdirectory): array {
+    protected function buildNativeConfig(string $user, ?string $projectPath, ?string $craftSubdirectory): array {
         $config = [
             'command' => $this->getPhpCommand($projectPath),
-            'args' => [$this->getBinPath($craftSubdirectory)],
+            'args' => $this->serveArgs($user, $craftSubdirectory),
         ];
 
         if ($projectPath !== null && $this->requiresAbsolutePaths()) {
@@ -85,14 +89,15 @@ abstract class Base implements Client {
     }
 
     /**
-     * Get the MCP server binary path, prefixed with subdirectory when applicable.
+     * `craft mcp/serve --user=…`, with the craft script prefixed by the
+     * subdirectory when Craft lives below the project root.
+     *
+     * @return list<string>
      */
-    private function getBinPath(?string $craftSubdirectory): string {
-        if ($craftSubdirectory === null) {
-            return self::BIN_PATH;
-        }
+    private function serveArgs(string $user, ?string $craftSubdirectory): array {
+        $craft = $craftSubdirectory === null ? self::CRAFT : $craftSubdirectory . '/' . self::CRAFT;
 
-        return $craftSubdirectory . '/' . self::BIN_PATH;
+        return [$craft, 'mcp/serve', '--user=' . $user];
     }
 
     /**

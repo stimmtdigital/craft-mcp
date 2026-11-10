@@ -5,30 +5,28 @@ declare(strict_types=1);
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Discovery\DocBlockParser;
 use Mcp\Capability\Discovery\SchemaGenerator;
-use stimmt\craft\Mcp\tools\AssetTools;
-use stimmt\craft\Mcp\tools\DatabaseTools;
-use stimmt\craft\Mcp\tools\DebugTools;
-use stimmt\craft\Mcp\tools\EntryTools;
-use stimmt\craft\Mcp\tools\EntryWorkflowTools;
-use stimmt\craft\Mcp\tools\GraphqlTools;
-use stimmt\craft\Mcp\tools\NestedEntryTools;
-use stimmt\craft\Mcp\tools\SystemTools;
+use stimmt\craft\Mcp\capabilities\DatabaseTools;
+use stimmt\craft\Mcp\capabilities\DebugTools;
+use stimmt\craft\Mcp\capabilities\EntryTools;
+use stimmt\craft\Mcp\capabilities\EntryWorkflowTools;
+use stimmt\craft\Mcp\capabilities\GraphqlTools;
+use stimmt\craft\Mcp\capabilities\NestedEntryTools;
+use stimmt\craft\Mcp\capabilities\SystemTools;
 
 /**
  * What a client can learn about a tool WITHOUT calling anything: the display
  * name in a tool picker, and the description on each schema property.
  *
  * Helpers are closures rather than named functions, because Pest shares one
- * global function namespace across the whole suite and
- * tests/Unit/Tools/OutputConventionTest.php already owns `schemaFor`.
+ * global function namespace across the whole suite.
  */
 
 /** @return McpTool[] */
 $declaredTools = static function (): array {
     $tools = [];
 
-    foreach ((array) glob(__DIR__ . '/../../../src/tools/*.php') as $file) {
-        $class = 'stimmt\\craft\\Mcp\\tools\\' . basename((string) $file, '.php');
+    foreach ((array) glob(__DIR__ . '/../../../src/capabilities/*.php') as $file) {
+        $class = 'stimmt\\craft\\Mcp\\capabilities\\' . basename((string) $file, '.php');
 
         foreach ((new ReflectionClass($class))->getMethods() as $method) {
             foreach ($method->getAttributes(McpTool::class) as $attribute) {
@@ -94,29 +92,20 @@ describe('parameter descriptions', function () use ($generatedSchema) {
 
         expect($undescribed)->toBe([]);
     })->with([
-        'list_entries' => [EntryTools::class, 'listEntries', ['status', 'type', 'search', 'author', 'updatedAfter', 'updatedBefore', 'createdAfter', 'createdBefore']],
-        'count_entries' => [EntryTools::class, 'countEntries', ['status', 'groupBy']],
-        'get_entry' => [EntryTools::class, 'getEntry', ['id', 'slug']],
-        'create_entry' => [EntryTools::class, 'createEntry', ['fields', 'mode', 'parent', 'postDate', 'expiryDate', 'slug']],
-        'update_entry' => [EntryTools::class, 'updateEntry', ['id', 'fields', 'mode', 'status', 'expectedDateUpdated']],
-        'describe_entry_schema' => [EntryTools::class, 'describeEntrySchema', ['type', 'depth', 'example']],
-        'publish_entry' => [EntryWorkflowTools::class, 'publishEntry', ['id']],
-        'delete_entry' => [EntryWorkflowTools::class, 'deleteEntry', ['id']],
-        'duplicate_entry' => [EntryWorkflowTools::class, 'duplicateEntry', ['fields']],
-        'copy_entry_to_site' => [EntryWorkflowTools::class, 'copyEntryToSite', ['fromSite', 'toSite']],
-        'list_drafts' => [EntryWorkflowTools::class, 'listDrafts', ['creator']],
-        'create_nested_entry' => [NestedEntryTools::class, 'createNestedEntry', ['owner', 'field', 'type', 'fields', 'mode', 'position']],
-        'move_nested_entry' => [NestedEntryTools::class, 'moveNestedEntry', ['id', 'position', 'mode']],
-        'list_assets' => [AssetTools::class, 'listAssets', ['volume', 'folderId', 'kind', 'filename']],
-        'run_query' => [DatabaseTools::class, 'runQuery', ['sql', 'limit']],
-        'get_database_schema' => [DatabaseTools::class, 'getDatabaseSchema', ['table']],
-        'get_queue_jobs' => [DebugTools::class, 'getQueueJobs', ['status']],
-        'list_event_handlers' => [DebugTools::class, 'listEventHandlers', ['filter']],
-        'query_graphql' => [GraphqlTools::class, 'queryGraphql', ['query', 'variables', 'operationName', 'schemaId']],
-        'execute_graphql' => [GraphqlTools::class, 'executeGraphql', ['query']],
-        'get_config' => [SystemTools::class, 'getConfig', ['key']],
-        'read_logs' => [SystemTools::class, 'readLogs', ['level', 'pattern', 'source']],
-        'clear_caches' => [SystemTools::class, 'clearCaches', ['type']],
+        'stimmt_entries_count' => [EntryTools::class, 'countEntries', ['section', 'status', 'groupBy', 'filters', 'relatedTo']],
+        'stimmt_refs_resolve' => [EntryTools::class, 'resolveRef', ['type', 'key']],
+        'stimmt_entries_preview_url' => [EntryTools::class, 'previewUrl', ['id']],
+        'stimmt_drafts_publish' => [EntryWorkflowTools::class, 'publishEntry', ['id', 'site']],
+        'stimmt_entries_copy_to_site' => [EntryWorkflowTools::class, 'copyEntryToSite', ['fromSite', 'toSite']],
+        'stimmt_nested_entries_create' => [NestedEntryTools::class, 'createNestedEntry', ['owner', 'field', 'type', 'fields', 'mode', 'position']],
+        'stimmt_nested_entries_move' => [NestedEntryTools::class, 'moveNestedEntry', ['id', 'position', 'mode']],
+        'stimmt_db_query' => [DatabaseTools::class, 'runQuery', ['sql', 'limit']],
+        'stimmt_db_schema' => [DatabaseTools::class, 'getDatabaseSchema', ['table']],
+        'stimmt_event_handlers_list' => [DebugTools::class, 'listEventHandlers', ['filter']],
+        'stimmt_graphql_query' => [GraphqlTools::class, 'queryGraphql', ['query', 'variables', 'operationName', 'schemaId']],
+        'stimmt_graphql_execute' => [GraphqlTools::class, 'executeGraphql', ['query']],
+        'stimmt_config_get' => [SystemTools::class, 'getConfig', ['key']],
+        'stimmt_logs_read' => [SystemTools::class, 'readLogs', ['level', 'pattern', 'source']],
     ]);
 
     // A description-only #[Schema] must not disturb what the generator inferred
@@ -124,11 +113,11 @@ describe('parameter descriptions', function () use ($generatedSchema) {
     // one is safe on a typed or enum parameter. If that ever stopped holding,
     // every description added this way would silently reshape a schema.
     it('adds the description without reshaping the parameter', function () use ($generatedSchema) {
-        $properties = $generatedSchema(EntryTools::class, 'createEntry')['properties'];
+        $properties = $generatedSchema(NestedEntryTools::class, 'createNestedEntry')['properties'];
 
         expect($properties['fields']['type'])->toBe(['null', 'string'])
-            ->and($properties['section']['type'])->toBe('string')
-            ->and($generatedSchema(EntryTools::class, 'describeEntrySchema')['properties']['depth'])
-            ->toMatchArray(['type' => 'integer', 'default' => 1]);
+            ->and($properties['field']['type'])->toBe('string')
+            ->and($generatedSchema(SystemTools::class, 'readLogs')['properties']['limit'])
+            ->toMatchArray(['type' => 'integer', 'default' => 50]);
     });
 });

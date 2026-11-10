@@ -3,52 +3,52 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
-use stimmt\craft\Mcp\attributes\McpToolMeta;
-use stimmt\craft\Mcp\Mcp;
-use stimmt\craft\Mcp\tools\GraphqlTools;
+use Mcp\Exception\ToolCallException;
+use stimmt\craft\Mcp\attributes\Dangerous;
+use stimmt\craft\Mcp\capabilities\GraphqlTools;
 
 describe('GraphqlTools class structure', function () {
-    it('has list_graphql_schemas tool with McpTool attribute', function () {
+    it('has stimmt_graphql_schemas_list tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(GraphqlTools::class, 'listGraphqlSchemas');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('list_graphql_schemas')
+        expect($instance->name)->toBe('stimmt_graphql_schemas_list')
             ->and($instance->description)->toContain('GraphQL schemas');
     });
 
-    it('has get_graphql_schema tool with McpTool attribute', function () {
+    it('has stimmt_graphql_schema_get tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(GraphqlTools::class, 'getGraphqlSchema');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('get_graphql_schema')
+        expect($instance->name)->toBe('stimmt_graphql_schema_get')
             ->and($instance->description)->toContain('SDL');
     });
 
-    it('has execute_graphql tool with McpTool attribute', function () {
+    it('has stimmt_graphql_execute tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(GraphqlTools::class, 'executeGraphql');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('execute_graphql')
+        expect($instance->name)->toBe('stimmt_graphql_execute')
             ->and($instance->description)->toContain('dangerous');
     });
 
-    it('has list_graphql_tokens tool with McpTool attribute', function () {
+    it('has stimmt_graphql_tokens_list tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(GraphqlTools::class, 'listGraphqlTokens');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('list_graphql_tokens')
+        expect($instance->name)->toBe('stimmt_graphql_tokens_list')
             ->and($instance->description)->toContain('tokens');
     });
 });
@@ -67,7 +67,8 @@ describe('GraphqlTools method signatures', function () {
         $reflection = new ReflectionMethod(GraphqlTools::class, 'executeGraphql');
         $parameters = $reflection->getParameters();
 
-        expect($parameters)->toHaveCount(5);
+        expect($parameters)->toHaveCount(5)
+            ->and($parameters[4]->getName())->toBe('context');
 
         // variables, operationName, schemaId should all be optional
         expect($parameters[1]->getName())->toBe('variables')
@@ -85,14 +86,14 @@ describe('GraphqlTools method signatures', function () {
 
         foreach ($methods as $methodName) {
             $reflection = new ReflectionMethod(GraphqlTools::class, $methodName);
-            expect($reflection->getReturnType()?->getName())->toBe('array');
+            expect((string) $reflection->getReturnType())->toBe('array');
         }
     });
 });
 
 describe('GraphqlTools dangerous tool', function () {
-    it('execute_graphql is marked as dangerous', function () {
-        expect(Mcp::DANGEROUS_TOOLS)->toContain('execute_graphql');
+    it('stimmt_graphql_execute is marked as dangerous', function () {
+        expect((new ReflectionMethod(GraphqlTools::class, 'executeGraphql'))->getAttributes(Dangerous::class))->toHaveCount(1);
     });
 });
 
@@ -109,15 +110,16 @@ describe('GraphqlTools tool count', function () {
     });
 });
 
-describe('query_graphql', function () {
+describe('stimmt_graphql_query', function () {
+    // The read-only guard below is what lets this tool stay out of the
+    // dangerous-tools gate, so the two must agree.
     it('is registered read-only and not dangerous', function () {
         $method = new ReflectionMethod(GraphqlTools::class, 'queryGraphql');
         $tool = $method->getAttributes(McpTool::class)[0]->newInstance();
-        $meta = $method->getAttributes(McpToolMeta::class)[0]->newInstance();
 
-        expect($tool->name)->toBe('query_graphql')
-            ->and($tool->annotations->readOnlyHint)->toBeTrue()
-            ->and($meta->dangerous)->toBeFalse();
+        expect($tool->name)->toBe('stimmt_graphql_query')
+            ->and($tool->annotations?->readOnlyHint)->toBeTrue()
+            ->and($method->getAttributes(Dangerous::class))->toBe([]);
     });
 
     it('rejects non-query operations by parsing the document', function () {
@@ -130,7 +132,7 @@ describe('query_graphql', function () {
 
 // Behavioral coverage for the security mechanism itself: assertReadOnly only
 // touches the GraphQL parser (pure PHP, no Craft boot), so it can run here.
-describe('query_graphql read-only guard', function () {
+describe('stimmt_graphql_query read-only guard', function () {
     $guard = function (string $query): void {
         $tools = (new ReflectionClass(GraphqlTools::class))->newInstanceWithoutConstructor();
         (new ReflectionMethod(GraphqlTools::class, 'assertReadOnly'))->invoke($tools, $query);
@@ -138,15 +140,15 @@ describe('query_graphql read-only guard', function () {
 
     it('rejects mutations before execution', function () use ($guard) {
         $guard('mutation { deleteEntry(id: 1) }');
-    })->throws(\Mcp\Exception\ToolCallException::class, 'execute_graphql');
+    })->throws(ToolCallException::class, "Only query operations are allowed here; 'mutation'");
 
     it('rejects subscriptions before execution', function () use ($guard) {
         $guard('subscription { entryUpdated { id } }');
-    })->throws(\Mcp\Exception\ToolCallException::class);
+    })->throws(ToolCallException::class);
 
     it('rejects syntax errors with the parser message', function () use ($guard) {
         $guard('query {');
-    })->throws(\Mcp\Exception\ToolCallException::class, 'GraphQL syntax error');
+    })->throws(ToolCallException::class, 'GraphQL syntax error');
 
     it('allows named, anonymous, and fragment-bearing queries', function (string $query) use ($guard) {
         $guard($query);

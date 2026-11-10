@@ -9,14 +9,18 @@ use RuntimeException;
 /**
  * One identity on one transport, with its own baseline.
  *
- * WHY the harness is a set of profiles rather than a single run: the plugin
- * answers on two transports and under three token scopes, and the differences
- * between them are exactly where the defects live. A tool that works on stdio
- * and destroys its own response over HTTP looks fine to a single-transport
- * harness, and a scope boundary that hides a tool from the catalogue while
- * still running it when called looks fine to a harness that only reads the
- * catalogue. Each profile records its own baseline, so drift is attributed to
- * the connection that produced it.
+ * WHY the harness is a set of profiles rather than a single run: since v2 the
+ * plugin is no server. It registers its tools into Craft's, and Craft decides
+ * who sees which: a tool with readOnlyHint needs `mcp:read`, any other tool
+ * `mcp:write`, and a method marked RequiresAdmin needs `mcp:admin` and an
+ * admin user. stdio carries no token at all, only the user it is served as.
+ * The differences between those connections are exactly where a defect in the
+ * plugin's annotations would live, so each records its own baseline and drift
+ * is attributed to the connection that produced it.
+ *
+ * Every profile is the same admin user. What differs is the scope the
+ * connection carries, so a difference in the catalogue is Craft's scope filter
+ * reading the plugin's annotations, and nothing else.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -25,33 +29,34 @@ final class Profile {
 
     public const string HTTP = 'http';
 
-    public const string SCOPE_READONLY = 'readonly';
+    public const string READ = 'mcp:read';
 
-    public const string SCOPE_CONTENT = 'content';
+    public const string WRITE = 'mcp:write';
 
-    public const string SCOPE_FULL = 'full';
+    public const string ADMIN = 'mcp:admin';
 
+    /**
+     * @param list<string> $scopes the token's scopes; empty on stdio, which
+     *                             carries none
+     */
     public function __construct(
         public readonly string $name,
         public readonly string $transport,
-        public readonly ?string $scope,
+        public readonly string $level,
+        public readonly array $scopes,
         public readonly string $baseline,
     ) {
     }
 
     /**
-     * The stdio profile keeps the original baseline filename: it is the guard
-     * that already exists, and renaming it would throw away the history it
-     * carries.
-     *
      * @return array<string, self>
      */
     public static function all(): array {
         $profiles = [
-            new self('stdio-full', self::STDIO, null, 'stdio.json'),
-            new self('http-full', self::HTTP, self::SCOPE_FULL, 'http-full.json'),
-            new self('http-content', self::HTTP, self::SCOPE_CONTENT, 'http-content.json'),
-            new self('http-readonly', self::HTTP, self::SCOPE_READONLY, 'http-readonly.json'),
+            new self('stdio-admin', self::STDIO, 'admin', [], 'stdio-admin.json'),
+            new self('http-read', self::HTTP, 'read', [self::READ], 'http-read.json'),
+            new self('http-write', self::HTTP, 'write', [self::READ, self::WRITE], 'http-write.json'),
+            new self('http-admin', self::HTTP, 'admin', [self::READ, self::WRITE, self::ADMIN], 'http-admin.json'),
         ];
 
         $keyed = [];

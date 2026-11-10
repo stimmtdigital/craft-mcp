@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Mcp\Schema\Result\CallToolResult;
 use stimmt\craft\Mcp\support\Response;
 
 describe('Response::success()', function () {
@@ -186,5 +187,18 @@ describe('Response::capped()', function () {
             'columns' => ['id'],
             'rows' => [['id' => 1]],
         ]);
+    });
+
+    // A refusal has to reach the client flagged as one. 1.x relied on its own
+    // pipeline to turn a success:false payload into isError; Craft's server
+    // has no such step, so a refused publish (#76) arrived looking like a
+    // success. The tool now returns the flagged result itself.
+    it('returns a refusal as an isError result that keeps its structured reasons', function () {
+        $result = Response::failure(['errors' => ['title' => ['Title cannot be blank.']]]);
+
+        expect($result)->toBeInstanceOf(CallToolResult::class)
+            ->and($result->isError)->toBeTrue()
+            ->and($result->structuredContent)->toBe(['success' => false, 'errors' => ['title' => ['Title cannot be blank.']]])
+            ->and(json_decode($result->content[0]->text, true))->toBe($result->structuredContent);
     });
 });

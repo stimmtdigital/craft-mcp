@@ -1,250 +1,58 @@
 # Database Tools
 
-Database tools provide direct access to your Craft installation's database for introspection and read-only queries. These tools are particularly useful for understanding data relationships, debugging content issues, and performing analysis that would be cumbersome through Craft's element APIs.
+Inspect the database behind the install. All of these are admin-only: they need a Craft admin user and, over HTTP, the `mcp:admin` scope. Lite edition.
 
-## Connection Information
-
-Before running queries, it helps to understand how your database is configured. The connection information tool provides this context.
-
-### get_database_info
-
-Get details about your database connection, including the driver type, server version, and table prefix. This is useful context before writing queries or understanding compatibility constraints.
-
-**Parameters:** None
-
-**Example:**
-
-```
-get_database_info
-```
-
-**Response:**
-
-```json
-{
-  "driver": "mysql",
-  "serverVersion": "8.0.35",
-  "server": "localhost",
-  "port": 3306,
-  "database": "craft_mysite",
-  "tablePrefix": "craft_",
-  "charset": "utf8mb4"
-}
-```
-
-The `tablePrefix` is particularly important: most Craft installations use `craft_` as the prefix, which means the `entries` table is actually named `craft_entries`. You'll need to include this prefix in your SQL queries.
+For content, prefer Craft's `elements_*` tools and [`stimmt_entries_count`](content.md#stimmt_entries_count). These tools are for custom plugin tables, aggregate SQL and diagnosis.
 
 ---
 
-## Schema Information
+## stimmt_db_schema
 
-Understanding table structures is essential before writing queries. These tools let you explore the database schema without needing direct database access.
+List every table, or the details of one.
 
-### get_database_schema
+| Name | Type | Description |
+|------|------|-------------|
+| `table` | string | Table name, with or without the install's table prefix. Omit to list every table |
 
-Explore your database structure. When called without parameters, it lists all tables. When given a specific table name, it returns detailed column information including types, constraints, and indexes.
+Without `table`: `driver`, `tablePrefix`, `count` and `tables` (each with `name` and `fullName`).
 
-**Parameters:**
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `table` | string | null | Table name (without prefix) to get details for |
-
-**List all tables:**
-
-```
-get_database_schema
-```
-
-**Response:**
-
-```json
-{
-  "driver": "mysql",
-  "tablePrefix": "craft_",
-  "count": 45,
-  "tables": [
-    { "name": "entries", "fullName": "craft_entries" },
-    { "name": "assets", "fullName": "craft_assets" },
-    { "name": "users", "fullName": "craft_users" }
-  ]
-}
-```
-
-**Get table details:**
-
-```
-get_database_schema table="entries"
-```
-
-**Response:**
-
-```json
-{
-  "table": "entries",
-  "fullName": "craft_entries",
-  "primaryKey": ["id"],
-  "columns": [
-    {
-      "name": "id",
-      "type": "integer",
-      "dbType": "int(11)",
-      "allowNull": false,
-      "isPrimaryKey": true,
-      "autoIncrement": true
-    },
-    {
-      "name": "sectionId",
-      "type": "integer",
-      "dbType": "int(11)",
-      "allowNull": false,
-      "isPrimaryKey": false
-    }
-  ],
-  "indexes": [
-    { "name": "PRIMARY", "columns": ["id"] },
-    { "name": "idx_entries_sectionId", "columns": ["sectionId"] }
-  ],
-  "foreignKeys": { ... }
-}
-```
-
-The detailed view shows you everything you need to write effective queries: column names, data types, which columns are indexed, and foreign key relationships to other tables.
+With `table`: `table`, `fullName`, `primaryKey`, `foreignKeys`, `columns` (name, type, dbType, phpType, allowNull, defaultValue, isPrimaryKey, autoIncrement, size) and `indexes`. An unknown table is refused.
 
 ---
 
-### get_table_counts
+## stimmt_db_info
 
-Get a quick overview of how much content exists in your Craft installation. This returns row counts for all core Craft tables, giving you a sense of the site's scale at a glance.
-
-**Parameters:**
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `output` | string | "structured" | "structured" for the JSON payload, "text" for an aligned table. See [Text Output](README.md#text-output) |
-
-**Example:**
-
-```
-get_table_counts
-```
-
-**Response:**
-
-```json
-{
-  "elements": { "label": "Total elements", "count": 1523 },
-  "entries": { "label": "Entries", "count": 245 },
-  "assets": { "label": "Assets", "count": 892 },
-  "users": { "label": "Users", "count": 15 },
-  "categories": { "label": "Categories", "count": 42 },
-  "tags": { "label": "Tags", "count": 128 },
-  "globalsets": { "label": "Global sets", "count": 3 },
-  "sections": { "label": "Sections", "count": 8 },
-  "entrytypes": { "label": "Entry types", "count": 12 },
-  "fields": { "label": "Fields", "count": 35 },
-  "volumes": { "label": "Volumes", "count": 2 },
-  "plugins": { "label": "Plugins", "count": 5 }
-}
-```
-
-This is often the first thing to check when getting familiar with a new Craft installation: it immediately tells you whether you're dealing with a small portfolio site or a large content-heavy application.
+Database driver, server version, server, port, database name, table prefix and charset. No parameters. The password is not returned.
 
 ---
 
-## Query Execution
+## stimmt_db_table_counts
 
-Sometimes you need to query the database directly. The `run_query` tool provides this capability with safety guardrails to prevent accidental data modification.
+Row counts for Craft's main tables: elements, entries, assets, users, categories, tags, global sets, sections, entry types, fields, volumes and plugins. No parameters. A table that does not exist reports `count: null` with an error.
 
-### run_query
+---
 
-Execute read-only SQL queries against your database. Best suited for custom plugin tables and aggregate SQL that no structured tool covers; for table and column discovery use `get_database_schema` instead of hand-written `information_schema` queries, and for entry content prefer `list_entries`/`count_entries` over querying the content tables directly. This is classified as a dangerous tool because it can expose data, but it's restricted to SELECT statements only.
+## stimmt_db_query
 
-> **Note:** This tool can be disabled via configuration. See the [Configuration Guide](../configuration.md).
+> Dangerous: hidden while `enableDangerousTools` is off, which is the default in production.
 
-**Parameters:**
+Run a read-only SQL query.
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `sql` | string | Required | The SQL SELECT query to execute |
-| `limit` | int | 100 | Maximum number of rows to return |
-| `output` | string | "structured" | "structured" for the JSON payload, "text" for an aligned table of rows. See [Text Output](README.md#text-output) |
+| `sql` | string | | The `SELECT` statement. Anything the read guard does not recognise as read-only is refused before it runs |
+| `limit` | int | 100 | Row cap, added as a `LIMIT` clause only when the statement has none |
 
-**Security restrictions:**
+Returns the rows with the list envelope from the [Tools Reference](README.md#response-shape), plus `columns`.
 
-The tool enforces several safety measures:
+The read guard is a keyword check, not a security boundary. Treat this tool as development-only.
 
-- Only `SELECT` queries are allowed
-- Blocked keywords: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`, `CREATE`, `GRANT`, `REVOKE`, `INTO OUTFILE`
-- A `LIMIT` clause is automatically added if your query doesn't include one
+---
 
-**Examples:**
+## stimmt_db_explain
 
-```
-# Get entries from a specific section
-run_query sql="SELECT id, title FROM craft_entries WHERE sectionId = 1"
+Run `EXPLAIN` on a `SELECT` to see the query plan: indexes used and estimated rows.
 
-# Count images in the asset library
-run_query sql="SELECT COUNT(*) as total FROM craft_assets WHERE kind = 'image'" limit=1
-
-# Join entries with their elements for more context
-run_query sql="SELECT e.id, el.title, el.slug FROM craft_entries e JOIN craft_elements el ON e.id = el.id WHERE e.sectionId = 2"
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "count": 5,
-  "total": null,
-  "limit": 100,
-  "hasMore": null,
-  "columns": ["id", "title"],
-  "rows": [
-    { "id": 1, "title": "First Entry" },
-    { "id": 2, "title": "Second Entry" }
-  ]
-}
-```
-
-`total` and `hasMore` are always `null` here: counting the rows a statement matches means running it a second time wrapped in a count, which for the aggregate SQL this tool exists for is the expensive half of the work. `limit` reports the cap that was applied, and is `null` when the statement carried its own `LIMIT`, since this parameter is then not the cap in force.
-
-**Text response:**
-
-```
-run_query sql="SELECT id, title FROM craft_entries LIMIT 2" output="text"
-
-success: true
-count:   2
-total:   null
-limit:   null
-hasMore: null
-columns: id, title
-rows:
-  id  title
-  --  ------------
-  1   First Entry
-  2   Second Entry
-```
-
-**Error response:**
-
-```json
-{
-  "content": [{ "type": "text", "text": "Only SELECT queries are allowed for safety." }],
-  "isError": true
-}
-```
-
-## Working with Queries
-
-A few tips for writing effective queries:
-
-1. **Always include the table prefix.** Most Craft installations use `craft_` as the prefix, so the `entries` table becomes `craft_entries`. Check `get_database_info` if you're unsure.
-
-2. **Explore the schema first.** Use `get_database_schema` to understand table structures before writing complex queries. Craft's database schema can be intricate, especially around elements and content tables.
-
-3. **Keep queries simple when possible.** While complex joins work fine, simpler queries are easier to debug and understand.
-
-4. **For performance analysis**, use the `explain_query` tool in the [Debugging Tools](debugging.md) section to understand how your query will be executed.
+| Name | Type | Description |
+|------|------|-------------|
+| `sql` | string | The `SELECT` to explain. It is not executed, but anything the read guard does not recognise as read-only is refused anyway |

@@ -1,0 +1,21 @@
+{# Read-only: the plugin is configured in config/{{ configFile }}. This screen reports whether Craft's MCP server and the plugin work together. #}
+{% set icons = { ok: 'check', info: 'info', warning: 'alert', error: 'alert' } %}
+
+<p>{{ 'Settings live in {file}. This screen checks that Craft’s MCP server and this plugin work together.'|t('mcp', { file: '<code>config/' ~ configFile ~ '</code>' })|raw }}</p>
+
+<table class="data fullwidth">
+    <tbody>
+    {% for check in checks %}
+        <tr>
+            <th scope="row" style="width: 12rem">
+                <span class="status {{ check.level.value == 'ok' ? 'green' : (check.level.value == 'error' ? 'red' : (check.level.value == 'warning' ? 'orange' : '')) }}"></span>
+                {{ check.label }}
+            </th>
+            <td>
+                {{ check.message }}
+                {% if check.fix %}<br><strong>{{ 'Fix:'|t('mcp') }}</strong> {{ check.fix }}{% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

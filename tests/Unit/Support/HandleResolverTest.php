@@ -116,7 +116,7 @@ describe('HandleResolver', function () {
     // empty result set, which an agent reports as "there are none".
     it('refuses an unknown volume, pointing at the tool that lists them', function () {
         expect(fn () => HandleResolver::volume('nope'))
-            ->toThrow(ToolCallException::class, "Volume 'nope' not found. Use list_volumes for available handles.");
+            ->toThrow(ToolCallException::class, "Volume 'nope' not found. Use configuration_list for available handles.");
     });
 
     it('refuses an unknown category group, naming the handles there are', function () {
@@ -143,14 +143,14 @@ describe('HandleResolver', function () {
     // handle now asks here, so they all answer it in these words.
     it('refuses an unknown section, naming the tool that lists them', function () {
         expect(fn () => HandleResolver::section('nope'))
-            ->toThrow(ToolCallException::class, "Section 'nope' not found. Use list_sections for available handles.");
+            ->toThrow(ToolCallException::class, "Section 'nope' not found. Use configuration_list for available handles.");
     });
 
     it('refuses an entry type the install does not have, pointing at the schema tool', function () {
         expect(fn () => HandleResolver::entryType('nope'))
             ->toThrow(
                 ToolCallException::class,
-                "Entry type 'nope' not found. Use describe_entry_schema for the entry types a section allows.",
+                "Entry type 'nope' not found. Use elements_schema for the entry types a section allows.",
             );
     });
 

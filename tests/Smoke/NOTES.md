@@ -1,339 +1,327 @@
 # Smoke harness
 
-Wire level regression guard. It drives the server the way a real client does,
-calls every tool, and compares the result against a recorded baseline. It does
+Wire level regression guard for the tools the plugin registers into Craft's MCP
+server. It drives that server the way a real client does, calls every
+`stimmt_` tool, and compares the result against a recorded baseline. It does
 that once per **profile**: one identity on one transport.
 
 ```bash
-php tests/Smoke/fixture.php             # once per install: the content model below
-composer smoke                          # every profile, against the baselines
-composer smoke -- --profile=http-full   # one profile
-composer smoke:baseline                 # re-record after an intended change
-composer smoke:heavy                    # include create_backup and anything else slow
+php tests/Smoke/fixture.php               # once per install: the content model below
+composer smoke                            # every profile, against the baselines
+composer smoke -- --profile=http-admin    # one profile (repeatable)
+composer smoke:baseline                   # re-record after an intended change
+composer smoke -- --heavy                 # include stimmt_backups_create
 ```
 
 Exit code is 0 only when there is no drift, no unexpected failure and no scope
 violation, on every profile that ran.
 
+## What changed in v2
+
+v1 of the plugin was its own MCP server (`bin/mcp-server`, `mcp_` tokens from
+`craft mcp/tokens/create`, its own HTTP endpoint), and this harness drove that.
+v2 is not a server. Craft 5.12 ships one, and the plugin registers capability
+classes into it (`src/integration/Capabilities.php`), every tool prefixed
+`stimmt_`. So the harness now drives **Craft's** server and judges only the
+plugin's part of it. The v1 harness, its baselines and its manual probes
+(`manual/sighup.php`, `manual/wedge.php`, both about v1's own stdio transport)
+are in git history.
+
+What Craft decides, and the harness therefore pins:
+
+- **Scope.** A tool with `readOnlyHint: true` needs `mcp:read`; any other tool
+  `mcp:write`; a method with `craft\mcp\attributes\RequiresAdmin` needs
+  `mcp:admin` and an admin user (`craft\mcp\CapabilityDiscovery::requiredScope`).
+  Levels nest: `mcp:admin` satisfies write and read.
+- **Registry.** Craft builds the server's registry from the filtered discovery,
+  so a tool outside the scope is not hidden, it does not exist for that
+  connection: calling it answers JSON-RPC `-32602 Tool not found: "<name>".`
+- **Pagination.** `tools/list` pages at 50; the clients follow `nextCursor`.
+
+What the plugin still decides (`src/integration/Gate.php`): its own `enabled`
+and `disabledTools` settings, `enableDangerousTools` (off in production), and
+its edition. `stimmt_drafts_publish`, `stimmt_entries_copy_to_site`,
+`stimmt_nested_entries_create` and `stimmt_nested_entries_move` need the
+plugin's Pro edition. The Commerce tools appear only with Commerce installed;
+the baseline install has none, so they are not covered.
+
 ## Where it runs
 
-The harness runs from a plugin checkout placed inside a Craft project, because
-`bin/mcp-server` and the token minting both walk up to the nearest
-`bootstrap.php` and `craft`. Inside DDEV that means `ddev exec` from the
-checkout's directory in the container.
+The harness runs on the **host** and reaches the Craft install through one
+command prefix that runs something in the Craft root:
 
-The baselines are recorded on **craftcms-headless**, Stimmt's headless template
-(single site, Craft in `apps/backend`, DDEV project `template-project`), with the
-fixture below added, and both editions set to Pro: the plugin's, so the write
-tools are listed, and Craft's (`php craft project-config/set system.edition pro`,
-local installs only), because user groups are a Craft Pro feature.
-The server loads the plugin from that project's `vendor/`, so to test
-unreleased code put the checkout's `src/` over `vendor/stimmt/craft-mcp/src/`
-for the run, then reinstall it afterwards. Snapshot the database first
-(`ddev snapshot`): the write lifecycle publishes and trashes real entries, and
-restoring is the only way to leave no trace. Its control panel is on the root
-of its domain, so `httpPath` there is `mcp-http`.
+```bash
+export CRAFT_MCP_SMOKE_CRAFT="cd ~/Projects/stimmt/craftcms-headless && ddev exec --dir /var/www/html/apps/backend"
+export CRAFT_MCP_SMOKE_ENDPOINT=https://cms.template-project.dev/ai
+```
+
+Everything it needs from the install goes through that prefix (`Install.php`):
+
+- **stdio**: `<prefix> php craft mcp/serve --user=<admin email>`, the admin
+  found by `inside/console.php info`. `ddev exec` carries a piped stdin and
+  stdout, so this is a real stdio session with the server in the container.
+- **tokens and the fixture**: the scripts under `inside/` are piped into
+  `<prefix> php -- <args>` on stdin. Nothing is copied into the project, so
+  nothing needs `ddev mutagen sync`, and a minted token exists only in a pipe
+  and in the harness's memory.
+- **HTTP**: plain HTTPS from the host to the endpoint. TLS is verified (DDEV's
+  mkcert certificate is trusted on the host); export
+  `CRAFT_MCP_SMOKE_INSECURE_TLS=1` on an install whose certificate is not.
+
+Without `CRAFT_MCP_SMOKE_CRAFT` the harness walks up from `tests/Smoke` to the
+nearest Craft root and uses `cd <root> &&`, so a checkout placed inside a Craft
+project (the v1 arrangement, and how it runs inside a container) still works.
+
+**The endpoint override is needed on craftcms-headless.** Without it the harness
+asks Craft (`Craft::$app->get('mcp')->getSettings()->url($route)`), and from the
+console Craft builds that url on the site's base url, `https://template-project.dev/ai`,
+which is the Next.js front end. Craft answers on the CMS host.
+
+### The baseline install
+
+**craftcms-headless**, Stimmt's headless template: Craft 5.12.1 in `apps/backend`,
+DDEV project `template-project`, single site (`default`), Craft edition Solo,
+plugin edition Pro (project config `plugins.mcp.edition`), Craft's MCP server
+enabled on `/ai` with OAuth signing keys generated. The plugin is loaded from
+`vendor/stimmt/craft-mcp`, so to test unreleased code sync the checkout over it
+first, and remember DDEV syncs through Mutagen:
+
+```bash
+cd ~/Projects/stimmt/craftcms-headless
+rsync -a --delete ~/Projects/stimmt/craft-mcp/src/ apps/backend/vendor/stimmt/craft-mcp/src/
+rsync -a ~/Projects/stimmt/craft-mcp/docs/ apps/backend/vendor/stimmt/craft-mcp/docs/
+ddev mutagen sync
+```
+
+`docs/` matters: the `stimmt://guides/tools` resource reads `docs/agent-guide.md`.
 
 ## The fixture
 
 `fixture.php` installs the content model `Plan.php` is written against, named
-for the harness so it cannot collide with a site's own content:
+for the harness so it cannot collide with a site's own content. The handles
+live in `Plan` and are passed to `inside/fixture.php`, which does the work in
+the Craft root:
 
 | Plan constant | Handle | What it is |
 |---|---|---|
-| `SECTION` | `mcpSmoke` | channel section, enabled on every site, URLs at `mcp-smoke/{slug}` so `previewUrl` is minted for real |
+| `SECTION` | `mcpSmoke` | channel section, enabled on every site, URLs at `mcp-smoke/{slug}` so a preview link is minted for real |
 | `ENTRY_TYPE` | `mcpSmokePage` | its only entry type |
 | `MATRIX_FIELD` | `mcpSmokeBlocks` | Matrix field on that type |
 | `BLOCK_TYPE` | `mcpSmokeBlock` | the Matrix field's one block type, no fields, no title field |
-| `RELATION_FIELD` | `mcpSmokeRelated` | Entries field on that type, sourced from `mcpSmoke` itself |
-| `REQUIRED_FIELD` | `mcpSmokeRequired` | plain text, required in the layout, so a draft without it is refused at publish (#76) |
-| `ZONED_FIELD` | `mcpSmokeStarts` | Date field with "Show time zone", read back to prove the zone survives (#75) |
-| `VOLUME` | `mcpSmokeVolume` | local volume on `@storage/mcp-smoke`, no public URLs, so an upload is never published |
-| `USER_GROUP` | `mcpSmokeGroup` | user group with no permissions, for the user lifecycle to assign |
+| `RELATION_FIELD` | `mcpSmokeRelated` | Entries field on that type, sourced from `mcpSmoke`, for the field-filter count |
+| `REQUIRED_FIELD` | `mcpSmokeRequired` | plain text, required in the layout, so a draft that empties it is refused at publish (#76) |
+| `FIXTURE_SLUG` | `smoke-fixture` | the one live entry every step works on |
 
-plus one live entry, `smoke-fixture`, for the read steps to find. The script
-stops before creating anything when Craft is below Pro. It is
-idempotent and writes project config, so on a client site keep the resulting
-`config/project` files out of that site's commits.
+It is idempotent and writes project config, so on a client site keep the
+resulting `config/project` files out of that site's commits. v1's fixture also
+made a volume, a filesystem, a user group and a time-zoned Date field for the
+v1 asset, user and date steps; no v2 tool uses them, so the v2 fixture does
+not, and it no longer needs Craft Pro (v1 did, for the user group).
 
 ## Why it exists
 
-The unit suite asserts source structure. Of 87 test files, 11 boot a real Craft
-app and 2 touch the wire. That is a deliberate trade (booting Craft is
-expensive) with a known cost, and we have paid it:
-
-- The output layer once fataled on every tool that takes no arguments, breaking
-  19 of 53 tools, while `composer ci` stayed green. The fixture built the empty
-  property map as `[]`, a shape the SDK never produces.
-- Cached tool discovery served a stale scan across reconnects and container
-  restarts. Green suite.
-- `reload_mcp` returned a generic internal error for weeks. Green suite.
-- `query_graphql` and `execute_graphql` fail on stdio. Green suite, and none of
-  it showed up in code review either.
-- `reload_mcp` destroys its own response over HTTP, on every call. Green suite,
-  and invisible to a harness that only speaks stdio.
-
-A green unit suite says the code is shaped as expected. Only the wire says the
-tools work.
+The unit suite asserts source structure. That is a deliberate trade (booting
+Craft is expensive) with a known cost, and v1 paid it repeatedly: an output
+layer that fataled on every tool taking no arguments, cached discovery serving
+a stale scan, tools that failed on one transport and not the other, all with
+`composer ci` green. A green unit suite says the code is shaped as expected.
+Only the wire says the tools work, and in v2 only the wire says whether Craft
+reads the plugin's annotations the way the plugin meant.
 
 ## The profiles
 
-| Profile | Transport | Scope | Baseline | Tools |
-|---|---|---|---|---|
-| `stdio-full` | `bin/mcp-server` over stdio | none (stdio carries no scope) | `baseline/stdio.json` | 61 |
-| `http-full` | the `httpPath` endpoint | `full` | `baseline/http-full.json` | 61 |
-| `http-content` | the `httpPath` endpoint | `content` | `baseline/http-content.json` | 53 |
-| `http-readonly` | the `httpPath` endpoint | `readonly` | `baseline/http-readonly.json` | 42 |
+| Profile | Transport | Scopes | Baseline | stimmt tools | Craft tools |
+|---|---|---|---|---|---|
+| `stdio-admin` | `craft mcp/serve --user=<admin>` | none (stdio carries no token) | `baseline/stdio-admin.json` | 30 | 69 |
+| `http-read` | HTTPS, personal access token | `mcp:read` | `baseline/http-read.json` | 4 | 19 |
+| `http-write` | HTTPS, personal access token | `mcp:read mcp:write` | `baseline/http-write.json` | 8 | 42 |
+| `http-admin` | HTTPS, personal access token | `mcp:read mcp:write mcp:admin` | `baseline/http-admin.json` | 30 | 69 |
 
-Every profile runs the same plan through the same `Client` contract, so a
-difference in results is a difference in the server rather than in the harness.
+Every profile is the same admin user, so what differs between the HTTP
+profiles is only the scope, and a difference in their catalogues is Craft's
+scope filter reading the plugin's annotations. Every profile runs the same plan
+through the same `Client` contract; a step whose tool the connection does not
+advertise reports itself `skipped` with that reason.
+
 A profile that cannot connect is reported as `UNREACHABLE` with the reason, and
 its baseline is left alone: a harness that records an empty snapshot over a
 working guard is worse than no harness.
 
-## Running the HTTP profiles
+## Tokens
 
-They need the HTTP transport switched on (`httpTransport`, plus the `httpPath`
-the endpoint answers on) and a bearer token. **The harness mints its own**: it
-asks Craft for an admin (`craft users/list-admins`), mints a token of the
-profile's scope through the plugin's own console command, reads the endpoint url
-out of the client snippet that command prints, uses the token for one run, and
-revokes it afterwards. Nothing durable is created and no token is ever written
-to a snapshot, a log, or any file.
+**The harness mints its own.** Per HTTP profile, `inside/console.php mint`
+calls `Craft::$app->getOAuth()->createPersonalAccessToken()` for the install's
+first active admin, with exactly the profile's scopes, a one-hour expiry and
+the name `smoke-<runId>-<level>`. After the profile, `revoke` revokes it through
+Craft's own `craft\oauth\Repositories::revokeAccessToken()` and then deletes
+the revoked row by that exact name, which carries the run id, so it can only
+reach a token this run created. A run leaves no token behind.
 
-To supply your own instead, export both of:
+To supply your own instead, export `CRAFT_MCP_SMOKE_TOKEN_READ` (or `_WRITE`,
+or `_ADMIN`); a supplied token is used as-is and never revoked.
 
-```bash
-set -x CRAFT_MCP_SMOKE_TOKEN_FULL mcp_...        # or _CONTENT, or _READONLY
-set -x CRAFT_MCP_SMOKE_ENDPOINT https://cms.example.com/mcp-http
-```
-
-A supplied token is used as-is and never revoked. `CRAFT_MCP_SMOKE_ENDPOINT` is
-also the fallback when `showClientConfigSnippet` is off and the console command
-prints no url.
+**No secret reaches a terminal or a file.** `Redact` masks JWTs, bearer values
+and `token=` query parameters in every message the harness prints and in every
+baseline it writes. Payloads are recorded as shape, so a preview link is
+`<string>`. A step marked `secret` (the credential `stimmt_config_get` read and
+the steps carrying a preview link) withholds the value from its assertion
+failures too.
 
 ## The rule
 
 **Every finding becomes a check here before it becomes a fix.**
 
-Three mechanisms, and the choice between them is mechanical:
-
 | The finding is | Put it in | Behaviour |
 |---|---|---|
 | broken, not fixed yet | `Expectation.php` | pinned to its exact symptom; **fails** when it starts working |
 | a value that must hold | `assert` on the step in `Plan.php` | fails when the value stops holding |
-| a tool a scope must refuse | `Boundary.php` | calls it and fails if it answers |
+| a call that must be turned down | `refusal` on the step in `Plan.php` | fails unless refused, naming the given text |
+| a tool a scope must not reach | `Boundary.php` | calls it and fails if it answers |
 
 An entry in `Expectation.php` is self-clearing. It asserts the defect still
 reproduces with the same status and the same message, so a fix announces itself
-with "no longer reproduces: delete it" instead of passing silently. That makes
-the register a todo list the machine maintains.
+with "no longer reproduces: delete it" instead of passing silently. An entry may
+name the profiles it applies to, and is then required to be absent everywhere
+else.
 
-An entry may name the profiles it applies to, and then it is required to be
-absent everywhere else. That is not a convenience: both GraphQL tools once
-failed on stdio while answering normally over HTTP, and a register that could not say so would
-have to either forgive a real failure over HTTP or demand a fictional one.
+A `refusal` step must come back as a tool error (`isError`) whose text names
+the given string; it is then recorded as `refused`, without its message, which
+carries ids that change every run. A refusal in a form the register knows is
+held to that form instead, and must still name the string.
 
-Assertions exist because a shape diff is blind to emptiness: a `list_entries`
-that starts returning zero entries has exactly the shape it had yesterday.
+A payload that says `"success": false` without `isError` is its own status,
+`unflagged-failure`, because to a client it is a success.
 
 ## What it compares
 
-The tool catalogue verbatim (names, descriptions, annotations, schemas), and
-the **shape** of each payload rather than its values. Shape means keys plus leaf
-types, with booleans and nulls kept verbatim because `success` flipping is the
-regression we most want to see.
+The plugin's tools verbatim (name, title, description, annotations, input
+schema), its resources (`stimmt://guides/tools`), Craft's own tools as a count
+only, and the **shape** of each payload rather than its values. Shape means
+keys plus leaf types, with booleans and nulls kept verbatim because `success`
+flipping is the regression we most want to see. Craft's tool count is kept
+because it moves if the plugin's Gate ever starts hiding tools that are not its
+own; it also moves with a Craft upgrade, which is a re-record.
 
 Two reductions keep the diff honest rather than noisy:
 
 - a map whose keys are all integer-like collapses to one merged value shape,
-  because Matrix blocks are keyed by block id and those ids are fresh every run;
-- type unions flatten, so a three way disagreement reads `<null|number|string>`
-  rather than nesting.
+  because element ids are fresh every run;
+- type unions flatten, so a three way disagreement reads `<null|number|string>`.
 
 Values are guarded by assertions instead, where they matter.
 
-A step can name `refusal` when the right outcome is being turned down, such as
-`publish_entry.invalid` publishing a draft that fails validation. It must come
-back as a tool error containing that text; it is then recorded as `refused`,
-without its message, which carries ids that change every run. Succeeding, or
-failing for another reason, is the failure.
-
-A step can name booleans under `state` when their value describes the install
-rather than the server. `get_queue_jobs` does this for `hasMore`: with no queue
-worker running, every run leaves the next one a longer queue, so the value is
-recorded as `<bool>` and two runs on the same install agree.
-
-A scoped profile also records a `scope` block: the tools it advertises, the
-tools probed outside its scope, and how each of those calls was refused. stdio
-carries no scope at all, so it has no such block rather than a null one.
+A scoped profile also records a `scope` block: the scopes granted, the sorted
+`stimmt_` tool names it advertises, the tools probed outside it and how each
+call was refused. stdio carries no scope, so it has no such block.
 
 ## The scope boundary is tested by calling across it
 
 Hiding a tool from `tools/list` is presentation, and presentation is not a
-security boundary. A readonly connection that omits `tinker` from its listing
-but still runs it when asked by name is a privilege escalation, and it looks
-identical to a correct server in any snapshot that only records what was
-advertised. So `Boundary.php` calls the tools each scope must refuse, with
-arguments that would succeed if the tool ran, and a result instead of a refusal
-fails the run.
+security boundary. So `Boundary.php` calls the tools each scope must not
+reach, with arguments that would succeed if the tool ran:
 
-Two things are asserted, and they catch different failures:
+| Profile | Must not reach |
+|---|---|
+| `http-read` | `stimmt_drafts_publish` (a write), `stimmt_db_query`, `stimmt_tinker` (admin) |
+| `http-write` | `stimmt_db_query`, `stimmt_tinker`, `stimmt_config_get` (admin) |
 
-- each profile's tool count is pinned by its own baseline, so a count that moves
-  is drift;
-- across profiles, a narrower scope must reach **strictly fewer** tools than a
-  wider one, which catches the filter collapsing so that every scope sees
-  everything, something each baseline would happily re-record as the new normal.
+A probe passes only when the tool is absent from `tools/list` AND the call is
+refused with a "tool not found" style message. A tool error from the tool
+itself ("Entry 1 not found") is the tool running, and fails. Proved on
+2026-11-10 by judging an `mcp:admin` connection as `http-write`: all three
+probes came back as violations, advertised and answered.
+
+Across profiles (`Report::ordering`), `http-read`'s `stimmt_` tools must be a
+strict subset of `http-write`'s, and those of `http-admin`'s. Each baseline
+pins its own set; this catches the filter collapsing so every scope sees
+everything, which each baseline would happily re-record as the new normal.
+
+## The plan
+
+Steps per profile on the baseline install (`ok`/`refused`/held, of 42):
+
+| Profile | Run | Skipped |
+|---|---|---|
+| `stdio-admin` | 41 | 1 (`stimmt_backups_create`, heavy) |
+| `http-read` | 8 | 34 (not advertised) |
+| `http-write` | 19 | 23 (not advertised) |
+| `http-admin` | 41 | 1 (`stimmt_backups_create`, heavy) |
+
+In order: `stimmt_refs_resolve` on the fixture (captures its id for every later
+step), `stimmt_entries_count` plain, grouped by section, grouped by site
+(captures the primary site handle) and with a relation-field filter,
+`stimmt_categories_list`, `stimmt_entries_preview_url` (shape and a url-with-token
+pattern only), the `stimmt://guides/tools` resource; the admin reads
+(`stimmt_globals_list`, environment, last error, deprecations, console commands,
+routes, event handlers, logs, `stimmt_config_get` for `general.devMode` and for
+`db.password`, which must come back redacted, `stimmt_tinker` `return 1 + 1;`,
+backups list), the database tools, the GraphQL tools (`{ ping }` answers
+`pong`); then the writes:
+
+1. Craft's `drafts_create` on the fixture, then `stimmt_drafts_publish` on that
+   draft: success, the fixture's id, `draftId` null, `affectedSites`.
+2. `stimmt_nested_entries_create` on the fixture (lands on a new draft),
+   a second block stacked on that draft, `stimmt_nested_entries_move` of the
+   second to position 1, then Craft's `drafts_delete` of the draft, so the
+   fixture's live Matrix field stays empty and the positions hold every run.
+3. #76: Craft's `drafts_create`, Craft's `elements_update` on the draft id with
+   `{"mcpSmokeRequired": ""}` (Craft saves a draft without validating it for
+   live content, as the control panel does), `stimmt_drafts_publish` must refuse
+   naming `mcpSmokeRequired`, then `drafts_delete`. `elements_update`'s payload
+   shape allowed this, so no `stimmt_tinker` fallback was needed.
+4. `stimmt_entries_copy_to_site` from the primary site to itself: on a single
+   site that is the only copy there is, and the answer is "Nothing to copy".
+
+The publish in step 1 applies an unchanged draft, so every run adds a revision
+to the fixture entry and nothing else. Every draft the plan makes is deleted.
 
 ## Behaviour this pins
 
 Facts established by running it, recorded so they are not rediscovered:
 
-- **`duplicate_entry` answers with a whole `entry` object**, where `create_entry`
-  and `update_entry` answer with `draftElementId`. Two response shapes across the
-  write tools. Not a bug, but an agent has to special case it.
-- **`create_nested_entry` returns `blockId`**, not `id`.
-- **`publish_entry` returns `{entry, success}`** with `entry.draftId` null.
-- **`describe_entry_schema`'s `example` takes a string** and must name an entry
-  in the section being described, or it answers "Entry not found".
-- **`list_entries.fields` is an array**, not a comma separated string.
-- The tool catalogue is **61 tools** on a full scope connection, on both
-  transports: 53 under `content` (the asset writes, not the user writes), 42
-  under `readonly`.
-- **A tool outside the scope is refused, not merely hidden.** Every probe comes
-  back as JSON-RPC `-32602`, from the SDK registry rather than from a tool.
-  Before `mcp/sdk` 0.8 it was `-32601`; the SDK moved to `-32602` because
-  `tools/call` exists and only the tool name in its params does not.
-- **Both GraphQL tools and `reload_mcp` answer on both transports.** GraphQL
-  once failed on stdio and `reload_mcp` once destroyed its own response over
-  HTTP; both are fixed, and a regression shows up as drift on that profile.
-- **An unknown site handle is refused**, not quietly swapped for the primary
-  site: `Site 'nope' not found. Use list_sites for available handles.`
-- **Publishing is not per-site.** `publish_entry` applies the draft to every
-  site it exists on; its `site` argument only picks which site's values come
-  back, so publishing a draft edited on a second site reports the primary
-  site's values unless that site is named.
-- **Deleting is not per-site either.** `delete_entry` sets `dateDeleted` on the
-  element, so the entry is trashed on every site at once. There is no way to
-  remove one translation; disable it there instead.
-- **`copy_entry_to_site` copies field values only**, not title or slug, and
-  lands as a draft on the target site. Leaving the target's own title and slug
-  alone is what makes it usable for translation.
-- **A nested block's position is shared across sites.** `elements_owners` is
-  keyed by block and owner with no site column, so reordering a block on one
-  site reorders it on all of them. Proved by moving a block on the second site
-  and reading the primary back changed. The block's field VALUES are still
-  per-site when the Matrix field is site-translatable, so content and order
-  differ in how far a write reaches.
-- **The write tools report their own reach.** `publish_entry`, `delete_entry`,
-  `create_nested_entry` and `move_nested_entry` answer with `affectedSites`,
-  the site handles the operation actually landed on. Wherever an operation is
-  wider than the `site` argument suggests, that list is the thing that says so
-  at runtime rather than in a description nobody read.
-- **`get_mcp_info` and `list_mcp_tools` report `available` separately from the
-  total**, because on a scoped connection they differ: readonly registers 61 and
-  can call 42. Both ask the same Gate the server filtered the registry with, and
-  the plan pins them to agree, which is the drift that existed before.
-- **The asset lifecycle uploads by `data`**, so a run never depends on the
-  internet. The `url` path is a manual check (below).
-- **Each run leaves one deactivated user behind.** There is no `delete_user`, so
-  the user lifecycle ends with `set_user_status inactive`, and `list_users` reads
-  active accounts only. Unfiltered, the list grew by one account per run and its
-  shape never settled.
-- **Craft's edition limits users.** Solo allows one account and Team five, and
-  Craft refuses a save over the cap without setting an error; `create_user`
-  checks first and names the cap. User groups need Craft Pro, and `groups` is
-  refused below it. Both found on this template, which runs Solo.
-- **Craft 5 keeps `fullName` as the source of a user's name** and re-derives
-  first and last name from it on save, so `update_user` clears it whenever a
-  name part changes. Before that, a new last name was silently dropped.
-- **`describe_entry_schema` reports translation per field** on a multi-site
-  install: `translation.method` and `translation.perSite`. `perSite` is true
-  only for the method that gives every site its own value, so false reads as
-  "writing this may change another site". Absent entirely on a single-site
-  install, where the question does not exist.
+- **A refusal carries `isError`** with its reasons as structured content:
+  the #76 refusal answers `isError: true`, `"success": false`,
+  `errors.mcpSmokeRequired: ["MCP smoke required cannot be blank."]`. The first
+  v2 run found it arriving without `isError` (1.x's pipeline used to set the
+  flag); `Response::failure()` now returns the flagged result itself.
+- **`stimmt_entries_copy_to_site` refuses a copy of a site onto itself.**
+- **`stimmt_console_commands_list` is stdio only by design**: over HTTP it
+  answers `unavailable` with `commands` and `count` null.
+- **`stimmt_nested_entries_create` returns `blockId` and `draftElementId`**, and
+  passing that `draftElementId` as `owner` stacks the next block onto the same
+  draft rather than making another.
+- **Craft's `drafts_create` answers `{draft: {...}}`** with the draft's element
+  id at `draft.id`; `elements_update` answers `{element, savedAsDraft, instructions}`.
+- **Every profile's protocol version is `2025-06-18`.**
 
 ## Coverage gaps, deliberately visible
 
-The snapshot carries an `uncovered` list, so a tool with no step is a line in
-the file rather than an absence. A tool added without a step also shows up as
-drift in the catalogue, so coverage cannot rot quietly.
+The snapshot carries an `uncovered` list, so a tool with no passing step is a
+line in the file rather than an absence. Currently:
 
-Currently uncovered and why:
-
-- `create_backup`: writes a database dump, so it is behind `--heavy`.
-- `get_asset` on `readonly` only: the template has no assets of its own, and the
-  one the asset lifecycle uploads cannot be made under that scope.
-- `copy_entry_to_site`: the baseline install has one site, so every step that needs a
-  second site handle reports itself skipped. Recording on a multi-site install
-  would cover it.
+- `stimmt_backups_create`: writes a database dump, so it is behind `--heavy`.
+- the Commerce tools: Commerce is not installed on the baseline install, so
+  they are not registered at all and do not appear in the catalogue.
+- a real cross-site `stimmt_entries_copy_to_site`: the baseline install has one
+  site.
 
 ## Known gaps in the harness itself
 
-Stated so nobody mistakes a pass for more than it is:
-
-1. **Every profile runs as an admin.** The privileged axis (install
-   introspection hidden from *non-admin* readonly and content tokens, opened
-   again by `scopedTokenPrivilegedTools`) never engages, because an admin is
-   allowed all of it. Covering it needs a second, non-admin user.
-2. **One suspension path of five.** `reload_mcp` notifies unconditionally and is
-   the only thing here that provokes a fiber suspension. Progress reporting
-   suspends only when the client sends a `progressToken`, client logging only at
-   or below the negotiated level, and resource subscriptions only with an active
-   subscription. The harness sends none of those, so those three paths are
-   untested on both transports.
-3. **No streaming client.** The endpoint refuses `GET` by design (no SSE under
-   FPM in v1), and the harness does not ask for one. Session expiry and session
-   resumption are likewise untested; the harness opens a session, uses it, and
-   ends it with `DELETE`.
-4. **One connection at a time.** Nothing here exercises two clients sharing a
-   session, or a second request arriving while a first is in flight.
-5. **Transport settings are not swept.** `allowedIps`, `disabledScopes`,
-   `disabledTools` and `paginationLimit` all change what a connection sees, and
-   all are left at this install's values.
-6. **The plan needs its fixture.** Section, entry type and fields are
-   constants at the top of `Plan.php`, installed by `fixture.php`. On an
-   install without it the content steps fail loudly rather than skipping
-   quietly, which is the intended trade. The multi-site steps are the
-   exception: they hang off a second site handle captured from `list_sites`,
-   so on a single-site install they report themselves skipped instead of
-   failing.
-7. **Values are only checked where an assertion says so.** Everything else is
-   shape.
-8. **A boundary violation writes.** The readonly probe calls `create_entry` with
-   arguments that would work. On a correct server it is refused and nothing
-   happens; on a broken one the run leaves a draft behind, which is the cost of
-   proving the boundary by crossing it rather than by reading a list.
-9. **No multi-site coverage.** The baselines come from a single-site install,
-   so cross-site copying, publishing a draft that exists on several sites, and
-   per-site reads of a second site are all skipped. The plan still holds those
-   steps; they run on any install with a second site.
-
-## Manual probes
-
-Some things cannot run inside `composer smoke` and are not honest as unit tests
-either. They live in `manual/` with the expected output written down.
-
-- `manual/sighup.php` sends SIGHUP to a running server and checks it still
-  answers. `reload_mcp`'s own hint text tells an agent to use that signal, and
-  it used to kill the session silently: `Server::run()` closes the transport in
-  a finally, which closes descriptors 0 and 1, and the restart then `pcntl_exec`s
-  a fresh image that inherits them. Expected: `after restart: ANSWERED`.
-  `SILENT (pipes dead)` means `transport\Stdio::close()` stopped guarding it.
-- **`upload_asset` by `url`**, called over stdio on craftcms-headless with the
-  fixture in place (2026-10-15). The harness has no notion of a step that must
-  be refused, so these are recorded here. Expected answers:
-
-  | `url` | Answer |
-  |---|---|
-  | a public PNG (`https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png`) | saved, 272x92 |
-  | `http://127.0.0.1/x.png` | `Only https URLs are fetched.` |
-  | `https://169.254.169.254/latest/meta-data/` | `... resolves to an address that is not public (169.254.169.254) ...` |
-  | `https://localtest.me/x.png` (public name, resolves to loopback) | `... not public (127.0.0.1) ...` |
-  | `https://php.net/favicon.ico` (301) | `The URL answered with a redirect (301), which is not followed ...` |
-  | a 404 | `The URL answered with HTTP 404, not a file.` |
-
-  Craft's own rules held too: `.ico` and `.php` are refused as not allowed
-  extensions, `onConflict: fail` refuses a taken name, and a `..` folder is
-  refused before Craft sees it.
+1. **Every profile is an admin.** The non-admin axis (an `mcp:admin` token held
+   by a non-admin, which Craft strips to write) never engages. Covering it
+   needs a second user.
+2. **No streaming client.** The harness posts and reads the answer (JSON or
+   SSE frames); it does not open a `GET` stream, and session expiry and
+   resumption are untested.
+3. **One connection at a time.**
+4. **Plugin settings are not swept.** `enabled`, `disabledTools` and
+   `enableDangerousTools` all change what a connection sees, and all are left
+   at this install's values (dangerous tools on: not production).
+5. **Values are only checked where an assertion says so.** Everything else is
+   shape. `stimmt_logs_read` asks for `error` lines and records an empty list
+   on a clean install; the day the install logs an error, its shape changes
+   and that profile drifts. That is the install, not the plugin: re-record.
+6. **A boundary violation writes.** The `http-read` probe calls
+   `stimmt_drafts_publish` on the fixture. On a correct server it is refused
+   and nothing happens; on a broken one it is answered (the fixture has no
+   pending draft by then, so it refuses for that reason and changes nothing).

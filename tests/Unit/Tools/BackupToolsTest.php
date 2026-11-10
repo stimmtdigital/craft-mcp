@@ -2,30 +2,31 @@
 
 declare(strict_types=1);
 
+use craft\mcp\attributes\RequiresAdmin;
 use Mcp\Capability\Attribute\McpTool;
-use stimmt\craft\Mcp\Mcp;
-use stimmt\craft\Mcp\tools\BackupTools;
+use stimmt\craft\Mcp\attributes\Dangerous;
+use stimmt\craft\Mcp\capabilities\BackupTools;
 
 describe('BackupTools class structure', function () {
-    it('has list_backups tool with McpTool attribute', function () {
+    it('has stimmt_backups_list tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(BackupTools::class, 'listBackups');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('list_backups')
+        expect($instance->name)->toBe('stimmt_backups_list')
             ->and($instance->description)->toContain('database backups');
     });
 
-    it('has create_backup tool with McpTool attribute', function () {
+    it('has stimmt_backups_create tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(BackupTools::class, 'createBackup');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('create_backup')
+        expect($instance->name)->toBe('stimmt_backups_create')
             ->and($instance->description)->toContain('dangerous');
     });
 
@@ -34,15 +35,22 @@ describe('BackupTools class structure', function () {
 
         foreach ($methods as $methodName) {
             $reflection = new ReflectionMethod(BackupTools::class, $methodName);
-            expect($reflection->getReturnType()?->getName())->toBe('array');
+            expect((string) $reflection->getReturnType())->toBe('array');
         }
     });
 });
 
-describe('BackupTools dangerous tool', function () {
-    it('create_backup is marked as dangerous', function () {
-        expect(Mcp::DANGEROUS_TOOLS)->toContain('create_backup');
+describe('BackupTools gates', function () {
+    // A backup writes a full database dump to the server's disk, so it is
+    // hidden whenever enableDangerousTools is off (production by default).
+    it('marks stimmt_backups_create dangerous and leaves the listing alone', function () {
+        expect((new ReflectionMethod(BackupTools::class, 'createBackup'))->getAttributes(Dangerous::class))->toHaveCount(1)
+            ->and((new ReflectionMethod(BackupTools::class, 'listBackups'))->getAttributes(Dangerous::class))->toBe([]);
     });
+
+    it('keeps both tools admin-only', function (string $method) {
+        expect((new ReflectionMethod(BackupTools::class, $method))->getAttributes(RequiresAdmin::class))->toHaveCount(1);
+    })->with(['listBackups', 'createBackup']);
 });
 
 describe('BackupTools tool count', function () {

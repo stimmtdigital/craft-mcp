@@ -1,387 +1,68 @@
 # Commerce Tools
 
-Commerce tools provide access to Craft Commerce data, products, orders, and their associated configurations. These tools are only available when Craft Commerce is installed and enabled.
+Read products and orders from Craft Commerce. These tools exist only while Commerce is installed and enabled. Lite edition.
 
-> **Note:** These tools are conditionally registered. If Commerce isn't installed, they won't appear in the tool list.
+Products and orders are admin-only: they need a Craft admin user and, over HTTP, the `mcp:admin` scope. Order statuses and product types are configuration and need only `mcp:read`.
 
-## Products
+---
 
-Products in Commerce represent items for sale. Each product has one or more variants that define specific purchasable options with their own SKU, price, and inventory.
-
-### list_products
-
-List products with optional filtering by product type.
-
-**Parameters:**
+## stimmt_commerce_products_list
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `type` | string | null | Filter by product type handle |
-| `limit` | int | 20 | Maximum products to return |
-| `offset` | int | 0 | Number of products to skip |
+| `type` | string | null | Product type handle; `stimmt_commerce_product_types_list` reports them |
+| `limit` | int | 20 | Rows to return, 1 or more |
+| `offset` | int | 0 | Rows to skip |
 
-**Examples:**
-
-```
-# List all products
-list_products
-
-# Filter by product type
-list_products type="clothing" limit=50
-
-# Paginate through results
-list_products limit=20 offset=40
-```
-
-**Response:**
-
-```json
-{
-  "count": 10,
-  "total": 84,
-  "limit": 10,
-  "offset": 0,
-  "hasMore": true,
-  "products": [
-    {
-      "id": 123,
-      "title": "Classic T-Shirt",
-      "slug": "classic-t-shirt",
-      "typeHandle": "clothing",
-      "status": "live",
-      "variants": [
-        {
-          "id": 456,
-          "sku": "TSHIRT-S",
-          "price": 29.99,
-          "stock": 50,
-          "isDefault": true
-        },
-        {
-          "id": 457,
-          "sku": "TSHIRT-M",
-          "price": 29.99,
-          "stock": 35,
-          "isDefault": false
-        }
-      ],
-      "dateCreated": "2024-01-10 09:00:00",
-      "dateUpdated": "2024-01-15 14:30:00"
-    }
-  ]
-}
-```
+Returns the paginated envelope from the [Tools Reference](README.md#response-shape).
 
 ---
 
-### get_product
+## stimmt_commerce_product_get
 
-Get detailed information about a single product, including complete variant data with dimensions and inventory settings.
-
-**Parameters:**
+One product by id, with its variants.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `id` | int | Yes | Product ID |
+| `id` | int | Yes | Product id |
 
-**Example:**
-
-```
-get_product id=123
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "product": {
-    "id": 123,
-    "title": "Classic T-Shirt",
-    "slug": "classic-t-shirt",
-    "typeHandle": "clothing",
-    "status": "live",
-    "defaultVariantId": 456,
-    "variants": [
-      {
-        "id": 456,
-        "sku": "TSHIRT-S",
-        "title": "Small",
-        "price": 29.99,
-        "salePrice": 24.99,
-        "stock": 50,
-        "hasUnlimitedStock": false,
-        "minQty": 1,
-        "maxQty": 10,
-        "isDefault": true,
-        "weight": 0.2,
-        "length": 30,
-        "width": 25,
-        "height": 2
-      }
-    ],
-    "dateCreated": "2024-01-10 09:00:00",
-    "dateUpdated": "2024-01-15 14:30:00",
-    "postDate": "2024-01-10 12:00:00",
-    "expiryDate": null
-  }
-}
-```
-
-The `salePrice` reflects any active sales or discounts applied to the variant.
+Returns `success` and `product`: `id`, `title`, `slug`, `typeHandle`, `status`, `defaultVariantId`, the dates, and `variants` (each with `id`, `sku`, `title`, `price`, `salePrice`, `stock`, `hasUnlimitedStock`, `minQty`, `maxQty`, `isDefault` and dimensions).
 
 ---
 
-## Orders
+## stimmt_commerce_orders_list
 
-Orders represent completed (or in-progress) purchases. Each order contains line items, customer information, and payment details.
-
-### list_orders
-
-List completed orders with optional filtering by status.
-
-**Parameters:**
+Completed orders only, so carts never appear.
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `status` | string | null | Filter by order status handle |
-| `limit` | int | 20 | Maximum orders to return |
-| `offset` | int | 0 | Number of orders to skip |
+| `status` | string | null | Order status handle; `stimmt_commerce_order_statuses_list` reports them |
+| `limit` | int | 20 | Rows to return, 1 or more |
+| `offset` | int | 0 | Rows to skip |
 
-**Examples:**
-
-```
-# List recent orders
-list_orders limit=10
-
-# Filter by status
-list_orders status="shipped"
-
-# Paginate
-list_orders limit=20 offset=40
-```
-
-**Response:**
-
-```json
-{
-  "count": 10,
-  "total": 342,
-  "limit": 10,
-  "offset": 0,
-  "hasMore": true,
-  "orders": [
-    {
-      "id": 789,
-      "number": "abc123def456",
-      "shortNumber": "abc123",
-      "reference": "1001",
-      "email": "customer@example.com",
-      "status": "processing",
-      "totalPrice": 59.98,
-      "totalPaid": 59.98,
-      "currency": "USD",
-      "itemCount": 2,
-      "dateOrdered": "2024-01-15 10:30:00",
-      "dateCreated": "2024-01-15 10:25:00"
-    }
-  ]
-}
-```
-
-Only completed orders (where `isCompleted` is true) are returned. This excludes abandoned carts.
+Returns the paginated envelope.
 
 ---
 
-### get_order
+## stimmt_commerce_order_get
 
-Get complete details for a single order, including line items and addresses.
+One order, by id or by number. Pass one of the two.
 
-**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| `id` | int | Order id |
+| `number` | string | The order's full number, not the short number the control panel shows |
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `id` | int | No | Order ID (takes precedence if both provided) |
-| `number` | string | No | Full order number |
-
-At least one parameter must be provided.
-
-**Examples:**
-
-```
-# Get by ID
-get_order id=789
-
-# Get by order number
-get_order number="abc123def456"
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "order": {
-    "id": 789,
-    "number": "abc123def456",
-    "shortNumber": "abc123",
-    "reference": "1001",
-    "email": "customer@example.com",
-    "status": "processing",
-    "isCompleted": true,
-    "totalPrice": 59.98,
-    "totalPaid": 59.98,
-    "totalTax": 4.80,
-    "totalShippingCost": 5.99,
-    "totalDiscount": 0,
-    "currency": "USD",
-    "paymentCurrency": "USD",
-    "lineItems": [
-      {
-        "id": 1001,
-        "description": "Classic T-Shirt (Small)",
-        "sku": "TSHIRT-S",
-        "qty": 2,
-        "price": 29.99,
-        "salePrice": 24.99,
-        "total": 49.98
-      }
-    ],
-    "billingAddress": {
-      "fullName": "John Doe",
-      "addressLine1": "123 Main Street",
-      "locality": "New York",
-      "countryCode": "US"
-    },
-    "shippingAddress": {
-      "fullName": "John Doe",
-      "addressLine1": "123 Main Street",
-      "locality": "New York",
-      "countryCode": "US"
-    },
-    "dateOrdered": "2024-01-15 10:30:00",
-    "datePaid": "2024-01-15 10:31:00",
-    "dateCreated": "2024-01-15 10:25:00",
-    "dateUpdated": "2024-01-15 10:31:00"
-  }
-}
-```
+Returns `success` and `order`: number, reference, email, status, totals (price, paid, tax, shipping, discount), currencies, `lineItems`, billing and shipping address (name, locality, country code), and dates.
 
 ---
 
-## Configuration
+## stimmt_commerce_order_statuses_list
 
-### list_order_statuses
-
-List all order statuses configured in Commerce. Order statuses define the workflow stages an order moves through.
-
-**Parameters:** None
-
-**Example:**
-
-```
-list_order_statuses
-```
-
-**Response:**
-
-```json
-{
-  "count": 4,
-  "statuses": [
-    {
-      "id": 1,
-      "uid": "a1b2c3d4-...",
-      "name": "New",
-      "handle": "new",
-      "color": "green",
-      "description": "Newly placed orders",
-      "default": true,
-      "sortOrder": 1
-    },
-    {
-      "id": 2,
-      "uid": "e5f6g7h8-...",
-      "name": "Processing",
-      "handle": "processing",
-      "color": "blue",
-      "description": "Orders being prepared",
-      "default": false,
-      "sortOrder": 2
-    },
-    {
-      "id": 3,
-      "uid": "i9j0k1l2-...",
-      "name": "Shipped",
-      "handle": "shipped",
-      "color": "purple",
-      "description": "Orders that have been shipped",
-      "default": false,
-      "sortOrder": 3
-    }
-  ]
-}
-```
-
-The `default` status is automatically assigned to new orders.
+All configured order statuses. No parameters.
 
 ---
 
-### list_product_types
+## stimmt_commerce_product_types_list
 
-List all product types configured in Commerce. Product types define the structure and behavior of products.
-
-**Parameters:** None
-
-**Example:**
-
-```
-list_product_types
-```
-
-**Response:**
-
-```json
-{
-  "count": 2,
-  "productTypes": [
-    {
-      "id": 1,
-      "uid": "m3n4o5p6-...",
-      "name": "Clothing",
-      "handle": "clothing",
-      "hasDimensions": true,
-      "maxVariants": null,
-      "hasVariantTitleField": true
-    },
-    {
-      "id": 2,
-      "uid": "q7r8s9t0-...",
-      "name": "Digital Downloads",
-      "handle": "digital",
-      "hasDimensions": false,
-      "maxVariants": 1,
-      "hasVariantTitleField": false
-    }
-  ]
-}
-```
-
-Key fields:
-
-- **hasDimensions**: Whether variants track weight/dimensions for shipping
-- **maxVariants**: Limit on variants per product (null = unlimited)
-- **hasVariantTitleField**: Whether variants have their own title field
-
-## Error Handling
-
-If Commerce isn't installed or enabled, every Commerce tool fails with:
-
-```json
-{
-  "content": [{ "type": "text", "text": "Craft Commerce is not installed or not enabled" }],
-  "isError": true
-}
-```
-
-This allows AI assistants to gracefully handle installations without Commerce.
+All configured product types. No parameters.

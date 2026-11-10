@@ -80,8 +80,8 @@ describe('Projection field whitelist', function () {
         } catch (InvalidArgumentException $e) {
             expect($e->getMessage())
                 ->toContain("'zzz'")
-                ->toContain('list_fields')
-                ->toContain('describe_entry_schema');
+                ->toContain('configuration_list')
+                ->toContain('elements_schema');
 
             return;
         }

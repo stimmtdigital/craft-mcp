@@ -1,0 +1,874 @@
+{
+    "protocolVersion": "2025-06-18",
+    "capabilities": {
+        "logging": [],
+        "completions": [],
+        "prompts": [],
+        "resources": {
+            "subscribe": true
+        },
+        "tools": []
+    },
+    "toolCount": 8,
+    "craftToolCount": 42,
+    "tools": {
+        "stimmt_categories_list": {
+            "title": "Browse categories",
+            "description": "List categories from Craft CMS. Filter by group handle.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "group": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Category group handle. Omit to list categories from every group."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
+        "stimmt_drafts_publish": {
+            "title": "Publish an entry",
+            "description": "Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "The draft element id to apply, or a canonical entry id that has exactly one pending draft (or none and is merely disabled)."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to locate the entry by and to report the result in. Publishing is not per-site: the draft is applied to every site it exists on, so this only selects which site's values come back."
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "stimmt_entries_copy_to_site": {
+            "title": "Copy an entry to another site",
+            "description": "Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps no field per site, so its fields already match on both sites, though their titles and slugs still may not.",
+            "annotations": {
+                "destructiveHint": false,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Entry id, which is the same id on every site the entry exists on."
+                    },
+                    "fromSite": {
+                        "type": "string",
+                        "description": "Site handle to read the field values from."
+                    },
+                    "toSite": {
+                        "type": "string",
+                        "description": "Site handle to write the draft on. The entry must already exist there, which means its section is enabled for that site."
+                    }
+                },
+                "required": [
+                    "id",
+                    "fromSite",
+                    "toSite"
+                ]
+            }
+        },
+        "stimmt_entries_count": {
+            "title": "Count and group entries",
+            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Nested Matrix blocks are left out unless includeNested. Counts include EVERY status by default; pass status to narrow. One call answers \"how many per X\" without listing anything.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Section handle to count within. Omit to count across every section, which is every top-level entry the install has."
+                    },
+                    "includeNested": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Count nested Matrix blocks alongside top-level entries. Left out by default."
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Entry type handle."
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Entry status: live, pending, expired, disabled, or \"any\". Omitted counts every status."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle. Omit for the primary site."
+                    },
+                    "search": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Craft search query."
+                    },
+                    "filters": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Field-value filters: {fieldHandle: value}. Values are scalars, \":empty:\", \":notempty:\", or a natural key object for relation fields.",
+                        "additionalProperties": true
+                    },
+                    "relatedTo": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Only entries related to this element, as a natural key: {\"section\",\"slug\"}, {\"volume\",\"filename\"}, {\"group\",\"slug\"}, or {\"username\"}.",
+                        "additionalProperties": true
+                    },
+                    "author": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Author username or email address."
+                    },
+                    "updatedAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Lower bound on dateUpdated, inclusive. Any date Craft parses, such as \"2026-01-31\"."
+                    },
+                    "updatedBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Upper bound on dateUpdated, exclusive."
+                    },
+                    "createdAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Lower bound on dateCreated, inclusive."
+                    },
+                    "createdBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Upper bound on dateCreated, exclusive."
+                    },
+                    "groupBy": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "What to bucket the count by: an attribute (status, type, section, site, author), a date bucket such as \"month:dateUpdated\", or a field handle. Omit for a plain total."
+                    }
+                }
+            }
+        },
+        "stimmt_entries_preview_url": {
+            "title": "Preview link for an entry or draft",
+            "description": "A link that renders an entry or draft as saved, without logging in, for a person to review before publishing. Pass the draft's element id to preview unpublished changes. Refuses entries in sections without URLs. The link expires (previewTokenDuration, or Craft's defaultTokenDuration).",
+            "annotations": {
+                "readOnlyHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Entry or draft element id."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle. Omit for the primary site."
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "stimmt_nested_entries_create": {
+            "title": "Add a Matrix block",
+            "description": "Add a block to a Matrix field on an owner entry without resending the field's other blocks (the full-field rewrite risks deleting them). In draft mode (default) the block lands on a draft of the owner, like a control panel edit: pass the returned draftElementId to stimmt_drafts_publish to make it live, to elements_get to review it in context, or as owner in follow-up calls to stack more blocks onto the same draft. Optional position places the block among its siblings (1-based, clamped to the end).",
+            "annotations": {
+                "destructiveHint": false,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "owner": {
+                        "type": "integer",
+                        "description": "Id of the entry that owns the Matrix field: a canonical entry, or a draft of one (pass a draftElementId to stack another block onto the same pending draft)."
+                    },
+                    "field": {
+                        "type": "string",
+                        "description": "Matrix field handle on the owner's field layout; elements_schema reports them."
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Entry type handle the Matrix field allows for its blocks."
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Block title, for block types that have a title field."
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "The block's own field values as a JSON-encoded STRING (not a nested object), in this plugin's payload format: scalars as they are, relations as natural keys such as {\"section\",\"slug\"}. The stimmt://guides/tools resource describes it."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to write on, and to report the result in. The block itself is added on every site the owner exists on; only the values of site-translatable fields differ per site."
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "\"draft\" puts the block on a draft of the owner for review, \"live\" adds it to the canonical owner directly. Omitted means draft."
+                    },
+                    "position": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "1-based slot among the field's existing blocks. Omit to append; a position past the end clamps to the last slot."
+                    }
+                },
+                "required": [
+                    "owner",
+                    "field",
+                    "type"
+                ]
+            }
+        },
+        "stimmt_nested_entries_move": {
+            "title": "Reorder a Matrix block",
+            "description": "Move a Matrix block to a new 1-based position within its field, by the block's own entry id. In draft mode (default) the reorder lands on a draft of the owner entry for review and stimmt_drafts_publish applies it; live mode reorders the canonical directly. Positions past the end clamp to the last slot; the response reports the position actually taken.",
+            "annotations": {
+                "destructiveHint": true,
+                "idempotentHint": true,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "The block's own entry id, and the canonical one: a draft or revision copy of a block carries a stale position row."
+                    },
+                    "position": {
+                        "type": "integer",
+                        "description": "1-based target slot within the field. A position past the end clamps to the last slot, and the response reports the slot actually taken."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to locate the block by. Reordering is not per-site: a block's position is shared across sites, so the new order becomes the order on every site the owner exists on."
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "\"draft\" stages the reorder on a draft of the owner entry, \"live\" reorders the canonical owner directly. Omitted means draft."
+                    }
+                },
+                "required": [
+                    "id",
+                    "position"
+                ]
+            }
+        },
+        "stimmt_refs_resolve": {
+            "title": "Natural key to element id",
+            "description": "Turn a natural key into the element id Craft's elements_* tools take. Keys per type: entry {\"section\",\"slug\"}, asset {\"volume\",\"filename\"} (plus \"path\" for a file in a folder), category and tag {\"group\",\"slug\"}, user {\"username\"}, globalSet {\"handle\"}. Refuses a key that matches nothing, or several elements.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "description": "Element type: entry, asset, category, tag, user or globalSet.",
+                        "enum": [
+                            "entry",
+                            "asset",
+                            "category",
+                            "tag",
+                            "user",
+                            "globalSet"
+                        ]
+                    },
+                    "key": {
+                        "type": "object",
+                        "description": "The natural key, e.g. {\"section\": \"news\", \"slug\": \"launch\"}.",
+                        "additionalProperties": true
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle, for types whose slugs differ per site. Omit for the primary site."
+                    }
+                },
+                "required": [
+                    "type",
+                    "key"
+                ]
+            }
+        }
+    },
+    "resources": {
+        "stimmt_tools_guide": {
+            "uri": "stimmt://guides/tools",
+            "description": "How the plugin's stimmt_ tools work with Craft's own: natural keys to ids, counting, preview links, validated publishing, Matrix blocks, multi-site copies and the developer tools.",
+            "mimeType": "text/markdown"
+        }
+    },
+    "uncovered": [],
+    "steps": {
+        "stimmt_refs_resolve": {
+            "status": "ok",
+            "shape": {
+                "id": "<number>",
+                "key": {
+                    "section": "<string>",
+                    "slug": "<string>"
+                },
+                "type": "<string>"
+            }
+        },
+        "stimmt_entries_count": {
+            "status": "ok",
+            "shape": {
+                "groupBy": null,
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_count.grouped": {
+            "status": "ok",
+            "shape": {
+                "buckets": [
+                    {
+                        "count": "<number>",
+                        "key": "<string>"
+                    }
+                ],
+                "groupBy": "<string>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_count.by_site": {
+            "status": "ok",
+            "shape": {
+                "buckets": [
+                    {
+                        "count": "<number>",
+                        "key": "<string>"
+                    }
+                ],
+                "groupBy": "<string>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_count.filtered": {
+            "status": "ok",
+            "shape": {
+                "groupBy": null,
+                "total": "<number>"
+            }
+        },
+        "stimmt_categories_list": {
+            "status": "ok",
+            "shape": {
+                "categories": [],
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_preview_url": {
+            "status": "ok",
+            "shape": {
+                "id": "<number>",
+                "previewUrl": "<string>"
+            }
+        },
+        "resource.stimmt_tools_guide": {
+            "status": "ok",
+            "shape": {
+                "contents": "<number>",
+                "mimeType": "<string>",
+                "text": "<string>",
+                "uri": "<string>"
+            }
+        },
+        "stimmt_globals_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_environment_get": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_errors_last": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_deprecations_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_console_commands_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_routes_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_event_handlers_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_logs_read": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_config_get": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_config_get.credential": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_tinker": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_backups_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_backups_create": {
+            "status": "skipped",
+            "reason": "writes a database dump; run with --heavy"
+        },
+        "stimmt_db_info": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_db_schema": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_db_table_counts": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_db_explain": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_db_query": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_graphql_schemas_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_graphql_schema_get": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_graphql_tokens_list": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_graphql_query": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "stimmt_graphql_execute": {
+            "status": "skipped",
+            "reason": "not advertised by this connection"
+        },
+        "drafts_create": {
+            "status": "ok",
+            "shape": {
+                "draft": {
+                    "archived": false,
+                    "authorId": "<number>",
+                    "authorIds": [
+                        "<number>"
+                    ],
+                    "canonicalId": "<number>",
+                    "collapsed": false,
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "enabled": true,
+                    "fieldLayoutId": "<number>",
+                    "forceSave": false,
+                    "hasProvisionalChanges": false,
+                    "id": "<number>",
+                    "isDraft": true,
+                    "isProvisionalDraft": false,
+                    "isRevision": false,
+                    "isUnpublishedDraft": false,
+                    "mcpSmokeRelated": [],
+                    "mcpSmokeRequired": "<string>",
+                    "oldStatus": "<string>",
+                    "placeInStructure": false,
+                    "postDate": "<string>",
+                    "ref": "<string>",
+                    "sectionId": "<number>",
+                    "siteId": "<number>",
+                    "siteSettingsId": "<number>",
+                    "slug": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "touchOwnersOnSave": true,
+                    "trashed": false,
+                    "type": "<string>",
+                    "typeId": "<number>",
+                    "uid": "<string>",
+                    "uri": "<string>",
+                    "url": "<string>"
+                }
+            }
+        },
+        "stimmt_drafts_publish": {
+            "status": "ok",
+            "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": null,
+                    "expiryDate": null,
+                    "fields": {
+                        "mcpSmokeBlocks": [],
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>"
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "success": true
+            }
+        },
+        "stimmt_nested_entries_create": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "previewUrl": "<string>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "stimmt_nested_entries_create.second": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "previewUrl": "<string>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "stimmt_nested_entries_move": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "previewUrl": "<string>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "drafts_delete.blocks": {
+            "status": "ok",
+            "shape": {
+                "deleted": true
+            }
+        },
+        "drafts_create.incomplete": {
+            "status": "ok",
+            "shape": {
+                "draft": {
+                    "archived": false,
+                    "authorId": "<number>",
+                    "authorIds": [
+                        "<number>"
+                    ],
+                    "canonicalId": "<number>",
+                    "collapsed": false,
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "enabled": true,
+                    "fieldLayoutId": "<number>",
+                    "forceSave": false,
+                    "hasProvisionalChanges": false,
+                    "id": "<number>",
+                    "isDraft": true,
+                    "isProvisionalDraft": false,
+                    "isRevision": false,
+                    "isUnpublishedDraft": false,
+                    "mcpSmokeRelated": [],
+                    "mcpSmokeRequired": "<string>",
+                    "oldStatus": "<string>",
+                    "placeInStructure": false,
+                    "postDate": "<string>",
+                    "ref": "<string>",
+                    "sectionId": "<number>",
+                    "siteId": "<number>",
+                    "siteSettingsId": "<number>",
+                    "slug": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "touchOwnersOnSave": true,
+                    "trashed": false,
+                    "type": "<string>",
+                    "typeId": "<number>",
+                    "uid": "<string>",
+                    "uri": "<string>",
+                    "url": "<string>"
+                }
+            }
+        },
+        "elements_update.incomplete": {
+            "status": "ok",
+            "shape": {
+                "element": {
+                    "archived": false,
+                    "authorId": "<number>",
+                    "authorIds": [
+                        "<number>"
+                    ],
+                    "canonicalId": "<number>",
+                    "collapsed": false,
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "enabled": true,
+                    "fieldLayoutId": "<number>",
+                    "forceSave": false,
+                    "hasProvisionalChanges": false,
+                    "id": "<number>",
+                    "isDraft": true,
+                    "isProvisionalDraft": false,
+                    "isRevision": false,
+                    "isUnpublishedDraft": false,
+                    "mcpSmokeRelated": [],
+                    "oldStatus": "<string>",
+                    "placeInStructure": false,
+                    "postDate": "<string>",
+                    "ref": "<string>",
+                    "sectionId": "<number>",
+                    "siteId": "<number>",
+                    "siteSettingsId": "<number>",
+                    "slug": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "touchOwnersOnSave": true,
+                    "trashed": false,
+                    "type": "<string>",
+                    "typeId": "<number>",
+                    "uid": "<string>",
+                    "uri": "<string>",
+                    "url": "<string>"
+                },
+                "instructions": "<string>",
+                "savedAsDraft": true
+            }
+        },
+        "stimmt_drafts_publish.incomplete": {
+            "status": "refused",
+            "refusal": "mcpSmokeRequired"
+        },
+        "drafts_delete.incomplete": {
+            "status": "ok",
+            "shape": {
+                "deleted": true
+            }
+        },
+        "stimmt_entries_copy_to_site": {
+            "status": "refused",
+            "refusal": "copying a site onto itself"
+        }
+    },
+    "stderr": null,
+    "scope": {
+        "granted": [
+            "mcp:read",
+            "mcp:write"
+        ],
+        "advertised": [
+            "stimmt_categories_list",
+            "stimmt_drafts_publish",
+            "stimmt_entries_copy_to_site",
+            "stimmt_entries_count",
+            "stimmt_entries_preview_url",
+            "stimmt_nested_entries_create",
+            "stimmt_nested_entries_move",
+            "stimmt_refs_resolve"
+        ],
+        "outside": {
+            "stimmt_db_query": {
+                "advertised": false,
+                "refused": true,
+                "how": "protocol-error -32602: Tool not found: \"stimmt_db_query\"."
+            },
+            "stimmt_tinker": {
+                "advertised": false,
+                "refused": true,
+                "how": "protocol-error -32602: Tool not found: \"stimmt_tinker\"."
+            },
+            "stimmt_config_get": {
+                "advertised": false,
+                "refused": true,
+                "how": "protocol-error -32602: Tool not found: \"stimmt_config_get\"."
+            }
+        },
+        "violations": []
+    }
+}

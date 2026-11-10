@@ -11,80 +11,92 @@
 
 ## Introduction
 
-Craft MCP is an MCP (Model Context Protocol) server for Craft CMS. It gives AI assistants direct access to your installation's content, schema, and configuration: rather than describing your field layouts or Matrix setups by hand, the assistant queries them, writes reviewable draft content in a natural-key format, and inspects the system it is working in.
+Craft CMS 5.12 ships its own MCP (Model Context Protocol) server: an HTTP endpoint with OAuth login and scopes, and a stdio server for local tools. Craft MCP 2.0 is no longer a server of its own. It adds tools to Craft's:
 
-It ships more than 50 specialized tools, 10 analysis prompts, and 13 data resources, served over stdio for local development and over HTTP with scoped bearer tokens for remote users.
+- **Developer tools**: database schema and read-only SQL, logs, config, routes, event handlers, deprecations, GraphQL, backups, and a tinker tool for running PHP
+- **Content extras**: grouped entry counts, natural keys (`{"section": "news", "slug": "launch"}`) turned into the ids Craft's tools take, and preview links for review
+- **Categories, global sets and Craft Commerce**, which Craft's own tools do not cover
+- **Pro**: publishing that validates a draft as live content first, copying entries between sites, and adding or moving a single Matrix block
+
+Every plugin tool is named `stimmt_…`. Clients connect to Craft's endpoint, log in with their Craft account, and see the plugin's tools next to Craft's.
+
+Upgrading from 1.x? 2.0 changes the config file, the endpoint and every tool name: follow [UPGRADE.md](UPGRADE.md).
+
+## Requirements
+
+- Craft CMS 5.12.1 or later
+- PHP 8.3 or later
 
 ## Quick Start
 
-```bash
-composer require stimmt/craft-mcp
-php craft plugin/install mcp
-```
+1. Install the plugin:
 
-Enable the server in `config/mcp.php` (it is disabled in production by default):
+   ```bash
+   composer require stimmt/craft-mcp
+   php craft plugin/install mcp
+   ```
 
-```php
-<?php
+2. In the control panel, go to **Settings → MCP** and enable the authenticated server. **Use endpoint paths that do not start with `mcp` inside the control panel**, for example `/admin/ai` and `/admin/ai/auth` (or `/ai` and `/ai/auth` when the control panel has no `cpTrigger`). The plugin's handle is `mcp`, so Craft would send a control panel path starting with `mcp` to the plugin, and clients would get a login page.
 
-return [
-    'enabled' => true,
-];
-```
+3. Generate Craft's OAuth signing keys, once on every environment:
 
-Then run the interactive wizard to configure your MCP clients:
+   ```bash
+   php craft oauth/generate-keys
+   ```
 
-```bash
-php craft mcp/install
-```
+4. Check the setup:
 
-That is the whole happy path. For manual client configuration (Claude Code, Cursor, Claude Desktop, Codex, SSH), see the [Client Setup guide](docs/client-setup.md); for all options including tool disabling, IP allowlists, and environment defaults, see the [Configuration guide](docs/configuration.md).
+   ```bash
+   php craft mcp/check
+   ```
 
-## Remote Access over HTTP
+   It reports Craft's MCP server, the endpoint paths, the OAuth keys, leftover 1.x settings in `config/mcp.php`, the plugin's tools and the edition, and exits non-zero on an error.
 
-Content editors and office users can connect Claude (web, Desktop or mobile) straight to a remote install: add the site as a custom connector by its URL, log in to Craft, and choose what Claude may do. The plugin serves the MCP protocol from a Craft endpoint, with access scoped per user to `readonly`, `content`, or `full`; clients that send headers can use per-user bearer tokens instead. Off by default; enabling it, connecting Claude, minting tokens (`php craft mcp/tokens/create`), and troubleshooting are covered in the [HTTP Transport guide](docs/http-transport.md).
+See [Installation](docs/installation.md) for details.
 
-## Content Writing for Agents
+## Connecting clients
 
-Entry reads and writes share one payload format: relations as natural keys (`{"section": "pages", "slug": "about"}`), Matrix blocks by type handle, and per-field `input` shapes from `describe_entry_schema` that tell an agent exactly what every field accepts, third-party fields included. Writes land as reviewable drafts with a control panel deep link, and `publish_entry` makes them live. The full format, workflow, and schema discovery are covered in the [Content Writing guide](docs/content-writing.md).
+- **Claude (web, Desktop, mobile), ChatGPT and other HTTP clients**: add a custom connector with Craft's endpoint URL, log in to Craft, and choose read only, read and write, or (admins) full access.
+- **Claude Code**: `claude mcp add --transport http craft <url>`, or run Craft's stdio server locally.
+- **Local tools, scripts and CI**: `php craft mcp/serve --user=<id|username|email>` runs Craft's stdio server as that user. `php craft mcp/install` writes the config for Claude Code, Cursor, Claude Desktop and Codex.
+
+See [Connecting clients](docs/connecting.md). For editors: [Using Claude with your Craft site](docs/claude-for-editors.md).
 
 ## The Toolbox
 
-| Category | Highlights |
-|----------|-----------|
-| [Content](docs/tools/content.md) | Entries (payload-format read/write, field/relation/date filters, count and group-by breakdowns, draft workflow with a pending-drafts review queue and revision history, publish/duplicate/copy to site), schema discovery via `describe_entry_schema`, assets, categories, users, globals |
-| [System](docs/tools/system.md) | System info, config, logs, caches, routes, console commands |
-| [Database](docs/tools/database.md) | Schema inspection, table counts, read-only queries |
-| [Debugging](docs/tools/debugging.md) | Queue jobs, project config diff, deprecations, EXPLAIN, event handlers, and a Tinker tool for executing PHP in the Craft context |
-| [Multi-Site](docs/tools/multisite.md) | Sites, site groups, per-site details |
-| [GraphQL](docs/tools/graphql.md) | Schemas, SDL, read-only and mutating query execution, tokens |
-| [Backup](docs/tools/backup.md) | Create and list database backups |
-| [Self-Awareness](docs/tools/mcp.md) | Plugin info, tool listing with risk annotations, hot reload |
-| [Commerce](docs/tools/commerce.md) | Products, orders, and statuses (when Craft Commerce is installed) |
+| Area | Tools | Gate | Edition |
+|------|-------|------|---------|
+| [Content](docs/tools/content.md) | `stimmt_entries_count`, `stimmt_refs_resolve`, `stimmt_entries_preview_url`, `stimmt_categories_list` | read | Lite |
+| | `stimmt_globals_list` | admin | Lite |
+| | `stimmt_drafts_publish`, `stimmt_entries_copy_to_site`, `stimmt_nested_entries_create`, `stimmt_nested_entries_move` | write | Pro |
+| [Database](docs/tools/database.md) | `stimmt_db_schema`, `stimmt_db_info`, `stimmt_db_table_counts`, `stimmt_db_query`, `stimmt_db_explain` | admin | Lite |
+| [System](docs/tools/system.md) | `stimmt_config_get`, `stimmt_logs_read`, `stimmt_errors_last`, `stimmt_console_commands_list`, `stimmt_routes_list` | admin | Lite |
+| [Debugging](docs/tools/debugging.md) | `stimmt_deprecations_list`, `stimmt_environment_get`, `stimmt_event_handlers_list`, `stimmt_tinker` | admin | Lite |
+| [GraphQL](docs/tools/graphql.md) | `stimmt_graphql_schemas_list`, `stimmt_graphql_schema_get`, `stimmt_graphql_query`, `stimmt_graphql_execute`, `stimmt_graphql_tokens_list` | admin | Lite |
+| [Backup](docs/tools/backup.md) | `stimmt_backups_list`, `stimmt_backups_create` | admin | Lite |
+| [Commerce](docs/tools/commerce.md) | `stimmt_commerce_products_list`, `stimmt_commerce_product_get`, `stimmt_commerce_orders_list`, `stimmt_commerce_order_get` | admin | Lite |
+| | `stimmt_commerce_order_statuses_list`, `stimmt_commerce_product_types_list` | read | Lite |
 
-The eight tools that write entry content require the **Pro** edition; everything else is available on Lite. See [Editions](docs/editions.md).
+**read**, **write** and **admin** are the scopes a user approves when connecting (`mcp:read`, `mcp:write`, `mcp:admin`). Admin tools are for Craft admin users only. Commerce tools exist only while Craft Commerce is installed.
 
-Tools that modify data or execute code are flagged `dangerous`: they sit behind the `enableDangerousTools` setting, carry a `destructiveHint` annotation in `tools/list`, and are excluded from `readonly` and (except entry workflow) `content` HTTP scopes. See the [Tools Overview](docs/tools/README.md) for the complete reference.
+`stimmt_tinker`, `stimmt_db_query`, `stimmt_graphql_execute` and `stimmt_backups_create` are **dangerous**: they are off in production unless `enableDangerousTools` is set for that environment in `config/craft-mcp.php`. See [Configuration](docs/configuration.md) and the [Tools Reference](docs/tools/README.md).
 
-## Extending
+## Editions
 
-Other plugins and modules can register their own tools, prompts, resources, and field translators through events (`EVENT_REGISTER_TOOLS`, `EVENT_REGISTER_FIELD_TRANSLATORS`, and friends). See the [Extending guide](docs/extending.md) for implementation details and examples.
+**Lite** is free and includes every tool above except four. **Pro** adds `stimmt_drafts_publish`, `stimmt_entries_copy_to_site`, `stimmt_nested_entries_create` and `stimmt_nested_entries_move`. Upgrade in the control panel under **Settings → Plugins**. See [Editions](docs/editions.md).
 
 ## Documentation
 
-The [documentation index](docs/README.md) links everything; the direct routes:
+The [documentation index](docs/README.md) links everything:
 
-- **[Installation](docs/installation.md)** - Requirements, Composer setup, detailed installation steps
-- **[Client Setup](docs/client-setup.md)** - Wizard and manual configs for Claude Code, Cursor, Claude Desktop, Codex
-- **[Configuration](docs/configuration.md)** - All configuration options and security settings
-- **[Editions](docs/editions.md)** - What Lite and Pro each include, and how a Lite install behaves
-- **[HTTP Transport](docs/http-transport.md)** - Remote access: [connect the Claude apps by URL](docs/http-transport.md#connecting-claude-web-desktop-and-mobile) with a Craft login, or per-user scoped bearer tokens for other clients
-- **[Using Claude with your Craft site](docs/claude-for-editors.md)** - A short guide to send editors once the connector is on
-- **[Content Writing](docs/content-writing.md)** - The payload format, draft workflow, and schema discovery for agents
-- **[Tools Reference](docs/tools/README.md)** - Complete documentation for every tool
-- **[Prompts](docs/prompts.md)** - Pre-built analysis prompts
-- **[Resources](docs/resources.md)** - Read-only URI-based access to schema, config, and content data
-- **[Extending](docs/extending.md)** - Register custom tools, prompts, resources, and field translators
+- **[Installation](docs/installation.md)**: setup and troubleshooting
+- **[Connecting clients](docs/connecting.md)**: HTTP, scopes, stdio and the install wizard
+- **[Configuration](docs/configuration.md)**: `config/craft-mcp.php`
+- **[Editions](docs/editions.md)**: Lite and Pro
+- **[Tools Reference](docs/tools/README.md)**: every tool
+- **[Agent guide](docs/agent-guide.md)**: how the tools fit together, written for the AI agent
+- **[Extending](docs/extending.md)**: your own tools, and field translators
+- **[Upgrading from 1.x](UPGRADE.md)**
 
 ## Contributing
 
@@ -92,7 +104,7 @@ Thank you for considering contributing to Craft MCP! Please see [GitHub Issues](
 
 ## Credits
 
-- Created and maintained by [Max van Essen](https://github.com/vanEssenMax)
+- Created by [Max van Essen](https://github.com/vanEssenMax)
 - Inspired by [Laravel Boost](https://github.com/laravel/boost)
 - Plugin icon from [Lucide](https://lucide.dev) (MIT)
 

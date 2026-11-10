@@ -10,28 +10,30 @@ use craft\fields\Entries;
 use craft\models\EntryType;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Exception\ToolCallException;
-use stimmt\craft\Mcp\attributes\McpToolMeta;
+use stimmt\craft\Mcp\attributes\Dangerous;
+use stimmt\craft\Mcp\capabilities\NestedEntryTools;
 use stimmt\craft\Mcp\elements\refs\Translator;
 use stimmt\craft\Mcp\elements\Writer;
-use stimmt\craft\Mcp\enums\ToolCategory;
+use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\integration\Gate;
 use stimmt\craft\Mcp\Tests\Fixtures\Layouts;
-use stimmt\craft\Mcp\tools\NestedEntryTools;
 
 function nestedEntryTools(): NestedEntryTools {
     return new NestedEntryTools(new Writer(Translator::withDefaults(Layouts::keysWith())));
 }
 
 describe('NestedEntryTools structure', function () {
-    it('exposes the two nested tools, both dangerous content tools', function (string $method, string $name) {
+    // In v2 a content write is a Pro feature rather than a dangerous one:
+    // dangerous means code, SQL or files, and production forces those off.
+    it('exposes the two nested tools as Pro writes, not dangerous ones', function (string $method, string $name) {
         $reflection = new ReflectionMethod(NestedEntryTools::class, $method);
-        $meta = $reflection->getAttributes(McpToolMeta::class)[0]->newInstance();
 
         expect($reflection->getAttributes(McpTool::class)[0]->newInstance()->name)->toBe($name)
-            ->and($meta->dangerous)->toBeTrue()
-            ->and($meta->category)->toBe(ToolCategory::CONTENT);
+            ->and(Gate::requiredEdition($reflection))->toBe(Edition::Pro)
+            ->and($reflection->getAttributes(Dangerous::class))->toBe([]);
     })->with([
-        ['createNestedEntry', 'create_nested_entry'],
-        ['moveNestedEntry', 'move_nested_entry'],
+        ['createNestedEntry', 'stimmt_nested_entries_create'],
+        ['moveNestedEntry', 'stimmt_nested_entries_move'],
     ]);
 
     it('advertises destructiveness by what the tool actually does', function (string $method, bool $destructive, ?bool $idempotent) {
@@ -263,13 +265,6 @@ describe('owner-draft model', function () {
         expect($source)->not->toContain('clone ');
     });
 
-    it('notifies entry resource subscribers only when the canonical owner changed', function () {
-        $source = (string) file_get_contents((new ReflectionClass(NestedEntryTools::class))->getFileName());
-
-        expect($source)->toContain('getIsDraft()')
-            ->and(substr_count($source, 'ResourceChangeNotifier::notifyEntry('))->toBe(1);
-    });
-
     // The block has no URL of its own; the owner draft is where it renders.
     it('links a preview of the owner draft the block was written into', function () {
         $source = (string) file_get_contents((new ReflectionClass(NestedEntryTools::class))->getFileName());
@@ -277,7 +272,7 @@ describe('owner-draft model', function () {
         expect($source)->toContain("'previewUrl' => \$this->writer->previewUrl(\$target)");
     });
 
-    it('returns the owner draft identifiers publish_entry accepts, plus block, state, and position', function () {
+    it('returns the owner draft identifiers stimmt_drafts_publish accepts, plus block, state, and position', function () {
         $source = (string) file_get_contents((new ReflectionClass(NestedEntryTools::class))->getFileName());
 
         foreach (["'blockId'", "'ownerId'", "'draftId'", "'draftElementId'", "'state'", "'position'", "'cpEditUrl'", "'warnings'"] as $key) {

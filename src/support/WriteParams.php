@@ -8,7 +8,6 @@ use craft\helpers\DateTimeHelper;
 use DateTime;
 use Mcp\Exception\ToolCallException;
 use stimmt\craft\Mcp\elements\WriteMode;
-use stimmt\craft\Mcp\Mcp;
 
 /**
  * Shared parsing for the write-tool parameters every entry write accepts:
@@ -59,7 +58,7 @@ final class WriteParams {
                 ?? throw new ToolCallException("Unknown mode '{$mode}'; use draft or live");
         }
 
-        return WriteMode::fromSetting(Mcp::settings()->entryWriteMode);
+        return WriteMode::Draft;
     }
 
     /**

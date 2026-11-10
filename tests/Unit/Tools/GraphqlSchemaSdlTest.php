@@ -12,7 +12,7 @@ use GraphQL\Type\Schema as SchemaDefinition;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
-use stimmt\craft\Mcp\tools\GraphqlTools;
+use stimmt\craft\Mcp\capabilities\GraphqlTools;
 
 /**
  * What get_graphql_schema returns, and what it refuses.
@@ -206,7 +206,7 @@ describe('size limit', function () use ($call, $definition) {
     // else rather than repeat the advice that just failed.
     it('sends a field that is itself too large to introspection instead', function () use ($call, $definition) {
         expect(fn () => $call('sdlFor', $definition, 'Verbose', 'big'))
-            ->toThrow(ToolCallException::class, 'query_graphql');
+            ->toThrow(ToolCallException::class, 'stimmt_graphql_query');
     });
 
     it('lets a type through when it fits', function () use ($call, $definition) {

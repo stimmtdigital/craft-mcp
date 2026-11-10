@@ -66,6 +66,6 @@ describe('an id that names nothing', function () {
     // 3306 not found".
     it('says where a real id comes from', function () {
         expect(EntryResolver::missing(9999)->getMessage())
-            ->toBe('Entry 9999 not found. Use list_entries to find an entry id.');
+            ->toBe('Entry 9999 not found. Use elements_list to find an entry id.');
     });
 });

@@ -72,6 +72,38 @@ abstract class Client {
     }
 
     /**
+     * Every item of a paginated list (tools/list, resources/list), following
+     * nextCursor to the end.
+     *
+     * WHY: Craft's server pages its catalogue (50 per page). A client that
+     * reads only the first page sees whichever tools happen to sort first, so
+     * the plugin's own tools would come and go from the catalogue with every
+     * tool Craft adds ahead of them.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listAll(string $method, string $key): array {
+        $items = [];
+        $cursor = null;
+
+        for ($page = 0; $page < 100; $page++) {
+            $result = $this->request($method, $cursor === null ? [] : ['cursor' => $cursor]);
+            foreach (is_array($result[$key] ?? null) ? $result[$key] : [] as $item) {
+                if (is_array($item)) {
+                    $items[] = $item;
+                }
+            }
+
+            $cursor = is_string($result['nextCursor'] ?? null) && $result['nextCursor'] !== '' ? $result['nextCursor'] : null;
+            if ($cursor === null) {
+                return $items;
+            }
+        }
+
+        throw new RuntimeException("{$method} kept answering with a nextCursor after 100 pages.");
+    }
+
+    /**
      * @param array<string, mixed> $params
      * @return array<string, mixed>
      */
@@ -79,9 +111,9 @@ abstract class Client {
         $envelope = $this->send($method, $params);
 
         if (isset($envelope['error'])) {
-            $message = is_array($envelope['error']) ? json_encode($envelope['error']) : 'unknown';
+            $message = is_array($envelope['error']) ? (string) json_encode($envelope['error']) : 'unknown';
 
-            throw new RuntimeException("{$method} failed: {$message}");
+            throw new RuntimeException("{$method} failed: " . Redact::text($message));
         }
 
         return is_array($envelope['result'] ?? null) ? $envelope['result'] : [];

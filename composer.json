@@ -1,6 +1,6 @@
 {
     "name": "stimmt/craft-mcp",
-    "description": "MCP (Model Context Protocol) server for Craft CMS",
+    "description": "Developer tools, Commerce and content extras for Craft CMS's built-in MCP server",
     "type": "craft-plugin",
     "license": "MIT",
     "authors": [
@@ -28,14 +28,10 @@
     ],
     "require": {
         "php": "^8.3",
-        "craftcms/cms": "^5.1",
+        "craftcms/cms": "^5.12.1",
         "mcp/sdk": "^0.9",
-        "psr/event-dispatcher": "^1.0",
-        "psr/simple-cache": "^2.0 || ^3.0",
         "psy/psysh": "^0.12",
-        "symfony/finder": "^6.4 || ^7.3 || ^8.0",
-        "symfony/polyfill-php84": "^1.31",
-        "nyholm/psr7": "^1.8"
+        "symfony/polyfill-php84": "^1.31"
     },
     "require-dev": {
         "laravel/pint": "^1.18",
@@ -62,9 +58,6 @@
         "documentationUrl": "https://github.com/stimmtdigital/craft-mcp",
         "class": "stimmt\\craft\\Mcp\\Mcp"
     },
-    "bin": [
-        "bin/mcp-server"
-    ],
     "config": {
         "allow-plugins": {
             "craftcms/plugin-installer": true,
@@ -96,7 +89,6 @@
         "analyse": "phpstan analyse --memory-limit=512M",
         "smoke": "php tests/Smoke/run.php",
         "smoke:baseline": "php tests/Smoke/run.php --baseline",
-        "smoke:heavy": "php tests/Smoke/run.php --heavy",
         "ci": [
             "@lint:test",
             "@refactor:dry",

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\support;
 
+use Mcp\Schema\Content\TextContent;
+use Mcp\Schema\Result\CallToolResult;
+
 /**
  * Standardized response helpers for MCP tools.
  *
@@ -11,10 +14,8 @@ namespace stimmt\craft\Mcp\support;
  */
 final class Response {
     /**
-     * The key a tool payload states its own outcome under. One constant, so
-     * the producer (success/failure) and the reader (isFailure, which the
-     * Presenter uses to raise isError on the wire) can never disagree about
-     * what a failed call looks like.
+     * The key a tool payload states its own outcome under, in successes and
+     * refusals alike.
      */
     private const string OUTCOME = 'success';
 
@@ -26,26 +27,25 @@ final class Response {
     }
 
     /**
-     * Failure response with data: a call the tool itself refused.
+     * A call the tool itself refused, with the reasons as structured data.
      *
-     * The transport is what a client reads an outcome from, so this is not
-     * decoration. Presenter::handle() turns a payload this produced into a
-     * CallToolResult with isError set, which is the flag that tells a model
-     * to self-correct rather than to trust the call and move on.
+     * Returned as a CallToolResult with isError set, because the transport is
+     * what a client reads an outcome from: isError is the flag that tells a
+     * model to self-correct rather than trust the call and move on. Craft's
+     * MCP server passes a CallToolResult through as it is, and the payload
+     * travels both as structured content and as JSON text for clients that
+     * read only text.
+     *
+     * @param array<string, mixed> $data
      */
-    public static function failure(array $data = []): array {
-        return [self::OUTCOME => false, ...$data];
-    }
+    public static function failure(array $data = []): CallToolResult {
+        $payload = [self::OUTCOME => false, ...$data];
 
-    /**
-     * Whether a tool return states its own failure.
-     *
-     * Deliberately identity-compared against false: a payload with no outcome
-     * key at all (every read tool) is not a failure, and neither is one that
-     * merely carries a falsy value under some other key.
-     */
-    public static function isFailure(mixed $payload): bool {
-        return is_array($payload) && ($payload[self::OUTCOME] ?? null) === false;
+        return new CallToolResult(
+            [new TextContent((string) json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR))],
+            isError: true,
+            structuredContent: $payload,
+        );
     }
 
     /**

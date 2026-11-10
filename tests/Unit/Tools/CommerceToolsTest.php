@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
+use craft\mcp\attributes\RequiresAdmin;
 use Mcp\Capability\Attribute\McpTool;
-use stimmt\craft\Mcp\tools\CommerceTools;
+use stimmt\craft\Mcp\capabilities\CommerceTools;
 
 describe('CommerceTools class structure', function () {
     it('has isAvailable static method', function () {
@@ -11,82 +12,82 @@ describe('CommerceTools class structure', function () {
 
         $reflection = new ReflectionMethod(CommerceTools::class, 'isAvailable');
         expect($reflection->isStatic())->toBeTrue()
-            ->and($reflection->getReturnType()?->getName())->toBe('bool');
+            ->and((string) $reflection->getReturnType())->toBe('bool');
     });
 
-    it('has list_products tool with McpTool attribute', function () {
+    it('has stimmt_commerce_products_list tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'listProducts');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('list_products')
+        expect($instance->name)->toBe('stimmt_commerce_products_list')
             ->and($instance->description)->toContain('products');
     });
 
-    it('has get_product tool with McpTool attribute', function () {
+    it('has stimmt_commerce_product_get tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'getProduct');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('get_product')
+        expect($instance->name)->toBe('stimmt_commerce_product_get')
             ->and($instance->description)->toContain('product');
     });
 
-    it('has list_orders tool with McpTool attribute', function () {
+    it('has stimmt_commerce_orders_list tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'listOrders');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('list_orders')
+        expect($instance->name)->toBe('stimmt_commerce_orders_list')
             ->and($instance->description)->toContain('orders');
     });
 
-    it('has get_order tool with McpTool attribute', function () {
+    it('has stimmt_commerce_order_get tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'getOrder');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('get_order')
+        expect($instance->name)->toBe('stimmt_commerce_order_get')
             ->and($instance->description)->toContain('order');
     });
 
-    it('has list_order_statuses tool with McpTool attribute', function () {
+    it('has stimmt_commerce_order_statuses_list tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'listOrderStatuses');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('list_order_statuses')
+        expect($instance->name)->toBe('stimmt_commerce_order_statuses_list')
             ->and($instance->description)->toContain('order statuses');
     });
 
-    it('has list_product_types tool with McpTool attribute', function () {
+    it('has stimmt_commerce_product_types_list tool with McpTool attribute', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'listProductTypes');
         $attributes = $reflection->getAttributes(McpTool::class);
 
         expect($attributes)->toHaveCount(1);
 
         $instance = $attributes[0]->newInstance();
-        expect($instance->name)->toBe('list_product_types')
+        expect($instance->name)->toBe('stimmt_commerce_product_types_list')
             ->and($instance->description)->toContain('product types');
     });
 });
 
 describe('CommerceTools method signatures', function () {
-    it('listProducts has optional type, limit, offset and context parameters', function () {
+    it('listProducts has optional type, limit and offset parameters', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'listProducts');
         $parameters = $reflection->getParameters();
 
-        expect($parameters)->toHaveCount(4);
+        expect($parameters)->toHaveCount(3);
 
         // All should be optional
         foreach ($parameters as $param) {
@@ -94,11 +95,11 @@ describe('CommerceTools method signatures', function () {
         }
     });
 
-    it('getOrder accepts nullable id, number and context parameters', function () {
+    it('getOrder accepts nullable id and number parameters', function () {
         $reflection = new ReflectionMethod(CommerceTools::class, 'getOrder');
         $parameters = $reflection->getParameters();
 
-        expect($parameters)->toHaveCount(3);
+        expect($parameters)->toHaveCount(2);
 
         expect($parameters[0]->getName())->toBe('id')
             ->and($parameters[0]->getType()?->allowsNull())->toBeTrue();
@@ -112,7 +113,7 @@ describe('CommerceTools method signatures', function () {
 
         foreach ($methods as $methodName) {
             $reflection = new ReflectionMethod(CommerceTools::class, $methodName);
-            expect($reflection->getReturnType()?->getName())->toBe('array');
+            expect((string) $reflection->getReturnType())->toBe('array');
         }
     });
 });
@@ -133,4 +134,12 @@ describe('CommerceTools tool count', function () {
 
         expect($toolMethods)->toHaveCount(6);
     });
+});
+
+// Orders and products carry customer and pricing data, so the reads that
+// return them are admin-only; the status and type lists are configuration.
+describe('CommerceTools admin gate', function () {
+    it('keeps product and order reads admin-only', function (string $method) {
+        expect((new ReflectionMethod(CommerceTools::class, $method))->getAttributes(RequiresAdmin::class))->toHaveCount(1);
+    })->with(['listProducts', 'getProduct', 'listOrders', 'getOrder']);
 });

@@ -52,7 +52,7 @@ final class HandleResolver {
         }
 
         return Craft::$app->getEntries()->getSectionByHandle($handle)
-            ?? throw self::unknown("Section '{$handle}'", 'Use list_sections for available handles.');
+            ?? throw self::unknown("Section '{$handle}'", 'Use configuration_list for available handles.');
     }
 
     /**
@@ -76,7 +76,7 @@ final class HandleResolver {
             return Craft::$app->getEntries()->getEntryTypeByHandle($handle)
                 ?? throw self::unknown(
                     "Entry type '{$handle}'",
-                    'Use describe_entry_schema for the entry types a section allows.',
+                    'Use elements_schema for the entry types a section allows.',
                 );
         }
 
@@ -117,7 +117,7 @@ final class HandleResolver {
         }
 
         return Craft::$app->getVolumes()->getVolumeByHandle($handle)
-            ?? throw self::unknown("Volume '{$handle}'", 'Use list_volumes for available handles.');
+            ?? throw self::unknown("Volume '{$handle}'", 'Use configuration_list for available handles.');
     }
 
     public static function categoryGroup(?string $handle): ?CategoryGroup {

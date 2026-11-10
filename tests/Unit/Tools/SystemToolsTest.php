@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use stimmt\craft\Mcp\capabilities\SystemTools;
 use stimmt\craft\Mcp\logging\Parser;
-use stimmt\craft\Mcp\tools\SystemTools;
 
 // read_logs and get_last_error need a booted Craft to reach the log path, so
 // the contract that broke them is pinned at the source level. limit used to be

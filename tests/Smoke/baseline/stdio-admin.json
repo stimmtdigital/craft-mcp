@@ -1,0 +1,1659 @@
+{
+    "protocolVersion": "2025-06-18",
+    "capabilities": {
+        "logging": [],
+        "completions": [],
+        "prompts": [],
+        "resources": {
+            "subscribe": true
+        },
+        "tools": []
+    },
+    "toolCount": 30,
+    "craftToolCount": 69,
+    "tools": {
+        "stimmt_backups_create": {
+            "title": "Create a database backup",
+            "description": "Create a new database backup. WARNING: This is a dangerous operation that creates files on the server.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_backups_list": {
+            "title": "Database backups",
+            "description": "List available database backups from storage/backups directory",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_categories_list": {
+            "title": "Browse categories",
+            "description": "List categories from Craft CMS. Filter by group handle.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "group": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Category group handle. Omit to list categories from every group."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
+        "stimmt_config_get": {
+            "title": "Read a config value",
+            "description": "Get a Craft CMS configuration value by dot-notation key (e.g., \"general.devMode\", \"db.driver\"). Credentials such as the security key and the database password come back redacted, named but not revealed.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Dot-notation key, such as \"general.devMode\" or \"db.driver\". A bare category (\"general\", \"db\") returns every setting in it; \"custom.<file>\" reads a config file. Credential settings report a redaction placeholder in place of their value."
+                    }
+                },
+                "required": [
+                    "key"
+                ]
+            }
+        },
+        "stimmt_console_commands_list": {
+            "title": "Console commands",
+            "description": "List all available Craft CMS console commands (like php craft <command>). Over stdio only: over HTTP the web application has no console controllers loaded, so the answer says it is unavailable rather than listing none.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_db_explain": {
+            "title": "Explain a query plan",
+            "description": "Run EXPLAIN on a SELECT query to analyze performance. Shows query execution plan, indexes used, and estimated rows.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": "The SELECT statement to explain. It is not executed, but anything the read guard does not recognise as read-only is refused anyway."
+                    }
+                },
+                "required": [
+                    "sql"
+                ]
+            }
+        },
+        "stimmt_db_info": {
+            "title": "Database connection",
+            "description": "Get database connection information including driver, server version, and connection details",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_db_query": {
+            "title": "Run a read-only SQL query",
+            "description": "Execute a read-only SQL query (SELECT only). Best for custom plugin tables and aggregate SQL; for table and column discovery use stimmt_db_schema, and for entry content prefer elements_list/stimmt_entries_count. WARNING: Basic keyword security - for development only. May be bypassable with certain PDO configs.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": "The SELECT statement to run. Anything the read guard does not recognise as read-only is refused before execution."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "Row cap, appended as a LIMIT clause only when the statement does not already carry one. How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "sql"
+                ]
+            }
+        },
+        "stimmt_db_schema": {
+            "title": "Database tables and columns",
+            "description": "Get database schema information. Lists all tables, or details for a specific table including columns and indexes.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "table": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Table name, with or without the install's table prefix. Omit to list every table instead of detailing one."
+                    }
+                }
+            }
+        },
+        "stimmt_db_table_counts": {
+            "title": "Table row counts",
+            "description": "Get row counts for Craft CMS tables (entries, assets, users, etc.)",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_deprecations_list": {
+            "title": "Deprecation warnings",
+            "description": "Get deprecation warnings from Craft CMS logs. Shows deprecated code usage that should be updated.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    }
+                }
+            }
+        },
+        "stimmt_drafts_publish": {
+            "title": "Publish an entry",
+            "description": "Publish an entry: applies a draft (by draft element id, or a canonical id with exactly one pending draft) to its canonical entry, or enables a disabled live entry.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "The draft element id to apply, or a canonical entry id that has exactly one pending draft (or none and is merely disabled)."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to locate the entry by and to report the result in. Publishing is not per-site: the draft is applied to every site it exists on, so this only selects which site's values come back."
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "stimmt_entries_copy_to_site": {
+            "title": "Copy an entry to another site",
+            "description": "Copy the field values an entry keeps SEPARATELY PER SITE from one site to another, as a draft on the target site. Copies values; does not machine-translate. Title and slug are left alone so a translated title survives, and so is any field Craft does not treat as translatable, because that field already holds one shared value on every site. The response lists the handles actually copied; an empty list means this entry type keeps no field per site, so its fields already match on both sites, though their titles and slugs still may not.",
+            "annotations": {
+                "destructiveHint": false,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Entry id, which is the same id on every site the entry exists on."
+                    },
+                    "fromSite": {
+                        "type": "string",
+                        "description": "Site handle to read the field values from."
+                    },
+                    "toSite": {
+                        "type": "string",
+                        "description": "Site handle to write the draft on. The entry must already exist there, which means its section is enabled for that site."
+                    }
+                },
+                "required": [
+                    "id",
+                    "fromSite",
+                    "toSite"
+                ]
+            }
+        },
+        "stimmt_entries_count": {
+            "title": "Count and group entries",
+            "description": "Count entries, optionally grouped: by attribute (status, type, section, site, author), by date bucket (\"month:dateUpdated\", day|week|month|year with dateCreated|dateUpdated|postDate), or by a field handle (relation fields bucket by related title, empty values under \"(empty)\"). Nested Matrix blocks are left out unless includeNested. Counts include EVERY status by default; pass status to narrow. One call answers \"how many per X\" without listing anything.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Section handle to count within. Omit to count across every section, which is every top-level entry the install has."
+                    },
+                    "includeNested": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Count nested Matrix blocks alongside top-level entries. Left out by default."
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Entry type handle."
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Entry status: live, pending, expired, disabled, or \"any\". Omitted counts every status."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle. Omit for the primary site."
+                    },
+                    "search": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Craft search query."
+                    },
+                    "filters": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Field-value filters: {fieldHandle: value}. Values are scalars, \":empty:\", \":notempty:\", or a natural key object for relation fields.",
+                        "additionalProperties": true
+                    },
+                    "relatedTo": {
+                        "type": "object",
+                        "default": null,
+                        "description": "Only entries related to this element, as a natural key: {\"section\",\"slug\"}, {\"volume\",\"filename\"}, {\"group\",\"slug\"}, or {\"username\"}.",
+                        "additionalProperties": true
+                    },
+                    "author": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Author username or email address."
+                    },
+                    "updatedAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Lower bound on dateUpdated, inclusive. Any date Craft parses, such as \"2026-01-31\"."
+                    },
+                    "updatedBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Upper bound on dateUpdated, exclusive."
+                    },
+                    "createdAfter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Lower bound on dateCreated, inclusive."
+                    },
+                    "createdBefore": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Upper bound on dateCreated, exclusive."
+                    },
+                    "groupBy": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "What to bucket the count by: an attribute (status, type, section, site, author), a date bucket such as \"month:dateUpdated\", or a field handle. Omit for a plain total."
+                    }
+                }
+            }
+        },
+        "stimmt_entries_preview_url": {
+            "title": "Preview link for an entry or draft",
+            "description": "A link that renders an entry or draft as saved, without logging in, for a person to review before publishing. Pass the draft's element id to preview unpublished changes. Refuses entries in sections without URLs. The link expires (previewTokenDuration, or Craft's defaultTokenDuration).",
+            "annotations": {
+                "readOnlyHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Entry or draft element id."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle. Omit for the primary site."
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "stimmt_environment_get": {
+            "title": "Environment and PHP settings",
+            "description": "Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_errors_last": {
+            "title": "Most recent error",
+            "description": "Get the most recent error from Craft CMS log files",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_event_handlers_list": {
+            "title": "Registered event handlers",
+            "description": "List registered event handlers/listeners in Craft CMS. Useful for debugging hooks and understanding what code runs on events.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "filter": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Case-insensitive substring matched against event names and the classes the events are registered on."
+                    }
+                }
+            }
+        },
+        "stimmt_globals_list": {
+            "title": "Global set values",
+            "description": "List all global sets in Craft CMS with their field values",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_graphql_execute": {
+            "title": "Execute GraphQL, mutations included",
+            "description": "Execute a GraphQL query against Craft CMS. WARNING: This is a dangerous operation that can modify data via mutations.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The GraphQL document. Mutations run here, so this can create, change, and delete data."
+                    },
+                    "variables": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Query variables as a JSON-encoded STRING (not a nested object)."
+                    },
+                    "operationName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Which operation to run, when the document defines more than one."
+                    },
+                    "schemaId": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "Schema id from stimmt_graphql_schemas_list, which decides what the operation may reach. Omit to use the public schema."
+                    }
+                },
+                "required": [
+                    "query"
+                ]
+            }
+        },
+        "stimmt_graphql_query": {
+            "title": "Run a GraphQL query",
+            "description": "Run a read-only GraphQL query against Craft's GraphQL API. Mutations and subscriptions are rejected before execution, so this is safe for browsing any GraphQL-exposed data (assets, categories, users, plugin types) with exactly the response shape you ask for. Use stimmt_graphql_schema_get to discover the available types first.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The GraphQL document. Only query operations are accepted; a mutation or subscription is rejected at the AST level, before execution."
+                    },
+                    "variables": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Query variables as a JSON-encoded STRING (not a nested object)."
+                    },
+                    "operationName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Which operation to run, when the document defines more than one."
+                    },
+                    "schemaId": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "Schema id from stimmt_graphql_schemas_list, which decides what the query may reach. Omit to use the public schema."
+                    }
+                },
+                "required": [
+                    "query"
+                ]
+            }
+        },
+        "stimmt_graphql_schema_get": {
+            "title": "GraphQL schema definition",
+            "description": "Read a GraphQL schema: the scope it grants, and the types it exposes. Returns an index of every type by default (name, kind, field count, SDL size); pass type for that one type's SDL, and type together with field for a single field and its arguments. A Craft schema prints hundreds of kilobytes of SDL, more than one response can carry, so it is never returned whole.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "Schema id, as stimmt_graphql_schemas_list reports it."
+                    },
+                    "uid": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Schema uid, as an alternative to id."
+                    },
+                    "type": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "A type name from the index this tool returns without it, such as \"Query\" or \"EntryInterface\". Returns that type's SDL in place of the index. The index gives every type's sdlBytes, so you can see beforehand which types are too large to come back whole."
+                    },
+                    "field": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "One field of that type, such as \"entries\" on \"Query\". Returns the SDL for that field alone, its arguments included. This is how to read a type whose own SDL is over the size limit."
+                    }
+                }
+            }
+        },
+        "stimmt_graphql_schemas_list": {
+            "title": "GraphQL schemas",
+            "description": "List all GraphQL schemas in Craft CMS with their scopes and permissions",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_graphql_tokens_list": {
+            "title": "GraphQL tokens",
+            "description": "List all GraphQL tokens (API keys) with their associated schemas",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_logs_read": {
+            "title": "Read Craft logs",
+            "description": "Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "level": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Exact level to keep, case-insensitive, as the log line spells it (error, warning, info, trace). It is not a minimum, so \"warning\" excludes errors."
+                    },
+                    "pattern": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Case-insensitive substring the log message must contain."
+                    },
+                    "source": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Which log to read: web, console, queue, or a plugin name. Omit to read across every log file."
+                    }
+                }
+            }
+        },
+        "stimmt_nested_entries_create": {
+            "title": "Add a Matrix block",
+            "description": "Add a block to a Matrix field on an owner entry without resending the field's other blocks (the full-field rewrite risks deleting them). In draft mode (default) the block lands on a draft of the owner, like a control panel edit: pass the returned draftElementId to stimmt_drafts_publish to make it live, to elements_get to review it in context, or as owner in follow-up calls to stack more blocks onto the same draft. Optional position places the block among its siblings (1-based, clamped to the end).",
+            "annotations": {
+                "destructiveHint": false,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "owner": {
+                        "type": "integer",
+                        "description": "Id of the entry that owns the Matrix field: a canonical entry, or a draft of one (pass a draftElementId to stack another block onto the same pending draft)."
+                    },
+                    "field": {
+                        "type": "string",
+                        "description": "Matrix field handle on the owner's field layout; elements_schema reports them."
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Entry type handle the Matrix field allows for its blocks."
+                    },
+                    "title": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Block title, for block types that have a title field."
+                    },
+                    "fields": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "The block's own field values as a JSON-encoded STRING (not a nested object), in this plugin's payload format: scalars as they are, relations as natural keys such as {\"section\",\"slug\"}. The stimmt://guides/tools resource describes it."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to write on, and to report the result in. The block itself is added on every site the owner exists on; only the values of site-translatable fields differ per site."
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "\"draft\" puts the block on a draft of the owner for review, \"live\" adds it to the canonical owner directly. Omitted means draft."
+                    },
+                    "position": {
+                        "type": [
+                            "null",
+                            "integer"
+                        ],
+                        "default": null,
+                        "description": "1-based slot among the field's existing blocks. Omit to append; a position past the end clamps to the last slot."
+                    }
+                },
+                "required": [
+                    "owner",
+                    "field",
+                    "type"
+                ]
+            }
+        },
+        "stimmt_nested_entries_move": {
+            "title": "Reorder a Matrix block",
+            "description": "Move a Matrix block to a new 1-based position within its field, by the block's own entry id. In draft mode (default) the reorder lands on a draft of the owner entry for review and stimmt_drafts_publish applies it; live mode reorders the canonical directly. Positions past the end clamp to the last slot; the response reports the position actually taken.",
+            "annotations": {
+                "destructiveHint": true,
+                "idempotentHint": true,
+                "openWorldHint": false
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "The block's own entry id, and the canonical one: a draft or revision copy of a block carries a stale position row."
+                    },
+                    "position": {
+                        "type": "integer",
+                        "description": "1-based target slot within the field. A position past the end clamps to the last slot, and the response reports the slot actually taken."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to locate the block by. Reordering is not per-site: a block's position is shared across sites, so the new order becomes the order on every site the owner exists on."
+                    },
+                    "mode": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "\"draft\" stages the reorder on a draft of the owner entry, \"live\" reorders the canonical owner directly. Omitted means draft."
+                    }
+                },
+                "required": [
+                    "id",
+                    "position"
+                ]
+            }
+        },
+        "stimmt_refs_resolve": {
+            "title": "Natural key to element id",
+            "description": "Turn a natural key into the element id Craft's elements_* tools take. Keys per type: entry {\"section\",\"slug\"}, asset {\"volume\",\"filename\"} (plus \"path\" for a file in a folder), category and tag {\"group\",\"slug\"}, user {\"username\"}, globalSet {\"handle\"}. Refuses a key that matches nothing, or several elements.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "description": "Element type: entry, asset, category, tag, user or globalSet.",
+                        "enum": [
+                            "entry",
+                            "asset",
+                            "category",
+                            "tag",
+                            "user",
+                            "globalSet"
+                        ]
+                    },
+                    "key": {
+                        "type": "object",
+                        "description": "The natural key, e.g. {\"section\": \"news\", \"slug\": \"launch\"}.",
+                        "additionalProperties": true
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle, for types whose slugs differ per site. Omit for the primary site."
+                    }
+                },
+                "required": [
+                    "type",
+                    "key"
+                ]
+            }
+        },
+        "stimmt_routes_list": {
+            "title": "Registered routes",
+            "description": "List all registered routes in Craft CMS",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_tinker": {
+            "title": "Run PHP in Craft context",
+            "description": "Execute PHP code within Craft CMS context. Prefer a specific tool when one exists (content, schema, database tools); reach for tinker when none can express the job, such as cross-entry computation. WARNING: Basic blocklist security only - not a secure sandbox. For development use only. Has access to Craft::$app and all services.",
+            "annotations": {
+                "destructiveHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "PHP statements to run in Craft's context. $app is bound to Craft::$app, and the value the code returns is what gets rendered. Anything echoed is captured and returned alongside it."
+                    },
+                    "output": {
+                        "type": "string",
+                        "default": "dump",
+                        "enum": [
+                            "dump",
+                            "json",
+                            "raw",
+                            "print_r"
+                        ],
+                        "description": "How the return value is rendered."
+                    }
+                },
+                "required": [
+                    "code"
+                ]
+            }
+        }
+    },
+    "resources": {
+        "stimmt_tools_guide": {
+            "uri": "stimmt://guides/tools",
+            "description": "How the plugin's stimmt_ tools work with Craft's own: natural keys to ids, counting, preview links, validated publishing, Matrix blocks, multi-site copies and the developer tools.",
+            "mimeType": "text/markdown"
+        }
+    },
+    "uncovered": [
+        "stimmt_backups_create"
+    ],
+    "steps": {
+        "stimmt_refs_resolve": {
+            "status": "ok",
+            "shape": {
+                "id": "<number>",
+                "key": {
+                    "section": "<string>",
+                    "slug": "<string>"
+                },
+                "type": "<string>"
+            }
+        },
+        "stimmt_entries_count": {
+            "status": "ok",
+            "shape": {
+                "groupBy": null,
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_count.grouped": {
+            "status": "ok",
+            "shape": {
+                "buckets": [
+                    {
+                        "count": "<number>",
+                        "key": "<string>"
+                    }
+                ],
+                "groupBy": "<string>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_count.by_site": {
+            "status": "ok",
+            "shape": {
+                "buckets": [
+                    {
+                        "count": "<number>",
+                        "key": "<string>"
+                    }
+                ],
+                "groupBy": "<string>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_count.filtered": {
+            "status": "ok",
+            "shape": {
+                "groupBy": null,
+                "total": "<number>"
+            }
+        },
+        "stimmt_categories_list": {
+            "status": "ok",
+            "shape": {
+                "categories": [],
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_entries_preview_url": {
+            "status": "ok",
+            "shape": {
+                "id": "<number>",
+                "previewUrl": "<string>"
+            }
+        },
+        "resource.stimmt_tools_guide": {
+            "status": "ok",
+            "shape": {
+                "contents": "<number>",
+                "mimeType": "<string>",
+                "text": "<string>",
+                "uri": "<string>"
+            }
+        },
+        "stimmt_globals_list": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "globals": []
+            }
+        },
+        "stimmt_environment_get": {
+            "status": "ok",
+            "shape": {
+                "environment": {
+                    "CRAFT_ALLOW_ADMIN_CHANGES": "<string>",
+                    "CRAFT_DEV_MODE": "<string>",
+                    "CRAFT_ENVIRONMENT": "<string>",
+                    "CRAFT_RUN_QUEUE_AUTOMATICALLY": null
+                },
+                "paths": {
+                    "basePath": "<string>",
+                    "configPath": "<string>",
+                    "storagePath": "<string>",
+                    "templatesPath": "<string>"
+                },
+                "php": {
+                    "display_errors": "<string>",
+                    "error_reporting": "<string>",
+                    "max_execution_time": "<string>",
+                    "memory_limit": "<string>",
+                    "opcache.enable": "<string>",
+                    "post_max_size": "<string>",
+                    "upload_max_filesize": "<string>"
+                },
+                "system": {
+                    "allowAdminChanges": true,
+                    "cpTrigger": null,
+                    "devMode": true,
+                    "enableTemplateCaching": true,
+                    "isSystemLive": true,
+                    "runQueueAutomatically": true,
+                    "testToEmailAddress": null
+                }
+            }
+        },
+        "stimmt_errors_last": {
+            "status": "ok",
+            "shape": {
+                "found": false,
+                "message": "<string>"
+            }
+        },
+        "stimmt_deprecations_list": {
+            "status": "ok",
+            "shape": {
+                "fromDatabase": {
+                    "count": "<number>",
+                    "deprecations": [],
+                    "hasMore": null,
+                    "limit": "<number>",
+                    "total": null
+                },
+                "fromLogs": {
+                    "count": "<number>",
+                    "deprecations": [],
+                    "hasMore": null,
+                    "limit": "<number>",
+                    "total": null
+                },
+                "hint": "<string>"
+            }
+        },
+        "stimmt_console_commands_list": {
+            "status": "ok",
+            "shape": {
+                "commands": [
+                    "<string>"
+                ],
+                "count": "<number>",
+                "skippedModules": [],
+                "unavailable": null
+            }
+        },
+        "stimmt_routes_list": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "routes": [
+                    {
+                        "pattern": "<string>",
+                        "section?": "<string>",
+                        "siteId?": "<number>",
+                        "template": "<null|string>",
+                        "type": "<string>"
+                    }
+                ]
+            }
+        },
+        "stimmt_event_handlers_list": {
+            "status": "ok",
+            "shape": {
+                "applicationEvents": {
+                    "count": "<number>",
+                    "events": []
+                },
+                "classEvents": {
+                    "count": "<number>",
+                    "events": {
+                        "craft\\elements\\Entry::defineSidebarHtml": {
+                            "class": "<string>",
+                            "count": "<number>",
+                            "event": "<string>",
+                            "handlers": [
+                                "<string>"
+                            ]
+                        },
+                        "craft\\elements\\Entry::registerPreviewTargets": {
+                            "class": "<string>",
+                            "count": "<number>",
+                            "event": "<string>",
+                            "handlers": [
+                                "<string>"
+                            ]
+                        },
+                        "craft\\services\\Fields::registerNestedEntryFieldTypes": {
+                            "class": "<string>",
+                            "count": "<number>",
+                            "event": "<string>",
+                            "handlers": [
+                                "<string>"
+                            ]
+                        }
+                    }
+                },
+                "hint": "<string>"
+            }
+        },
+        "stimmt_logs_read": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "entries": [],
+                "hasMore": null,
+                "limit": "<number>",
+                "total": null
+            }
+        },
+        "stimmt_config_get": {
+            "status": "ok",
+            "shape": {
+                "key": "<string>",
+                "value": true
+            }
+        },
+        "stimmt_config_get.credential": {
+            "status": "ok",
+            "shape": {
+                "key": "<string>",
+                "value": "<string>"
+            }
+        },
+        "stimmt_tinker": {
+            "status": "ok",
+            "shape": {
+                "text": "<string>"
+            }
+        },
+        "stimmt_backups_list": {
+            "status": "ok",
+            "shape": {
+                "backups": [
+                    {
+                        "created": "<string>",
+                        "filename": "<string>",
+                        "path": "<string>",
+                        "size": "<string>",
+                        "sizeBytes": "<number>"
+                    }
+                ],
+                "count": "<number>",
+                "path": "<string>"
+            }
+        },
+        "stimmt_backups_create": {
+            "status": "skipped",
+            "reason": "writes a database dump; run with --heavy"
+        },
+        "stimmt_db_info": {
+            "status": "ok",
+            "shape": {
+                "charset": "<string>",
+                "database": "<string>",
+                "driver": "<string>",
+                "port": "<number>",
+                "server": "<string>",
+                "serverVersion": "<string>",
+                "tablePrefix": null
+            }
+        },
+        "stimmt_db_schema": {
+            "status": "ok",
+            "shape": {
+                "columns": [
+                    {
+                        "allowNull": "<bool|false|true>",
+                        "autoIncrement": false,
+                        "dbType": "<string>",
+                        "defaultValue": "<null|string>",
+                        "isPrimaryKey": "<bool|false>",
+                        "name": "<string>",
+                        "phpType": "<string>",
+                        "size": "<null|number>",
+                        "type": "<string>"
+                    }
+                ],
+                "foreignKeys": {
+                    "fk_bcfuguukkeitwbkowadxsinlfetqobtuhnin": {
+                        "0": "<string>",
+                        "sectionId": "<string>"
+                    },
+                    "fk_kcoamjvqsltujyipvwpaegupavpmhjofearu": {
+                        "0": "<string>",
+                        "id": "<string>"
+                    },
+                    "fk_npzptjshorcadpfuuvafiqhcajebbsadnqme": {
+                        "0": "<string>",
+                        "typeId": "<string>"
+                    },
+                    "fk_pxpxleeykjdkjlmnmzdtmfmmiekltzknvywq": {
+                        "0": "<string>",
+                        "parentId": "<string>"
+                    },
+                    "fk_vktcimldunzououktnvgkiciyoyraxohbsmu": {
+                        "0": "<string>",
+                        "fieldId": "<string>"
+                    },
+                    "fk_xradvuebgybakszfvtfkqylabyegumbnrphw": {
+                        "0": "<string>",
+                        "primaryOwnerId": "<string>"
+                    }
+                },
+                "fullName": "<string>",
+                "indexes": [
+                    {
+                        "columns": {
+                            "columns": [
+                                "<string>"
+                            ],
+                            "unique": false
+                        },
+                        "name": "<string>"
+                    }
+                ],
+                "primaryKey": [
+                    "<string>"
+                ],
+                "table": "<string>"
+            }
+        },
+        "stimmt_db_table_counts": {
+            "status": "ok",
+            "shape": {
+                "assets": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "categories": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "elements": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "entries": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "entrytypes": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "fields": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "globalsets": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "plugins": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "sections": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "tags": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "users": {
+                    "count": "<number>",
+                    "label": "<string>"
+                },
+                "volumes": {
+                    "count": "<number>",
+                    "label": "<string>"
+                }
+            }
+        },
+        "stimmt_db_explain": {
+            "status": "ok",
+            "shape": {
+                "driver": "<string>",
+                "explain": [
+                    {
+                        "Extra": "<string>",
+                        "filtered": "<number>",
+                        "id": "<number>",
+                        "key": "<string>",
+                        "key_len": "<string>",
+                        "partitions": null,
+                        "possible_keys": null,
+                        "ref": null,
+                        "rows": "<number>",
+                        "select_type": "<string>",
+                        "table": "<string>",
+                        "type": "<string>"
+                    }
+                ],
+                "query": "<string>",
+                "success": true,
+                "warnings": [
+                    {
+                        "Code": "<number>",
+                        "Level": "<string>",
+                        "Message": "<string>"
+                    }
+                ]
+            }
+        },
+        "stimmt_db_query": {
+            "status": "ok",
+            "shape": {
+                "columns": [
+                    "<string>"
+                ],
+                "count": "<number>",
+                "hasMore": null,
+                "limit": null,
+                "rows": [
+                    {
+                        "id": "<number>"
+                    }
+                ],
+                "success": true,
+                "total": null
+            }
+        },
+        "stimmt_graphql_schemas_list": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "schemas": [
+                    {
+                        "id": "<number>",
+                        "isPublic": "<bool>",
+                        "name": "<string>",
+                        "permissions": "<list|object>",
+                        "scope": [
+                            "<string>"
+                        ],
+                        "uid": "<string>"
+                    }
+                ]
+            }
+        },
+        "stimmt_graphql_schema_get": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "roots": {
+                    "mutation": "<string>",
+                    "query": "<string>",
+                    "subscription": null
+                },
+                "schema": {
+                    "id": "<number>",
+                    "isPublic": true,
+                    "name": "<string>",
+                    "permissions": [],
+                    "scope": [],
+                    "uid": "<string>"
+                },
+                "sdlBytes": "<number>",
+                "success": true,
+                "types": [
+                    {
+                        "fields?": "<number>",
+                        "kind": "<string>",
+                        "name": "<string>",
+                        "sdlBytes": "<number>"
+                    }
+                ]
+            }
+        },
+        "stimmt_graphql_tokens_list": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "tokens": [
+                    {
+                        "dateCreated": "<string>",
+                        "enabled": true,
+                        "expiryDate": null,
+                        "id": "<number>",
+                        "name": "<string>",
+                        "schema": {
+                            "id": "<number>",
+                            "name": "<string>"
+                        },
+                        "uid": "<string>"
+                    }
+                ]
+            }
+        },
+        "stimmt_graphql_query": {
+            "status": "ok",
+            "shape": {
+                "data": {
+                    "ping": "<string>"
+                },
+                "errors": null,
+                "success": true
+            }
+        },
+        "stimmt_graphql_execute": {
+            "status": "ok",
+            "shape": {
+                "data": {
+                    "ping": "<string>"
+                },
+                "errors": null,
+                "success": true
+            }
+        },
+        "drafts_create": {
+            "status": "ok",
+            "shape": {
+                "draft": {
+                    "archived": false,
+                    "authorId": "<number>",
+                    "authorIds": [
+                        "<number>"
+                    ],
+                    "canonicalId": "<number>",
+                    "collapsed": false,
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "enabled": true,
+                    "fieldLayoutId": "<number>",
+                    "forceSave": false,
+                    "hasProvisionalChanges": false,
+                    "id": "<number>",
+                    "isDraft": true,
+                    "isProvisionalDraft": false,
+                    "isRevision": false,
+                    "isUnpublishedDraft": false,
+                    "mcpSmokeRelated": [],
+                    "mcpSmokeRequired": "<string>",
+                    "oldStatus": "<string>",
+                    "placeInStructure": false,
+                    "postDate": "<string>",
+                    "ref": "<string>",
+                    "sectionId": "<number>",
+                    "siteId": "<number>",
+                    "siteSettingsId": "<number>",
+                    "slug": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "touchOwnersOnSave": true,
+                    "trashed": false,
+                    "type": "<string>",
+                    "typeId": "<number>",
+                    "uid": "<string>",
+                    "uri": "<string>",
+                    "url": "<string>"
+                }
+            }
+        },
+        "stimmt_drafts_publish": {
+            "status": "ok",
+            "shape": {
+                "affectedSites": [
+                    "<string>"
+                ],
+                "entry": {
+                    "authorId": "<number>",
+                    "canonicalId": "<number>",
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": null,
+                    "expiryDate": null,
+                    "fields": {
+                        "mcpSmokeBlocks": [],
+                        "mcpSmokeRelated": [],
+                        "mcpSmokeRequired": "<string>"
+                    },
+                    "id": "<number>",
+                    "postDate": "<string>",
+                    "sectionHandle": "<string>",
+                    "siteHandle": "<string>",
+                    "siteId": "<number>",
+                    "slug": "<string>",
+                    "state": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "typeHandle": "<string>",
+                    "url": "<string>",
+                    "warnings": []
+                },
+                "success": true
+            }
+        },
+        "stimmt_nested_entries_create": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "previewUrl": "<string>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "stimmt_nested_entries_create.second": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "previewUrl": "<string>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "stimmt_nested_entries_move": {
+            "status": "ok",
+            "shape": {
+                "action": "<string>",
+                "affectedSites": [
+                    "<string>"
+                ],
+                "blockId": "<number>",
+                "cpEditUrl": "<string>",
+                "draftElementId": "<number>",
+                "draftId": "<number>",
+                "errors": [],
+                "ownerId": "<number>",
+                "position": "<number>",
+                "previewUrl": "<string>",
+                "state": "<string>",
+                "success": true,
+                "warnings": []
+            }
+        },
+        "drafts_delete.blocks": {
+            "status": "ok",
+            "shape": {
+                "deleted": true
+            }
+        },
+        "drafts_create.incomplete": {
+            "status": "ok",
+            "shape": {
+                "draft": {
+                    "archived": false,
+                    "authorId": "<number>",
+                    "authorIds": [
+                        "<number>"
+                    ],
+                    "canonicalId": "<number>",
+                    "collapsed": false,
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "enabled": true,
+                    "fieldLayoutId": "<number>",
+                    "forceSave": false,
+                    "hasProvisionalChanges": false,
+                    "id": "<number>",
+                    "isDraft": true,
+                    "isProvisionalDraft": false,
+                    "isRevision": false,
+                    "isUnpublishedDraft": false,
+                    "mcpSmokeRelated": [],
+                    "mcpSmokeRequired": "<string>",
+                    "oldStatus": "<string>",
+                    "placeInStructure": false,
+                    "postDate": "<string>",
+                    "ref": "<string>",
+                    "sectionId": "<number>",
+                    "siteId": "<number>",
+                    "siteSettingsId": "<number>",
+                    "slug": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "touchOwnersOnSave": true,
+                    "trashed": false,
+                    "type": "<string>",
+                    "typeId": "<number>",
+                    "uid": "<string>",
+                    "uri": "<string>",
+                    "url": "<string>"
+                }
+            }
+        },
+        "elements_update.incomplete": {
+            "status": "ok",
+            "shape": {
+                "element": {
+                    "archived": false,
+                    "authorId": "<number>",
+                    "authorIds": [
+                        "<number>"
+                    ],
+                    "canonicalId": "<number>",
+                    "collapsed": false,
+                    "cpEditUrl": "<string>",
+                    "dateCreated": "<string>",
+                    "dateUpdated": "<string>",
+                    "draftId": "<number>",
+                    "enabled": true,
+                    "fieldLayoutId": "<number>",
+                    "forceSave": false,
+                    "hasProvisionalChanges": false,
+                    "id": "<number>",
+                    "isDraft": true,
+                    "isProvisionalDraft": false,
+                    "isRevision": false,
+                    "isUnpublishedDraft": false,
+                    "mcpSmokeRelated": [],
+                    "oldStatus": "<string>",
+                    "placeInStructure": false,
+                    "postDate": "<string>",
+                    "ref": "<string>",
+                    "sectionId": "<number>",
+                    "siteId": "<number>",
+                    "siteSettingsId": "<number>",
+                    "slug": "<string>",
+                    "status": "<string>",
+                    "title": "<string>",
+                    "touchOwnersOnSave": true,
+                    "trashed": false,
+                    "type": "<string>",
+                    "typeId": "<number>",
+                    "uid": "<string>",
+                    "uri": "<string>",
+                    "url": "<string>"
+                },
+                "instructions": "<string>",
+                "savedAsDraft": true
+            }
+        },
+        "stimmt_drafts_publish.incomplete": {
+            "status": "refused",
+            "refusal": "mcpSmokeRequired"
+        },
+        "drafts_delete.incomplete": {
+            "status": "ok",
+            "shape": {
+                "deleted": true
+            }
+        },
+        "stimmt_entries_copy_to_site": {
+            "status": "refused",
+            "refusal": "copying a site onto itself"
+        }
+    },
+    "stderr": null
+}

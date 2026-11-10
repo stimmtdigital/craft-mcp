@@ -1,119 +1,91 @@
 # Installation
 
-This guide walks you through installing Craft MCP and connecting it to your preferred AI assistant.
+Craft CMS ships its own MCP server since 5.12. This plugin adds its tools to that server, so installing it takes two parts: the plugin itself, and Craft's MCP server switched on.
+
+Upgrading from 1.x? Follow [UPGRADE.md](../UPGRADE.md) instead: 2.0 changes the config file, the endpoint and every tool name.
 
 ## Requirements
 
-Before installing Craft MCP, ensure your environment meets these requirements:
+- Craft CMS 5.12.1 or later
+- PHP 8.3 or later
 
-- **Craft CMS** 5.0 or later
-- **PHP** 8.3 or later
-
-The plugin is compatible with all database drivers supported by Craft CMS (MySQL, PostgreSQL).
-
-## Install via Composer
-
-### From Packagist
-
-The recommended way to install Craft MCP is via Composer from Packagist:
+## 1. Install the plugin
 
 ```bash
 composer require stimmt/craft-mcp
-```
-
-After Composer finishes downloading the package, install the plugin through Craft's CLI:
-
-```bash
 php craft plugin/install mcp
 ```
 
-### Beta Releases
+The plugin handle is `mcp`.
 
-Pre-releases are tagged like `v1.4.0-beta.1` and marked as pre-release on GitHub. Composer never installs them by accident: its default stability is `stable`, so regular installs keep resolving to the latest stable version. To test a beta, opt in explicitly:
+### Local development of the plugin
 
-```bash
-composer require stimmt/craft-mcp:^1.4.0@beta
-```
-
-Most Craft projects ship with `minimum-stability: dev` and `prefer-stable: true` in their root `composer.json`, so an exact constraint like `^1.4.0-beta.1` also resolves without extra flags. When the stable version is released, the same constraint upgrades to it with a normal `composer update`.
-
-### Local Development
-
-If you're contributing to Craft MCP or developing it locally, you can install from a local path:
+To work on the plugin itself from a local checkout:
 
 ```bash
-# Add the local repository to your composer.json
 composer config repositories.craft-mcp path ./plugins/craft-mcp
-
-# Require the package with dev stability
 composer require stimmt/craft-mcp:@dev
-
-# Install the plugin in Craft
 php craft plugin/install mcp
 ```
 
-This approach allows you to make changes to the plugin code and see them reflected immediately without re-publishing to Packagist.
+## 2. Turn on Craft's MCP server
 
-## Verify Installation
+In the control panel, go to **Settings → MCP**, open the **Authenticated** tab and enable the authenticated MCP server.
 
-To confirm the plugin was installed successfully, run:
+**Choose endpoint paths that do not start with `mcp` inside the control panel.** The plugin's handle is `mcp`, and Craft sends any control panel path whose first segment is a plugin handle to that plugin. A client calling such an endpoint gets the plugin's login page instead of the MCP server.
 
-```bash
-php craft plugin/list
-```
+Craft's defaults run into this: with a `cpTrigger` and public registration off, the default endpoint is `/{cpTrigger}/mcp` (for example `/admin/mcp`); without a `cpTrigger` it is `/mcp` on the control panel's domain. Set instead:
 
-You should see `mcp` in the list with status `Installed`. If the plugin appears but shows a different status, you may need to enable it through the Craft control panel or by running `php craft plugin/enable mcp`.
+| Setting | Value |
+|---------|-------|
+| Endpoint | `/admin/ai` (use your own `cpTrigger`) |
+| Authorization Endpoint | `/admin/ai/auth` |
 
-## Enable the MCP Server
+If the control panel has no `cpTrigger` (it runs on the root of its own domain), use `/ai` and `/ai/auth`.
 
-By default, the MCP server is disabled for security. Create a configuration file at `config/mcp.php` to enable it:
+The endpoints only conflict inside the control panel: on a site with a `cpTrigger`, a front-end path such as `/mcp` is not affected. `php craft mcp/check` tells you either way.
 
-```php
-<?php
+Craft keeps these settings in project config, so they travel with your deploy.
 
-return [
-    'enabled' => true,
-];
-```
+## 3. Generate OAuth keys
 
-For production environments, you'll want to review the security options in the [Configuration Guide](configuration.md), including IP allowlists and tool restrictions.
-
-## MCP Client Setup
-
-Once the plugin is installed and enabled, connect your AI assistant. The quickest route is the built-in wizard:
+Craft signs the access tokens it gives MCP clients. It needs a key pair for that, once per environment:
 
 ```bash
-php craft mcp/install
+php craft oauth/generate-keys
 ```
 
-The wizard detects your environment (DDEV or native PHP), lets you pick clients (Claude Code, Cursor, Claude Desktop, Codex), and writes the config files for you.
+The keys are written to `storage/`, so they do not travel with project config: run the command on every environment. Alternatively, set the `privateKey` and `publicKey` settings in Craft's `config/oauth.php`. Without keys no client can finish connecting.
 
-Wizard options, manual configuration for every client, and the SSH variant live in the [Client Setup guide](client-setup.md).
+## 4. Check the setup
 
-Remote users without a local checkout connect through the [HTTP transport](http-transport.md) instead. For the Claude apps (web, Desktop, mobile) that is a custom connector: the site owner turns on `oauth`, and each user adds the site in Claude by its URL and signs in with their Craft account. See [Connecting Claude](http-transport.md#connecting-claude-web-desktop-and-mobile).
+```bash
+php craft mcp/check
+```
+
+It reports, line by line:
+
+| Check | Fails when |
+|-------|------------|
+| Craft MCP server | Craft's authenticated MCP server is off (a warning: stdio still works) |
+| Endpoint path | An endpoint starts with `mcp` inside the control panel (error) |
+| OAuth keys | Craft has no signing key (error) |
+| `config/mcp.php` | The file holds keys Craft's MCP server does not know, such as 1.x plugin settings (error) |
+| Plugin tools | The plugin's tools are off in this environment (info) |
+| Edition | Reports Lite or Pro |
+
+Each failed check says what to change. The command exits non-zero when any check is an error, so a deploy script can stop on it. The plugin's settings screen in the control panel (**Settings → Plugins → Craft MCP**) shows the same report.
+
+## 5. Connect a client
+
+See [Connecting clients](connecting.md): Claude, ChatGPT and other HTTP clients connect to Craft's endpoint and log in; local tools such as Claude Code, Cursor and Codex can also run Craft's stdio server, which `php craft mcp/install` sets up.
 
 ## Troubleshooting
 
-### Server not starting
+**The client gets a login page or HTML instead of the server.** An endpoint path starts with `mcp` inside the control panel. Change it under Settings → MCP (step 2).
 
-If the MCP server fails to start, check the following:
+**The login works but connecting fails.** Craft has no OAuth keys on this environment. Run `php craft oauth/generate-keys` (step 3).
 
-1. **Plugin is enabled**: Run `php craft plugin/list` and verify the MCP plugin shows as `Installed`
-2. **Configuration exists**: Ensure `config/mcp.php` exists and contains `'enabled' => true`
-3. **PHP path is correct**: For Claude Desktop, verify your absolute paths are correct using `which php` or `which ddev`
-4. **DDEV is running**: If using DDEV, ensure your containers are up with `ddev start`
+**Craft throws an error about an unknown property in `config/mcp.php`.** That file belongs to Craft's MCP server since 5.12 and accepts only `instructions` and `filters`. Move plugin settings to `config/craft-mcp.php`. See [Configuration](configuration.md).
 
-### Tools not appearing
-
-If the MCP server connects but tools aren't showing up:
-
-1. **Check for errors**: Look at your Craft logs in `storage/logs/` for any plugin errors
-2. **Verify PHP version**: Ensure you're running PHP 8.3 or later
-
-## Next Steps
-
-Now that Craft MCP is installed and connected, you may want to:
-
-1. **[Configure the plugin](configuration.md)** - Review security settings and customize which tools are available
-2. **[Explore available tools](tools/README.md)** - Learn what your AI assistant can now do with your Craft installation
-3. **[Connect the Claude apps](http-transport.md#connecting-claude-web-desktop-and-mobile)** - Let editors use the live site from Claude on the web, Desktop or mobile
+**A `stimmt_` tool is missing.** Check, in this order: the scope the user approved (read, write or admin), whether the user is an admin (developer tools are admin-only), the edition (Pro tools), `enableDangerousTools` (off in production by default) and `disabledTools`. The [Tools Reference](tools/README.md#who-sees-which-tool) lists every gate.

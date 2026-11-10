@@ -46,7 +46,7 @@ final class StdioClient extends Client {
 
         $process = proc_open($this->command, $descriptors, $pipes);
         if (!is_resource($process)) {
-            throw new RuntimeException("Could not start the server with: {$this->command}");
+            throw new RuntimeException('Could not start the server with: ' . Redact::text($this->command));
         }
 
         $this->process = $process;
@@ -66,15 +66,30 @@ final class StdioClient extends Client {
         return (string) stream_get_contents($this->stderr);
     }
 
+    /**
+     * Closes stdin first and gives the server a moment to see EOF and exit on
+     * its own. The command is usually `ddev exec ...`, and terminating that
+     * client straight away can leave `craft mcp/serve` running in the
+     * container with nobody on the other end.
+     */
     public function stop(): void {
-        foreach ([$this->stdin, $this->stdout, $this->stderr] as $pipe) {
+        if (is_resource($this->stdin)) {
+            fclose($this->stdin);
+        }
+
+        $this->awaitExit(5.0);
+
+        foreach ([$this->stdout, $this->stderr] as $pipe) {
             if (is_resource($pipe)) {
                 fclose($pipe);
             }
         }
 
         if (is_resource($this->process)) {
-            proc_terminate($this->process);
+            if (proc_get_status($this->process)['running']) {
+                proc_terminate($this->process);
+            }
+
             proc_close($this->process);
         }
 
@@ -82,6 +97,13 @@ final class StdioClient extends Client {
         $this->stdin = null;
         $this->stdout = null;
         $this->stderr = null;
+    }
+
+    private function awaitExit(float $seconds): void {
+        $deadline = microtime(true) + $seconds;
+        while (is_resource($this->process) && proc_get_status($this->process)['running'] && microtime(true) < $deadline) {
+            usleep(50000);
+        }
     }
 
     /**

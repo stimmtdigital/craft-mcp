@@ -7,8 +7,11 @@ namespace stimmt\craft\Mcp\support;
 use Craft;
 use stimmt\craft\Mcp\elements\PreviewUrl;
 use stimmt\craft\Mcp\elements\Reader;
+use stimmt\craft\Mcp\elements\refs\Keys;
+use stimmt\craft\Mcp\elements\refs\Registry;
 use stimmt\craft\Mcp\elements\refs\Translator;
 use stimmt\craft\Mcp\elements\Writer;
+use stimmt\craft\Mcp\events\RegisterFieldTranslatorsEvent;
 use stimmt\craft\Mcp\Mcp;
 
 /**
@@ -33,12 +36,29 @@ final class ElementModule {
     public static function preview(): PreviewUrl {
         $settings = Mcp::settings();
 
-        return new PreviewUrl($settings->previewUrls, $settings->previewTokenDuration);
+        return new PreviewUrl(true, $settings->previewTokenDuration);
     }
 
+    /**
+     * Built once per request, with the field translators other plugins
+     * register through Mcp::EVENT_REGISTER_FIELD_TRANSLATORS.
+     */
     private static function translator(): Translator {
-        return Craft::$container->has(Translator::class)
-            ? Craft::$container->get(Translator::class)
-            : Translator::withDefaults();
+        if (Craft::$container->has(Translator::class)) {
+            return Craft::$container->get(Translator::class);
+        }
+
+        $registry = new Registry();
+        $translator = Translator::withDefaults(new Keys(), $registry);
+
+        $event = new RegisterFieldTranslatorsEvent();
+        Mcp::getInstance()?->trigger(Mcp::EVENT_REGISTER_FIELD_TRANSLATORS, $event);
+        foreach ($event->translators as $fieldTranslator) {
+            $registry->register($fieldTranslator);
+        }
+
+        Craft::$container->setSingleton(Translator::class, static fn (): Translator => $translator);
+
+        return $translator;
     }
 }

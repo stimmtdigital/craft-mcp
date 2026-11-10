@@ -9,7 +9,6 @@ use craft\fields\PlainText;
 use stimmt\craft\Mcp\elements\Context;
 use stimmt\craft\Mcp\elements\InvalidInput;
 use stimmt\craft\Mcp\elements\refs\ZonedDates;
-use stimmt\craft\Mcp\elements\schema\Shape;
 
 /**
  * #75: a Date field with "Show time zone" keeps a zone name next to its
@@ -57,10 +56,5 @@ describe('ZonedDates', function () {
     it('refuses a time zone name PHP does not know', function () {
         expect(fn () => $this->translator->toIds($this->zoned, ['date' => '2026-11-12 10:00:00', 'timezone' => 'Mars/Olympus'], new Context()))
             ->toThrow(InvalidInput::class, 'Mars/Olympus');
-    });
-
-    it('describes the zone-keeping shape in the schema, and only for these fields', function () {
-        expect((new Shape())->of($this->zoned)['hint'])->toContain('timezone')
-            ->and((new Shape())->of(new Date(['handle' => 'd', 'showTime' => true]))['hint'])->toBe('ISO 8601 date-time string');
     });
 });

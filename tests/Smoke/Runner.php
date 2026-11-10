@@ -20,6 +20,12 @@ final class Runner {
     /** @var array<string, mixed> */
     private array $captured = [];
 
+    /**
+     * The whole text of the last answer, unshortened, for a refusal check: the
+     * name a refusal must carry can sit past the excerpt kept as `message`.
+     */
+    private string $lastText = '';
+
     public function __construct(
         private readonly Client $client,
         private readonly Profile $profile,
@@ -28,7 +34,8 @@ final class Runner {
     }
 
     /**
-     * @param array<string, mixed> $tools the advertised catalogue
+     * @param array<string, true> $tools every tool and resource name the
+     *                                   connection advertises, Craft's included
      * @return array<string, mixed>
      */
     public function execute(string $runId, array $tools): array {
@@ -48,10 +55,20 @@ final class Runner {
             $refusal = is_string($step['refusal'] ?? null) ? $step['refusal'] : null;
             $results[$name] = $refusal === null
                 ? $this->judge($name, $tool, $this->call($step))
-                : $this->holdToRefusal($this->call($step), $refusal);
+                : $this->holdToRefusal($name, $this->call($step), $refusal);
         }
 
         return $results;
+    }
+
+    /**
+     * What the plan captured on the way, for the boundary probes that need a
+     * real id to make a call that would succeed if it were allowed.
+     *
+     * @return array<string, mixed>
+     */
+    public function captured(): array {
+        return $this->captured;
     }
 
     /**
@@ -61,6 +78,11 @@ final class Runner {
     private function skipReason(array $step, array $tools): ?string {
         if (is_string($step['skip'] ?? null) && !($this->includeHeavy && ($step['tag'] ?? null) === Plan::TAG_HEAVY)) {
             return $step['skip'];
+        }
+
+        $profiles = is_array($step['profiles'] ?? null) ? $step['profiles'] : null;
+        if ($profiles !== null && !in_array($this->profile->name, $profiles, true)) {
+            return 'runs on ' . implode(', ', $profiles) . ' only';
         }
 
         if (!array_key_exists((string) $step['tool'], $tools)) {
@@ -102,32 +124,42 @@ final class Runner {
     /**
      * A step whose correct outcome is a refusal: a write the server must turn
      * down, such as publishing a draft that fails validation. It has to come
-     * back as a tool error saying so; succeeding is the failure here.
+     * back as a tool error naming $contains; succeeding is the failure here.
+     *
+     * A refusal that arrives in a known wrong form (see Expectation) is held
+     * to that form instead, and still has to name $contains, so the register
+     * pins the defect without forgiving a refusal that stopped saying why.
      *
      * @param array<string, mixed> $result
      * @return array<string, mixed>
      */
-    private function holdToRefusal(array $result, string $contains): array {
+    private function holdToRefusal(string $name, array $result, string $contains): array {
         if ($result['status'] === 'skipped') {
             return $result;
         }
 
+        $expectation = Expectation::covering($name, $this->profile->name);
+        $named = str_contains($this->lastText, $contains);
+
+        if ($result['status'] === 'tool-error' && $named) {
+            return $expectation === null
+                ? ['status' => 'refused', 'refusal' => $contains]
+                : ['status' => 'refused', 'refusal' => $contains, 'expected' => $expectation['id'], 'unexpected' => "{$expectation['id']} no longer reproduces: delete it from Expectation"];
+        }
+
+        if ($expectation !== null && $result['status'] === $expectation['status'] && $named
+            && str_contains($this->lastText, (string) ($expectation['contains'] ?? ''))) {
+            // Held to the known form. The wording carries ids that change
+            // every run, so the fact recorded is the form, not the message.
+            return ['status' => $result['status'], 'refusal' => $contains, 'expected' => $expectation['id']];
+        }
+
         $result['refusal'] = $contains;
-        if ($result['status'] !== 'tool-error') {
-            $result['unexpected'] = "expected a refusal containing \"{$contains}\", got {$result['status']}";
+        $result['unexpected'] = $named
+            ? "expected a refusal naming \"{$contains}\", got {$result['status']}"
+            : "expected a refusal naming \"{$contains}\", and the answer does not name it";
 
-            return $result;
-        }
-
-        if (!str_contains((string) ($result['message'] ?? ''), $contains)) {
-            $result['unexpected'] = "refused, but without \"{$contains}\"";
-
-            return $result;
-        }
-
-        // Held: the fact recorded is the refusal, not its wording, which
-        // carries ids that change every run and would read as drift.
-        return ['status' => 'refused', 'refusal' => $contains];
+        return $result;
     }
 
     /**
@@ -152,10 +184,15 @@ final class Runner {
         }
 
         $contains = $expectation['contains'] ?? null;
-        $reported = (string) ($result['message'] ?? $result['error'] ?? '');
-        if (is_string($contains) && !str_contains($reported, $contains)) {
+        if (is_string($contains) && !str_contains($this->lastText, $contains)) {
             $result['unexpected'] = "{$id} changed message";
+
+            return $result;
         }
+
+        // Held. The message stays out of the snapshot: it carries ids that
+        // change every run, and the expectation already pins its wording.
+        unset($result['message'], $result['error']);
 
         return $result;
     }
@@ -165,26 +202,53 @@ final class Runner {
      * @return array<string, mixed>
      */
     private function call(array $step): array {
+        $this->lastText = '';
         $arguments = $this->resolve(is_array($step['args'] ?? null) ? $step['args'] : []);
         if ($arguments === null) {
             return ['status' => 'skipped', 'reason' => 'an earlier step did not produce the value this one needs'];
         }
 
+        $uri = is_string($step['uri'] ?? null) ? $step['uri'] : null;
+
         try {
-            $envelope = $this->client->callTool((string) $step['tool'], $arguments);
+            $envelope = $uri === null
+                ? $this->client->callTool((string) $step['tool'], $arguments)
+                : $this->client->send('resources/read', ['uri' => $uri]);
         } catch (Throwable $exception) {
-            return ['status' => 'crashed', 'error' => $exception->getMessage()];
+            return ['status' => 'crashed', 'error' => Redact::text($exception->getMessage())];
         }
 
         if (isset($envelope['error']) && is_array($envelope['error'])) {
             return [
                 'status' => 'protocol-error',
                 'code' => $envelope['error']['code'] ?? null,
-                'message' => $envelope['error']['message'] ?? null,
+                'message' => Redact::text((string) ($envelope['error']['message'] ?? '')),
             ];
         }
 
-        return $this->outcome($step, is_array($envelope['result'] ?? null) ? $envelope['result'] : []);
+        $result = is_array($envelope['result'] ?? null) ? $envelope['result'] : [];
+
+        return $uri === null ? $this->outcome($step, $result) : $this->checked($step, self::resource($result));
+    }
+
+    /**
+     * A resource answers with contents rather than tool content, and its text
+     * is markdown rather than JSON, so it is kept as text for the assertions
+     * and reduced to its shape like any payload.
+     *
+     * @param array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private static function resource(array $result): array {
+        $contents = is_array($result['contents'] ?? null) ? $result['contents'] : [];
+        $first = is_array($contents[0] ?? null) ? $contents[0] : [];
+
+        return [
+            'contents' => count($contents),
+            'uri' => $first['uri'] ?? null,
+            'mimeType' => $first['mimeType'] ?? null,
+            'text' => is_string($first['text'] ?? null) ? $first['text'] : null,
+        ];
     }
 
     /**
@@ -193,7 +257,8 @@ final class Runner {
      * @return array<string, mixed>
      */
     private function outcome(array $step, array $result): array {
-        $payload = $this->payload($result);
+        $this->lastText = self::fullText($result);
+        $payload = ($step['asText'] ?? false) === true ? ['text' => $this->lastText] : $this->payload($result);
 
         if (is_array($payload) && is_array($step['capture'] ?? null)) {
             $this->capture($step['capture'], $payload);
@@ -203,6 +268,14 @@ final class Runner {
             $message = $this->text($result);
 
             return ['status' => 'tool-error', 'message' => $message, 'diagnosis' => self::diagnose($message)];
+        }
+
+        // A payload that states its own failure without the isError flag. A
+        // client reads the outcome from the flag, so to every client this
+        // call succeeded; it is its own status rather than an assertion so
+        // the register can pin it per step.
+        if (is_array($payload) && ($payload['success'] ?? null) === false) {
+            return ['status' => 'unflagged-failure', 'message' => $this->text($result)];
         }
 
         return $this->checked($step, $payload);
@@ -229,7 +302,7 @@ final class Runner {
             return ['status' => 'skipped', 'reason' => 'an earlier step did not produce the value an assertion needs'];
         }
 
-        $failures = $resolved === [] ? [] : Assert::check($payload, $resolved);
+        $failures = $resolved === [] ? [] : Assert::check($payload, $resolved, ($step['secret'] ?? false) === true);
         $shape = Shape::of(self::withoutState($payload, is_array($step['state'] ?? null) ? $step['state'] : []));
 
         return $failures === []
@@ -267,9 +340,7 @@ final class Runner {
      * The web-request case is here because it is open ended: every Craft event
      * our tools fire is somewhere a third-party listener can reach for a
      * request that a console process does not have, and the error Yii produces
-     * names only the missing method. One shim exists for getHeaders(); a second
-     * distinct method appearing here is the signal to stop shimming and start
-     * naming the plugin instead.
+     * names only the missing method.
      */
     private static function diagnose(string $message): ?string {
         if (!str_contains($message, 'UnknownMethodException')) {
@@ -280,18 +351,26 @@ final class Runner {
             return null;
         }
 
-        return 'a listener on a Craft event assumes a web request; see support/ConsoleHeaders';
+        return 'a listener on a Craft event assumes a web request, and stdio (craft mcp/serve) is a console request';
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     */
+    private static function fullText(array $result): string {
+        $content = is_array($result['content'] ?? null) ? $result['content'] : [];
+        $first = is_array($content[0] ?? null) ? $content[0] : [];
+
+        return is_string($first['text'] ?? null) ? $first['text'] : '';
     }
 
     /**
      * @param array<string, mixed> $result
      */
     private function text(array $result): string {
-        $content = is_array($result['content'] ?? null) ? $result['content'] : [];
-        $first = is_array($content[0] ?? null) ? $content[0] : [];
-        $text = is_string($first['text'] ?? null) ? $first['text'] : '';
+        $text = Redact::text(self::fullText($result));
 
-        return strlen($text) > 200 ? substr($text, 0, 197) . '...' : $text;
+        return strlen($text) > 300 ? substr($text, 0, 297) . '...' : $text;
     }
 
     /**

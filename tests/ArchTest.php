@@ -10,8 +10,8 @@ arch('support classes are final')
     ->expect('stimmt\craft\Mcp\support')
     ->toBeFinal();
 
-arch('tools do not use echo or print')
-    ->expect('stimmt\craft\Mcp\tools')
+arch('capabilities do not use echo or print')
+    ->expect('stimmt\craft\Mcp\capabilities')
     ->not->toUse(['echo', 'print', 'print_r', 'var_dump', 'dd']);
 
 arch('no debugging functions in source')
@@ -32,36 +32,42 @@ arch('events extend yii base Event')
     ->expect('stimmt\craft\Mcp\events')
     ->toExtend('yii\base\Event');
 
-// src/models holds two different kinds of thing. Craft models (Settings) are
-// configured, validated and saved by Craft, so they must extend its base Model.
-// The three *Definition classes are not Craft models at all: they are final
-// readonly DTOs mirroring the SDK's #[McpTool], #[McpPrompt] and #[McpResource]
-// attributes field for field, and third-party plugins construct them
-// positionally. Extending craft\base\Model would give them setters, scenarios
-// and validation they must not have. They are named one by one rather than
-// excluded as a namespace, so a new class in src/models has to make the choice
-// deliberately instead of inheriting an exemption.
+// Craft models (Settings) are configured, validated and saved by Craft, so
+// they must extend its base Model. v1 kept three readonly *Definition DTOs
+// here with an exemption each; they went with the plugin's own server, so
+// there is no exemption left and a new class in src/models has to be a model.
 arch('craft models extend craft base Model')
     ->expect('stimmt\craft\Mcp\models')
-    ->toExtend('craft\base\Model')
-    ->ignoring([
-        'stimmt\craft\Mcp\models\PromptDefinition',
-        'stimmt\craft\Mcp\models\ResourceDefinition',
-        'stimmt\craft\Mcp\models\ToolDefinition',
-    ]);
+    ->toExtend('craft\base\Model');
 
-arch('tool classes use strict types')
-    ->expect('stimmt\craft\Mcp\tools')
+arch('capability classes use strict types')
+    ->expect('stimmt\craft\Mcp\capabilities')
     ->toUseStrictTypes();
 
-// The error net is structural now: ErrorBoundary and Freshness decorate
-// every call, so no tool, prompt or resource should carry its own guard. This
-// keeps that true. Reintroducing one would not break anything visibly, it
-// would just quietly restore 230 lines of ceremony that does nothing.
-arch('elements do not guard themselves')
-    ->expect(['stimmt\craft\Mcp\tools', 'stimmt\craft\Mcp\prompts', 'stimmt\craft\Mcp\resources'])
+// v1 ran every call through its own pipeline (ErrorBoundary, Freshness), so
+// a per-tool guard was ceremony. v2 runs inside Craft's MCP server, which
+// turns a thrown ToolCallException into a tool error itself. Either way no
+// capability should carry a wrapper of its own; this keeps the v1 wrappers
+// from coming back under the new namespace.
+arch('capabilities do not guard themselves')
+    ->expect('stimmt\craft\Mcp\capabilities')
     ->not->toUse([
         'stimmt\craft\Mcp\support\SafeExecution',
         'stimmt\craft\Mcp\support\SafePromptExecution',
         'stimmt\craft\Mcp\support\SafeResourceExecution',
+    ]);
+
+// v2 is not a server. The transport, the session store, the OAuth flow, the
+// call pipeline and the registries all belong to Craft's MCP server since
+// 5.12, and a second copy of any of them is a second server answering on the
+// same routes. Nothing under src may reach back into those v1 namespaces.
+// Pest only sees a dependency on a class that exists, so this bites the moment
+// a class is put back under one of them and used, which is the regression.
+arch('nothing reintroduces the v1 server')
+    ->expect('stimmt\craft\Mcp')
+    ->not->toUse([
+        'stimmt\craft\Mcp\http',
+        'stimmt\craft\Mcp\transport',
+        'stimmt\craft\Mcp\pipeline',
+        'stimmt\craft\Mcp\services',
     ]);

@@ -6,19 +6,23 @@ namespace stimmt\craft\Mcp\Tests\Smoke;
 
 use CurlHandle;
 use RuntimeException;
+use SensitiveParameter;
 
 /**
- * Drives the MCP server over the plugin's HTTP endpoint exactly as a real
- * client does: bearer token, one POST per message, the session id echoed back
- * on every request after the handshake.
+ * Drives Craft's MCP server over its HTTP endpoint exactly as a real client
+ * does: bearer token, one POST per message, the session id from the
+ * initialize response echoed back on every request after it.
  *
  * WHY it belongs next to the stdio client rather than instead of it: the two
  * transports share almost no code below the JSON-RPC framing. The response to a
- * tool call arrives as a JSON body here and as a line on a pipe there, and the
- * single worst known defect in this plugin only exists on this side, where a
- * tool that notifies makes the SDK switch to SSE mid-response. Anything that
+ * tool call arrives as a JSON body or SSE frames here and as a line on a pipe
+ * there, and the scope a token carries only exists on this side. Anything that
  * arrives outside the JSON body is kept in diagnostics() rather than discarded,
  * because on this transport stray bytes are the symptom.
+ *
+ * TLS is verified. On an install whose certificate this machine does not
+ * trust, export CRAFT_MCP_SMOKE_INSECURE_TLS=1; the token still only ever goes
+ * to the endpoint the install itself named.
  *
  * @author Max van Essen <support@stimmt.digital>
  */
@@ -26,6 +30,8 @@ final class HttpClient extends Client {
     private const string SESSION_HEADER = 'mcp-session-id';
 
     private const string EVENT_STREAM = 'text/event-stream';
+
+    private const string INSECURE_VARIABLE = 'CRAFT_MCP_SMOKE_INSECURE_TLS';
 
     private ?CurlHandle $curl = null;
 
@@ -39,6 +45,7 @@ final class HttpClient extends Client {
 
     public function __construct(
         private readonly string $endpoint,
+        #[SensitiveParameter]
         private readonly string $token,
         private readonly int $timeoutSeconds = 120,
     ) {
@@ -102,7 +109,7 @@ final class HttpClient extends Client {
 
         $received = curl_exec($curl);
         if (!is_string($received)) {
-            throw new RuntimeException('Request failed: ' . curl_error($curl));
+            throw new RuntimeException('Request failed: ' . Redact::text(curl_error($curl)));
         }
 
         return [
@@ -116,6 +123,8 @@ final class HttpClient extends Client {
      * @return array<int, mixed>
      */
     private function options(string $method, ?string $body): array {
+        $verify = getenv(self::INSECURE_VARIABLE) !== '1';
+
         return [
             CURLOPT_URL => $this->endpoint,
             CURLOPT_CUSTOMREQUEST => $method,
@@ -124,6 +133,8 @@ final class HttpClient extends Client {
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
             CURLOPT_HTTPHEADER => $this->headers(),
             CURLOPT_HEADERFUNCTION => $this->headerCollector(),
+            CURLOPT_SSL_VERIFYPEER => $verify,
+            CURLOPT_SSL_VERIFYHOST => $verify ? 2 : 0,
         ];
     }
 
@@ -273,7 +284,7 @@ final class HttpClient extends Client {
     }
 
     private function excerpt(string $body): string {
-        $trimmed = trim($body);
+        $trimmed = Redact::text(trim($body));
 
         return strlen($trimmed) > 200 ? substr($trimmed, 0, 197) . '...' : $trimmed;
     }

@@ -1,240 +1,90 @@
 # Tools Reference
 
-Craft MCP provides 59 tools that give AI assistants comprehensive access to your Craft installation. This page provides a quick reference to all available tools, organized by category.
+Every tool the plugin adds to Craft's MCP server. All names start with `stimmt_`, so they never share a name with one of Craft's own tools (Craft refuses to start its MCP server when two capabilities have the same name).
 
-## Tool Categories
+Craft's own tools (`elements_*`, `drafts_*`, `configuration_*`, `project_config_*`, `queue_*` and others) are listed by Craft and are not repeated here.
 
-The tools are organized into logical categories based on what they do:
+## Who sees which tool
 
-| Category | Tools | Description |
-|----------|-------|-------------|
-| [Content](content.md) | 18 | Query and manage entries (payload-format read/write, filters, counts, revision history, draft workflow, publish/duplicate/copy to site), assets, categories, users, and global sets |
-| [System](system.md) | 7 | Access configuration, logs, caches, routes, and system information |
-| [Database](database.md) | 4 | Inspect database schema, run queries, and explore table structures |
-| [Debugging](debugging.md) | 7 | Monitor queue jobs, project config changes, deprecations, and more |
-| Schema | 4 | Inspect sections, fields, and plugins; discover an entry type's write schema |
-| [Multi-Site](multisite.md) | 3 | Manage and inspect multi-site configurations |
-| [GraphQL](graphql.md) | 5 | Query schemas, tokens, and execute read-only or mutating GraphQL operations |
-| [Backup](backup.md) | 2 | List and create database backups |
-| [Self-Awareness](mcp.md) | 3 | Inspect MCP plugin status, available tools, and hot-reload |
-| [Commerce](commerce.md) | 6 | Product and order management (requires Craft Commerce) |
+A client sees a tool only when every one of these allows it:
 
-Click on a category name to see detailed documentation for each tool, including parameters, response formats, and usage examples.
+| Gate | Rule |
+|------|------|
+| **Scope** (HTTP) | The scope the user approved when connecting: **read** (`mcp:read`) sees read-only tools; **write** (`mcp:write`) adds tools that change content; **admin** (`mcp:admin`) adds admin-only tools. Over stdio (`craft mcp/serve`) there is no scope; the user's own rights decide |
+| **Admin** | Admin-only tools are offered only when the acting user is a Craft admin. Over HTTP they also need the admin scope, which Craft offers only to admins |
+| **Edition** | Pro tools are hidden on the Lite edition. See [Editions](../editions.md) |
+| **Dangerous** | Dangerous tools are hidden while `enableDangerousTools` is off, which is the default in production. See [Configuration](../configuration.md) |
+| **Settings** | Tools named in `disabledTools` are hidden, and `enabled => false` hides all of them |
+| **Commerce** | Commerce tools exist only while Craft Commerce is installed and enabled |
 
-## Quick Reference
+A hidden tool is also not callable.
 
-### Content Tools
+## All tools
 
-These tools let AI assistants work with your Craft content:
+| Tool | What it does | Scope | Edition | Dangerous |
+|------|--------------|-------|---------|-----------|
+| **[Content](content.md)** | | | | |
+| `stimmt_entries_count` | Count entries, optionally grouped by attribute, date bucket or field value | read | Lite | |
+| `stimmt_refs_resolve` | Turn a natural key into the element id Craft's `elements_*` tools take | read | Lite | |
+| `stimmt_entries_preview_url` | Preview link for an entry or draft, viewable without login | read | Lite | |
+| `stimmt_categories_list` | List categories, by group | read | Lite | |
+| `stimmt_globals_list` | List global sets with their field values | admin | Lite | |
+| `stimmt_drafts_publish` | Publish a draft after validating it as live content, or enable a disabled entry | write | Pro | |
+| `stimmt_entries_copy_to_site` | Copy per-site field values to another site, as a draft | write | Pro | |
+| `stimmt_nested_entries_create` | Add one Matrix block without resending its siblings | write | Pro | |
+| `stimmt_nested_entries_move` | Move one Matrix block to a new position | write | Pro | |
+| **[Database](database.md)** | | | | |
+| `stimmt_db_schema` | List tables, or one table's columns and indexes | admin | Lite | |
+| `stimmt_db_info` | Database driver, server version and connection details | admin | Lite | |
+| `stimmt_db_table_counts` | Row counts for Craft's main tables | admin | Lite | |
+| `stimmt_db_query` | Run a read-only SQL `SELECT` | admin | Lite | Yes |
+| `stimmt_db_explain` | `EXPLAIN` a `SELECT` | admin | Lite | |
+| **[System](system.md)** | | | | |
+| `stimmt_config_get` | Read a config value, with credentials redacted | admin | Lite | |
+| `stimmt_logs_read` | Read recent log entries, filtered by source, level and text | admin | Lite | |
+| `stimmt_errors_last` | The most recent error in the logs | admin | Lite | |
+| `stimmt_console_commands_list` | List console commands (stdio only) | admin | Lite | |
+| `stimmt_routes_list` | List registered routes | admin | Lite | |
+| **[Debugging](debugging.md)** | | | | |
+| `stimmt_deprecations_list` | Deprecation warnings from the database and the logs | admin | Lite | |
+| `stimmt_environment_get` | Environment, PHP settings and system status, without secrets | admin | Lite | |
+| `stimmt_event_handlers_list` | Registered event handlers | admin | Lite | |
+| `stimmt_tinker` | Run PHP in Craft's context | admin | Lite | Yes |
+| **[GraphQL](graphql.md)** | | | | |
+| `stimmt_graphql_schemas_list` | List GraphQL schemas and their scopes | admin | Lite | |
+| `stimmt_graphql_schema_get` | A schema's type index, one type's SDL, or one field's SDL | admin | Lite | |
+| `stimmt_graphql_query` | Run a read-only GraphQL query | admin | Lite | |
+| `stimmt_graphql_execute` | Run GraphQL, mutations included | admin | Lite | Yes |
+| `stimmt_graphql_tokens_list` | List GraphQL tokens and their schemas | admin | Lite | |
+| **[Backup](backup.md)** | | | | |
+| `stimmt_backups_list` | List database backups | admin | Lite | |
+| `stimmt_backups_create` | Create a database backup | admin | Lite | Yes |
+| **[Commerce](commerce.md)** | | | | |
+| `stimmt_commerce_products_list` | List products, by product type | admin | Lite | |
+| `stimmt_commerce_product_get` | One product with its variants | admin | Lite | |
+| `stimmt_commerce_orders_list` | List completed orders, by status | admin | Lite | |
+| `stimmt_commerce_order_get` | One order by id or number | admin | Lite | |
+| `stimmt_commerce_order_statuses_list` | List order statuses | read | Lite | |
+| `stimmt_commerce_product_types_list` | List product types | read | Lite | |
 
-| Tool | Description |
-|------|-------------|
-| `list_entries` | List entries, filtering by section, type, status, site, full-text search, field values, relations, author, and date ranges; returns the payload format, optionally projected via `fields` |
-| `count_entries` | Count entries with the same filters as `list_entries`; optional `groupBy` for per-attribute, per-date-bucket, or per-field-value breakdowns |
-| `get_entry` | Get one entry by id or slug, in the payload format that `create_entry`/`update_entry` accept as `fields` |
-| `create_entry` | Create an entry from payload-format `fields`; saves as a draft by default |
-| `update_entry` | Update an entry by id from payload-format `fields`; drafts on top of a live entry by default |
-| `list_drafts` | List pending drafts awaiting review, newest first, with publish ids and control panel links |
-| `list_revisions` | List an entry's saved revisions, newest first: who saved each one, when, and with what notes |
-| `publish_entry` | Apply a pending draft to its canonical entry, or enable a disabled live entry |
-| `delete_entry` | Soft-delete an entry to the trash, restorable from the control panel |
-| `duplicate_entry` | Duplicate an entry as an unpublished draft, with optional field overrides |
-| `copy_entry_to_site` | Copy an entry's field values to another site as a draft, without machine translation |
-| `list_assets` | Browse assets with filtering by volume, folder, filename, and kind |
-| `get_asset` | Get detailed asset information including dimensions, file size, and metadata |
-| `list_asset_folders` | List folder structure within a specific asset volume |
-| `list_volumes` | Inspect asset volume configurations and filesystem settings |
-| `upload_asset` | Upload a file into a volume from an `https` URL the server fetches (public addresses only, no redirects) or from base64 `data` |
-| `update_asset` | Change an asset's title, alt text or custom fields, rename its file, or move it within its volume |
-| `delete_asset` | Soft-delete an asset to the trash, restorable from the control panel |
-| `list_categories` | Query categories by group |
-| `list_users` | List Craft users with filtering by group, status, and email |
-| `create_user` | Create a pending user account, optionally in groups; full scope only |
-| `update_user` | Change a user's name or groups; full scope only |
-| `set_user_status` | Activate, suspend or deactivate a user; full scope only |
-| `list_globals` | List all global sets with their current field values |
+"admin" means admin users only, with the `mcp:admin` scope over HTTP. "write" needs `mcp:write` or higher, "read" needs `mcp:read` or higher.
 
-### Schema Tools
+## Resource
 
-These tools help AI assistants understand your content architecture:
+| URI | Name | Content |
+|-----|------|---------|
+| `stimmt://guides/tools` | `stimmt_tools_guide` | The [agent guide](../agent-guide.md): how the `stimmt_` tools work together with Craft's |
 
-| Tool | Description |
-|------|-------------|
-| `list_sections` | Get all sections with their entry types, handles, and field layouts |
-| `list_fields` | List all custom fields with types, settings, and group assignments |
-| `list_plugins` | Get installed plugins with versions, handles, and enabled status |
-| `describe_entry_schema` | Describe a section/entry type's fields, kinds, and per-field input shapes, for use with `create_entry`/`update_entry` |
+## Response shape
 
-`describe_entry_schema` is documented in full on the [Content page](content.md#describe_entry_schema) alongside the entry read/write payload format it describes.
+Tools return JSON. List tools that take a `limit` return this envelope next to their rows:
 
-### System Tools
+| Key | Meaning |
+|-----|---------|
+| `count` | Rows in this response |
+| `total` | Rows matching the request, or `null` where the tool cannot count them without redoing the read |
+| `limit` | The row cap applied, or `null` where none was |
+| `offset` | Where this page started. Only on tools that take an `offset` |
+| `hasMore` | Whether rows are left. `null` when the tool cannot tell |
 
-These tools provide access to Craft's configuration and system status:
-
-| Tool | Description |
-|------|-------------|
-| `get_system_info` | Get Craft version, PHP version, database driver, and environment info |
-| `get_config` | Read values from general config, plugin settings, or custom config files |
-| `read_logs` | Search and filter log entries by level, source, pattern, with text or JSON output |
-| `get_last_error` | Retrieve the most recent error from the application logs |
-| `clear_caches` | Clear specific Craft caches or all caches at once |
-| `list_console_commands` | List all available Craft CLI commands (stdio only; says so over HTTP) |
-| `list_routes` | Inspect all registered routes including controller actions and patterns |
-
-### Database Tools
-
-These tools let AI assistants explore and query your database:
-
-| Tool | Description |
-|------|-------------|
-| `get_database_info` | Get database connection details, driver, and server version |
-| `get_database_schema` | List all tables or get column details for a specific table |
-| `get_table_counts` | Get row counts for core Craft tables (entries, elements, users, etc.) |
-| `run_query` | Execute read-only SELECT queries and return the results |
-
-### Debugging Tools
-
-These tools help with troubleshooting and performance analysis:
-
-| Tool | Description |
-|------|-------------|
-| `get_queue_jobs` | List queue jobs by status (pending, reserved, failed, done) |
-| `get_project_config_diff` | Show pending project config changes waiting to be applied |
-| `get_deprecations` | Get deprecation warnings from logs and the deprecations database table |
-| `explain_query` | Run EXPLAIN on a SELECT query for performance analysis |
-| `get_environment` | Read environment information without exposing sensitive values |
-| `list_event_handlers` | Inspect registered Yii event handlers and listeners |
-| `tinker` | Execute arbitrary PHP code within your Craft application context |
-
-### Multi-Site Tools
-
-These tools help manage multi-site Craft installations:
-
-| Tool | Description |
-|------|-------------|
-| `list_sites` | Get all sites with handles, languages, base URLs, and configuration |
-| `get_site` | Get detailed information about a specific site by ID or handle |
-| `list_site_groups` | List site groups with their associated sites |
-
-### GraphQL Tools
-
-These tools provide access to Craft's GraphQL API:
-
-| Tool | Description |
-|------|-------------|
-| `list_graphql_schemas` | List all GraphQL schemas with their scopes and permissions |
-| `get_graphql_schema` | Explore a schema: the type index, then one type, then one field |
-| `query_graphql` | Run a read-only GraphQL query; mutations and subscriptions are rejected before execution |
-| `execute_graphql` | Execute GraphQL queries and mutations against your Craft installation |
-| `list_graphql_tokens` | List API tokens with their associated schemas |
-
-### Backup Tools
-
-These tools manage database backups:
-
-| Tool | Description |
-|------|-------------|
-| `list_backups` | List available database backups from storage/backups |
-| `create_backup` | Create a new database backup |
-
-### Self-Awareness Tools
-
-These tools let AI assistants understand the MCP plugin itself:
-
-| Tool | Description |
-|------|-------------|
-| `get_mcp_info` | Get plugin version, status, tool count, and configuration |
-| `list_mcp_tools` | List all available tools with descriptions and enabled status |
-| `reload_mcp` | Reload MCP to detect newly installed plugins without server restart |
-
-### Commerce Tools
-
-These tools are only available when Craft Commerce is installed:
-
-| Tool | Description |
-|------|-------------|
-| `list_products` | List products with filtering by product type |
-| `get_product` | Get detailed product information including variants |
-| `list_orders` | List orders with filtering by status |
-| `get_order` | Get order details by ID or order number |
-| `list_order_statuses` | List all configured order statuses |
-| `list_product_types` | List product type configurations |
-
-## Dangerous Tools
-
-Some tools can modify data or execute code, which may not be appropriate in all environments. These "dangerous" tools can be disabled through configuration:
-
-| Tool | Risk | What It Does |
-|------|------|--------------|
-| `tinker` | High | Executes arbitrary PHP code in your application context |
-| `execute_graphql` | High | Executes GraphQL queries/mutations that can modify data |
-| `run_query` | Medium | Executes SQL queries (limited to SELECT, but still exposes data) |
-| `create_entry` | Medium | Creates new entries in your content |
-| `update_entry` | Medium | Modifies existing entry content and fields |
-| `publish_entry` | Medium | Applies a draft to its canonical entry, or enables a disabled entry |
-| `delete_entry` | Medium | Moves an entry to the trash |
-| `duplicate_entry` | Medium | Creates a new draft entry from an existing one |
-| `copy_entry_to_site` | Medium | Writes a draft on another site from an entry's field values |
-| `upload_asset` | Medium | Writes a file into a volume, fetched from a public URL or passed as base64 |
-| `update_asset` | Medium | Changes an asset's metadata, filename or folder |
-| `delete_asset` | Medium | Moves an asset to the trash |
-| `create_user` | Medium | Creates a pending user account; full scope only |
-| `update_user` | Medium | Changes a user's name or groups; full scope only |
-| `set_user_status` | Medium | Activates, suspends or deactivates a user; full scope only |
-| `create_backup` | Medium | Creates files on the server filesystem |
-| `clear_caches` | Low | Clears caches, which can temporarily impact site performance |
-
-By default, these tools are disabled when `CRAFT_ENVIRONMENT` is set to `production`. You can control them individually using the `enableDangerousTools` and `disabledTools` configuration options. See the [Configuration Guide](../configuration.md) for details.
-
-## Response Patterns
-
-All tools return consistent response structures that AI assistants can easily parse:
-
-- **List operations** return `count` and an array of items
-- **Bounded list operations**, meaning every tool that takes a `limit`, return the same envelope
-  alongside those items, so a page can never be mistaken for a complete set:
-
-  | Key | Meaning |
-  |-----|---------|
-  | `count` | Rows in this response |
-  | `total` | Rows matching the request in full, or `null` where the tool cannot count them without redoing the read |
-  | `limit` | The row cap that was applied, or `null` where the tool applied none |
-  | `offset` | Where this page started. Present only on tools that take an `offset`, since only those can be walked |
-  | `hasMore` | Whether rows are left behind this response. `null` means the tool cannot tell, with `count` and `limit` there to judge by |
-
-- **Single record lookups** return `found: true/false` with the record or an error message
-- **Operations** return `success: true` with their data. Failures are not a payload: the tool call
-  itself fails, and the client receives an MCP tool error (`isError: true`) whose text is the reason
-
-Every payload crosses the wire exactly once, as the tool result's single `content` item. Tools do
-not declare an output schema, so no `structuredContent` copy is sent alongside it.
-
-See individual tool documentation for specific response formats and examples.
-
-## Text Output
-
-Some tools accept an `output` parameter and can lay their payload out for a person instead of
-returning JSON:
-
-| Value | Result |
-|-------|--------|
-| `structured` (default) | The JSON payload documented for that tool |
-| `text` | The same data as aligned text: uniform rows become a table, key-value data and breakdowns become aligned blocks, nesting is indented |
-
-```
-get_table_counts output="text"
-
-          label           count
---------  --------------  -----
-elements  Total elements  1234
-entries   Entries         567
-```
-
-Nothing is lost in the text view: it is a rendering of the same payload, and anything that does not
-lay out cleanly falls back to pretty-printed JSON. Tools that do not list `output` in their
-parameter table always return the structured payload.
-
-Text output is plain by default. ANSI colour is a single install-wide setting (`colorOutput`, off by
-default) because escape sequences are noise to an AI client and cost tokens for nothing; turn it on
-when a person reads this server's output in a terminal. See the
-[Configuration Guide](../configuration.md).
+A refused call (bad argument, unknown handle, missing permission) fails as an MCP tool error whose text is the reason. Content writes that fail validation return `success: false` with per-field `errors` instead.

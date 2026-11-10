@@ -21,14 +21,24 @@ describe('Codex client', function () {
             ->and($this->codex->configWriter())->toBeInstanceOf(TomlConfigWriter::class);
     });
 
-    // Codex starts servers from wherever it was launched, and the binary path
-    // in args is relative, so the config has to carry the project as cwd.
-    it('pins the working directory, since the binary path is relative', function () {
-        $config = $this->codex->generateServerConfig(EnvironmentDetector::DDEV, '/srv/site', 'backend');
+    // Codex starts servers from wherever it was launched, and the craft
+    // script in args is relative, so the config has to carry the project as cwd.
+    it('pins the working directory, since the craft path is relative', function () {
+        $config = $this->codex->generateServerConfig(EnvironmentDetector::DDEV, 'editor@example.com', '/srv/site', 'backend');
 
         expect($this->codex->requiresAbsolutePaths())->toBeTrue()
             ->and($config['cwd'])->toBe('/srv/site')
-            ->and($config['args'])->toBe(['exec', 'php', 'backend/vendor/stimmt/craft-mcp/bin/mcp-server']);
+            ->and($config['args'])->toBe(['exec', 'php', 'backend/craft', 'mcp/serve', '--user=editor@example.com']);
+    });
+
+    // Since 2.0 the plugin runs no server of its own: every client starts
+    // Craft's, acting as one user, and the plugin's tools come with it.
+    it('starts Craft\'s own stdio server as the given user, natively too', function () {
+        $claudeCode = new ClaudeCode('/srv/site', '/srv/site', new EnvironmentDetector('/srv/site'));
+        $config = $claudeCode->generateServerConfig(EnvironmentDetector::NATIVE, '7');
+
+        expect($config['command'])->toBe('php')
+            ->and($config['args'])->toBe(['craft', 'mcp/serve', '--user=7']);
     });
 
     it('leaves the existing JSON clients on the JSON writer', function () {

@@ -6,114 +6,65 @@ require_once dirname(__DIR__, 3) . '/vendor/yiisoft/yii2/Yii.php';
 
 use stimmt\craft\Mcp\models\Settings;
 
-describe('Settings entryWriteMode', function () {
-    it('defaults to draft and validates the allowed values', function () {
-        $settings = new Settings();
-
-        expect($settings->entryWriteMode)->toBe('draft');
-
-        $settings->entryWriteMode = 'live';
-        expect($settings->validate(['entryWriteMode']))->toBeTrue();
-
-        $settings->entryWriteMode = 'yolo';
-        expect($settings->validate(['entryWriteMode']))->toBeFalse();
-    });
+/**
+ * v2 keeps five settings; everything about transport, tokens, OAuth and
+ * output belongs to Craft's own MCP server now. The property list is pinned
+ * so a v1 key cannot quietly come back: Mcp::applyConfigOverrides() copies
+ * any key of config/craft-mcp.php that is a property, so a stray property
+ * would turn a dead config key live again.
+ */
+it('has exactly the v2 property set', function () {
+    expect(array_keys(get_class_vars(Settings::class)))->toEqualCanonicalizing([
+        'enabled',
+        'disabledTools',
+        'enableDangerousTools',
+        'maxResponseBytes',
+        'previewTokenDuration',
+    ]);
 });
 
-it('defaults paginationLimit to 100 so one page covers all registered tools', function () {
-    expect((new Settings())->paginationLimit)->toBe(100);
-});
-
-it('rejects a paginationLimit below 1', function () {
-    $settings = new Settings();
-    $settings->paginationLimit = 0;
-    $settings->validate();
-
-    expect($settings->hasErrors('paginationLimit'))->toBeTrue();
-});
-
-it('defaults httpSessionStore to null (built-in DB store)', function () {
-    expect((new Settings())->httpSessionStore)->toBeNull();
-});
-
-it('defaults showLockedProTools to false and validates it as boolean', function () {
-    $settings = new Settings();
-    expect($settings->showLockedProTools)->toBeFalse();
-
-    $settings->showLockedProTools = true;
-    expect($settings->validate())->toBeTrue();
-});
-
-it('defaults additionalInstructions to an empty string and validates as a string', function () {
+it('defaults to the tools on, nothing disabled, dangerous tools on and a 1 MB response cap', function () {
     $settings = new Settings();
 
-    expect($settings->additionalInstructions)->toBe('');
-
-    $settings->additionalInstructions = 'Read the house style guide before writing content.';
-    expect($settings->validate(['additionalInstructions']))->toBeTrue();
+    expect($settings->enabled)->toBeTrue()
+        ->and($settings->disabledTools)->toBe([])
+        ->and($settings->enableDangerousTools)->toBeTrue()
+        ->and($settings->maxResponseBytes)->toBe(1048576)
+        ->and($settings->previewTokenDuration)->toBeNull()
+        ->and($settings->validate())->toBeTrue();
 });
 
-describe('Settings disabledScopes', function () {
-    it('defaults to empty', function () {
-        expect((new Settings())->disabledScopes)->toBe([]);
+describe('Settings disabledTools', function () {
+    it('accepts a list of tool names', function () {
+        $settings = new Settings();
+        $settings->disabledTools = ['stimmt_tinker', 'stimmt_db_query'];
+
+        expect($settings->validate(['disabledTools']))->toBeTrue();
     });
 
-    it('validates entries against real Scope values', function () {
+    it('refuses an entry that is not a string', function () {
         $settings = new Settings();
-        $settings->disabledScopes = ['full'];
+        $settings->disabledTools = [['stimmt_tinker']];
 
-        expect($settings->validate(['disabledScopes']))->toBeTrue();
-    });
-
-    it('rejects an entry that is not a Scope value', function () {
-        $settings = new Settings();
-        $settings->disabledScopes = ['nonexistent'];
-
-        expect($settings->validate(['disabledScopes']))->toBeFalse();
-    });
-
-    it('is case-sensitive: an uppercase scope name is rejected', function () {
-        $settings = new Settings();
-        $settings->disabledScopes = ['Full'];
-
-        expect($settings->validate(['disabledScopes']))->toBeFalse();
+        expect($settings->validate(['disabledTools']))->toBeFalse();
     });
 });
 
-describe('Settings showClientConfigSnippet', function () {
-    it('defaults to true', function () {
-        expect((new Settings())->showClientConfigSnippet)->toBeTrue();
-    });
-
-    it('validates as boolean', function () {
+describe('Settings maxResponseBytes', function () {
+    // Below 1 KB even an error message would not fit, so every list tool
+    // would refuse every call.
+    it('refuses a cap below 1 KB', function () {
         $settings = new Settings();
-        $settings->showClientConfigSnippet = false;
+        $settings->maxResponseBytes = 1023;
 
-        expect($settings->validate(['showClientConfigSnippet']))->toBeTrue();
-    });
-});
+        expect($settings->validate(['maxResponseBytes']))->toBeFalse();
 
-describe('Settings colorOutput', function () {
-    it('defaults to false so a model client never pays for escape sequences', function () {
-        expect((new Settings())->colorOutput)->toBeFalse();
-    });
-
-    it('validates as boolean', function () {
-        $settings = new Settings();
-        $settings->colorOutput = true;
-
-        expect($settings->validate(['colorOutput']))->toBeTrue();
+        $settings->maxResponseBytes = 1024;
+        expect($settings->validate(['maxResponseBytes']))->toBeTrue();
     });
 });
 
 describe('Settings preview links', function () {
-    it('hands out preview links by default, at Craft\'s own token duration', function () {
-        $settings = new Settings();
-
-        expect($settings->previewUrls)->toBeTrue()
-            ->and($settings->previewTokenDuration)->toBeNull();
-    });
-
     it('refuses a preview token that would expire within a minute', function () {
         $settings = new Settings();
         $settings->previewTokenDuration = 30;
@@ -123,37 +74,19 @@ describe('Settings preview links', function () {
         $settings->previewTokenDuration = 3600;
         expect($settings->validate(['previewTokenDuration']))->toBeTrue();
     });
-});
 
-describe('Settings OAuth connector', function () {
-    it('is off by default, with the Claude callbacks allowed once it is on', function () {
+    it('accepts null, which falls back to Craft\'s own token duration', function () {
         $settings = new Settings();
+        $settings->previewTokenDuration = null;
 
-        expect($settings->oauth)->toBeFalse()
-            ->and($settings->oauthRedirectUris)->toContain('https://claude.ai/api/mcp/auth_callback', 'http://localhost/callback')
-            ->and($settings->validate())->toBeTrue();
-    });
-
-    it('refuses a redirect allowlist entry that is not an http(s) URL', function () {
-        $settings = new Settings();
-        $settings->oauthRedirectUris = ['javascript:alert(1)'];
-
-        expect($settings->validate(['oauthRedirectUris']))->toBeFalse();
+        expect($settings->validate(['previewTokenDuration']))->toBeTrue();
     });
 });
 
-describe('Settings assetUploadMaxBytes', function () {
-    it('caps uploads at 20 MB by default', function () {
-        expect((new Settings())->assetUploadMaxBytes)->toBe(20971520);
-    });
+it('validates the switches as booleans', function () {
+    $settings = new Settings();
+    $settings->enabled = false;
+    $settings->enableDangerousTools = false;
 
-    it('refuses a cap below 1 KB', function () {
-        $settings = new Settings();
-        $settings->assetUploadMaxBytes = 100;
-
-        expect($settings->validate(['assetUploadMaxBytes']))->toBeFalse();
-
-        $settings->assetUploadMaxBytes = 1024;
-        expect($settings->validate(['assetUploadMaxBytes']))->toBeTrue();
-    });
+    expect($settings->validate(['enabled', 'enableDangerousTools']))->toBeTrue();
 });

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../Fixtures/CraftStub.php';
 
-use stimmt\craft\Mcp\tools\DebugTools;
+use stimmt\craft\Mcp\capabilities\DebugTools;
 use yii\base\Event;
 
 describe('DebugTools::listEventHandlers() class events', function () {

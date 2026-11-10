@@ -3,20 +3,24 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
-use stimmt\craft\Mcp\attributes\McpToolMeta;
-use stimmt\craft\Mcp\tools\EntryWorkflowTools;
+use stimmt\craft\Mcp\attributes\Dangerous;
+use stimmt\craft\Mcp\capabilities\EntryWorkflowTools;
+use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\integration\Gate;
 
 describe('EntryWorkflowTools structure', function () {
-    it('exposes the four workflow tools, all dangerous', function (string $method, string $name) {
+    // Publishing and copying across sites are the Pro edition's validated
+    // writes. They are not #[Dangerous]: that gate is for code, SQL and files,
+    // and production forces it off, which would take publishing with it.
+    it('exposes the two workflow tools as Pro writes, not dangerous ones', function (string $method, string $name) {
         $reflection = new ReflectionMethod(EntryWorkflowTools::class, $method);
 
         expect($reflection->getAttributes(McpTool::class)[0]->newInstance()->name)->toBe($name)
-            ->and($reflection->getAttributes(McpToolMeta::class)[0]->newInstance()->dangerous)->toBeTrue();
+            ->and(Gate::requiredEdition($reflection))->toBe(Edition::Pro)
+            ->and($reflection->getAttributes(Dangerous::class))->toBe([]);
     })->with([
-        ['publishEntry', 'publish_entry'],
-        ['deleteEntry', 'delete_entry'],
-        ['duplicateEntry', 'duplicate_entry'],
-        ['copyEntryToSite', 'copy_entry_to_site'],
+        ['publishEntry', 'stimmt_drafts_publish'],
+        ['copyEntryToSite', 'stimmt_entries_copy_to_site'],
     ]);
 
     // Shape-level (behavior needs a Craft app; dev/integration-elements.py is
@@ -33,7 +37,7 @@ describe('EntryWorkflowTools structure', function () {
     });
 });
 
-describe('publish_entry block ordering', function () {
+describe('stimmt_drafts_publish block ordering', function () {
     // Applying a draft of a single nested block silently moved it to the end
     // of its Matrix field: applyDraft clones the draft with draftId nulled,
     // so NestedElementTrait::saveOwnership() skips its sortOrder recovery
@@ -65,54 +69,12 @@ describe('publish_entry block ordering', function () {
     });
 });
 
-describe('publish_entry resource notification', function () {
-    // publish_entry is the true canonical-change moment for the default
-    // draft-first flow: applyDraft() merges the draft into the canonical
-    // entry, and the enable() branch flips a disabled live entry on. Both
-    // are real changes to what craft://entries/{section}/{slug} serves, so
-    // both notify through the shared ResourceChangeNotifier.
-    it('notifies through the shared ResourceChangeNotifier once a draft is applied and once an entry is enabled', function () {
-        $source = (string) file_get_contents((new ReflectionClass(EntryWorkflowTools::class))->getFileName());
-
-        expect(substr_count($source, 'ResourceChangeNotifier::notifyEntry('))->toBe(2);
-    });
-
-    it('threads the RequestContext from publishEntry into both applyDraft and publishCanonical', function () {
-        $applyDraft = new ReflectionMethod(EntryWorkflowTools::class, 'applyDraft');
-        $publishCanonical = new ReflectionMethod(EntryWorkflowTools::class, 'publishCanonical');
-
-        expect(array_map(fn (ReflectionParameter $p): string => $p->getName(), $applyDraft->getParameters()))
-            ->toContain('context')
-            ->and(array_map(fn (ReflectionParameter $p): string => $p->getName(), $publishCanonical->getParameters()))
-            ->toContain('context');
-    });
-});
-
-describe('list_revisions', function () {
-    it('is registered read-only with id, site, and pagination parameters', function () {
-        $method = new ReflectionMethod(EntryWorkflowTools::class, 'listRevisions');
-        $tool = $method->getAttributes(McpTool::class)[0]->newInstance();
-        $params = array_map(fn (ReflectionParameter $p): string => $p->getName(), $method->getParameters());
-
-        expect($tool->name)->toBe('list_revisions')
-            ->and($tool->annotations->readOnlyHint)->toBeTrue()
-            ->and($params)->toContain('id')->toContain('site')->toContain('limit')->toContain('offset');
-    });
-
-    it('summarizes revisions through the RevisionBehavior guard', function () {
-        $source = (string) file_get_contents((new ReflectionClass(EntryWorkflowTools::class))->getFileName());
-
-        expect($source)->toContain('RevisionBehavior')
-            ->and($source)->toContain('revisionOf(');
-    });
-});
-
 // #76: Drafts::applyDraft() does not validate, so a draft missing a required
 // field went live with success: true, where the control panel refuses with
 // "Couldn't apply draft". Both publish paths now validate under Craft's live
 // scenario first, as ElementsController::actionApplyDraft() does, and answer
 // a failure with the field errors instead of publishing.
-describe('publish_entry validates before it publishes (#76)', function () {
+describe('stimmt_drafts_publish validates before it publishes (#76)', function () {
     $body = static function (string $method): string {
         $reflection = new ReflectionMethod(EntryWorkflowTools::class, $method);
         $lines = explode("\n", (string) file_get_contents($reflection->getFileName()));

@@ -22,7 +22,7 @@ final class SiteResolver {
 
         $model = Craft::$app->getSites()->getSiteByHandle($site);
         if ($model === null) {
-            throw new ToolCallException("Site '{$site}' not found. Use list_sites for available handles.");
+            throw new ToolCallException("Site '{$site}' not found. Use configuration_list for available handles.");
         }
 
         return $model;

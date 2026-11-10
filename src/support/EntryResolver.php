@@ -66,6 +66,6 @@ final class EntryResolver {
      * value comes from.
      */
     public static function missing(int $id): ToolCallException {
-        return new ToolCallException("Entry {$id} not found. Use list_entries to find an entry id.");
+        return new ToolCallException("Entry {$id} not found. Use elements_list to find an entry id.");
     }
 }

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Craft CMS 5.12 ships its own MCP server. 2.0 stops being a second one: the plugin now adds its tools to Craft's server, which brings the HTTP endpoint, OAuth logins with read, write and admin scopes, and `craft mcp/serve` for stdio. Read [UPGRADE.md](UPGRADE.md) before updating a 1.x install.
+
+### Added
+
+- The plugin's tools register with Craft's MCP server (`craft\services\Mcp::EVENT_REGISTER_CAPABILITY_TYPES`), so Craft's endpoint and `craft mcp/serve` offer them next to Craft's own. Craft maps each to a scope: read tools need `mcp:read`, writes `mcp:write`, and the developer tools `mcp:admin` and an admin user
+- `stimmt_refs_resolve` turns a natural key (`{"section","slug"}`, `{"volume","filename"}`, `{"group","slug"}`, `{"username"}`, `{"handle"}`) into the element id Craft's `elements_*` tools take
+- `stimmt_entries_preview_url` returns a link that renders an entry or draft for review without a login
+- `php craft mcp/check`, and the same report on the plugin's settings screen: whether Craft's MCP server is on, whether its endpoint path clashes with this plugin, whether Craft has OAuth signing keys, and whether `config/mcp.php` still holds 1.x settings. Exits non-zero when a check fails
+- What the plugin adds is described to clients in the instructions Craft's server sends on connect, including that `stimmt_drafts_publish` validates where Craft's `drafts_apply` does not
+- Guide resource `stimmt://guides/tools`
+
+### Changed
+
+- **Requires Craft CMS 5.12.1 or later**
+- **Every tool is renamed with a `stimmt_` prefix**, following Craft's `{resource}_{verb}` convention, for example `run_query` → `stimmt_db_query`, `read_logs` → `stimmt_logs_read`, `count_entries` → `stimmt_entries_count`, `publish_entry` → `stimmt_drafts_publish`. Craft refuses to start its MCP server when two tools share a name, so an unprefixed tool would break every install the day Craft added one with the same name. The full map is in UPGRADE.md
+- **Settings move from `config/mcp.php` to `config/craft-mcp.php`.** Since 5.12, `config/mcp.php` configures Craft's own MCP server, and Craft fails on keys it does not know there
+- Developer tools (database, logs, config, debugging, GraphQL, backups, tinker) are for admin users only, through Craft's `#[RequiresAdmin]`, on both transports. 1.x opened some of them to any stdio session
+- Permission checks now apply over stdio too: `craft mcp/serve` acts as the user it is given, where 1.x stdio had no user
+- Production turns off only the dangerous tools (`enableDangerousTools`), no longer the whole plugin: Craft's MCP server being on in production is already an admin's decision
+- `php craft mcp/install` writes client configs that start `craft mcp/serve --user=…`, and asks for that user (`--user`/`-u`)
+- Craft's own MCP routes (`mcp/authenticated`, `mcp/public`, `mcp/serve` and the rest) are handed back to Craft, so they work while the plugin is installed. With 1.x installed, Craft's MCP server could not run at all. One condition remains: Craft's endpoint must not sit at a control panel path starting with `mcp`, which Craft sends to this plugin's pages; `mcp/check` names the path to use instead
+
+### Removed
+
+- The plugin's own MCP server: the HTTP endpoint, `bin/mcp-server`, static `mcp_` tokens and their control panel screens, the OAuth connector, `mcp/tokens/*`, and the `httpTransport`, `httpPath`, `oauth*`, `allowedIps`, `disabledScopes`, `scopedTokenPrivilegedTools`, `paginationLimit`, `httpSession*`, `showClientConfigSnippet`, `additionalInstructions`, `showLockedProTools`, `colorOutput`, `disabledPrompts` and `disabledResources` settings. Use Craft's endpoint and its OAuth logins; for scripts and CI, `craft mcp/serve --user=…`. Craft does not let personal access tokens use its MCP server, so there is no static-token replacement
+- Tools Craft's server now covers: entry, asset and user reads and writes, drafts and revisions lists, delete and duplicate, sections, fields, sites, plugins, system info, `clear_caches`, `get_queue_jobs`, `get_project_config_diff`, and `get_mcp_info`, `list_mcp_tools`, `reload_mcp`. UPGRADE.md maps each to Craft's equivalent
+- Prompts, the `craft://` resources, and the `entryWriteMode`, `previewUrls` and `assetUploadMaxBytes` settings
+- The `registerTools`, `registerPrompts` and `registerResources` events and the `McpToolMeta` attributes. Register capabilities with Craft's `EVENT_REGISTER_CAPABILITY_TYPES` instead
+- The update drops the 1.x tables (`mcp_tokens`, `mcp_sessions`, `mcp_oauth_*`). Tokens and connections made with 1.x stop working; reconnect clients through Craft's MCP server
+
 ## [1.8.1] - 2026-11-03
 
 ### Fixed

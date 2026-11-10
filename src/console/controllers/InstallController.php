@@ -40,6 +40,11 @@ class InstallController extends Controller {
     public string $serverName = 'craft-cms';
 
     /**
+     * @var string|null The Craft user the stdio server acts as: ID, username or email
+     */
+    public ?string $user = null;
+
+    /**
      * @inheritdoc
      */
     #[Override]
@@ -49,6 +54,7 @@ class InstallController extends Controller {
         if ($actionID === 'index') {
             $options[] = 'environment';
             $options[] = 'serverName';
+            $options[] = 'user';
         }
 
         return $options;
@@ -62,6 +68,7 @@ class InstallController extends Controller {
         return [
             'e' => 'environment',
             's' => 'serverName',
+            'u' => 'user',
         ];
     }
 
@@ -97,14 +104,18 @@ class InstallController extends Controller {
         // 4. Get project path if any client needs absolute paths
         $projectPath = $this->resolveProjectPath($clients, $configRoot);
 
-        // 5. Get server name
+        // 5. Get server name, and the user the server acts as
         $serverName = $this->resolveServerName($clients);
+        $user = $this->resolveUser();
+        if ($user === null) {
+            return ExitCode::USAGE;
+        }
 
         // 6. Generate and write configurations
         $this->stdout(PHP_EOL . 'Generating configuration files...' . PHP_EOL . PHP_EOL);
 
         foreach ($clients as $client) {
-            $this->writeClientConfig($client, $environment, $projectPath, $craftSubdirectory, $serverName);
+            $this->writeClientConfig($client, $environment, $user, $projectPath, $craftSubdirectory, $serverName);
         }
 
         $this->printSuccessMessage();
@@ -313,11 +324,12 @@ class InstallController extends Controller {
     private function writeClientConfig(
         Client $client,
         string $environment,
+        string $user,
         ?string $projectPath,
         ?string $craftSubdirectory,
         string $serverName,
     ): void {
-        $config = $client->generateServerConfig($environment, $projectPath, $craftSubdirectory);
+        $config = $client->generateServerConfig($environment, $user, $projectPath, $craftSubdirectory);
 
         try {
             $result = $client->configWriter()->write($client->getConfigPath(), $serverName, $config);
@@ -385,12 +397,34 @@ class InstallController extends Controller {
     /**
      * Print the success message with next steps.
      */
+    /**
+     * The user `craft mcp/serve` acts as, checked here rather than left for
+     * the client to discover: Craft refuses an unknown, inactive, suspended or
+     * locked user at every start, and the client only shows a dead server.
+     */
+    private function resolveUser(): ?string {
+        $user = $this->user ?? $this->prompt('Craft user the MCP server acts as (username, email or ID)', ['required' => true]);
+        $found = ctype_digit($user)
+            ? Craft::$app->getUsers()->getUserById((int) $user)
+            : Craft::$app->getUsers()->getUserByUsernameOrEmail($user);
+
+        if ($found === null || !$found->active || $found->suspended || $found->locked) {
+            $this->stderr("No active Craft user '{$user}'. Craft's MCP server only runs as an active, unlocked user." . PHP_EOL, Console::FG_RED);
+
+            return null;
+        }
+
+        return $user;
+    }
+
     private function printSuccessMessage(): void {
         $this->stdout(PHP_EOL);
         $this->stdout('Success! MCP client configuration files have been generated.' . PHP_EOL, Console::FG_GREEN);
         $this->stdout(PHP_EOL);
         $this->stdout('Next steps:' . PHP_EOL, Console::BOLD);
         $this->stdout('  Restart your MCP clients to pick up the new configuration.' . PHP_EOL);
+        $this->stdout('  The clients run `craft mcp/serve`, Craft\'s own MCP server, with this plugin\'s stimmt_ tools added.' . PHP_EOL);
+        $this->stdout('  Check the setup with `php craft mcp/check`.' . PHP_EOL);
         $this->stdout(PHP_EOL);
         $this->stdout('Documentation: ', Console::FG_GREY);
         $this->stdout('https://github.com/stimmtdigital/craft-mcp' . PHP_EOL);

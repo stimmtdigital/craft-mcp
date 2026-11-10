@@ -7,9 +7,8 @@ namespace stimmt\craft\Mcp\text;
 /**
  * The escape sequences themselves, and nothing more.
  *
- * Whether any of this is emitted is Palette's call, never this class's and
- * never a tool's. Only what is actually used is kept here: an unused colour
- * constant is a suggestion to reach past the palette.
+ * Callers decide whether any of this is emitted. Only what is actually used
+ * is kept here.
  *
  * @author Max van Essen <support@stimmt.digital>
  */

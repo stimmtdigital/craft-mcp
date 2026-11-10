@@ -7,21 +7,16 @@ namespace stimmt\craft\Mcp\migrations;
 use craft\db\Migration;
 
 /**
- * Fresh-install migration; delegates to the same table definition the
- * incremental migration creates, so the two can never diverge.
- *
- * @author Max van Essen <support@stimmt.digital>
+ * Since 2.0 the plugin keeps no tables of its own: Craft's MCP server holds
+ * the connections and tokens. Uninstalling still removes what a 1.x install
+ * left behind.
  */
 class Install extends Migration {
     public function safeUp(): bool {
-        return (new m260709_120000_add_tokens_table())->safeUp()
-            && (new m260717_120000_add_sessions_table())->safeUp()
-            && (new m261014_120000_add_oauth_tables())->safeUp();
+        return true;
     }
 
     public function safeDown(): bool {
-        return (new m261014_120000_add_oauth_tables())->safeDown()
-            && (new m260717_120000_add_sessions_table())->safeDown()
-            && (new m260709_120000_add_tokens_table())->safeDown();
+        return (new m261110_000000_remove_v1_tables())->safeUp();
     }
 }

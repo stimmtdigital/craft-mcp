@@ -3,74 +3,37 @@
 declare(strict_types=1);
 
 use Mcp\Capability\Attribute\McpTool;
-use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\capabilities\EntryTools;
+use stimmt\craft\Mcp\capabilities\EntryWorkflowTools;
+use stimmt\craft\Mcp\capabilities\NestedEntryTools;
 use stimmt\craft\Mcp\enums\Edition;
-use stimmt\craft\Mcp\tools\AssetWriteTools;
-use stimmt\craft\Mcp\tools\EntryTools;
-use stimmt\craft\Mcp\tools\EntryWorkflowTools;
-use stimmt\craft\Mcp\tools\NestedEntryTools;
-use stimmt\craft\Mcp\tools\UserWriteTools;
+use stimmt\craft\Mcp\integration\Gate;
 
 it('marks every content-writing tool as requiring Pro', function (string $class, string $method) {
-    $attrs = (new ReflectionMethod($class, $method))->getAttributes(RequiresEdition::class);
-    expect($attrs)->not->toBeEmpty()
-        ->and($attrs[0]->newInstance()->edition)->toBe(Edition::Pro);
+    expect(Gate::requiredEdition(new ReflectionMethod($class, $method)))->toBe(Edition::Pro);
 })->with([
-    [EntryTools::class, 'createEntry'],
-    [EntryTools::class, 'updateEntry'],
     [EntryWorkflowTools::class, 'publishEntry'],
-    [EntryWorkflowTools::class, 'deleteEntry'],
-    [EntryWorkflowTools::class, 'duplicateEntry'],
     [EntryWorkflowTools::class, 'copyEntryToSite'],
     [NestedEntryTools::class, 'createNestedEntry'],
     [NestedEntryTools::class, 'moveNestedEntry'],
-    [AssetWriteTools::class, 'uploadAsset'],
-    [AssetWriteTools::class, 'updateAsset'],
-    [AssetWriteTools::class, 'deleteAsset'],
-    [UserWriteTools::class, 'createUser'],
-    [UserWriteTools::class, 'updateUser'],
-    [UserWriteTools::class, 'setUserStatus'],
 ]);
 
-it('leaves content reads and schema on Lite', function (string $class, string $method) {
-    expect((new ReflectionMethod($class, $method))->getAttributes(RequiresEdition::class))->toBeEmpty();
-})->with([
-    [EntryTools::class, 'listEntries'],
-    [EntryTools::class, 'getEntry'],
-    [EntryTools::class, 'countEntries'],
-    [EntryTools::class, 'describeEntrySchema'],
-    [EntryWorkflowTools::class, 'listDrafts'],
-    [EntryWorkflowTools::class, 'listRevisions'],
-]);
+it('leaves the entry reads on Lite', function (string $method) {
+    expect(Gate::requiredEdition(new ReflectionMethod(EntryTools::class, $method)))->toBe(Edition::Lite);
+})->with([['countEntries'], ['resolveRef'], ['previewUrl']]);
 
 // Closed-set guard: a stray #[RequiresEdition(Edition::Pro)] on any other tool
-// (say clear_caches) would silently paywall it. Scan every tool class and assert
-// the Pro set is exactly the documented content-writing tools. Mirrors the
-// class-then-method precedence the extractor uses.
-it('marks exactly the documented content-writing tools as Pro across every tool class', function () {
+// (say stimmt_logs_read) would silently paywall it. Every capability class is
+// scanned through the Gate's own precedence rule (method over class), so the
+// set asserted is the set the Gate enforces.
+it('marks exactly the documented content-writing tools as Pro across every capability class', function () {
     $proMethods = [];
 
-    foreach (glob(dirname(__DIR__, 3) . '/src/tools/*.php') as $file) {
-        $class = 'stimmt\\craft\\Mcp\\tools\\' . basename($file, '.php');
-        if (!class_exists($class)) {
-            continue;
-        }
+    foreach ((array) glob(dirname(__DIR__, 3) . '/src/capabilities/*.php') as $file) {
+        $class = 'stimmt\\craft\\Mcp\\capabilities\\' . basename((string) $file, '.php');
 
-        $reflection = new ReflectionClass($class);
-        $classAttrs = $reflection->getAttributes(RequiresEdition::class);
-        $classEdition = $classAttrs === [] ? null : $classAttrs[0]->newInstance()->edition;
-
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->getAttributes(McpTool::class) === []) {
-                continue;
-            }
-
-            $methodAttrs = $method->getAttributes(RequiresEdition::class);
-            $edition = $methodAttrs === []
-                ? ($classEdition ?? Edition::Lite)
-                : $methodAttrs[0]->newInstance()->edition;
-
-            if ($edition === Edition::Pro) {
+        foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            if ($method->getAttributes(McpTool::class) !== [] && Gate::requiredEdition($method) === Edition::Pro) {
                 $proMethods[] = $method->getName();
             }
         }
@@ -80,22 +43,11 @@ it('marks exactly the documented content-writing tools as Pro across every tool 
 
     // Every tool that writes content, and nothing else. The nested-block pair
     // is here because creating and reordering blocks is writing content: a
-    // gate that let those through would sell the tier and then leak it. Asset
-    // and user writes are too (#71, #72).
+    // gate that let those through would sell the tier and then leak it.
     expect($proMethods)->toBe([
         'copyEntryToSite',
-        'createEntry',
         'createNestedEntry',
-        'createUser',
-        'deleteAsset',
-        'deleteEntry',
-        'duplicateEntry',
         'moveNestedEntry',
         'publishEntry',
-        'setUserStatus',
-        'updateAsset',
-        'updateEntry',
-        'updateUser',
-        'uploadAsset',
     ]);
 });

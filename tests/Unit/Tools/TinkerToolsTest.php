@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../Fixtures/CraftStub.php';
 
+use stimmt\craft\Mcp\capabilities\TinkerTools;
 use stimmt\craft\Mcp\Tests\Fixtures\TestMutex;
-use stimmt\craft\Mcp\tools\TinkerTools;
 
 describe('TinkerTools blocked patterns', function () {
     it('blocks shell exec calls', function () {

@@ -28,7 +28,7 @@ final class Report {
             $parts[] = "{$status}={$count}";
         }
 
-        $summary = 'tools=' . ($snapshot['toolCount'] ?? 0) . ' steps: ' . implode(' ', $parts) . "\n";
+        $summary = 'stimmt tools=' . ($snapshot['toolCount'] ?? 0) . ' (craft tools=' . ($snapshot['craftToolCount'] ?? 0) . ') steps: ' . implode(' ', $parts) . "\n";
 
         return $summary . self::uncoveredLine($snapshot) . self::scopeLines($snapshot) . self::stepLines($steps);
     }
@@ -54,7 +54,8 @@ final class Report {
         }
 
         $outside = is_array($scope['outside'] ?? null) ? $scope['outside'] : [];
-        $lines = 'scope ' . ($scope['granted'] ?? '?') . ': ' . count($outside) . " tools probed outside it\n";
+        $granted = is_array($scope['granted'] ?? null) ? implode(' ', $scope['granted']) : '?';
+        $lines = "scope {$granted}: " . count($outside) . " tools probed outside it\n";
 
         foreach (is_array($scope['violations'] ?? null) ? $scope['violations'] : [] as $violation) {
             $lines .= "  FAIL {$violation}\n";
@@ -79,9 +80,9 @@ final class Report {
             }
 
             $label = array_key_exists('unexpected', $step) ? 'FAIL' : 'known';
-            $detail = $step['unexpected'] ?? $step['message'] ?? $step['error'] ?? '';
+            $detail = $step['unexpected'] ?? $step['expected'] ?? $step['message'] ?? $step['error'] ?? '';
             $failures = is_array($step['failures'] ?? null) ? ' ' . implode('; ', $step['failures']) : '';
-            $lines .= "  {$label} {$name} [{$step['status']}] {$detail}{$failures}\n";
+            $lines .= Redact::text("  {$label} {$name} [{$step['status']}] {$detail}{$failures}") . "\n";
         }
 
         return $lines;
@@ -106,30 +107,36 @@ final class Report {
     }
 
     /**
-     * The one thing no single profile can show: a narrower scope must reach
-     * strictly fewer tools than a wider one. Pinning each count in its own
-     * baseline catches a count that moves; this catches the filter collapsing
-     * so that every scope sees everything, which each baseline would happily
-     * re-record as the new normal.
+     * The one thing no single profile can show: a narrower scope must reach a
+     * strict subset of the plugin's tools a wider one reaches. Pinning each
+     * catalogue in its own baseline catches a set that moves; this catches the
+     * filter collapsing so that every scope sees everything, which each
+     * baseline would happily re-record as the new normal, and a narrower scope
+     * reaching a tool the wider one cannot, which no count would show.
      *
      * @param array<string, array<string, mixed>> $snapshots
      * @return list<string>
      */
     public static function ordering(array $snapshots): array {
-        $counts = [];
-        foreach (['http-readonly', 'http-content', 'http-full'] as $profile) {
-            $count = $snapshots[$profile]['toolCount'] ?? null;
-            if (is_int($count)) {
-                $counts[$profile] = $count;
+        $sets = [];
+        foreach (['http-read', 'http-write', 'http-admin'] as $profile) {
+            $tools = $snapshots[$profile]['tools'] ?? null;
+            if (is_array($tools)) {
+                $sets[$profile] = array_keys($tools);
             }
         }
 
         $violations = [];
-        $names = array_keys($counts);
+        $names = array_keys($sets);
         for ($i = 0; $i < count($names) - 1; $i++) {
             [$narrow, $wide] = [$names[$i], $names[$i + 1]];
-            if ($counts[$narrow] >= $counts[$wide]) {
-                $violations[] = "{$narrow} advertises {$counts[$narrow]} tools, {$wide} advertises {$counts[$wide]}: a narrower scope must reach strictly fewer";
+            $extra = array_diff($sets[$narrow], $sets[$wide]);
+            if ($extra !== []) {
+                $violations[] = "{$narrow} reaches " . implode(', ', $extra) . " that {$wide} does not";
+            }
+
+            if (count($sets[$narrow]) >= count($sets[$wide])) {
+                $violations[] = "{$narrow} advertises " . count($sets[$narrow]) . " stimmt tools, {$wide} advertises " . count($sets[$wide]) . ': a narrower scope must reach strictly fewer';
             }
         }
 

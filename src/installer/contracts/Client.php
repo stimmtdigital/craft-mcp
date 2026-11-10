@@ -53,11 +53,12 @@ interface Client {
      * Generate the server configuration array for this client.
      *
      * @param string $environment The environment type ('ddev' or 'native')
+     * @param string $user The Craft user the server acts as: ID, username or email
      * @param string|null $projectPath Absolute project path (required if requiresAbsolutePaths() is true)
      * @param string|null $craftSubdirectory Relative path from project root to Craft root (e.g. 'backend')
      * @return array{command: string, args: string[], cwd?: string}
      */
-    public function generateServerConfig(string $environment, ?string $projectPath = null, ?string $craftSubdirectory = null): array;
+    public function generateServerConfig(string $environment, string $user, ?string $projectPath = null, ?string $craftSubdirectory = null): array;
 
     /**
      * The writer for this client's config file format.

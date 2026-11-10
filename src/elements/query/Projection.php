@@ -74,7 +74,7 @@ final readonly class Projection {
                 $this->exists($name) => null,
                 default => throw new InvalidInput(
                     "Unknown projection field '{$name}'. Attributes: " . implode(', ', self::ATTRIBUTES)
-                    . '. For field handles use list_fields, or describe_entry_schema for the handles of one section.',
+                    . '. For field handles use configuration_list, or elements_schema for the handles of one section.',
                 ),
             };
         }

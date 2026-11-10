@@ -1,380 +1,54 @@
 # System Tools
 
-System tools give AI assistants visibility into how your Craft installation is configured and running. From version information to log analysis to cache management, these tools help diagnose issues and understand your site's setup without digging through files manually.
+Read configuration, logs and routes. All of these are admin-only: they need a Craft admin user and, over HTTP, the `mcp:admin` scope. Lite edition.
 
-## System Information
-
-Every Craft site has its own combination of versions, settings, and configurations. The system information tool provides a quick snapshot of what's running.
-
-### get_system_info
-
-Get a comprehensive overview of your Craft installation, including version numbers, database configuration, and multi-site setup details.
-
-**Parameters:** None
-
-**Example:**
-
-```
-get_system_info
-```
-
-**Response:**
-
-```json
-{
-  "craft": {
-    "version": "5.0.0",
-    "edition": "pro",
-    "environment": "dev"
-  },
-  "php": {
-    "version": "8.3.0"
-  },
-  "database": {
-    "driver": "mysql",
-    "version": "8.0.35"
-  },
-  "sites": [
-    {
-      "name": "My Site",
-      "handle": "default",
-      "language": "en-US",
-      "primary": true
-    }
-  ]
-}
-```
-
-This tool is particularly useful when debugging issues that might be version-specific, or when you need to quickly understand the multi-site structure of a Craft installation.
+Craft's own tools cover system info (`info_get`), plugins (`plugins_*`), caches (`caches_*`), the queue (`queue_*`) and project config (`project_config_*`).
 
 ---
 
-## Configuration
+## stimmt_config_get
 
-Craft's configuration system spans multiple files and supports environment-specific overrides. Rather than manually checking each config file, the `get_config` tool lets AI assistants read configuration values directly using dot notation.
-
-### get_config
-
-Read configuration values by their dot-notation key. This tool can access general config, database settings (excluding credentials), and any custom config files you've created.
-
-**Parameters:**
+Read a Craft config value by dot-notation key.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `key` | string | Yes | Config key in dot notation (e.g., "general.devMode") |
+| `key` | string | Yes | Such as `general.devMode` or `db.driver`. A bare category (`general`, `db`) returns every setting in it; `custom.<file>` reads a file from `config/` |
 
-**Supported key patterns:**
-
-- `general` - Returns all general config settings
-- `general.devMode` - Returns a specific general setting
-- `db` - Returns safe database config values (credentials excluded)
-- `db.driver` - Returns a specific database setting
-- `custom.{filename}` - Returns values from custom config files in `config/`
-
-**Examples:**
-
-```
-# Check if dev mode is enabled
-get_config key="general.devMode"
-
-# Get all general config settings
-get_config key="general"
-
-# Check the database driver
-get_config key="db.driver"
-
-# Read a custom config file
-get_config key="custom.myconfig"
-```
-
-**Response:**
-
-```json
-{
-  "key": "general.devMode",
-  "value": true
-}
-```
+Returns `key` and `value`. Credentials such as the security key and the database password come back as a redaction placeholder: named, not revealed. An unknown category is refused with the ones that exist.
 
 ---
 
-## Logging
+## stimmt_logs_read
 
-When something goes wrong, the logs tell the story. These tools let AI assistants search through Craft's log files to find errors, warnings, and other diagnostic information.
-
-### read_logs
-
-Search through recent log entries with filtering by severity level, log source, and content pattern. This is useful for understanding what's happening in your application and identifying patterns in warnings or errors.
-
-**Parameters:**
+Read recent entries from Craft's log files, newest first.
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `limit` | int | 50 | Maximum number of entries to return |
-| `level` | string | null | Filter by log level: "error", "warning", or "info" |
-| `source` | string | null | Filter by log source: "web", "console", "queue", or a plugin name |
-| `pattern` | string | null | Case-insensitive search pattern to filter log messages |
-| `output` | string | "structured" | Output format: "structured" (JSON) or "text" (human-readable log lines) |
+| `limit` | int | 50 | Entries to return, 1 or more |
+| `level` | string | null | Exact level to keep, as the log line spells it (`error`, `warning`, `info`, `trace`). Not a minimum: `warning` excludes errors |
+| `pattern` | string | null | Case-insensitive text the message must contain |
+| `source` | string | null | `web`, `console`, `queue`, or a plugin name. Omit to read every log file |
 
-**Examples:**
-
-```
-# Get the 20 most recent log entries
-read_logs limit=20
-
-# Get only errors
-read_logs level="error" limit=10
-
-# Look for warnings
-read_logs level="warning"
-
-# Search for specific content
-read_logs pattern="database" limit=20
-
-# Filter by log source
-read_logs source="web" level="error"
-
-# Get human-readable output
-read_logs output="text" limit=10
-```
-
-**Response (structured):**
-
-```json
-{
-  "count": 10,
-  "entries": [
-    {
-      "file": "web.log",
-      "timestamp": "2024-01-15 10:30:45",
-      "channel": "web",
-      "level": "error",
-      "category": "application",
-      "message": "Error message here",
-      "stackTrace": [
-        {
-          "index": 0,
-          "file": "/var/www/html/src/Service.php",
-          "line": 123,
-          "call": "SomeClass->method()"
-        }
-      ]
-    }
-  ]
-}
-```
-
-**Response (text):**
-
-When using `output="text"`, returns one line per entry as
-`timestamp [LEVEL] category: message`, with any stack trace indented beneath it:
-
-```
-2026-01-07 10:30:00 [ERROR] app\Service: Something failed
-  #0 /var/www/src/Service.php(123): SomeClass->method()
-```
-
-The lines are plain text by default. Enabling the `colorOutput` setting dims the timestamp,
-category and stack trace, and colours the level (red for ERROR, yellow for WARNING). See
-[Text Output](README.md#text-output).
+The search walks each log backwards until it has `limit` matches, so `limit` bounds the entries returned, not the lines searched. The response has no `total`. A response larger than `maxResponseBytes` is refused with a request to narrow the call (see [Configuration](../configuration.md)).
 
 ---
 
-### get_last_error
+## stimmt_errors_last
 
-A shortcut for finding the most recent error in your logs. When users report "something broke," this tool quickly surfaces the relevant error without manually scanning log files.
+The most recent error in Craft's log files. No parameters.
 
-**Parameters:** None
-
-**Example:**
-
-```
-get_last_error
-```
-
-**Response:**
-
-```json
-{
-  "found": true,
-  "error": {
-    "file": "web.log",
-    "timestamp": "2024-01-15 10:30:45",
-    "level": "error",
-    "category": "application",
-    "message": "Error message here"
-  }
-}
-```
-
-If no errors exist in the logs, the response will indicate `"found": false`.
+Returns `found: true` and `error`, or `found: false` with how far back each file was searched.
 
 ---
 
-## Caching
+## stimmt_console_commands_list
 
-Craft uses several caching layers to improve performance. Sometimes you need to clear these caches: after template changes, during debugging, or when troubleshooting stale data issues.
+List the console commands available as `php craft <command>`. No parameters.
 
-### clear_caches
-
-Clear one or all of Craft's cache types. This is classified as a dangerous tool because clearing caches can temporarily impact site performance while they rebuild.
-
-> **Note:** This tool can be disabled via configuration. See the [Configuration Guide](../configuration.md).
-
-**Parameters:**
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `type` | string | "all" | Which cache type to clear |
-
-**Available cache types:**
-
-| Type | What It Clears |
-|------|----------------|
-| `all` | All caches at once |
-| `data` | Data cache (query results, element data) |
-| `compiled-templates` | Compiled Twig templates |
-| `temp-files` | Temporary files in storage |
-
-**Examples:**
-
-```
-# Clear all caches
-clear_caches
-
-# Clear only the data cache
-clear_caches type="data"
-
-# Force template recompilation
-clear_caches type="compiled-templates"
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "cleared": ["data", "compiled-templates", "temp-files"]
-}
-```
+Over stdio only. Over HTTP, Craft loads web controllers instead of console ones, so the tool answers with `unavailable` and a reason rather than an empty list.
 
 ---
 
-## Routes and Commands
+## stimmt_routes_list
 
-Understanding how URLs map to content is essential for debugging 404 errors or planning new features. These tools expose Craft's routing system and available CLI commands.
-
-### list_routes
-
-Get all registered routes in your Craft installation, including those from section URL formats, category groups, and your custom `config/routes.php` file.
-
-**Parameters:** None
-
-**Example:**
-
-```
-list_routes
-```
-
-**Response:**
-
-```json
-{
-  "count": 15,
-  "routes": [
-    {
-      "pattern": "news/<slug>",
-      "template": "news/_entry",
-      "type": "section",
-      "section": "news"
-    },
-    {
-      "pattern": "api/search",
-      "template": null,
-      "type": "config"
-    }
-  ]
-}
-```
-
-Each route includes a `type` field indicating its source:
-
-| Type | Source |
-|------|--------|
-| `config` | Defined in `config/routes.php` |
-| `section` | Auto-generated from a section's URL format |
-| `category` | Auto-generated from a category group's URL format |
-
----
-
-### list_console_commands
-
-List all available CLI commands, including those added by plugins and modules. This helps AI assistants understand what operations can be performed via the command line.
-
-**Over stdio only.** In a web request Craft loads web controllers in place of console ones, so over the HTTP transport the tool answers with `count` and `commands` set to `null` and an `unavailable` sentence explaining why, rather than an empty list that would read as "this install has no commands".
-
-**Parameters:** None
-
-**Example:**
-
-```
-list_console_commands
-```
-
-**Response (stdio):**
-
-```json
-{
-  "count": 67,
-  "commands": ["cache/flush-all", "migrate/all", "project-config/apply", "..."],
-  "skippedModules": [],
-  "unavailable": null
-}
-```
-
-`skippedModules` names any module whose commands could not be read, for example one whose path alias only exists in some requests; its commands are missing from `commands`. Since 1.6.0 such a module no longer makes the whole call fail.
-
-**Response (HTTP):**
-
-```json
-{
-  "count": null,
-  "commands": null,
-  "skippedModules": [],
-  "unavailable": "Console commands can only be listed over stdio. ..."
-}
-```
-
----
-
-## Schema Information
-
-These tools help AI assistants understand your content architecture: the sections, fields, and plugins that define how your Craft installation is structured.
-
-### list_plugins
-
-List all installed plugins with their version numbers, enabled status, and developer information. Useful for understanding what functionality has been added to a Craft installation.
-
-**Parameters:** None
-
-**Response includes:** Plugin handle, name, version, enabled status, and developer info.
-
----
-
-### list_sections
-
-Get all sections and their entry types. This reveals the content structure of your site: which sections exist, whether they're channels, structures, or singles, and what entry types are available in each.
-
-**Parameters:** None
-
-**Response includes:** Section handle, name, type (single/channel/structure), and entry types with their field layouts.
-
----
-
-### list_fields
-
-List all custom fields defined in your Craft installation. Each field includes its type (Plain Text, Matrix, Entries, etc.), the field group it belongs to, and relevant settings.
-
-**Parameters:** None
-
-**Response includes:** Field handle, name, type, group assignment, and field-specific settings.
+List the routes registered in Craft. No parameters.

@@ -33,12 +33,19 @@
             <file>tests/ArchTest.php</file>
         </testsuite>
     </testsuites>
-    <source>
+    <!-- ignoreIndirectDeprecations: Craft 5 declares parameters such as
+         `ImageTransform $transform = null`, which PHP 8.4+ reports as an
+         implicitly nullable type when the class is compiled. That happens in
+         vendor code whichever Craft 5 release is installed (5.11 and 5.12 are
+         identical here), so it is noise this plugin cannot act on. Only
+         deprecations raised by vendor code calling vendor code are dropped:
+         one this plugin's src or tests trigger is still reported. -->
+    <source ignoreIndirectDeprecations="true">
         <include>
             <directory>src</directory>
         </include>
         <exclude>
-            <directory>src/tools</directory>
+            <directory>src/capabilities</directory>
         </exclude>
     </source>
 </phpunit>

@@ -7,12 +7,16 @@ namespace stimmt\craft\Mcp\Tests\Smoke;
 use Throwable;
 
 /**
- * Wire level smoke harness.
+ * Wire level smoke harness for the tools the plugin registers into Craft's MCP
+ * server.
  *
- *   composer smoke                        every profile, compared to its baseline
- *   composer smoke -- --profile=http-full one profile
- *   composer smoke:baseline               re-record after an intended change
- *   composer smoke:heavy                  include create_backup and anything else slow
+ *   composer smoke                         every profile, compared to its baseline
+ *   composer smoke -- --profile=http-admin one profile
+ *   composer smoke:baseline                re-record after an intended change
+ *   composer smoke -- --heavy              include stimmt_backups_create
+ *
+ * Where the Craft install is comes from CRAFT_MCP_SMOKE_CRAFT (see Install and
+ * NOTES.md).
  *
  * Exit code is 0 only when there is no drift, no unexpected failure and no
  * scope violation, on every profile that ran. Run it before and after each
@@ -22,6 +26,8 @@ use Throwable;
  *
  * @author Max van Essen <support@stimmt.digital>
  */
+require_once __DIR__ . '/Redact.php';
+require_once __DIR__ . '/Install.php';
 require_once __DIR__ . '/Client.php';
 require_once __DIR__ . '/StdioClient.php';
 require_once __DIR__ . '/HttpClient.php';
@@ -36,11 +42,8 @@ require_once __DIR__ . '/Runner.php';
 require_once __DIR__ . '/Harness.php';
 require_once __DIR__ . '/Report.php';
 
-$options = getopt('', ['baseline', 'heavy', 'server:', 'profile:']);
+$options = getopt('', ['baseline', 'heavy', 'profile:']);
 $writeBaseline = array_key_exists('baseline', $options);
-$serverCommand = is_string($options['server'] ?? null)
-    ? $options['server']
-    : 'php ' . dirname(__DIR__, 2) . '/bin/mcp-server';
 
 try {
     $profiles = selectedProfiles($options['profile'] ?? null);
@@ -50,19 +53,20 @@ try {
     exit(2);
 }
 
-$harness = new Harness($serverCommand, array_key_exists('heavy', $options));
+$harness = new Harness(array_key_exists('heavy', $options));
 $snapshots = [];
 $exitCode = 0;
 
 foreach ($profiles as $profile) {
-    fwrite(STDOUT, "== {$profile->name} ({$profile->transport}, scope " . ($profile->scope ?? 'none') . ") ==\n");
+    $scopes = $profile->scopes === [] ? 'none, served as the admin' : implode(' ', $profile->scopes);
+    fwrite(STDOUT, "== {$profile->name} ({$profile->transport}, scopes {$scopes}) ==\n");
 
     try {
         $snapshot = $harness->run($profile);
     } catch (Throwable $exception) {
         // A profile that cannot connect is a finding, not a reason to record an
         // empty baseline over the one that already works.
-        fwrite(STDOUT, '  UNREACHABLE ' . $exception->getMessage() . "\n\n");
+        fwrite(STDOUT, '  UNREACHABLE ' . Redact::text($exception->getMessage()) . "\n\n");
         $exitCode = 1;
 
         continue;
@@ -153,7 +157,9 @@ function record(string $path, array $snapshot): int {
         return 2;
     }
 
-    file_put_contents($path, json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
+    // Shape has already reduced every value to its type; the mask is the
+    // second lock, for a token that reached a message or a refusal's wording.
+    file_put_contents($path, Redact::text((string) json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . "\n");
     fwrite(STDOUT, "Baseline written to {$path}\n");
 
     return 0;
@@ -174,7 +180,7 @@ function compare(array $baseline, array $snapshot): int {
 
     fwrite(STDOUT, 'Drift against the baseline (' . count($differences) . "):\n");
     foreach ($differences as $difference) {
-        fwrite(STDOUT, "  {$difference}\n");
+        fwrite(STDOUT, '  ' . Redact::text($difference) . "\n");
     }
 
     return 1;
