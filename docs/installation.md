@@ -47,15 +47,16 @@ The endpoints only conflict inside the control panel: on a site with a `cpTrigge
 
 Craft keeps these settings in project config, so they travel with your deploy.
 
-## 3. Generate OAuth keys
+## 3. OAuth keys
 
-Craft signs the access tokens it gives MCP clients. It needs a key pair for that, once per environment:
+Craft signs the access tokens it gives MCP clients with a key pair, and does not create one itself. The plugin does: when it is installed or updated (`craft up`), it generates the pair in `storage/` if Craft has none and none is configured. It never replaces existing keys, because new keys log out every connected client.
 
-```bash
-php craft oauth/generate-keys
-```
+Two cases need you:
 
-The keys are written to `storage/`, so they do not travel with project config: run the command on every environment. Alternatively, set the `privateKey` and `publicKey` settings in Craft's `config/oauth.php`. Without keys no client can finish connecting.
+- **`storage/` is not kept across deploys.** Each release would get new keys and every client would be logged out. Keep `storage/` shared between releases, or set the `privateKey` and `publicKey` settings in Craft's `config/oauth.php` (for example from environment variables).
+- **An environment runs on several servers.** Only the server that runs the migration gets the generated pair. Give every server the same keys, for example through those same settings.
+
+To create keys by hand, run `php craft oauth/generate-keys`. Without keys, no client can finish connecting, and `php craft mcp/check` reports it.
 
 ## 4. Check the setup
 
@@ -84,7 +85,7 @@ See [Connecting clients](connecting.md): Claude, ChatGPT and other HTTP clients 
 
 **The client gets a login page or HTML instead of the server.** An endpoint path starts with `mcp` inside the control panel. Change it under Settings → MCP (step 2).
 
-**The login works but connecting fails.** Craft has no OAuth keys on this environment. Run `php craft oauth/generate-keys` (step 3).
+**The login works but connecting fails.** Craft has no usable OAuth keys on this server. `php craft mcp/check` confirms it; run `php craft oauth/generate-keys` there, or see step 3 for setups with several servers.
 
 **Craft throws an error about an unknown property in `config/mcp.php`.** That file belongs to Craft's MCP server since 5.12 and accepts only `instructions` and `filters`. Move plugin settings to `config/craft-mcp.php`. See [Configuration](configuration.md).
 

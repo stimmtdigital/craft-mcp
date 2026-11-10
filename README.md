@@ -38,13 +38,7 @@ Upgrading from 1.x? 2.0 changes the config file, the endpoint and every tool nam
 
 2. In the control panel, go to **Settings → MCP** and enable the authenticated server. **Use endpoint paths that do not start with `mcp` inside the control panel**, for example `/admin/ai` and `/admin/ai/auth` (or `/ai` and `/ai/auth` when the control panel has no `cpTrigger`). The plugin's handle is `mcp`, so Craft would send a control panel path starting with `mcp` to the plugin, and clients would get a login page.
 
-3. Generate Craft's OAuth signing keys, once on every environment:
-
-   ```bash
-   php craft oauth/generate-keys
-   ```
-
-4. Check the setup:
+3. Check the setup:
 
    ```bash
    php craft mcp/check

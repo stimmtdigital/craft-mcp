@@ -48,7 +48,7 @@ class Mcp extends BasePlugin {
      */
     public const string CONFIG_FILE = 'craft-mcp.php';
 
-    public string $schemaVersion = '2.0.0';
+    public string $schemaVersion = '2.0.1';
 
     public bool $hasCpSettings = true;
 

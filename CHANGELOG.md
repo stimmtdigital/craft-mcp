@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Craft's OAuth signing keys are generated during `craft up` when Craft has none and none are configured, so connecting an MCP client no longer depends on someone running `php craft oauth/generate-keys` on every environment. Existing keys are never replaced, since that would log out every connected client; a half-present pair or configured keys that do not load are reported in the migration output instead. Sites whose `storage/` is not kept across deploys, or that run one environment on several servers, should still set Craft's `privateKey` and `publicKey` OAuth settings
+- `php craft mcp/check` asks Craft whether the keys actually load, rather than whether a key file exists
+
 ## [2.0.0-beta.1] - 2026-11-10
 
 Craft CMS 5.12 ships its own MCP server. 2.0 stops being a second one: the plugin now adds its tools to Craft's server, which brings the HTTP endpoint, OAuth logins with read, write and admin scopes, and `craft mcp/serve` for stdio. Read [UPGRADE.md](UPGRADE.md) before updating a 1.x install.

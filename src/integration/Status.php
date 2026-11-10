@@ -6,7 +6,6 @@ namespace stimmt\craft\Mcp\integration;
 
 use Craft;
 use craft\config\McpConfig;
-use craft\helpers\App;
 use ReflectionClass;
 use ReflectionProperty;
 use stimmt\craft\Mcp\enums\Edition;
@@ -128,16 +127,22 @@ final class Status {
         );
     }
 
+    /**
+     * Asks Craft whether the pair actually loads, rather than whether a file
+     * exists: a configured key that is not valid PEM fails at the same moment
+     * a missing one does, when the token is issued.
+     */
     private static function keysCheck(): Check {
-        $oauth = Craft::$app->getConfig()->getOAuth();
-        $configured = App::parseEnv($oauth->privateKey) !== null && App::parseEnv($oauth->privateKey) !== '';
-        $file = Craft::$app->getPath()->getStoragePath() . '/oauth-private.key';
-
-        if ($configured || is_readable($file)) {
+        if (Craft::$app->getOAuth()->hasKeys()) {
             return new Check('OAuth keys', Level::Ok, 'Craft can sign access tokens.');
         }
 
-        return new Check('OAuth keys', Level::Error, 'Craft has no OAuth signing key, so no MCP client can finish connecting.', 'Run `php craft oauth/generate-keys` on every environment, or set the `privateKey` and `publicKey` OAuth config settings.');
+        return new Check(
+            'OAuth keys',
+            Level::Error,
+            'Craft has no usable OAuth signing keys, so no MCP client can finish connecting. The plugin generates them during `craft up` when none exist; this server has none, or they do not load.',
+            'Run `php craft oauth/generate-keys` on this server, or set the `privateKey` and `publicKey` OAuth config settings. Every server of an environment needs the same pair.',
+        );
     }
 
     /**

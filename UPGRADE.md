@@ -32,10 +32,9 @@ Production now forces off only the dangerous tools (`enableDangerousTools`), no 
 
 1. Under **Settings → MCP**, enable the server.
 2. **Pick endpoint paths that do not start with `mcp` inside the control panel**, for example `/admin/ai` and `/admin/ai/auth`. If the control panel runs on the root of its own domain (no `cpTrigger`), use `/ai` and `/ai/auth`. The plugin's handle is `mcp`, so Craft serves a control panel path starting with `mcp` as this plugin's page, and clients get a login screen instead of the server.
-3. Generate Craft's OAuth signing keys once per environment: `php craft oauth/generate-keys`. Alternatively, set the `privateKey` and `publicKey` OAuth config settings. Without them, no client can finish connecting.
-4. Run `php craft mcp/check`. It reports each of the above, and exits non-zero if something is wrong.
+3. Run `php craft mcp/check`. It reports each of the above, and exits non-zero if something is wrong.
 
-Craft's MCP settings live in project config, so steps 1 and 2 travel with your deploy. Step 3 does not: the keys stay in each environment's `storage/`, or in the config settings.
+Craft's MCP settings live in project config, so steps 1 and 2 travel with your deploy. Craft also needs OAuth signing keys, which the plugin's update generates in `storage/` during `craft up` when there are none. If `storage/` is not kept across deploys, or an environment runs on several servers, set Craft's `privateKey` and `publicKey` OAuth settings instead: see [docs/installation.md](docs/installation.md#3-oauth-keys).
 
 ## 3. Reconnect your clients
 
