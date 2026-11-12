@@ -6,6 +6,8 @@ namespace stimmt\craft\Mcp\integration;
 
 use Craft;
 use craft\config\McpConfig;
+use craft\helpers\App;
+use craft\helpers\UrlHelper;
 use ReflectionClass;
 use ReflectionProperty;
 use stimmt\craft\Mcp\enums\Edition;
@@ -36,6 +38,13 @@ final class Status {
         if ($craft->enabled) {
             $checks[] = self::endpointCheck([$craft->route, $craft->authorizationRoute], $general->cpTrigger);
             $checks[] = self::keysCheck();
+            $checks[] = self::loginCheck(
+                $general->cpTrigger,
+                $general->baseCpUrl === null ? null : (string) App::parseEnv($general->baseCpUrl),
+                UrlHelper::siteHost(),
+                $general->getLoginPath(),
+                $general->headlessMode,
+            );
         }
 
         $checks[] = self::configCheck();
@@ -71,6 +80,38 @@ final class Status {
             'Craft serves ' . implode(' and ', $blocked) . ' as a control panel page of this plugin (its handle is `mcp`), so MCP clients get a login page instead of the server.',
             'Under Settings → MCP, set the endpoints to ' . self::suggestedRoute($cpTrigger) . ' and ' . self::suggestedRoute($cpTrigger) . '/auth.',
         );
+    }
+
+    /**
+     * Whether a client's login can finish on this install.
+     *
+     * Craft's OAuth authorize step sends a guest to `loginPath`, and a
+     * relative one resolves on the site's domain. When the control panel has
+     * a domain of its own, Craft also moves the whole authorization to the
+     * site's domain first (OauthController::actionAuthorize). On a headless
+     * site no Craft answers there, so the client lands on the front end's 404.
+     */
+    public static function loginCheck(?string $cpTrigger, ?string $baseCpUrl, string $siteHost, mixed $loginPath, bool $headless): Check {
+        $cpHost = self::host($baseCpUrl);
+        $ownDomain = trim((string) $cpTrigger, '/') === '' && $cpHost !== null && strcasecmp($cpHost, (string) self::host($siteHost)) !== 0;
+        $loginHost = is_string($loginPath) && preg_match('~^https?://~i', $loginPath) === 1 ? self::host($loginPath) : self::host($siteHost);
+
+        if (!$ownDomain || !$headless || strcasecmp((string) $loginHost, (string) $cpHost) === 0) {
+            return new Check('Login', Level::Ok, 'Clients can log in to approve a connection.');
+        }
+
+        return new Check(
+            'Login',
+            Level::Error,
+            "Craft sends a client's login to {$loginHost}, the front end of this headless site, where no Craft answers: connecting ends on a 404.",
+            "Set `loginPath` in config/general.php to the control panel's login, for example `rtrim(App::env('BASE_CP_URL'), '/') . '/login'`.",
+        );
+    }
+
+    private static function host(?string $url): ?string {
+        $host = $url === null ? null : parse_url(str_contains($url, '://') ? $url : "https://{$url}", PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' ? $host : null;
     }
 
     public static function intercepted(string $route, ?string $cpTrigger): bool {

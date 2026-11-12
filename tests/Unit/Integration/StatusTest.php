@@ -93,3 +93,26 @@ describe('Status::foreignKeys()', function () {
             ->toBe(['httpTransport', 'oauth']);
     });
 });
+
+// Craft moves a guest's authorization to the site's domain when the control
+// panel has its own and the login lives elsewhere. On a headless site nothing
+// answers there: the 404 stimmt-cms hit on its first MCP connection.
+describe('Status::loginCheck()', function () {
+    it('fails for a headless site whose login resolves on the front end', function () {
+        $check = Status::loginCheck(null, 'https://cms.example.com', 'https://example.com', 'login', true);
+
+        expect($check->level)->toBe(Level::Error)
+            ->and($check->message)->toContain('example.com')
+            ->and($check->fix)->toContain('loginPath');
+    });
+
+    it('passes when the cause is absent', function (?string $cpTrigger, ?string $baseCpUrl, string $siteHost, mixed $loginPath, bool $headless) {
+        expect(Status::loginCheck($cpTrigger, $baseCpUrl, $siteHost, $loginPath, $headless)->level)->toBe(Level::Ok);
+    })->with([
+        'login on the control panel host' => [null, 'https://cms.example.com', 'https://example.com', 'https://cms.example.com/login', true],
+        'Craft serves the front end' => [null, 'https://cms.example.com', 'https://example.com', 'login', false],
+        'control panel under a trigger' => ['admin', 'https://cms.example.com', 'https://example.com', 'login', true],
+        'one host for both' => [null, 'https://example.com', 'https://example.com', 'login', true],
+        'no separate control panel URL' => [null, null, 'https://example.com', 'login', true],
+    ]);
+});

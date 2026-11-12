@@ -85,6 +85,8 @@ See [Connecting clients](connecting.md): Claude, ChatGPT and other HTTP clients 
 
 **The client gets a login page or HTML instead of the server.** An endpoint path starts with `mcp` inside the control panel. Change it under Settings → MCP (step 2).
 
+**Connecting opens a 404 on the front end.** On a headless site whose control panel has its own domain, Craft sends the login of a connecting client to its `loginPath`, which resolves on the front end's domain, where no Craft answers. Point `loginPath` in `config/general.php` at the control panel's login, for example `->loginPath(rtrim(App::env('BASE_CP_URL'), '/') . '/login')`. `php craft mcp/check` reports this case.
+
 **The login works but connecting fails.** Craft has no usable OAuth keys on this server. `php craft mcp/check` confirms it; run `php craft oauth/generate-keys` there, or see step 3 for setups with several servers.
 
 **Craft throws an error about an unknown property in `config/mcp.php`.** That file belongs to Craft's MCP server since 5.12 and accepts only `instructions` and `filters`. Move plugin settings to `config/craft-mcp.php`. See [Configuration](configuration.md).

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Craft's OAuth signing keys are generated during `craft up` when Craft has none and none are configured, so connecting an MCP client no longer depends on someone running `php craft oauth/generate-keys` on every environment. Existing keys are never replaced, since that would log out every connected client; a half-present pair or configured keys that do not load are reported in the migration output instead. Sites whose `storage/` is not kept across deploys, or that run one environment on several servers, should still set Craft's `privateKey` and `publicKey` OAuth settings
 - `php craft mcp/check` asks Craft whether the keys actually load, rather than whether a key file exists
+- `php craft mcp/check` reports a headless site whose control panel has its own domain while `loginPath` resolves on the front end: Craft moves a connecting client's login there, where no Craft answers, so connecting ends on a 404
 
 ## [2.0.0-beta.1] - 2026-11-10
 
