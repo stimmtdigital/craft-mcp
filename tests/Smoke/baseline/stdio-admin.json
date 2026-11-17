@@ -9,9 +9,98 @@
         },
         "tools": []
     },
-    "toolCount": 30,
+    "toolCount": 44,
     "craftToolCount": 69,
     "tools": {
+        "stimmt_activity_recent": {
+            "title": "Recent changes",
+            "description": "A newest-first feed of entry changes across every section: who saved or deleted which entry, and when. Built from Craft's revisions (one per save of a live entry, kind \"created\" for revision 1, \"updated\" after) plus soft-deleted entries (kind \"deleted\", changedBy null because Craft does not record who deleted). Only sections the connected user may view appear. Sections with versioning switched off, unsaved drafts, and revisions Craft has already pruned (maxRevisions) do not appear. offset + limit may not exceed 500.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "since": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Earliest change to include: any date Craft parses, such as \"2026-11-01\", \"2026-11-01T09:00:00+01:00\" or \"-3 days\". Defaults to 7 days ago."
+                    },
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Section handle to narrow the feed to. Omit for every section the user may view."
+                    },
+                    "author": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Username or email of the user whose saves to list. Deletions are left out when this is set, because Craft does not record who deleted an entry."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
+        "stimmt_assets_unused": {
+            "title": "Unused assets",
+            "description": "Assets nothing in Craft refers to, largest first. \"Unused\" means not referenced in Craft: no relation to it from any field, no {asset:ID} reference tag in any content, and not a user photo, counting canonical elements and drafts but not revisions or the trash. Templates, front-end code, other sites or emails may still hardcode its URL, so treat this as a list to review, never a list to delete: confirm with a person before removing anything. \"totalBytes\" sums every match, not only this page. Only volumes you may view are listed. Refused rather than answered partially when more than 20000 content rows carry asset tags, or the tags name more than 10000 distinct assets.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "volume": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Volume handle. Omit to list unused assets from every volume you may view."
+                    },
+                    "olderThan": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Only assets created at least this many days ago. 0 (default) for any age.",
+                        "minimum": 0
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "How many assets to return, 1 to 500.",
+                        "minimum": 1,
+                        "maximum": 500
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
         "stimmt_backups_create": {
             "title": "Create a database backup",
             "description": "Create a new database backup. WARNING: This is a dangerous operation that creates files on the server.",
@@ -192,6 +281,25 @@
                 "properties": []
             }
         },
+        "stimmt_dependencies_audit": {
+            "title": "Security advisories",
+            "description": "List known security advisories that affect the Composer packages this project has installed, like composer audit. Reads installed versions from the project's composer.lock and asks packagist.org's public security-advisory API about them: this SENDS THE LIST OF INSTALLED PACKAGE NAMES (not their versions) to packagist.org; the version matching happens on this server. Packages Packagist has no data on (private packages, forks) are listed under \"uncovered\" because they were not checked, not because they are safe. Fails, rather than answering empty, when packagist.org cannot be reached.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true,
+                "openWorldHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "includeDev": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Also check the packages installed for development only (packages-dev in composer.lock). Defaults to false, the packages a production install runs."
+                    }
+                }
+            }
+        },
         "stimmt_deprecations_list": {
             "title": "Deprecation warnings",
             "description": "Get deprecation warnings from Craft CMS logs. Shows deprecated code usage that should be updated.",
@@ -209,6 +317,34 @@
                         "minimum": 1
                     }
                 }
+            }
+        },
+        "stimmt_drafts_diff": {
+            "title": "What a draft changes",
+            "description": "Before publishing, show field by field what a draft changes compared with its live (canonical) entry: title, slug, entry type, enabled, enabled for the site, post and expiry date, structure parent, and every custom field. Each change reads {field, label, kind: added|removed|changed, before, after}; text over 500 characters is cut and flagged truncated. Matrix fields report per block under \"blocks\" (added, removed, moved or changed blocks by block id and type) and ContentBlock fields report their own fields under \"changes\". Relations read as natural keys. A draft of an entry that was never published has no live entry: newEntry is true and every non-empty value reads as added. Takes the same id stimmt_drafts_publish does; revisions and provisional (autosaved) drafts are refused.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "A draft element id, or a canonical entry id that has exactly one pending draft."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to compare on. Omit for the primary site."
+                    }
+                },
+                "required": [
+                    "id"
+                ]
             }
         },
         "stimmt_drafts_publish": {
@@ -413,6 +549,54 @@
                 ]
             }
         },
+        "stimmt_entries_untranslated": {
+            "title": "Translation gaps",
+            "description": "On a multi-site install, list entries whose content on a target site is still untranslated: a value the source site has that the target site leaves empty (\"empty\") or holds unchanged (\"same-as-source\"). Only values the two sites keep apart are checked: custom fields Craft translates per site for these two sites, plus title and slug when the entry type translates them. Values empty on the source are ignored. Relations compare by the elements they point at; Matrix blocks by type and content. limit bounds the entries SCANNED, not the entries returned, so one call never walks the whole install: total counts the gaps found in this window, scanned the entries looked at, and hasMore says whether to call again at offset + scanned. An entry that does not exist on the target site at all reads missingOnSite: true.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "site": {
+                        "type": "string",
+                        "description": "Target site handle: the site whose translations to check."
+                    },
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Section handle to scan. Omit to scan every section enabled on both sites."
+                    },
+                    "sourceSite": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle to compare against. Omit for the primary site."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "How many source-site entries to scan, not how many to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "site"
+                ]
+            }
+        },
         "stimmt_environment_get": {
             "title": "Environment and PHP settings",
             "description": "Get safe environment information (no secrets). Shows CRAFT_ENVIRONMENT, PHP settings, and system status.",
@@ -437,6 +621,40 @@
                 "properties": []
             }
         },
+        "stimmt_errors_summary": {
+            "title": "Recurring errors",
+            "description": "Errors from Craft's logs over the last N hours, grouped by exception class, message (with ids, numbers and quoted values masked) and the first frame in project code. Each group has a count, first and last occurrence, the log sources it appeared in, and one example with its top stack frames. Most frequent first. Masking only decides the grouping: message and example are the raw log text, so they can contain what the log holds. Use stimmt_logs_read for the raw entries.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "hours": {
+                        "type": "integer",
+                        "default": 24,
+                        "description": "How many hours back to look, 1 to 720.",
+                        "minimum": 1,
+                        "maximum": 720
+                    },
+                    "source": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Which log to read: web, console, queue, or a plugin name (a log file name prefix). Omit to read across every log file."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "How many groups to return. 1 or greater.",
+                        "minimum": 1
+                    }
+                }
+            }
+        },
         "stimmt_event_handlers_list": {
             "title": "Registered event handlers",
             "description": "List registered event handlers/listeners in Craft CMS. Useful for debugging hooks and understanding what code runs on events.",
@@ -454,6 +672,46 @@
                         ],
                         "default": null,
                         "description": "Case-insensitive substring matched against event names and the classes the events are registered on."
+                    }
+                }
+            }
+        },
+        "stimmt_forms_failures": {
+            "title": "Failed form integrations",
+            "description": "Formie submissions whose integrations (CRM, webhook, email marketing) or email notifications failed, newest first, with the error message. A failure later retried successfully is left out. Returns submission ids and error text only, never submitted values; emails and phone numbers in errors are scrubbed. Retry from the submission in the Formie control panel.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "form": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Form handle. Omit for failures on every form."
+                    },
+                    "days": {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Only failures from the last N days, 1 to 3650.",
+                        "minimum": 1,
+                        "maximum": 3650
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
                     }
                 }
             }
@@ -626,6 +884,60 @@
                 "properties": []
             }
         },
+        "stimmt_health": {
+            "title": "Install health",
+            "description": "One call that answers \"is this install OK, and if not, what to do\": the MCP setup, environment (dev mode in production, admin changes, PHP, database), pending migrations and cached update info, project config (pending YAML, schema mismatches), the queue (failed and stuck jobs), storage (writable, free space) and errors logged in the last 24 hours. Checks come errors first; each problem carries a fix. Never contacts the update server and changes nothing.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": []
+            }
+        },
+        "stimmt_links_broken": {
+            "title": "Broken internal links",
+            "description": "Entries whose content links to an entry, asset or category that is not live on the site the link is shown on. Reads relation fields (relations table) and the reference tags rich text and Link fields store ({entry:12@1:url}), in each entry and every nested entry beneath it. Reasons: deleted (in the trash), disabled (or archived), expired, pending, missing (no such element on that site), draft-only (the target is a draft). Pages through entries, not findings: limit entries are scanned per call (at most 1000, with up to 5000 nested entries, 8 levels deep, and 50000 relations between them; more is refused), and \"total\"/\"hasMore\" count entries, so ask again at offset + limit to scan the rest. Nested entries deeper than 8 levels are not followed. Lists only entries you may view; a target you may not view shows its id and reason, no title. \"unchecked\" counts tags that name a target by slug rather than id, which are not checked.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Section handle. Omit to scan entries from every section."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle the links are checked for. Omit for the primary site."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 200,
+                        "description": "How many entries to scan, 1 to 1000.",
+                        "minimum": 1,
+                        "maximum": 1000
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many entries to skip before the first scanned one. 0 or greater.",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
         "stimmt_logs_read": {
             "title": "Read Craft logs",
             "description": "Read recent log entries from Craft CMS logs. Filter by source (web, console, queue, or plugin name), level (error, warning, info), pattern (case-insensitive search), and limit.",
@@ -665,6 +977,26 @@
                         ],
                         "default": null,
                         "description": "Which log to read: web, console, queue, or a plugin name. Omit to read across every log file."
+                    }
+                }
+            }
+        },
+        "stimmt_maintenance_report": {
+            "title": "Maintenance report",
+            "description": "The figures for a maintenance report over the last N days, in one call: install health (problems only, with what to do), the most frequent errors, available and critical updates, the queue, and content changes per section and per editor. Read-only; summarise it for a person, do not paste it whole.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "The period to report on, in days back from now. 1 to 90; default 30.",
+                        "minimum": 1,
+                        "maximum": 90
                     }
                 }
             }
@@ -781,6 +1113,76 @@
                 ]
             }
         },
+        "stimmt_queue_failures": {
+            "title": "Failed queue jobs",
+            "description": "Failed jobs in Craft's database queue, most recently failed first, with the job class, description, attempt count and the error it failed with. The job payload is never included. Retry with Craft's queue_retry_all, then queue_run.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
+        "stimmt_redirects_404s": {
+            "title": "Most frequent 404s",
+            "description": "Retour's 404 statistics, most-hit first: the missing URL, its hit count, last hit, referrer (path only), whether a redirect handles it, and a suggested existing entry by slug similarity. The suggestion is a guess to check, not a redirect target to apply blindly.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle. Omit for 404s on every site."
+                    },
+                    "days": {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Only URLs last hit in the past N days, 1 to 3650. Hit counts are lifetime totals.",
+                        "minimum": 1,
+                        "maximum": 3650
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "How many rows to return. 1 or greater.",
+                        "minimum": 1
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many rows to skip before the first returned row. 0 or greater.",
+                        "minimum": 0
+                    },
+                    "excludeHandled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Skip URLs a redirect already handles. Default true; pass false to audit those as well."
+                    }
+                }
+            }
+        },
         "stimmt_refs_resolve": {
             "title": "Natural key to element id",
             "description": "Turn a natural key into the element id Craft's elements_* tools take. Keys per type: entry {\"section\",\"slug\"}, asset {\"volume\",\"filename\"} (plus \"path\" for a file in a folder), category and tag {\"group\",\"slug\"}, user {\"username\"}, globalSet {\"handle\"}. Refuses a key that matches nothing, or several elements.",
@@ -823,6 +1225,35 @@
                 ]
             }
         },
+        "stimmt_requests_slow": {
+            "title": "Slow requests",
+            "description": "The slowest recent requests this server recorded, slowest first: URL path (no query string), method, status, duration, peak memory, query count and the statements repeated most within each request, with literals replaced by ?. Reads the Yii debug module's data, which Craft only records while the debug toolbar is on (an admin's \"Show the debug toolbar\" preference, or Dev Mode with an X-Debug: enable header), and only on this server, so it covers the requests made with it on. Request parameters, headers and cookies are never returned.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "How many requests to return, 1 to 50.",
+                        "minimum": 1,
+                        "maximum": 50
+                    },
+                    "minMs": {
+                        "type": [
+                            "null",
+                            "number"
+                        ],
+                        "default": null,
+                        "description": "Leave out requests faster than this many milliseconds. Requests whose duration was not recorded are left out too when this is set.",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
         "stimmt_routes_list": {
             "title": "Registered routes",
             "description": "List all registered routes in Craft CMS",
@@ -833,6 +1264,48 @@
             "inputSchema": {
                 "type": "object",
                 "properties": []
+            }
+        },
+        "stimmt_seo_gaps": {
+            "title": "SEO gaps",
+            "description": "Scan live entries for SEO metadata as SEOmatic resolves it (global, section and SEO Settings field merged, templates parsed): missing description, description or title over the SEOmatic max length, missing og:image, and noindex on a live entry (a flag, not an error). Only entries with issues are returned; page through with offset, which counts entries scanned.",
+            "annotations": {
+                "readOnlyHint": true,
+                "idempotentHint": true
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Section handle. Omit to scan entries from every section that has URLs."
+                    },
+                    "site": {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "default": null,
+                        "description": "Site handle. Omit for Craft's primary site."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 25,
+                        "description": "How many entries to scan (not how many to return). 1 to 50.",
+                        "minimum": 1,
+                        "maximum": 50
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "How many entries to skip before scanning. 0 or greater.",
+                        "minimum": 0
+                    }
+                }
             }
         },
         "stimmt_tinker": {
@@ -874,7 +1347,9 @@
         }
     },
     "uncovered": [
-        "stimmt_backups_create"
+        "stimmt_backups_create",
+        "stimmt_entries_untranslated",
+        "stimmt_requests_slow"
     ],
     "steps": {
         "stimmt_refs_resolve": {
@@ -1446,6 +1921,27 @@
                 }
             }
         },
+        "stimmt_drafts_diff": {
+            "status": "ok",
+            "shape": {
+                "canonical": {
+                    "id": "<number>",
+                    "status": "<string>",
+                    "title": "<string>"
+                },
+                "changes": [],
+                "draft": {
+                    "creator": "<string>",
+                    "dateUpdated": "<string>",
+                    "id": "<number>",
+                    "name": "<string>",
+                    "notes": null
+                },
+                "newEntry": false,
+                "site": "<string>",
+                "unchangedCount": "<number>"
+            }
+        },
         "stimmt_drafts_publish": {
             "status": "ok",
             "shape": {
@@ -1653,6 +2149,240 @@
         "stimmt_entries_copy_to_site": {
             "status": "refused",
             "refusal": "copying a site onto itself"
+        },
+        "stimmt_health": {
+            "status": "ok",
+            "shape": {
+                "checks": [
+                    {
+                        "area": "<string>",
+                        "fix?": "<string>",
+                        "label": "<string>",
+                        "level": "<string>",
+                        "message": "<string>"
+                    }
+                ],
+                "summary": {
+                    "error": "<number>",
+                    "info": "<number>",
+                    "ok": "<number>",
+                    "warning": "<number>"
+                }
+            }
+        },
+        "stimmt_errors_summary": {
+            "status": "ok",
+            "shape": {
+                "complete": true,
+                "count": "<number>",
+                "groups": [],
+                "hasMore": false,
+                "hours": "<number>",
+                "limit": "<number>",
+                "note": "<string>",
+                "scannedFiles": [
+                    "<string>"
+                ],
+                "total": "<number>",
+                "totalErrors": "<number>"
+            }
+        },
+        "stimmt_queue_failures": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "hasMore": false,
+                "hint": "<string>",
+                "jobs": [],
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_activity_recent": {
+            "status": "ok",
+            "shape": {
+                "changes": [
+                    {
+                        "changedBy": "<null|object>",
+                        "cpEditUrl": "<string>",
+                        "date": "<string>",
+                        "entryId": "<number>",
+                        "kind": "<string>",
+                        "notes": "<null|string>",
+                        "revisionNum": "<number>",
+                        "section": "<string>",
+                        "site": "<string>",
+                        "title": "<string>"
+                    }
+                ],
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "since": "<string>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_links_broken": {
+            "status": "ok",
+            "shape": {
+                "broken": [],
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "scanned": "<number>",
+                "site": "<string>",
+                "total": "<number>",
+                "unchecked": "<number>"
+            }
+        },
+        "stimmt_assets_unused": {
+            "status": "ok",
+            "shape": {
+                "assets": [],
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "total": "<number>",
+                "totalBytes": "<number>",
+                "volume": null
+            }
+        },
+        "stimmt_maintenance_report": {
+            "status": "ok",
+            "shape": {
+                "content": {
+                    "byEditor": [
+                        {
+                            "editor": "<string>",
+                            "saves": "<number>"
+                        }
+                    ],
+                    "bySection": [
+                        {
+                            "created": "<number>",
+                            "saves": "<number>",
+                            "section": "<string>"
+                        }
+                    ],
+                    "created": "<number>",
+                    "saves": "<number>"
+                },
+                "errors": {
+                    "complete": true,
+                    "top": [],
+                    "total": "<number>",
+                    "windowDays": "<number>"
+                },
+                "health": {
+                    "problems": [
+                        {
+                            "area": "<string>",
+                            "fix": "<string>",
+                            "label": "<string>",
+                            "level": "<string>",
+                            "message": "<string>"
+                        }
+                    ],
+                    "summary": {
+                        "error": "<number>",
+                        "info": "<number>",
+                        "ok": "<number>",
+                        "warning": "<number>"
+                    }
+                },
+                "period": {
+                    "days": "<number>",
+                    "from": "<string>",
+                    "to": "<string>"
+                }
+            }
+        },
+        "stimmt_seo_gaps": {
+            "status": "ok",
+            "shape": {
+                "basis": "<string>",
+                "count": "<number>",
+                "entries": [
+                    {
+                        "id": "<number>",
+                        "issues": [
+                            {
+                                "detail": "<string>",
+                                "issue": "<string>",
+                                "severity": "<string>"
+                            }
+                        ],
+                        "section": "<string>",
+                        "title": "<string>",
+                        "url": "<string>"
+                    }
+                ],
+                "hasMore": false,
+                "limit": "<number>",
+                "maxDescriptionLength": "<number>",
+                "maxTitleLength": "<number>",
+                "notes": [
+                    "<string>"
+                ],
+                "offset": "<number>",
+                "scanned": "<number>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_redirects_404s": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "hasMore": false,
+                "limit": "<number>",
+                "notes": [
+                    "<string>"
+                ],
+                "offset": "<number>",
+                "since": "<string>",
+                "total": "<number>",
+                "urls": []
+            }
+        },
+        "stimmt_forms_failures": {
+            "status": "ok",
+            "shape": {
+                "count": "<number>",
+                "failures": [],
+                "hasMore": false,
+                "limit": "<number>",
+                "offset": "<number>",
+                "since": "<string>",
+                "total": "<number>"
+            }
+        },
+        "stimmt_dependencies_audit": {
+            "status": "ok",
+            "shape": {
+                "advisories": [
+                    {
+                        "advisoryId": "<string>",
+                        "affectedVersions": "<string>",
+                        "cve": "<string>",
+                        "installedVersion": "<string>",
+                        "link": "<string>",
+                        "package": "<string>",
+                        "reportedAt": "<string>",
+                        "severity": "<string>",
+                        "title": "<string>"
+                    }
+                ],
+                "checked": "<number>",
+                "count": "<number>",
+                "includeDev": false,
+                "source": "<string>",
+                "uncovered": [],
+                "undecided": []
+            }
         }
     },
     "stderr": null

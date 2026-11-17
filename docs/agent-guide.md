@@ -31,6 +31,10 @@ Craft's write tools change live content unless you ask for a draft. Write as a d
 
 Do not publish unless the person asked you to.
 
+## Show what a draft changes
+
+Before publishing a draft, or when a person asks what a draft changes, call `stimmt_drafts_diff` with the draft's id (or the canonical id when it has one pending draft) and show the person the changes in plain words. It lists changed attributes and fields as `added`, `removed` or `changed`, Matrix changes per block, and cuts text over 500 characters (`truncated: true`); say so when you quote a cut value. `newEntry: true` means the entry was never published, so everything reads as added. Publishing stays the person's decision.
+
 ## Publishing
 
 Publish with `stimmt_drafts_publish` (Pro), not `drafts_apply`. It validates the draft as live content first, as the control panel does, so a draft with an empty required field is not published. On failure it returns `success: false` and `errors` per field: fix those fields on the draft, then publish again.
@@ -53,6 +57,23 @@ In `fields` payloads, relations are lists of natural keys (as above), new nested
 
 `stimmt_entries_copy_to_site` (Pro) copies the fields an entry keeps per site from `fromSite` to `toSite`, as a draft. It does not translate, and it never copies title or slug. An empty `copiedFields` means the entry type has no per-site fields.
 
+## Content health
+
+These only read, and list only what the user may view.
+
+- **Translations**: `stimmt_entries_untranslated` with the target `site` (and `sourceSite` if it is not the primary site). `limit` is how many entries are scanned, not returned, so an empty `entries` with `hasMore: true` means "nothing in this window", not "nothing left": call again at `offset + scanned`. To fill a gap, `stimmt_entries_copy_to_site` (Pro) copies values as a draft; it does not translate.
+- **Broken links**: `stimmt_links_broken`. Pages through entries, not findings, so keep calling at `offset + limit` while `hasMore` is true. Each finding names the source entry, the field and the reason (`deleted`, `disabled`, `expired`, `pending`, `missing`, `draft-only`). Fix the link or the target with the person; do not unpublish or delete anything yourself.
+- **Unused assets**: `stimmt_assets_unused`. "Unused" means not referenced in Craft; templates, front-end code or emails may still use the file by URL. Never delete these assets, and never suggest deleting them in bulk, without the person confirming each one or the list. Report `totalBytes` as the size of every match.
+- **Recent changes**: `stimmt_activity_recent` for "what changed and who did it". Deletions have no `changedBy`, because Craft does not record who deleted an entry; say "deleted (by unknown)" rather than guessing. With `author` set, deletions are left out.
+
+## Plugin integrations
+
+These exist only when the plugin is installed and enabled: if one is not in your tool list, the site does not run that plugin (or that version).
+
+- `stimmt_redirects_404s` (Retour): the most-hit missing URLs. `suggestion` is a guess by slug similarity; present it as one, and let the person decide on any redirect. `hits` is a lifetime count.
+- `stimmt_seo_gaps` (SEOmatic): entries with missing or too long SEO metadata. `limit` is entries scanned (at most 50). A `flag` severity (noindex on a live entry) may be deliberate; ask rather than call it an error.
+- `stimmt_forms_failures` (Formie, admins only): failed CRM, webhook and email deliveries per submission. It never returns submitted values; do not try to get them another way. Retrying happens in Formie's control panel.
+
 ## Categories and global sets
 
 Craft's tools do not cover them. Use `stimmt_categories_list` (filter by `group`) and `stimmt_globals_list` (admins only).
@@ -61,7 +82,12 @@ Craft's tools do not cover them. Use `stimmt_categories_list` (filter by `group`
 
 When something about the install is unclear, look instead of guessing. Admin users have:
 
-- `stimmt_errors_last` and `stimmt_logs_read` (filter by `source`, `level`, `pattern`) for what went wrong
+- `stimmt_health` first, whenever the question is "is something wrong" or the cause is unknown. It checks the MCP setup, environment, migrations and cached updates, project config, the queue, storage and the last 24 hours of errors, errors first, each problem with a `fix`. Act on its `fix` lines and follow the tool names they mention
+- `stimmt_errors_summary` next, for what keeps failing: errors grouped by cause with counts. When `complete` is false, the counts are a floor; say "at least". Then `stimmt_errors_last` and `stimmt_logs_read` (filter by `source`, `level`, `pattern`) for the raw entries
+- `stimmt_queue_failures` for failed jobs and their errors. It only reads: fix the cause first, then retry with Craft's `queue_retry_all` and `queue_run`, and only when the person agrees
+- `stimmt_requests_slow` for slow pages and repeated queries (N+1). It needs Yii debug data recorded on this server; when there is none, pass on its instructions for turning recording on rather than guessing
+- `stimmt_dependencies_audit` for known security advisories in installed Composer packages. It sends the package names to packagist.org. Packages under `uncovered` were not checked; never report them as safe
+- `stimmt_maintenance_report` for a periodic report. It returns raw figures: summarise them for a person (health problems and what to do, top errors, content changes per section and editor) instead of pasting the output
 - `stimmt_config_get` for config values (credentials are redacted), `stimmt_environment_get` for environment and PHP settings
 - `stimmt_db_schema`, `stimmt_db_table_counts`, `stimmt_db_query` (SELECT only) and `stimmt_db_explain` for the database; prefer content tools for content
 - `stimmt_routes_list`, `stimmt_event_handlers_list`, `stimmt_deprecations_list`, `stimmt_console_commands_list` (stdio only)

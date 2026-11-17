@@ -63,6 +63,8 @@ See [Connecting clients](docs/connecting.md). For editors: [Using Claude with yo
 | [Content](docs/tools/content.md) | `stimmt_entries_count`, `stimmt_refs_resolve`, `stimmt_entries_preview_url`, `stimmt_categories_list` | read | Lite |
 | | `stimmt_globals_list` | admin | Lite |
 | | `stimmt_drafts_publish`, `stimmt_entries_copy_to_site`, `stimmt_nested_entries_create`, `stimmt_nested_entries_move` | write | Pro |
+| [Content review and health](docs/tools/review.md) | `stimmt_drafts_diff`, `stimmt_entries_untranslated`, `stimmt_links_broken`, `stimmt_assets_unused`, `stimmt_activity_recent` | read | Lite |
+| [Operations](docs/tools/operations.md) | `stimmt_health`, `stimmt_errors_summary`, `stimmt_queue_failures`, `stimmt_requests_slow`, `stimmt_dependencies_audit`, `stimmt_maintenance_report` | admin | Lite |
 | [Database](docs/tools/database.md) | `stimmt_db_schema`, `stimmt_db_info`, `stimmt_db_table_counts`, `stimmt_db_query`, `stimmt_db_explain` | admin | Lite |
 | [System](docs/tools/system.md) | `stimmt_config_get`, `stimmt_logs_read`, `stimmt_errors_last`, `stimmt_console_commands_list`, `stimmt_routes_list` | admin | Lite |
 | [Debugging](docs/tools/debugging.md) | `stimmt_deprecations_list`, `stimmt_environment_get`, `stimmt_event_handlers_list`, `stimmt_tinker` | admin | Lite |
@@ -70,8 +72,20 @@ See [Connecting clients](docs/connecting.md). For editors: [Using Claude with yo
 | [Backup](docs/tools/backup.md) | `stimmt_backups_list`, `stimmt_backups_create` | admin | Lite |
 | [Commerce](docs/tools/commerce.md) | `stimmt_commerce_products_list`, `stimmt_commerce_product_get`, `stimmt_commerce_orders_list`, `stimmt_commerce_order_get` | admin | Lite |
 | | `stimmt_commerce_order_statuses_list`, `stimmt_commerce_product_types_list` | read | Lite |
+| [Plugin integrations](docs/tools/integrations.md) | `stimmt_redirects_404s` (Retour), `stimmt_seo_gaps` (SEOmatic) | read | Lite |
+| | `stimmt_forms_failures` (Formie) | admin | Lite |
 
-**read**, **write** and **admin** are the scopes a user approves when connecting (`mcp:read`, `mcp:write`, `mcp:admin`). Admin tools are for Craft admin users only. Commerce tools exist only while Craft Commerce is installed.
+What these add that Craft's own MCP server does not do:
+
+- **Install health and operations**: one `stimmt_health` call judges the whole install (environment, migrations, project config, queue, storage, recent errors) and gives a fix per problem; failed queue jobs with their errors; slow requests with repeated queries; security advisories for installed Composer packages.
+- **Error triage**: `stimmt_errors_summary` groups logged errors by cause, with counts and first and last occurrence, instead of a list of raw lines.
+- **Content review and health**: a field-by-field diff of a draft against its live entry, translation gaps between sites, links to content that is no longer live, assets nothing refers to, and a change feed of who edited what.
+- **Plugin integrations**: Retour 404s with a suggested redirect target, SEOmatic metadata gaps as SEOmatic resolves them, and Formie deliveries that failed, without submitted values.
+- **Maintenance reporting**: `stimmt_maintenance_report` gathers health, top errors and content changes per section and editor for a period in one call.
+
+All of these only read.
+
+**read**, **write** and **admin** are the scopes a user approves when connecting (`mcp:read`, `mcp:write`, `mcp:admin`). Admin tools are for Craft admin users only. Commerce tools exist only while Craft Commerce is installed; the Retour, SEOmatic and Formie tools only while that plugin is installed, enabled and on a supported version (Retour 5, SEOmatic 5, Formie 4).
 
 `stimmt_tinker`, `stimmt_db_query`, `stimmt_graphql_execute` and `stimmt_backups_create` are **dangerous**: they are off in production unless `enableDangerousTools` is set for that environment in `config/craft-mcp.php`. See [Configuration](docs/configuration.md) and the [Tools Reference](docs/tools/README.md).
 

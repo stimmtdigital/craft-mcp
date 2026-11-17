@@ -31,7 +31,9 @@
         "craftcms/cms": "^5.12.1",
         "mcp/sdk": "^0.9",
         "psy/psysh": "^0.12",
-        "symfony/polyfill-php84": "^1.31"
+        "symfony/polyfill-php84": "^1.31",
+        "composer/semver": "^3.3.2",
+        "guzzlehttp/guzzle": "^7.2.0"
     },
     "require-dev": {
         "laravel/pint": "^1.18",

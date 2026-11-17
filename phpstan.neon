@@ -34,6 +34,11 @@ parameters:
         - '#Psy\\#'
         # Commerce is optional: CommerceTools is only registered when it is installed
         - '#craft\\commerce\\#'
+        # Retour, SEOmatic and Formie are optional too, and not installed in
+        # this repository: their tool classes only register when present
+        - '#nystudio107\\retour\\#'
+        - '#nystudio107\\seomatic\\#'
+        - '#verbb\\formie\\#'
         # CustomFieldBehavior only exists as an uncompiled template in vendor;
         # Craft::autoload() compiles the real class into memory at runtime
         - '#Access to static property \$fieldHandles on an unknown class craft\\behaviors\\CustomFieldBehavior\.#'

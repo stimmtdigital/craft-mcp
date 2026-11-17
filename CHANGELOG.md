@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+The stable 2.0. On top of the betas (below), it adds what Craft's own MCP server has no answer for: whether an install is healthy and what is going wrong, what a draft changes and where content has gaps, what the Retour, SEOmatic and Formie data says, and the figures for a maintenance report. All of it is read-only.
+
+### Added
+
+- **Install health and operations** (admin only):
+  - `stimmt_health` checks the whole install in one call: the MCP setup, devMode or admin changes switched on in production, pending migrations, project config that will not apply (and why), the queue, storage, recent errors. Each problem comes with what to do
+  - `stimmt_errors_summary` groups the errors in Craft's logs by kind, with count, first and last seen, and an example stack trace
+  - `stimmt_queue_failures` lists failed queue jobs with their error
+  - `stimmt_requests_slow` lists the slowest recent requests with their query counts and repeated queries, from the Yii debug data Craft keeps when the debug toolbar is on
+  - `stimmt_dependencies_audit` reports known security advisories for the installed Composer packages. It sends the package names, not the versions, to packagist.org, and matches the versions locally
+  - `stimmt_maintenance_report` returns the figures for a maintenance report over a period: health, the most frequent errors, and content changes per section and per editor
+- **Content review and health:**
+  - `stimmt_drafts_diff` shows field by field what a draft changes before it is published, with Matrix changes per block
+  - `stimmt_entries_untranslated` finds entries whose translatable content on a site is empty or still identical to the source site
+  - `stimmt_links_broken` finds links in relation fields, rich text and Link fields that point at deleted, disabled, expired or missing content
+  - `stimmt_assets_unused` lists assets nothing in Craft refers to, largest first, as a list to review, never to delete automatically
+  - `stimmt_activity_recent` is a feed across all sections of who changed what and when
+- **Plugin integrations,** registered only when the plugin is installed:
+  - `stimmt_redirects_404s` (Retour 5): the most frequent 404s, with a suggested redirect target
+  - `stimmt_seo_gaps` (SEOmatic 5): entries whose effective meta description, title or social image is missing or too long, or that are noindex while live
+  - `stimmt_forms_failures` (Formie 4, admin only): submissions whose integrations or notifications failed, with the error, never the submission's values
+- The instructions Craft's server sends on connect say when to use each of these
+
 ### Changed
+
+- `composer/semver` and `guzzlehttp/guzzle` are declared, with Craft's own version ranges: the dependency audit uses them directly. Both were already installed with Craft
 
 - The installation docs and UPGRADE.md cover the deploy traps that removed Craft's OAuth keys on a real install: keys missing from `storage/.gitignore`, and deploys that replace `storage/` or sync with `rsync --delete`. UPGRADE.md also says to commit `config/project` after each update, because Craft applies project config only when the plugin's recorded schema version matches the installed one
 

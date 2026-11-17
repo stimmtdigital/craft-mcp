@@ -10,6 +10,9 @@ Every tool except the four below:
 - `stimmt_entries_count`, `stimmt_refs_resolve`, `stimmt_entries_preview_url`
 - `stimmt_categories_list` and `stimmt_globals_list`
 - the Commerce reads, when Craft Commerce is installed
+- install health and operations: `stimmt_health`, `stimmt_errors_summary`, `stimmt_queue_failures`, `stimmt_requests_slow`, `stimmt_dependencies_audit`, `stimmt_maintenance_report`
+- content review and health: `stimmt_drafts_diff`, `stimmt_entries_untranslated`, `stimmt_links_broken`, `stimmt_assets_unused`, `stimmt_activity_recent`
+- the plugin integrations, when the plugin is installed: `stimmt_redirects_404s` (Retour), `stimmt_seo_gaps` (SEOmatic), `stimmt_forms_failures` (Formie)
 - the `stimmt://guides/tools` resource
 
 ## Pro

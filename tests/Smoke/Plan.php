@@ -95,6 +95,7 @@ final class Plan {
             self::nestedEntries(),
             self::refusedPublish($runId),
             self::copyToSite(),
+            self::operationsAndReview(),
         );
     }
 
@@ -258,6 +259,12 @@ final class Plan {
                 'capture' => ['draft.id' => 'draft.id'],
                 'assert' => ['draft.id' => 'isInt', 'draft.canonicalId' => '{{fixture.id}}'],
             ],
+            // Before publishing: the draft is a fresh copy, so nothing differs.
+            [
+                'tool' => 'stimmt_drafts_diff',
+                'args' => ['id' => '{{draft.id}}'],
+                'assert' => ['newEntry' => false, 'canonical.id' => '{{fixture.id}}', 'unchangedCount' => '>=1'],
+            ],
             [
                 'tool' => 'stimmt_drafts_publish',
                 'args' => ['id' => '{{draft.id}}'],
@@ -383,6 +390,33 @@ final class Plan {
                 // exercises the refusal of a copy onto the same site.
                 'refusal' => 'copying a site onto itself',
             ],
+        ];
+    }
+
+    /**
+     * The health, review and audit tools 2.0 adds. Their numbers depend on the
+     * install (log files, queue, content), so the steps pin each answer's shape
+     * and the facts a run controls, never counts it does not.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function operationsAndReview(): array {
+        return [
+            ['tool' => 'stimmt_health', 'assert' => ['checks' => 'notEmpty', 'summary.ok' => '>=1']],
+            ['tool' => 'stimmt_errors_summary', 'args' => ['hours' => 24], 'assert' => ['hours' => 24, 'totalErrors' => 'isInt']],
+            ['tool' => 'stimmt_queue_failures', 'assert' => ['total' => 'isInt']],
+            // Runs after the publishing steps, so this run's own save is in it.
+            ['tool' => 'stimmt_activity_recent', 'args' => ['since' => '-1 day', 'section' => self::SECTION], 'assert' => ['total' => '>=1', 'changes.0.section' => self::SECTION]],
+            ['tool' => 'stimmt_links_broken', 'args' => ['section' => self::SECTION], 'assert' => ['scanned' => '>=1', 'total' => 'isInt']],
+            ['tool' => 'stimmt_assets_unused', 'assert' => ['total' => 'isInt', 'totalBytes' => 'isInt']],
+            ['tool' => 'stimmt_maintenance_report', 'args' => ['days' => 1], 'assert' => ['period.days' => 1, 'content.saves' => '>=1', 'health.summary' => 'isArray']],
+            // The plugin tools only exist where their plugin does; elsewhere the
+            // step reports itself skipped, as for any tool a profile lacks.
+            ['tool' => 'stimmt_seo_gaps', 'args' => ['section' => self::SECTION], 'assert' => ['total' => 'isInt']],
+            ['tool' => 'stimmt_redirects_404s', 'assert' => ['total' => 'isInt']],
+            ['tool' => 'stimmt_forms_failures', 'assert' => ['total' => 'isInt']],
+            // Calls packagist.org, so only when asked for, like the backup.
+            ['tool' => 'stimmt_dependencies_audit', 'tag' => self::TAG_HEAVY, 'assert' => ['checked' => '>=1']],
         ];
     }
 }

@@ -26,6 +26,9 @@ Upgrading from 1.x: see [UPGRADE.md](../UPGRADE.md).
 - [GraphQL](tools/graphql.md): schemas, SDL, queries, tokens
 - [Backup](tools/backup.md): list and create database backups
 - [Commerce](tools/commerce.md): products, orders, statuses, product types
+- [Content review and health](tools/review.md): draft diffs, translation gaps, broken links, unused assets, recent changes
+- [Operations](tools/operations.md): install health, grouped errors, failed queue jobs, slow requests, security advisories, maintenance report
+- [Plugin integrations](tools/integrations.md): Retour 404s, SEOmatic gaps, Formie delivery failures
 
 ## For developers
 

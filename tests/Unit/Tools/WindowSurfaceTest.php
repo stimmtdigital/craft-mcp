@@ -106,12 +106,22 @@ describe('every tool taking a page window', function () use ($windowedTools, $me
         // Spelled out rather than counted: a tool dropping its limit parameter
         // would keep any count honest while quietly leaving this sweep.
         expect($names)->toBe([
+            'stimmt_activity_recent',
+            'stimmt_assets_unused',
             'stimmt_categories_list',
             'stimmt_commerce_orders_list',
             'stimmt_commerce_products_list',
             'stimmt_db_query',
             'stimmt_deprecations_list',
+            'stimmt_entries_untranslated',
+            'stimmt_errors_summary',
+            'stimmt_forms_failures',
+            'stimmt_links_broken',
             'stimmt_logs_read',
+            'stimmt_queue_failures',
+            'stimmt_redirects_404s',
+            'stimmt_requests_slow',
+            'stimmt_seo_gaps',
         ]);
     });
 

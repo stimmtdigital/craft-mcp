@@ -29,7 +29,9 @@ final class Instructions {
             '- stimmt_entries_count counts entries and groups them by status, type, section, author, date bucket or field value in one call.',
             '- stimmt_entries_preview_url gives a person a link to review an entry or draft before it is published.',
             '- Categories and global sets, which Craft\'s tools leave out, are readable through stimmt_categories_list and stimmt_globals_list.',
-            '- Admins also get developer tools: stimmt_db_*, stimmt_logs_read, stimmt_errors_last, stimmt_config_get, stimmt_graphql_*, stimmt_tinker and more. Prefer them over guessing about the install.',
+            '- stimmt_drafts_diff shows field by field what a draft changes before it is published; show it to the person reviewing.',
+            '- Content health: stimmt_entries_untranslated finds translation gaps between sites, stimmt_links_broken finds links to deleted or unpublished content, stimmt_assets_unused finds files nothing refers to (never delete them without asking).',
+            '- Admins also get developer tools. When something is wrong with the install, start with stimmt_health, then stimmt_errors_summary (recurring errors) and stimmt_queue_failures; stimmt_logs_read, stimmt_db_*, stimmt_config_get, stimmt_graphql_* and stimmt_tinker go deeper. Prefer them over guessing about the install.',
         ];
 
         $lines = [...$lines, ...self::editionLines($edition)];

@@ -47,7 +47,7 @@ return [
 | `enabled` | `true` | `false` removes every `stimmt_` tool and the plugin's server instructions. Craft's MCP server keeps running without them |
 | `disabledTools` | `[]` | Hides the named tools, for example `['stimmt_tinker', 'stimmt_db_query']` |
 | `enableDangerousTools` | `true`, `false` in production | Hides the four tools marked dangerous in the [Tools Reference](tools/README.md) |
-| `maxResponseBytes` | `1048576` | Largest response, in bytes, that `stimmt_logs_read`, `stimmt_db_query`, `stimmt_db_schema` and `stimmt_graphql_query` return. Above it they refuse and ask for a narrower request |
+| `maxResponseBytes` | `1048576` | Largest response, in bytes, that `stimmt_logs_read`, `stimmt_db_query`, `stimmt_db_schema`, `stimmt_graphql_query` and the [review](tools/review.md), [operations](tools/operations.md) (except `stimmt_health`) and [plugin integration](tools/integrations.md) tools return. Above it they refuse and ask for a narrower request |
 | `previewTokenDuration` | `null` | Lifetime of preview links. `null` falls back to Craft's `defaultTokenDuration` |
 
 ## Production
