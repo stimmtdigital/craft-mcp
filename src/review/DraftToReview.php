@@ -7,6 +7,7 @@ namespace stimmt\craft\Mcp\review;
 use craft\elements\Entry;
 use craft\models\Site;
 use Mcp\Exception\ToolCallException;
+use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\EntryResolver;
 
 /**
@@ -26,6 +27,9 @@ final class DraftToReview {
 
     public static function resolve(int $id, ?Site $site): Entry {
         $entry = self::find($id, $site) ?? throw EntryResolver::missing($id);
+        // Before anything is said about it: whether it is a revision, or which
+        // drafts it has, is itself something a caller may not be allowed to see.
+        Authorization::assertCanView($entry);
         self::assertReviewable($entry);
 
         return $entry->getIsDraft() ? $entry : self::onlyPendingDraft($entry, $site);
@@ -63,6 +67,10 @@ final class DraftToReview {
         if ($site !== null) {
             $query->site($site);
         }
+
+        // Only drafts the caller may see, so a refusal never names another
+        // author's draft ids.
+        Authorization::scopeQuery($query);
 
         return $query->all();
     }

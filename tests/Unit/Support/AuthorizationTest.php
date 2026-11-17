@@ -162,6 +162,20 @@ describe('Authorization', function () use ($withIdentity, $user) {
     // scopeQuery must INTERSECT the caller's own section/volume/group filter
     // with the viewable set, never overwrite it (which would widen an explicit
     // narrow filter up to the user's full ceiling).
+    // viewEntries is per section; whether a user may see entries other people
+    // wrote (viewPeerEntries) and their drafts (viewPeerEntryDrafts) is a
+    // second rule, which Craft's entry query applies through editable().
+    it('scopes entries by Craft\'s own view filter, peer entries and drafts included', function () {
+        $method = new ReflectionMethod(Authorization::class, 'scopeEntries');
+        $src = implode("\n", array_slice(
+            explode("\n", (string) file_get_contents((string) $method->getFileName())),
+            $method->getStartLine() - 1,
+            $method->getEndLine() - $method->getStartLine() + 1,
+        ));
+
+        expect($src)->toContain('$query->editable()');
+    });
+
     it('scopeQuery narrows the caller filter by intersection, not overwrite', function () {
         $source = (string) file_get_contents((string) (new ReflectionClass(Authorization::class))->getFileName());
 

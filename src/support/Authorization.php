@@ -113,6 +113,13 @@ final class Authorization {
     private static function scopeEntries(EntryQuery $query): void {
         $ids = self::viewableIds($query->sectionId, 'viewEntries', Craft::$app->getEntries()->getAllSections());
         $ids === [] ? $query->id(0) : $query->sectionId($ids);
+
+        // Craft's own view filter on top: viewEntries is per section, but a
+        // user without viewPeerEntries may only see entries they authored, and
+        // without viewPeerEntryDrafts only their own drafts. editable() is the
+        // condition the control panel's entry index applies for exactly that
+        // (despite its name, it checks the view permissions).
+        $query->editable();
     }
 
     private static function scopeAssets(AssetQuery $query): void {

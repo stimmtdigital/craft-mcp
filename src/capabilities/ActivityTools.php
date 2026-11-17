@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace stimmt\craft\Mcp\capabilities;
 
-use Craft;
 use craft\behaviors\RevisionBehavior;
 use craft\elements\db\EntryQuery;
 use craft\elements\Entry;
@@ -116,8 +115,16 @@ final class ActivityTools {
             return null;
         }
 
-        return Craft::$app->getUsers()->getUserByUsernameOrEmail($author)
-            ?? throw new ToolCallException("No user has the username or email '{$author}'. Check the spelling.");
+        // Through a scoped query rather than the users service: without
+        // viewUsers a caller may only name themselves, and every other name
+        // gets the same answer whether that user exists or not.
+        $query = User::find()->status(null)->where(['or', ['users.username' => $author], ['users.email' => $author]]);
+        Authorization::scopeQuery($query);
+        $user = $query->one();
+
+        return $user instanceof User
+            ? $user
+            : throw new ToolCallException("No user you may see has the username or email '{$author}'.");
     }
 
     /**
