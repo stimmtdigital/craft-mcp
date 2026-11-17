@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-17
+
 2.0.1 settles what each edition is for. **Lite** is the free toolkit for investigating an install: what is happening technically, and why. **Pro** is the edition for managing and maintaining sites: reviewing content before and after it goes live, reporting on a site, and the content tools Craft's own MCP server does not have.
 
 ### Changed
