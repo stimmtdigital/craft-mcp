@@ -34,18 +34,18 @@ A hidden tool is also not callable.
 | `stimmt_nested_entries_create` | Add one Matrix block without resending its siblings | write | Pro | |
 | `stimmt_nested_entries_move` | Move one Matrix block to a new position | write | Pro | |
 | **[Content review and health](review.md)** | | | | |
-| `stimmt_drafts_diff` | Field by field, what a draft changes compared with its live entry | read | Lite | |
-| `stimmt_entries_untranslated` | Entries whose content on a target site is empty or the same as the source site | read | Lite | |
-| `stimmt_links_broken` | Links in entries to entries, assets or categories that are not live | read | Lite | |
-| `stimmt_assets_unused` | Assets nothing in Craft refers to, largest first | read | Lite | |
-| `stimmt_activity_recent` | Who saved or deleted which entry, newest first, across sections | read | Lite | |
+| `stimmt_drafts_diff` | Field by field, what a draft changes compared with its live entry | read | Pro | |
+| `stimmt_entries_untranslated` | Entries whose content on a target site is empty or the same as the source site | read | Pro | |
+| `stimmt_links_broken` | Links in entries to entries, assets or categories that are not live | read | Pro | |
+| `stimmt_assets_unused` | Assets nothing in Craft refers to, largest first | read | Pro | |
+| `stimmt_activity_recent` | Who saved or deleted which entry, newest first, across sections | read | Pro | |
 | **[Install health and operations](operations.md)** | | | | |
 | `stimmt_health` | Whether the install is OK, area by area, with a fix for each problem | admin | Lite | |
 | `stimmt_errors_summary` | Logged errors over the last N hours, grouped by cause | admin | Lite | |
 | `stimmt_queue_failures` | Failed queue jobs with their errors, without payloads | admin | Lite | |
 | `stimmt_requests_slow` | Slowest recorded requests with repeated queries, from Yii debug data | admin | Lite | |
 | `stimmt_dependencies_audit` | Security advisories for installed Composer packages (calls packagist.org) | admin | Lite | |
-| `stimmt_maintenance_report` | Health, errors and content changes for a maintenance report | admin | Lite | |
+| `stimmt_maintenance_report` | Health, errors and content changes for a maintenance report | admin | Pro | |
 | **[Database](database.md)** | | | | |
 | `stimmt_db_schema` | List tables, or one table's columns and indexes | admin | Lite | |
 | `stimmt_db_info` | Database driver, server version and connection details | admin | Lite | |
@@ -80,9 +80,9 @@ A hidden tool is also not callable.
 | `stimmt_commerce_order_statuses_list` | List order statuses | read | Lite | |
 | `stimmt_commerce_product_types_list` | List product types | read | Lite | |
 | **[Plugin integrations (Retour, SEOmatic, Formie)](integrations.md)** | | | | |
-| `stimmt_redirects_404s` | Retour's most-hit 404s, with a suggested entry to redirect to (Retour 5) | read | Lite | |
-| `stimmt_seo_gaps` | Live entries with missing or too long SEO metadata, as SEOmatic resolves it (SEOmatic 5) | read | Lite | |
-| `stimmt_forms_failures` | Formie submissions whose integrations or notifications failed, without submitted values (Formie 4) | admin | Lite | |
+| `stimmt_redirects_404s` | Retour's most-hit 404s, with a suggested entry to redirect to (Retour 5) | read | Pro | |
+| `stimmt_seo_gaps` | Live entries with missing or too long SEO metadata, as SEOmatic resolves it (SEOmatic 5) | read | Pro | |
+| `stimmt_forms_failures` | Formie submissions whose integrations or notifications failed, without submitted values (Formie 4) | admin | Pro | |
 
 "admin" means admin users only, with the `mcp:admin` scope over HTTP. "write" needs `mcp:write` or higher, "read" needs `mcp:read` or higher.
 

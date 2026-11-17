@@ -37,8 +37,8 @@ $reviewTool = static fn (string $method): McpTool => (new ReflectionMethod(Revie
 
 describe('the review tool surface', function () use ($reviewTool) {
     // Reads: Craft maps readOnlyHint to the mcp:read scope, so a read without
-    // it would demand a write grant, and an editor on Lite must have them.
-    it('declares both tools as Lite reads open to non-admins', function (string $method, string $name, string $title) use ($reviewTool) {
+    // it would demand a write grant, and an editor on Pro must have them.
+    it('declares both tools as Pro reads open to non-admins', function (string $method, string $name, string $title) use ($reviewTool) {
         $reflection = new ReflectionMethod(ReviewTools::class, $method);
         $tool = $reviewTool($method);
 
@@ -46,7 +46,7 @@ describe('the review tool surface', function () use ($reviewTool) {
             ->and($tool->title)->toBe($title)
             ->and($tool->annotations?->readOnlyHint)->toBeTrue()
             ->and($tool->annotations?->idempotentHint)->toBeTrue()
-            ->and(Gate::requiredEdition($reflection))->toBe(Edition::Lite)
+            ->and(Gate::requiredEdition($reflection))->toBe(Edition::Pro)
             ->and($reflection->getAttributes(RequiresAdmin::class))->toBe([]);
     })->with([
         ['diffDraft', 'stimmt_drafts_diff', 'What a draft changes'],

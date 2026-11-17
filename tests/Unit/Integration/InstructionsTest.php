@@ -39,3 +39,10 @@ describe('Instructions::text()', function () {
             ->and($text)->not->toContain(Edition::UPGRADE_CTA);
     });
 });
+
+// An instruction pointing at a tool the edition hides sends the model after
+// something that is not there; the site-management tools belong to Pro.
+it('mentions the site-management tools only to Pro installs', function (string $tool) {
+    expect(Instructions::text(Edition::Lite))->not->toContain($tool)
+        ->and(Instructions::text(Edition::Pro))->toContain($tool);
+})->with(['stimmt_drafts_diff', 'stimmt_links_broken', 'stimmt_activity_recent', 'stimmt_maintenance_report', 'stimmt_seo_gaps']);

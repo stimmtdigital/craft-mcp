@@ -10,6 +10,8 @@ use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use nystudio107\seomatic\Seomatic;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\integrations\ErrorText;
 use stimmt\craft\Mcp\integrations\PluginGate;
 use stimmt\craft\Mcp\integrations\seomatic\EffectiveMeta;
@@ -58,6 +60,7 @@ final readonly class SeomaticTools {
             . ' issues are returned; page through with offset, which counts entries scanned.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
+    #[RequiresEdition(Edition::Pro)]
     public function seoGaps(
         #[Schema(description: 'Section handle. Omit to scan entries from every section that has URLs.')]
         ?string $section = null,

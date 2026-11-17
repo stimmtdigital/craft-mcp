@@ -6,8 +6,9 @@ use craft\mcp\attributes\RequiresAdmin;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Discovery\DocBlockParser;
 use Mcp\Capability\Discovery\SchemaGenerator;
-use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\capabilities\AuditTools;
+use stimmt\craft\Mcp\enums\Edition;
+use stimmt\craft\Mcp\integration\Gate;
 
 /**
  * What a client learns about the two audit tools before calling them, and the
@@ -37,15 +38,15 @@ describe('AuditTools', function () use ($tool, $source, $schema) {
             ->and($tool('unusedAssets')->title)->toBe('Unused assets');
     });
 
-    // Content reads: open to any user with mcp:read on the Lite edition,
-    // never behind the admin gate, never sold as Pro.
-    it('declares both as idempotent reads for every user and edition', function (string $method) use ($tool) {
+    // Content reads in the Pro edition's site-management set: open to any
+    // user with mcp:read, never behind the admin gate.
+    it('declares both as idempotent Pro reads open to non-admins', function (string $method) use ($tool) {
         $reflection = new ReflectionMethod(AuditTools::class, $method);
 
         expect($tool($method)->annotations?->readOnlyHint)->toBeTrue()
             ->and($tool($method)->annotations?->idempotentHint)->toBeTrue()
             ->and($reflection->getAttributes(RequiresAdmin::class))->toBe([])
-            ->and($reflection->getAttributes(RequiresEdition::class))->toBe([]);
+            ->and(Gate::requiredEdition($reflection))->toBe(Edition::Pro);
     })->with(['brokenLinks', 'unusedAssets']);
 
     it('publishes the bound on every call in the schema', function (string $method, int $max) use ($schema) {

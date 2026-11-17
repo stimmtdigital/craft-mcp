@@ -14,6 +14,8 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\report\ContentChanges;
 use stimmt\craft\Mcp\support\Budget;
 
@@ -42,6 +44,7 @@ final readonly class ReportTools {
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[RequiresAdmin]
+    #[RequiresEdition(Edition::Pro)]
     public function maintenanceReport(
         #[Schema(description: 'The period to report on, in days back from now. 1 to 90; default 30.', minimum: 1, maximum: self::MAX_DAYS)]
         int $days = 30,

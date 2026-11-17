@@ -11,8 +11,10 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\audit\LinkAudit;
 use stimmt\craft\Mcp\audit\UnusedAssets;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Budget;
 use stimmt\craft\Mcp\support\HandleResolver;
@@ -50,6 +52,7 @@ final readonly class AuditTools {
             . ' "unchecked" counts tags that name a target by slug rather than id, which are not checked.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
+    #[RequiresEdition(Edition::Pro)]
     public function brokenLinks(
         #[Schema(description: 'Section handle. Omit to scan entries from every section.')]
         ?string $section = null,
@@ -111,6 +114,7 @@ final readonly class AuditTools {
             . ' than 20000 content rows carry asset tags, or the tags name more than 10000 distinct assets.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
+    #[RequiresEdition(Edition::Pro)]
     public function unusedAssets(
         #[Schema(description: 'Volume handle. Omit to list unused assets from every volume you may view.')]
         ?string $volume = null,

@@ -11,6 +11,8 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\integrations\formie\DeliveryFailures;
 use stimmt\craft\Mcp\integrations\formie\FailureRow;
 use stimmt\craft\Mcp\integrations\Lookback;
@@ -63,6 +65,7 @@ final readonly class FormieTools {
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
     #[RequiresAdmin]
+    #[RequiresEdition(Edition::Pro)]
     public function formFailures(
         #[Schema(description: 'Form handle. Omit for failures on every form.')]
         ?string $form = null,

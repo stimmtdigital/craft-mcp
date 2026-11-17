@@ -4,15 +4,15 @@ Content review and content health: what a draft changes before it goes live, wha
 
 Craft's own tools list drafts and revisions, and `content_model_audit` checks the content model, but none of them compares a draft with its live entry, finds translation gaps, broken internal links or unused assets, or gives a change feed across sections.
 
-All of these only read. They need the read scope (`mcp:read`) or higher, and are not admin-only. Lite edition. None is dangerous.
+All of these only read. They need the read scope (`mcp:read`) or higher, and are not admin-only. Pro edition. None is dangerous.
 
 | Tool | Scope | Edition |
 |------|-------|---------|
-| [`stimmt_drafts_diff`](#stimmt_drafts_diff) | read | Lite |
-| [`stimmt_entries_untranslated`](#stimmt_entries_untranslated) | read | Lite |
-| [`stimmt_links_broken`](#stimmt_links_broken) | read | Lite |
-| [`stimmt_assets_unused`](#stimmt_assets_unused) | read | Lite |
-| [`stimmt_activity_recent`](#stimmt_activity_recent) | read | Lite |
+| [`stimmt_drafts_diff`](#stimmt_drafts_diff) | read | Pro |
+| [`stimmt_entries_untranslated`](#stimmt_entries_untranslated) | read | Pro |
+| [`stimmt_links_broken`](#stimmt_links_broken) | read | Pro |
+| [`stimmt_assets_unused`](#stimmt_assets_unused) | read | Pro |
+| [`stimmt_activity_recent`](#stimmt_activity_recent) | read | Pro |
 
 Every tool runs Craft's own view permissions for the user the client acts as: entries, sections and volumes that user cannot view in the control panel are left out. Each refuses a response larger than `maxResponseBytes` (see [Configuration](../configuration.md)).
 

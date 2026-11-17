@@ -163,12 +163,24 @@ describe('closed sets', function () use ($namesWhere, $isPro, $isDangerous) {
         ]);
     });
 
-    it('sells exactly the four content writes as Pro', function () use ($namesWhere, $isPro) {
+    // Pro is the site-management edition: the content writes Craft's own
+    // server lacks, plus the tools that review content and report on a site.
+    // Lite keeps everything for investigating an install.
+    it('puts exactly the site-management tools in Pro', function () use ($namesWhere, $isPro) {
         expect($namesWhere($isPro))->toBe([
+            'stimmt_activity_recent',
+            'stimmt_assets_unused',
+            'stimmt_drafts_diff',
             'stimmt_drafts_publish',
             'stimmt_entries_copy_to_site',
+            'stimmt_entries_untranslated',
+            'stimmt_forms_failures',
+            'stimmt_links_broken',
+            'stimmt_maintenance_report',
             'stimmt_nested_entries_create',
             'stimmt_nested_entries_move',
+            'stimmt_redirects_404s',
+            'stimmt_seo_gaps',
         ]);
     });
 });

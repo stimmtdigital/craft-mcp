@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+2.0.1 settles what each edition is for. **Lite** is the free toolkit for investigating an install: what is happening technically, and why. **Pro** is the edition for managing and maintaining sites: reviewing content before and after it goes live, reporting on a site, and the content tools Craft's own MCP server does not have.
+
+### Changed
+
+- The editions are organised around those two jobs:
+  - **Lite** keeps install health (`stimmt_health`), error triage (`stimmt_errors_summary`), failed queue jobs, slow requests, security advisories, and every developer tool (logs, config, SQL, GraphQL, Tinker, backups), along with counts, natural keys, preview links, categories, global sets and Commerce
+  - **Pro** brings together the site-management tools: draft review (`stimmt_drafts_diff`) with validated publishing, content health (translation gaps, broken links, unused assets), the change feed, the Retour, SEOmatic and Formie insights, the maintenance report, copying entries between sites and single Matrix-block tools
+- The instructions Craft's server sends on connect describe the site-management tools on Pro, and say what Pro adds on Lite
+- If you are on Lite and installed 2.0.0, the draft review, content health, change feed, plugin insight and maintenance report tools no longer appear after updating. Everything else is unchanged
+
 ## [2.0.0] - 2026-11-17
 
 The stable 2.0. On top of the betas (below), it adds what Craft's own MCP server has no answer for: whether an install is healthy and what is going wrong, what a draft changes and where content has gaps, what the Retour, SEOmatic and Formie data says, and the figures for a maintenance report. All of it is read-only.

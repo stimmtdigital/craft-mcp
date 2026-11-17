@@ -4,7 +4,7 @@ Install health and operations: whether an install is OK and what to do if it is 
 
 Craft's own MCP server has tools for the queue (`queue_*`), project config (`project_config_*`) and system info, but nothing that judges an install as a whole, groups errors by cause or reads the failed jobs' errors. These tools do, and they only read.
 
-All of these are admin-only: they need a Craft admin user and, over HTTP, the `mcp:admin` scope. Lite edition. None is dangerous.
+All of these are admin-only: they need a Craft admin user and, over HTTP, the `mcp:admin` scope. Lite edition, except `stimmt_maintenance_report`, which is Pro. None is dangerous.
 
 | Tool | Scope | Edition |
 |------|-------|---------|
@@ -13,7 +13,7 @@ All of these are admin-only: they need a Craft admin user and, over HTTP, the `m
 | [`stimmt_queue_failures`](#stimmt_queue_failures) | admin | Lite |
 | [`stimmt_requests_slow`](#stimmt_requests_slow) | admin | Lite |
 | [`stimmt_dependencies_audit`](#stimmt_dependencies_audit) | admin | Lite |
-| [`stimmt_maintenance_report`](#stimmt_maintenance_report) | admin | Lite |
+| [`stimmt_maintenance_report`](#stimmt_maintenance_report) | admin | Pro |
 
 Each of these except `stimmt_health`, whose output is a fixed set of checks, refuses a response larger than `maxResponseBytes` (see [Configuration](../configuration.md)) and asks for a narrower call instead.
 

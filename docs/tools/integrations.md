@@ -2,13 +2,13 @@
 
 Reads for three widely used third-party plugins: Retour's 404 statistics, SEOmatic's resolved SEO metadata, and Formie's failed form deliveries. Craft's own MCP server has no tools for any of them.
 
-All three only read. Lite edition. None is dangerous.
+All three only read. Pro edition. None is dangerous.
 
 | Tool | Plugin | Scope | Edition |
 |------|--------|-------|---------|
-| [`stimmt_redirects_404s`](#stimmt_redirects_404s) | Retour 5 | read | Lite |
-| [`stimmt_seo_gaps`](#stimmt_seo_gaps) | SEOmatic 5 | read | Lite |
-| [`stimmt_forms_failures`](#stimmt_forms_failures) | Formie 4 | admin | Lite |
+| [`stimmt_redirects_404s`](#stimmt_redirects_404s) | Retour 5 | read | Pro |
+| [`stimmt_seo_gaps`](#stimmt_seo_gaps) | SEOmatic 5 | read | Pro |
+| [`stimmt_forms_failures`](#stimmt_forms_failures) | Formie 4 | admin | Pro |
 
 ## When they appear
 

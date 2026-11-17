@@ -17,6 +17,8 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\insight\ActivityFeed;
 use stimmt\craft\Mcp\support\Authorization;
 use stimmt\craft\Mcp\support\Budget;
@@ -44,6 +46,7 @@ final class ActivityTools {
         description: 'A newest-first feed of entry changes across every section: who saved or deleted which entry, and when. Built from Craft\'s revisions (one per save of a live entry, kind "created" for revision 1, "updated" after) plus soft-deleted entries (kind "deleted", changedBy null because Craft does not record who deleted). Only sections the connected user may view appear. Sections with versioning switched off, unsaved drafts, and revisions Craft has already pruned (maxRevisions) do not appear. offset + limit may not exceed ' . self::MAX_SCAN . '.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
+    #[RequiresEdition(Edition::Pro)]
     public function recentActivity(
         #[Schema(description: 'Earliest change to include: any date Craft parses, such as "2026-11-01", "2026-11-01T09:00:00+01:00" or "-3 days". Defaults to 7 days ago.')]
         ?string $since = null,

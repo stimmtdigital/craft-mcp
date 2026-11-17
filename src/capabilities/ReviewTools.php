@@ -12,9 +12,11 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
 use stimmt\craft\Mcp\elements\LayoutFields;
 use stimmt\craft\Mcp\elements\Lookup;
 use stimmt\craft\Mcp\elements\Reader;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\review\BlockAliases;
 use stimmt\craft\Mcp\review\DraftToReview;
 use stimmt\craft\Mcp\review\EntryState;
@@ -63,6 +65,7 @@ final readonly class ReviewTools {
         description: 'Before publishing, show field by field what a draft changes compared with its live (canonical) entry: title, slug, entry type, enabled, enabled for the site, post and expiry date, structure parent, and every custom field. Each change reads {field, label, kind: added|removed|changed, before, after}; text over 500 characters is cut and flagged truncated. Matrix fields report per block under "blocks" (added, removed, moved or changed blocks by block id and type) and ContentBlock fields report their own fields under "changes". Relations read as natural keys. A draft of an entry that was never published has no live entry: newEntry is true and every non-empty value reads as added. Takes the same id stimmt_drafts_publish does; revisions and provisional (autosaved) drafts are refused.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
+    #[RequiresEdition(Edition::Pro)]
     public function diffDraft(
         #[Schema(description: 'A draft element id, or a canonical entry id that has exactly one pending draft.')]
         int $id,
@@ -104,6 +107,7 @@ final readonly class ReviewTools {
         description: 'On a multi-site install, list entries whose content on a target site is still untranslated: a value the source site has that the target site leaves empty ("empty") or holds unchanged ("same-as-source"). Only values the two sites keep apart are checked: custom fields Craft translates per site for these two sites, plus title and slug when the entry type translates them. Values empty on the source are ignored. Relations compare by the elements they point at; Matrix blocks by type and content. limit bounds the entries SCANNED, not the entries returned, so one call never walks the whole install: total counts the gaps found in this window, scanned the entries looked at, and hasMore says whether to call again at offset + scanned. An entry that does not exist on the target site at all reads missingOnSite: true.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
+    #[RequiresEdition(Edition::Pro)]
     public function untranslatedEntries(
         #[Schema(description: 'Target site handle: the site whose translations to check.')]
         string $site,

@@ -41,13 +41,22 @@ it('marks exactly the documented content-writing tools as Pro across every capab
 
     sort($proMethods);
 
-    // Every tool that writes content, and nothing else. The nested-block pair
-    // is here because creating and reordering blocks is writing content: a
-    // gate that let those through would sell the tier and then leak it.
+    // The content writes Craft's own server lacks, plus the tools that review
+    // content and report on a site. Closed, so a stray attribute on any other
+    // tool, or a missing one here, turns this red.
     expect($proMethods)->toBe([
+        'brokenLinks',
         'copyEntryToSite',
         'createNestedEntry',
+        'diffDraft',
+        'formFailures',
+        'maintenanceReport',
         'moveNestedEntry',
+        'notFound',
         'publishEntry',
+        'recentActivity',
+        'seoGaps',
+        'untranslatedEntries',
+        'unusedAssets',
     ]);
 });

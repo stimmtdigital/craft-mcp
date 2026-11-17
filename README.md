@@ -13,10 +13,9 @@
 
 Craft CMS 5.12 ships its own MCP (Model Context Protocol) server: an HTTP endpoint with OAuth login and scopes, and a stdio server for local tools. Craft MCP 2.0 is no longer a server of its own. It adds tools to Craft's:
 
-- **Developer tools**: database schema and read-only SQL, logs, config, routes, event handlers, deprecations, GraphQL, backups, and a tinker tool for running PHP
-- **Content extras**: grouped entry counts, natural keys (`{"section": "news", "slug": "launch"}`) turned into the ids Craft's tools take, and preview links for review
-- **Categories, global sets and Craft Commerce**, which Craft's own tools do not cover
-- **Pro**: publishing that validates a draft as live content first, copying entries between sites, and adding or moving a single Matrix block
+- **Install health and developer tools** (Lite): a one-call health check, error triage, failed queue jobs, slow requests, security advisories, database schema and read-only SQL, logs, config, routes, GraphQL, backups, and a tinker tool for running PHP
+- **Content extras** (Lite): grouped entry counts, natural keys (`{"section": "news", "slug": "launch"}`) turned into the ids Craft's tools take, preview links, and categories, global sets and Craft Commerce, which Craft's own tools do not cover
+- **Site management** (Pro): draft review and validated publishing, translation gaps, broken links, unused assets, a change feed, Retour, SEOmatic and Formie insights, a maintenance report, copying entries between sites, and adding or moving a single Matrix block
 
 Every plugin tool is named `stimmt_…`. Clients connect to Craft's endpoint, log in with their Craft account, and see the plugin's tools next to Craft's.
 
@@ -63,8 +62,9 @@ See [Connecting clients](docs/connecting.md). For editors: [Using Claude with yo
 | [Content](docs/tools/content.md) | `stimmt_entries_count`, `stimmt_refs_resolve`, `stimmt_entries_preview_url`, `stimmt_categories_list` | read | Lite |
 | | `stimmt_globals_list` | admin | Lite |
 | | `stimmt_drafts_publish`, `stimmt_entries_copy_to_site`, `stimmt_nested_entries_create`, `stimmt_nested_entries_move` | write | Pro |
-| [Content review and health](docs/tools/review.md) | `stimmt_drafts_diff`, `stimmt_entries_untranslated`, `stimmt_links_broken`, `stimmt_assets_unused`, `stimmt_activity_recent` | read | Lite |
-| [Operations](docs/tools/operations.md) | `stimmt_health`, `stimmt_errors_summary`, `stimmt_queue_failures`, `stimmt_requests_slow`, `stimmt_dependencies_audit`, `stimmt_maintenance_report` | admin | Lite |
+| [Content review and health](docs/tools/review.md) | `stimmt_drafts_diff`, `stimmt_entries_untranslated`, `stimmt_links_broken`, `stimmt_assets_unused`, `stimmt_activity_recent` | read | Pro |
+| [Operations](docs/tools/operations.md) | `stimmt_health`, `stimmt_errors_summary`, `stimmt_queue_failures`, `stimmt_requests_slow`, `stimmt_dependencies_audit` | admin | Lite |
+| | `stimmt_maintenance_report` | admin | Pro |
 | [Database](docs/tools/database.md) | `stimmt_db_schema`, `stimmt_db_info`, `stimmt_db_table_counts`, `stimmt_db_query`, `stimmt_db_explain` | admin | Lite |
 | [System](docs/tools/system.md) | `stimmt_config_get`, `stimmt_logs_read`, `stimmt_errors_last`, `stimmt_console_commands_list`, `stimmt_routes_list` | admin | Lite |
 | [Debugging](docs/tools/debugging.md) | `stimmt_deprecations_list`, `stimmt_environment_get`, `stimmt_event_handlers_list`, `stimmt_tinker` | admin | Lite |
@@ -72,8 +72,8 @@ See [Connecting clients](docs/connecting.md). For editors: [Using Claude with yo
 | [Backup](docs/tools/backup.md) | `stimmt_backups_list`, `stimmt_backups_create` | admin | Lite |
 | [Commerce](docs/tools/commerce.md) | `stimmt_commerce_products_list`, `stimmt_commerce_product_get`, `stimmt_commerce_orders_list`, `stimmt_commerce_order_get` | admin | Lite |
 | | `stimmt_commerce_order_statuses_list`, `stimmt_commerce_product_types_list` | read | Lite |
-| [Plugin integrations](docs/tools/integrations.md) | `stimmt_redirects_404s` (Retour), `stimmt_seo_gaps` (SEOmatic) | read | Lite |
-| | `stimmt_forms_failures` (Formie) | admin | Lite |
+| [Plugin integrations](docs/tools/integrations.md) | `stimmt_redirects_404s` (Retour), `stimmt_seo_gaps` (SEOmatic) | read | Pro |
+| | `stimmt_forms_failures` (Formie) | admin | Pro |
 
 What these add that Craft's own MCP server does not do:
 
@@ -91,7 +91,7 @@ All of these only read.
 
 ## Editions
 
-**Lite** is free and includes every tool above except four. **Pro** adds `stimmt_drafts_publish`, `stimmt_entries_copy_to_site`, `stimmt_nested_entries_create` and `stimmt_nested_entries_move`. Upgrade in the control panel under **Settings → Plugins**. See [Editions](docs/editions.md).
+**Lite** is the free toolkit for investigating an install: health and operations, error triage, logs, SQL, GraphQL, Tinker and the other developer tools. **Pro** is the edition for managing and maintaining sites: draft review and validated publishing, content health, the change feed, the Retour, SEOmatic and Formie insights, the maintenance report, copying entries between sites and single Matrix-block tools. Upgrade in the control panel under **Settings → Plugins**. See [Editions](docs/editions.md).
 
 ## Documentation
 

@@ -10,6 +10,8 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use nystudio107\retour\Retour;
+use stimmt\craft\Mcp\attributes\RequiresEdition;
+use stimmt\craft\Mcp\enums\Edition;
 use stimmt\craft\Mcp\integrations\Lookback;
 use stimmt\craft\Mcp\integrations\PluginGate;
 use stimmt\craft\Mcp\integrations\retour\EntrySuggestions;
@@ -55,6 +57,7 @@ final readonly class RetourTools {
             . ' The suggestion is a guess to check, not a redirect target to apply blindly.',
         annotations: new ToolAnnotations(readOnlyHint: true, idempotentHint: true),
     )]
+    #[RequiresEdition(Edition::Pro)]
     public function notFound(
         #[Schema(description: 'Site handle. Omit for 404s on every site.')]
         ?string $site = null,
