@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The installation docs and UPGRADE.md cover the deploy traps that removed Craft's OAuth keys on a real install: keys missing from `storage/.gitignore`, and deploys that replace `storage/` or sync with `rsync --delete`. UPGRADE.md also says to commit `config/project` after each update, because Craft applies project config only when the plugin's recorded schema version matches the installed one
+
 ## [2.0.0-beta.2] - 2026-11-12
 
 ### Added

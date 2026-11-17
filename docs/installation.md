@@ -51,9 +51,15 @@ Craft keeps these settings in project config, so they travel with your deploy.
 
 Craft signs the access tokens it gives MCP clients with a key pair, and does not create one itself. The plugin does: when it is installed or updated (`craft up`), it generates the pair in `storage/` if Craft has none and none is configured. It never replaces existing keys, because new keys log out every connected client.
 
-Two cases need you:
+Three cases need you:
 
-- **`storage/` is not kept across deploys.** Each release would get new keys and every client would be logged out. Keep `storage/` shared between releases, or set the `privateKey` and `publicKey` settings in Craft's `config/oauth.php` (for example from environment variables).
+- **Keep the keys out of git.** Craft's default `storage/.gitignore` does not cover them. Add this line to it:
+
+  ```
+  oauth-*.key
+  ```
+
+- **Make sure deploys keep them.** A deploy that gives each release a fresh `storage/`, or syncs files with `rsync --delete`, removes the keys: they are gitignored, so they are never part of what is synced. Every MCP request then fails with a 500 until the keys exist again, and no migration recreates them on a later deploy. Keep `storage/` shared between releases, or exclude the keys from the sync (for rsync, `--exclude '/storage/oauth-*.key'`, which also protects them from `--delete`). Or set the `privateKey` and `publicKey` settings in Craft's `config/oauth.php`, for example from environment variables.
 - **An environment runs on several servers.** Only the server that runs the migration gets the generated pair. Give every server the same keys, for example through those same settings.
 
 To create keys by hand, run `php craft oauth/generate-keys`. Without keys, no client can finish connecting, and `php craft mcp/check` reports it.

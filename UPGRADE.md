@@ -13,6 +13,8 @@ This is a breaking update. Go through the steps below on every environment.
   php craft up
   ```
 
+- **Commit `config/project` after updating, on every update.** The plugin records its schema version in project config, and Craft applies project config only when the recorded version matches the installed one exactly. If the update's change to `config/project/` is not committed, `project-config/apply` refuses on the next deploy and later project config changes are not applied.
+- **Check how your deploys treat `storage/`.** Craft's OAuth keys live there and are gitignored, so a deploy that replaces `storage/` or syncs with `rsync --delete` deletes them, and every MCP connection fails with a 500. See [docs/installation.md](docs/installation.md#3-oauth-keys).
 - **Every 1.x token and connection stops working.** The update drops the 1.x tables (`mcp_tokens`, `mcp_sessions`, `mcp_oauth_*`). Static `mcp_` tokens have no replacement: Craft does not let personal access tokens use its MCP server. Clients reconnect through Craft's own OAuth login, and scripts and CI switch to stdio (see step 4).
 
 ## 1. Move the plugin's settings to `config/craft-mcp.php`
