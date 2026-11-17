@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-17
+
 The stable 2.0. On top of the betas (below), it adds what Craft's own MCP server has no answer for: whether an install is healthy and what is going wrong, what a draft changes and where content has gaps, what the Retour, SEOmatic and Formie data says, and the figures for a maintenance report. All of it is read-only.
 
 ### Added
